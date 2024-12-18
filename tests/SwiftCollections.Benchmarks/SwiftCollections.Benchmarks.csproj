@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <LangVersion>9.0</LangVersion>
+	<OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+	<ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+	<Optimize>true</Optimize>
+    <DebugSymbols>true</DebugSymbols>
+	<NoWarn>$(NoWarn);CA1018;CA5351;CA1825</NoWarn>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup Condition=" '$(TargetFrameworkIdentifier)' == '.NETFramework' ">
+  <Reference Include="System.Reflection" />
+  <PackageReference Include="System.Memory" Version="4.5.5" />
+  </ItemGroup>
+  <ItemGroup>
+  	<ProjectReference Include="..\..\src\SwiftCollections\SwiftCollections.csproj">
+		<Private>True</Private>
+		<IncludeAssets>compile; build</IncludeAssets>
+		<PrivateAssets>all</PrivateAssets>
+	</ProjectReference>
+  	<PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
+    <!-- The Test SDK is required only for the VSTest Adapter to work -->
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove=".gitignore" />
+  </ItemGroup>
+</Project>
