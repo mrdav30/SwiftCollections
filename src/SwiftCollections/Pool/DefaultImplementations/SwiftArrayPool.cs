@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Drawing;
 using System.Runtime.CompilerServices;
-using UnityEngine;
 
 namespace SwiftCollections.Pool
 {
@@ -42,7 +40,7 @@ namespace SwiftCollections.Pool
         /// <param name="actionOnRelease">An action performed when an array is released back to the pool (default: clears the array).</param>
         /// <param name="actionOnDestroy">An action performed when an array is removed from the pool (default: no action).</param>
         /// <param name="poolMaxCapacity">The maximum number of arrays each pool can hold for a specific size (default: 100).</param>
-        private SwiftArrayPool(
+        public SwiftArrayPool(
             Func<int, T[]> createFunc = null,
             Action<T[]> actionOnRelease = null,
             Action<T[]> actionOnDestroy = null,

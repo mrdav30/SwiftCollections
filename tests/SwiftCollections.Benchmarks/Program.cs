@@ -1,6 +1,4 @@
-﻿using BenchmarkDotNet.Reports;
-using BenchmarkDotNet.Running;
-using SwiftHashSetBenchmark;
+﻿using BenchmarkDotNet.Running;
 
 namespace SwiftCollections.Benchmarks
 {
@@ -8,22 +6,23 @@ namespace SwiftCollections.Benchmarks
     {
         static void Main(string[] args)
         {
-            //var summary = BenchmarkRunner.Run<SwiftListBenchmarks>();
+           // var ListIntegerBenchmarksSummary = BenchmarkRunner.Run<ListIntegerBenchmarks>();
 
-            //var summary = BenchmarkRunner.Run<SwiftQueueBenchmarks>();
+            //var QueueIntegerBenchmarksSummary = BenchmarkRunner.Run<QueueIntegerBenchmarks>();
 
-            //var summary = BenchmarkRunner.Run<SwiftStackBenchmarks>();
+            var StackIntegerBenchmarksSummary = BenchmarkRunner.Run<StackIntegerBenchmarks>();
 
-            //var summary = BenchmarkRunner.Run<SwiftBucketBenchmarks>();
-            //var summary = BenchmarkRunner.Run<RemovalInsertionBenchmarks>();
+            //var BucketIntegerBenchmarksSummary = BenchmarkRunner.Run<BucketIntegerBenchmarks>();
+            //var BucketRemovalInsertionBenchmarksSummary = BenchmarkRunner.Run<BucketRemovalInsertionBenchmarks>();
 
-            // var summary = BenchmarkRunner.Run<SwiftDictionaryBenchmarks>();
-            //var summary = BenchmarkRunner.Run<SwiftDictionaryStringBenchmarks>();
+            // var summary = BenchmarkRunner.Run<DictionaryIntegerBenchmarks>();
+            //var DictionaryStringBenchmarksSummary = BenchmarkRunner.Run<DictionaryStringBenchmarks>();
 
-            //var summary = BenchmarkRunner.Run<SwiftSortedListBenchmarks>();
+           // var SortedListIntegerBenchmarksSummary = BenchmarkRunner.Run<SortedListIntegerBenchmarks>();
 
-            //var summary = BenchmarkRunner.Run<IntegerHashSetBenchmark>();
-            var summary = BenchmarkRunner.Run<StringHashSetBenchmark>();
+            //var HashSetIntegerBenchmarkSumary = BenchmarkRunner.Run<HashSetIntegerBenchmark>();
+            // var HashSetStringBenchmarkSummary = BenchmarkRunner.Run<HashSetStringBenchmark>();
+            // var HashSetObjectBenchmarkSummary = BenchmarkRunner.Run<HashSetObjectBenchmark>();
         }
     }
 }

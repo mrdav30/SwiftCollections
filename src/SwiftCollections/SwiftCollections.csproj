@@ -96,6 +96,11 @@
 		<UnityEditorPath Condition="'$(UnityEditorPath)'==''">$(UnityManagedPath)\UnityEditor.dll</UnityEditorPath>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	</PropertyGroup>
+	<ItemGroup>
+	  <Compile Remove="Query\**" />
+	  <EmbeddedResource Remove="Query\**" />
+	  <None Remove="Query\**" />
+	</ItemGroup>
 	<!-- Dependencies and Package References -->
 	<ItemGroup>	
 		<Reference Include="UnityEngine">
@@ -118,11 +123,5 @@
 		<None Include="..\..\LICENSE.md" Pack="true" PackagePath="\" Visible="false" />
 		<None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
 		<None Remove=".gitignore" />
-	</ItemGroup>
-	<!-- temp!!!! -->
-	<ItemGroup>
-	  <Compile Remove="Query\**" />
-	  <EmbeddedResource Remove="Query\**" />
-	  <None Remove="Query\**" />
 	</ItemGroup>
 </Project>
