@@ -7,7 +7,6 @@ namespace SwiftCollections
 {
     internal static class ThrowHelper
     {
-
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static Exception ThrowInvalidOperationException(string message)
         {
@@ -21,9 +20,9 @@ namespace SwiftCollections
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void ThrowArgumentOutOfRangeException()
+        internal static void ThrowArgumentOutOfRangeException(string msg = null)
         {
-            throw new ArgumentOutOfRangeException();
+            throw new ArgumentOutOfRangeException(msg);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -33,7 +32,7 @@ namespace SwiftCollections
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void ThrowIndexOutOfRangeException()
+        internal static void ThrowIndexOutOfRangeException(string msg = null)
         {
             throw new IndexOutOfRangeException();
         }

@@ -33,7 +33,7 @@ namespace SwiftCollections
         /// The array containing the entries of the SwiftHashSet.
         /// </summary>
         /// <remarks>
-        /// Length will always be a power of two for efficient pooling cache.
+        /// Capacity will always be a power of two for efficient pooling cache.
         /// </remarks>
         private Entry[] _entries;
 

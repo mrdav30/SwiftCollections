@@ -28,7 +28,7 @@ namespace SwiftCollections
     /// </summary>
     /// <typeparam name="T">Specifies the type of elements in the list.</typeparam>
     [Serializable]
-    public sealed class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumerable, ICollection<T>, ICollection, IList, IList<T>
+    public class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumerable, ICollection<T>, ICollection, IList, IList<T>
     {
         #region Constants
 
@@ -57,7 +57,7 @@ namespace SwiftCollections
         /// The current number of elements in the SwiftList. Represents the total count of
         /// valid elements stored in the list, also indicating the arrayIndex of the next insertion point.
         /// </summary>
-        private int _count;
+        protected int _count;
 
         /// <summary>
         /// An object that can be used to synchronize access to the SwiftList.
@@ -158,13 +158,13 @@ namespace SwiftCollections
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                if (index >= _count) ThrowHelper.ThrowArgumentOutOfRangeException();
+                if ((uint)index >= (uint)_count) ThrowHelper.ThrowArgumentOutOfRangeException();
                 return _innerArray[index];
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set
             {
-                if (index >= _count) ThrowHelper.ThrowArgumentOutOfRangeException();
+                if ((uint)index >= (uint)_count) ThrowHelper.ThrowArgumentOutOfRangeException();
                 _innerArray[index] = value;
             }
         }
