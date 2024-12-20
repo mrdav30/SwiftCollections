@@ -54,7 +54,7 @@ namespace SwiftCollections.Observable
         {
             base.Add(item);
             OnCollectionChanged(NotifyCollectionChangedAction.Add, item, _count - 1);
-            OnPropertyChanged(nameof(_count));
+            OnPropertyChanged(nameof(Count));
         }
 
         /// <summary>
@@ -69,7 +69,7 @@ namespace SwiftCollections.Observable
                 var removedItem = this[index];
                 base.RemoveAt(index);
                 OnCollectionChanged(NotifyCollectionChangedAction.Remove, removedItem, index);
-                OnPropertyChanged(nameof(_count));
+                OnPropertyChanged(nameof(Count));
                 return true;
             }
 

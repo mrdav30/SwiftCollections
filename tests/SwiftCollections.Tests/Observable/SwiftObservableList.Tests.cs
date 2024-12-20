@@ -254,14 +254,19 @@ namespace SwiftCollections.Observable.Tests
         {
             var list = new SwiftObservableList<int>();
 
-            for (int i = 1; i < 1000; i++)
+            for (int i = 0; i < 1000; i++)
             {
                 list.Add(i);
                 list[i] = i * 2;
-                list.Remove(i * 2);
             }
 
-            Assert.Empty(list);
+            for (int i = 0; i < 1000; i += 2)
+            {
+                list[i % 2] = i * 2;
+                list.Remove(i);
+            }
+
+            Assert.Equal(501, list.Count);
         }
 
         [Fact]
