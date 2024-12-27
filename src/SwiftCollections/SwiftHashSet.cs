@@ -224,7 +224,7 @@ namespace SwiftCollections
             int hashCode = _comparer.GetHashCode(item) & 0x7FFFFFFF;
             int entryIndex = hashCode & _entryMask;
 
-            int step = 1;
+            int step = 0;
             while ((uint)step <= (uint)_lastIndex)
             {
                 ref Entry entry = ref _entries[entryIndex];
@@ -244,8 +244,8 @@ namespace SwiftCollections
                 }
 
                 // Entry not found in expected entry, it either doesn't exist or was moved via quadratic probing
-                entryIndex = (entryIndex + step * step) & _entryMask;
                 step++;
+                entryIndex = (entryIndex + step * step) & _entryMask;
             }
             return false; // Item not found after full loop
         }
@@ -536,7 +536,7 @@ namespace SwiftCollections
             int hashCode = _comparer.GetHashCode(item) & 0x7FFFFFFF;
             int entryIndex = hashCode & _entryMask;
 
-            int step = 1;
+            int step = 0;
             while ((uint)step <= (uint)_lastIndex)
             {
                 ref Entry entry = ref _entries[entryIndex];
@@ -545,9 +545,11 @@ namespace SwiftCollections
                     return -1;
                 if (entry.IsUsed && entry.HashCode == hashCode && _comparer.Equals(entry.Value, item))
                     return entryIndex; // Match found
+                                       
                 // Perform quadratic probing to see if maybe the entry was shifted.
-                entryIndex = (entryIndex + step * step) & _entryMask;
                 step++;
+                entryIndex = (entryIndex + step * step) & _entryMask;
+
             }
             return -1; // Item not found, full loop completed
         }

@@ -97,9 +97,12 @@
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	</PropertyGroup>
 	<ItemGroup>
-	  <Compile Remove="Query\**" />
-	  <EmbeddedResource Remove="Query\**" />
-	  <None Remove="Query\**" />
+	  <Compile Remove="Query\Octree\**" />
+	  <Compile Remove="Query\SpatialHash\**" />
+	  <EmbeddedResource Remove="Query\Octree\**" />
+	  <EmbeddedResource Remove="Query\SpatialHash\**" />
+	  <None Remove="Query\Octree\**" />
+	  <None Remove="Query\SpatialHash\**" />
 	</ItemGroup>
 	<!-- Dependencies and Package References -->
 	<ItemGroup>	
