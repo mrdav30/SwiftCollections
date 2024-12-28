@@ -116,6 +116,7 @@
 			<Private>false</Private>
 			<PrivateAssets>all</PrivateAssets>
 		</Reference>
+		<PackageReference Include="FixedMathSharp" Version="1.0.0" />
 		<PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="1.0.3">
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 			<PrivateAssets>all</PrivateAssets>

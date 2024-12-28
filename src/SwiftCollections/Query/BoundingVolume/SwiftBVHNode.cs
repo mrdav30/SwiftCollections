@@ -14,7 +14,7 @@
         /// <summary>
         /// Gets or sets the bounding volume of the node.
         /// </summary>
-        public IBoundingVolume Bounds { get; set; }
+        public IBoundVolume Bounds { get; set; }
 
         /// <summary>
         /// Gets or sets the index of the parent node.

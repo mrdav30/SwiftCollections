@@ -140,7 +140,7 @@ namespace SwiftCollections.Query
         /// Reuses indices from the freelist when available.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private int AllocateNode(T value, IBoundingVolume bounds, bool isLeaf)
+        private int AllocateNode(T value, IBoundVolume bounds, bool isLeaf)
         {
             int index;
 
@@ -173,7 +173,7 @@ namespace SwiftCollections.Query
         /// Inserts a bounding volume with an associated value into the BVH.
         /// Ensures tree balance and updates hash buckets.
         /// </summary>
-        public bool Insert(T value, IBoundingVolume bounds)
+        public bool Insert(T value, IBoundVolume bounds)
         {
             if (bounds == null)
                 ThrowHelper.ThrowNotSupportedException($"{nameof(bounds)} cannot be null!");
@@ -256,19 +256,11 @@ namespace SwiftCollections.Query
                 // Compute cost metrics
                 int leftCost = 0;
                 if (currentNode.HasLeftChild)
-                {
-                    IBoundingVolume leftBounds = _nodePool[leftChildIndex].Bounds;
-                    IBoundingVolume encapsulatedBounds = leftBounds.Union(_nodePool[newNodeIndex].Bounds);
-                    leftCost = (int)Math.Floor(encapsulatedBounds.Volume - leftBounds.Volume);
-                }
+                    leftCost = _nodePool[leftChildIndex].Bounds.GetCost(_nodePool[newNodeIndex].Bounds);
 
                 int rightCost = 0;
                 if (currentNode.HasLeftChild)
-                {
-                    IBoundingVolume rightBounds = _nodePool[rightChildIndex].Bounds;
-                    IBoundingVolume encapsulatedBounds = rightBounds.Union(_nodePool[newNodeIndex].Bounds);
-                    rightCost = (int)Math.Floor(encapsulatedBounds.Volume - rightBounds.Volume);
-                }
+                    rightCost = _nodePool[rightChildIndex].Bounds.GetCost(_nodePool[newNodeIndex].Bounds);
 
                 // Insert into the child with the least volume increase
                 if (leftCost < rightCost)
@@ -299,7 +291,7 @@ namespace SwiftCollections.Query
         /// Updates the bounding volume of a node and propagates changes up the tree.
         /// Ensures consistency in parent bounds and subtree sizes.
         /// </summary>
-        public void UpdateEntryBounds(T value, IBoundingVolume newBounds)
+        public void UpdateEntryBounds(T value, IBoundVolume newBounds)
         {
             if (value == null) ThrowHelper.ThrowArgumentNullException(nameof(value));
 
@@ -317,7 +309,7 @@ namespace SwiftCollections.Query
                 while (parentIndex != -1)
                 {
                     ref SwiftBVHNode<T> parent = ref _nodePool[parentIndex];
-                    IBoundingVolume newParentBounds = GetCombinedBounds(parent.LeftChildIndex, parent.RightChildIndex);
+                    IBoundVolume newParentBounds = GetCombinedBounds(parent.LeftChildIndex, parent.RightChildIndex);
                     if (parent.Bounds.Equals(newParentBounds))
                         break; // No further updates needed
 
@@ -505,7 +497,7 @@ namespace SwiftCollections.Query
         /// Handles cases where one or both children are missing.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private IBoundingVolume GetCombinedBounds(int leftChildIndex, int rightChildIndex)
+        private IBoundVolume GetCombinedBounds(int leftChildIndex, int rightChildIndex)
         {
             bool hasLeft = leftChildIndex != -1;
             bool hasRight = rightChildIndex != -1;
@@ -521,7 +513,7 @@ namespace SwiftCollections.Query
         /// Queries the BVH for values whose bounding volumes intersect with the specified volume.
         /// Uses a stack-based approach for efficient traversal.
         /// </summary>
-        public void Query(IBoundingVolume queryBounds, ICollection<T> results)
+        public void Query(IBoundVolume queryBounds, ICollection<T> results)
         {
             if (queryBounds == null)
                 ThrowHelper.ThrowNotSupportedException($"{nameof(queryBounds)} cannot be null!");

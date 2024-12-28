@@ -6,13 +6,13 @@ using Xunit;
 
 namespace SwiftCollections.Query.Tests
 {
-    public class SwiftBVHTests
+    public class SwiftBVHNumericsTests
     {
         [Fact]
         public void Insert_SingleVolume_StoresCorrectly()
         {
             var bvh = new SwiftBVH<int>(10);
-            var volume = new BoundingVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            var volume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
 
             bvh.Insert(0, volume);
 
@@ -27,7 +27,7 @@ namespace SwiftCollections.Query.Tests
         public void Insert_Remove_SingleVolume_StoresCorrectly()
         {
             var bvh = new SwiftBVH<int>(10);
-            var volume = new BoundingVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            var volume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
 
             bvh.Insert(0, volume);
 
@@ -46,8 +46,8 @@ namespace SwiftCollections.Query.Tests
         public void Query_NoIntersection_ReturnsEmpty()
         {
             var bvh = new SwiftBVH<int>(10);
-            var volume1 = new BoundingVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
-            var volume2 = new BoundingVolume(new Vector3(10, 10, 10), new Vector3(11, 11, 11));
+            var volume1 = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            var volume2 = new BoundVolume(new Vector3(10, 10, 10), new Vector3(11, 11, 11));
 
             bvh.Insert(0, volume1);
 
@@ -61,13 +61,13 @@ namespace SwiftCollections.Query.Tests
         public void Query_OverlappingVolumes_ReturnsAllIntersectingKeys()
         {
             var bvh = new SwiftBVH<int>(10);
-            var volume1 = new BoundingVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
-            var volume2 = new BoundingVolume(new Vector3(0.5f, 0.5f, 0.5f), new Vector3(1.5f, 1.5f, 1.5f));
+            var volume1 = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            var volume2 = new BoundVolume(new Vector3(0.5f, 0.5f, 0.5f), new Vector3(1.5f, 1.5f, 1.5f));
 
             bvh.Insert(0, volume1);
             bvh.Insert(1, volume2);
 
-            var queryVolume = new BoundingVolume(new Vector3(0.25f, 0.25f, 0.25f), new Vector3(1.25f, 1.25f, 1.25f));
+            var queryVolume = new BoundVolume(new Vector3(0.25f, 0.25f, 0.25f), new Vector3(1.25f, 1.25f, 1.25f));
             var results = new List<int>();
             bvh.Query(queryVolume, results);
 
@@ -80,7 +80,7 @@ namespace SwiftCollections.Query.Tests
         public void Clear_RemovesAllNodes()
         {
             var bvh = new SwiftBVH<int>(10);
-            var volume = new BoundingVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            var volume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
 
             bvh.Insert(0, volume);
             bvh.Clear();
@@ -109,10 +109,10 @@ namespace SwiftCollections.Query.Tests
                     (float)(min.Y + random.NextDouble() * 10),
                     (float)(min.Z + random.NextDouble() * 10));
 
-                bvh.Insert(i, new BoundingVolume(min, max));
+                bvh.Insert(i, new BoundVolume(min, max));
             }
 
-            var queryVolume = new BoundingVolume(new Vector3(50, 50, 50), new Vector3(60, 60, 60));
+            var queryVolume = new BoundVolume(new Vector3(50, 50, 50), new Vector3(60, 60, 60));
             var results = new List<int>();
             bvh.Query(queryVolume, results);
 
@@ -122,8 +122,8 @@ namespace SwiftCollections.Query.Tests
         [Fact]
         public void BoundingVolume_Union_CombinesVolumesCorrectly()
         {
-            var volume1 = new BoundingVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
-            var volume2 = new BoundingVolume(new Vector3(1, 1, 1), new Vector3(2, 2, 2));
+            var volume1 = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            var volume2 = new BoundVolume(new Vector3(1, 1, 1), new Vector3(2, 2, 2));
             var union = volume1.Union(volume2);
 
             Assert.Equal(new Vector3(0, 0, 0), union.Min);
@@ -133,9 +133,9 @@ namespace SwiftCollections.Query.Tests
         [Fact]
         public void BoundingVolume_Intersects_ReturnsCorrectly()
         {
-            var volume1 = new BoundingVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
-            var volume2 = new BoundingVolume(new Vector3(0.5f, 0.5f, 0.5f), new Vector3(1.5f, 1.5f, 1.5f));
-            var volume3 = new BoundingVolume(new Vector3(2, 2, 2), new Vector3(3, 3, 3));
+            var volume1 = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            var volume2 = new BoundVolume(new Vector3(0.5f, 0.5f, 0.5f), new Vector3(1.5f, 1.5f, 1.5f));
+            var volume3 = new BoundVolume(new Vector3(2, 2, 2), new Vector3(3, 3, 3));
 
             Assert.True(volume1.Intersects(volume2));
             Assert.False(volume1.Intersects(volume3));
@@ -145,7 +145,7 @@ namespace SwiftCollections.Query.Tests
         public void Insert_IdenticalVolumes_PreservesAll()
         {
             var bvh = new SwiftBVH<int>(10);
-            var volume = new BoundingVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            var volume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
 
             bvh.Insert(0, volume);
             bvh.Insert(1, volume);
@@ -162,18 +162,18 @@ namespace SwiftCollections.Query.Tests
         public void UpdateEntry_PropagatesChanges()
         {
             var bvh = new SwiftBVH<int>(10);
-            var volume1 = new BoundingVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
-            var volume2 = new BoundingVolume(new Vector3(2, 2, 2), new Vector3(3, 3, 3));
+            var volume1 = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            var volume2 = new BoundVolume(new Vector3(2, 2, 2), new Vector3(3, 3, 3));
 
             bvh.Insert(0, volume1);
             bvh.Insert(1, volume2);
 
             // Update volume1 to overlap with volume2
-            var updatedVolume1 = new BoundingVolume(new Vector3(1.5f, 1.5f, 1.5f), new Vector3(2.5f, 2.5f, 2.5f));
+            var updatedVolume1 = new BoundVolume(new Vector3(1.5f, 1.5f, 1.5f), new Vector3(2.5f, 2.5f, 2.5f));
             bvh.UpdateEntryBounds(0, updatedVolume1);
 
             var results = new List<int>();
-            var queryVolume = new BoundingVolume(new Vector3(2, 2, 2), new Vector3(3, 3, 3));
+            var queryVolume = new BoundVolume(new Vector3(2, 2, 2), new Vector3(3, 3, 3));
             bvh.Query(queryVolume, results);
 
             Assert.Equal(2, results.Count);
@@ -185,8 +185,8 @@ namespace SwiftCollections.Query.Tests
         public void ValidateParentConsistency()
         {
             var bvh = new SwiftBVH<int>(10);
-            var volume1 = new BoundingVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
-            var volume2 = new BoundingVolume(new Vector3(2, 2, 2), new Vector3(3, 3, 3));
+            var volume1 = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            var volume2 = new BoundVolume(new Vector3(2, 2, 2), new Vector3(3, 3, 3));
 
             bvh.Insert(0, volume1);
             bvh.Insert(1, volume2);
@@ -219,7 +219,7 @@ namespace SwiftCollections.Query.Tests
 
             for (int i = 0; i < numVolumes; i++)
             {
-                var volume = new BoundingVolume(new Vector3(i, i, i), new Vector3(i + 1, i + 1, i + 1));
+                var volume = new BoundVolume(new Vector3(i, i, i), new Vector3(i + 1, i + 1, i + 1));
                 bvh.Insert(Guid.NewGuid().ToString(), volume);
             }
 
@@ -247,7 +247,7 @@ namespace SwiftCollections.Query.Tests
             var random = new Random();
             for (int i = 0; i < numVolumes; i++)
             {
-                var volume = new BoundingVolume(
+                var volume = new BoundVolume(
                     new Vector3(random.Next(0, 100), random.Next(0, 100), random.Next(0, 100)),
                     new Vector3(random.Next(1, 10), random.Next(1, 10), random.Next(1, 10))
                 );
@@ -273,7 +273,7 @@ namespace SwiftCollections.Query.Tests
         public void OverlappingBoundaries_QueryReturnsAllMatchingVolumes()
         {
             var bvh = new SwiftBVH<int>(10);
-            var volume = new BoundingVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            var volume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
 
             bvh.Insert(0, volume);
             bvh.Insert(1, volume);
@@ -294,11 +294,11 @@ namespace SwiftCollections.Query.Tests
 
             for (int i = 0; i < numVolumes; i++)
             {
-                var volume = new BoundingVolume(new Vector3(i, i, i), new Vector3(i + 1, i + 1, i + 1));
+                var volume = new BoundVolume(new Vector3(i, i, i), new Vector3(i + 1, i + 1, i + 1));
                 bvh.Insert(i, volume);
             }
 
-            var queryVolume = new BoundingVolume(new Vector3(0, 0, 0), new Vector3(10000, 10000, 10000));
+            var queryVolume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(10000, 10000, 10000));
             var results = new List<int>();
             bvh.Query(queryVolume, results);
 
@@ -322,7 +322,7 @@ namespace SwiftCollections.Query.Tests
                     for (int i = 0; i < volumesPerThread; i++)
                     {
                         int id = threadIndex * volumesPerThread + i;
-                        var volume = new BoundingVolume(new Vector3(id, id, id), new Vector3(id + 1, id + 1, id + 1));
+                        var volume = new BoundVolume(new Vector3(id, id, id), new Vector3(id + 1, id + 1, id + 1));
                         bvh.Insert(id, volume);
                     }
                 }));
@@ -332,7 +332,7 @@ namespace SwiftCollections.Query.Tests
             foreach (var thread in threads) thread.Join();
 
             var results = new List<int>();
-            var queryVolume = new BoundingVolume(new Vector3(0, 0, 0), new Vector3(200, 200, 200));
+            var queryVolume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(200, 200, 200));
             bvh.Query(queryVolume, results);
 
             Assert.Equal(numThreads * volumesPerThread, results.Count);
@@ -354,9 +354,9 @@ namespace SwiftCollections.Query.Tests
                     for (int i = 0; i < volumesPerThread; i++)
                     {
                         int id = threadIndex * volumesPerThread + i;
-                        var volume = new BoundingVolume(new Vector3(id, id, id), new Vector3(id + 1, id + 1, id + 1));
+                        var volume = new BoundVolume(new Vector3(id, id, id), new Vector3(id + 1, id + 1, id + 1));
                         bvh.Insert(id, volume);
-                        bvh.UpdateEntryBounds(id, new BoundingVolume(new Vector3(id - 1, id - 1, id - 1), new Vector3(id + 2, id + 2, id + 2)));
+                        bvh.UpdateEntryBounds(id, new BoundVolume(new Vector3(id - 1, id - 1, id - 1), new Vector3(id + 2, id + 2, id + 2)));
                     }
                 }));
             }
@@ -365,7 +365,7 @@ namespace SwiftCollections.Query.Tests
             foreach (var thread in threads) thread.Join();
 
             var results = new List<int>();
-            var queryVolume = new BoundingVolume(new Vector3(0, 0, 0), new Vector3(200, 200, 200));
+            var queryVolume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(200, 200, 200));
             bvh.Query(queryVolume, results);
 
             Assert.Equal(numThreads * volumesPerThread, results.Count);
@@ -387,9 +387,9 @@ namespace SwiftCollections.Query.Tests
                     for (int i = 0; i < volumesPerThread; i++)
                     {
                         int id = threadIndex * volumesPerThread + i;
-                        var volume = new BoundingVolume(new Vector3(id, id, id), new Vector3(id + 1, id + 1, id + 1));
+                        var volume = new BoundVolume(new Vector3(id, id, id), new Vector3(id + 1, id + 1, id + 1));
                         bvh.Insert(id, volume);
-                        bvh.UpdateEntryBounds(id, new BoundingVolume(new Vector3(id - 1, id - 1, id - 1), new Vector3(id + 2, id + 2, id + 2)));
+                        bvh.UpdateEntryBounds(id, new BoundVolume(new Vector3(id - 1, id - 1, id - 1), new Vector3(id + 2, id + 2, id + 2)));
                         bvh.Remove(id);
                     }
                 }));
@@ -399,7 +399,7 @@ namespace SwiftCollections.Query.Tests
             foreach (var thread in threads) thread.Join();
 
             var results = new List<int>();
-            var queryVolume = new BoundingVolume(new Vector3(0, 0, 0), new Vector3(500, 500, 500));
+            var queryVolume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(500, 500, 500));
             bvh.Query(queryVolume, results);
 
             Assert.Empty(results);
@@ -409,7 +409,7 @@ namespace SwiftCollections.Query.Tests
         public void Query_EmptyBVH_ReturnsNoResults()
         {
             var bvh = new SwiftBVH<int>(10);
-            var queryVolume = new BoundingVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            var queryVolume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
 
             var results = new List<int>();
             bvh.Query(queryVolume, results);
@@ -423,7 +423,7 @@ namespace SwiftCollections.Query.Tests
             var bvh = new SwiftBVH<int>(10);
             for (int i = 0; i < 50; i++)
             {
-                var volume = new BoundingVolume(new Vector3(i, i, i), new Vector3(i + 1, i + 1, i + 1));
+                var volume = new BoundVolume(new Vector3(i, i, i), new Vector3(i + 1, i + 1, i + 1));
                 bvh.Insert(i, volume);
             }
 
@@ -431,7 +431,7 @@ namespace SwiftCollections.Query.Tests
                 bvh.Remove(i);
 
             var results = new List<int>();
-            var queryVolume = new BoundingVolume(new Vector3(0, 0, 0), new Vector3(50, 50, 50));
+            var queryVolume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(50, 50, 50));
             bvh.Query(queryVolume, results);
 
             Assert.Equal(25, results.Count);
@@ -443,7 +443,7 @@ namespace SwiftCollections.Query.Tests
             var bvh = new SwiftBVH<int>(10);
             for (int i = 0; i < 50; i++)
             {
-                var volume = new BoundingVolume(new Vector3(i, i, i), new Vector3(i + 1, i + 1, i + 1));
+                var volume = new BoundVolume(new Vector3(i, i, i), new Vector3(i + 1, i + 1, i + 1));
                 bvh.Insert(i, volume);
             }
 
@@ -451,7 +451,7 @@ namespace SwiftCollections.Query.Tests
                 bvh.Remove(i);
 
             var results = new List<int>();
-            var queryVolume = new BoundingVolume(new Vector3(0, 0, 0), new Vector3(50, 50, 50));
+            var queryVolume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(50, 50, 50));
             bvh.Query(queryVolume, results);
 
             Assert.Empty(results);
@@ -463,7 +463,7 @@ namespace SwiftCollections.Query.Tests
             var bvh = new SwiftBVH<int>(10);
             for (int i = 0; i < 50; i++)
             {
-                var volume = new BoundingVolume(new Vector3(i, i, i), new Vector3(i + 1, i + 1, i + 1));
+                var volume = new BoundVolume(new Vector3(i, i, i), new Vector3(i + 1, i + 1, i + 1));
                 bvh.Insert(i, volume);
             }
 
@@ -471,7 +471,7 @@ namespace SwiftCollections.Query.Tests
                 bvh.Remove(i);
 
             var results = new List<int>();
-            var queryVolume = new BoundingVolume(new Vector3(0, 0, 0), new Vector3(50, 50, 50));
+            var queryVolume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(50, 50, 50));
             bvh.Query(queryVolume, results);
 
             Assert.Equal(1, bvh.Count);
@@ -484,7 +484,7 @@ namespace SwiftCollections.Query.Tests
             var bvh = new SwiftBVH<int>(10);
             for (int i = 0; i < 10; i++)
             {
-                var volume = new BoundingVolume(new Vector3(i, i, i), new Vector3(i + 1, i + 1, i + 1));
+                var volume = new BoundVolume(new Vector3(i, i, i), new Vector3(i + 1, i + 1, i + 1));
                 bvh.Insert(i, volume);
             }
 
@@ -511,7 +511,7 @@ namespace SwiftCollections.Query.Tests
         public void Insert_IdenticalBoundingVolumes_ReturnsAllValues()
         {
             var bvh = new SwiftBVH<int>(10);
-            var volume = new BoundingVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            var volume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
 
             bvh.Insert(1, volume);
             bvh.Insert(2, volume);
@@ -527,7 +527,7 @@ namespace SwiftCollections.Query.Tests
         public void SingleNodeTree_BasicFunctionality()
         {
             var bvh = new SwiftBVH<int>(1);
-            var volume = new BoundingVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            var volume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
 
             bvh.Insert(1, volume);
 
@@ -542,8 +542,8 @@ namespace SwiftCollections.Query.Tests
         public void DuplicateKeyHandling_ReplacesOldEntry()
         {
             var bvh = new SwiftBVH<int>(10);
-            var volume1 = new BoundingVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
-            var volume2 = new BoundingVolume(new Vector3(2, 2, 2), new Vector3(3, 3, 3));
+            var volume1 = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            var volume2 = new BoundVolume(new Vector3(2, 2, 2), new Vector3(3, 3, 3));
 
             bvh.Insert(1, volume1);
             bvh.Insert(1, volume2);
