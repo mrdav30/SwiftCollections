@@ -28,7 +28,7 @@ namespace SwiftCollections
     /// </summary>
     /// <typeparam name="T">Specifies the type of elements in the list.</typeparam>
     [Serializable]
-    public class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumerable, ICollection<T>, ICollection, IList, IList<T>
+    public class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumerable, ICollection<T>, ICollection, IList<T>, IList
     {
         #region Constants
 

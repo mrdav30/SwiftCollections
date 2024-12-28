@@ -31,59 +31,7 @@ namespace SwiftCollections.Query
         private int[] _buckets; // Maps hash indices to node indices
         private int _bucketMask; // Always _nodePool.Length - 1
 
-        private readonly IntStack _freeList = new IntStack();
-
-        #endregion
-
-        #region Nested Types
-
-        private struct IntStack
-        {
-            public const int DefaultCapacity = 4;
-            private int[] _array;
-            internal int _count;
-
-            public int Count => _count;
-
-            public IntStack(int capacity)
-            {
-                _array = capacity == 0 ? new int[DefaultCapacity] : new int[capacity];
-                _count = 0;
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Push(int item)
-            {
-                EnsureCapacity(_count + 1);
-                _array[_count++] = item;
-            }
-
-            public void EnsureCapacity(int min)
-            {
-                if (min >= _array.Length)
-                {
-                    int[] newArray = new int[_array.Length * 2];
-                    Array.Copy(_array, 0, newArray, 0, _count);
-                    _array = newArray;
-                }
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public int Pop() => _array[--_count];
-
-            public void Reset()
-            {
-                _array = new int[DefaultCapacity];
-                _count = 0;
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Clear()
-            {
-                Array.Clear(_array, 0, _count);
-                _count = 0;
-            }
-        }
+        private readonly IntStack _freeIndices = new IntStack();
 
         #endregion
 
@@ -97,14 +45,12 @@ namespace SwiftCollections.Query
             capacity = HashHelper.NextPowerOfTwo(capacity);
             _nodePool = new SwiftBVHNode<T>[capacity].Populate(() =>
                 new SwiftBVHNode<T>() { ParentIndex = -1, LeftChildIndex = -1, RightChildIndex = -1 });
-            _buckets = new int[capacity];
-            for (int i = 0; i < _buckets.Length; i++)
-                _buckets[i] = -1;
+            _buckets = new int[capacity].Populate(() => -1);
 
             _bucketMask = capacity - 1;
             _rootIndex = -1;
 
-            _freeList = new IntStack(IntStack.DefaultCapacity);
+            _freeIndices = new IntStack(IntStack.DefaultCapacity);
         }
 
         #endregion
@@ -145,8 +91,8 @@ namespace SwiftCollections.Query
             int index;
 
             // Check if there are any reusable indices in the freelist
-            if (_freeList.Count > 0)
-                index = _freeList.Pop(); // Reuse an available index
+            if (_freeIndices.Count > 0)
+                index = _freeIndices.Pop(); // Reuse an available index
             else
             {
                 if (_nextFreeIndex + 1 >= _nodePool.Length)
@@ -409,7 +355,7 @@ namespace SwiftCollections.Query
                         _leafCount--;
 
                     currentNode.Reset();
-                    _freeList.Push(nodeIndex);
+                    _freeIndices.Push(nodeIndex);
                 }
                 else
                     UpdateNodeSubtree(nodeIndex);
@@ -465,9 +411,7 @@ namespace SwiftCollections.Query
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ResizeBuckets(int newSize)
         {
-            _buckets = new int[newSize];
-            for (int x = 0; x < _buckets.Length; x++)
-                _buckets[x] = -1;
+            _buckets = new int[newSize].Populate(() => -1);
             _bucketMask = newSize - 1;
 
             // Rehash existing leaf nodes
@@ -587,7 +531,7 @@ namespace SwiftCollections.Query
             for (int i = 0; i < _buckets.Length; i++)
                 _buckets[i] = -1;
 
-            _freeList.Reset();
+            _freeIndices.Reset();
 
             _leafCount = 0;
             _nextFreeIndex = 0;

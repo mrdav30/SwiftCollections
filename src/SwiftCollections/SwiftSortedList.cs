@@ -173,7 +173,6 @@ namespace SwiftCollections
 
         #endregion
 
-
         #region Collection Manipulation
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

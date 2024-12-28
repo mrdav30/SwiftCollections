@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using static UnityEditor.Experimental.GraphView.Port;
 
 #if UNITY_EDITOR
 using UnityEngine;
@@ -67,35 +66,6 @@ namespace SwiftCollections
             public bool IsUsed;
         }
 
-        [Serializable]
-        private struct IntStack
-        {
-            private int[] _array;
-            internal int _count;
-
-            public int Count => _count;
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Push(int item)
-            {
-                _array ??= new int[DefaultCapacity];
-
-                if ((uint)_count == (uint)_array.Length)
-                {
-                    int[] newArray = new int[_array.Length * 2];
-                    Array.Copy(_array, 0, newArray, 0, _count);
-                    _array = newArray;
-                }
-                _array[_count++] = item;
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public int Pop() => _array[--_count];
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Clear() => _count = 0;
-        }
-
         #endregion
 
         #region Constructors
@@ -113,7 +83,7 @@ namespace SwiftCollections
         {
             capacity = capacity <= DefaultCapacity ? DefaultCapacity : HashHelper.NextPowerOfTwo(capacity);
             _innerArray = new Entry[capacity];
-            _freeIndices = new IntStack();
+            _freeIndices = new IntStack(IntStack.DefaultCapacity);
         }
 
         #endregion
@@ -171,7 +141,7 @@ namespace SwiftCollections
         public int Add(T item)
         {
             int index;
-            if ((uint)_freeIndices._count == 0)
+            if ((uint)_freeIndices.Count == 0)
             {
                 index = _peakCount++;
                 if ((uint)index >= (uint)_innerArray.Length)
@@ -259,7 +229,7 @@ namespace SwiftCollections
             if ((uint)_count == 0) return;
             for (int i = 0; i < _peakCount; i++)
                 _innerArray[i] = default;
-            _freeIndices.Clear();
+            _freeIndices.Reset();
             _count = 0;
             _peakCount = 0;
             _version++;
@@ -315,7 +285,7 @@ namespace SwiftCollections
             _peakCount = newPeak;
 
             // Wipe out the free indices since we've compacted the array
-            _freeIndices = new IntStack();
+            _freeIndices.Reset();
 
             _innerArray = newArray;
 
