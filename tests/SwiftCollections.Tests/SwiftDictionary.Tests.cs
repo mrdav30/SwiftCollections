@@ -459,14 +459,7 @@ namespace SwiftCollections.Tests
                 string value = TestHelper.GenerateRandomString(20);
                 dictionary.Add(key, value);
 
-                try
-                {
-                    Assert.Equal(value, dictionary[key]);
-                }
-                catch (Exception e)
-                {
-                    continue;
-                }
+                Assert.Equal(value, dictionary[key]);
             }
 
             Assert.Equal(itemCount, dictionary.Count);

@@ -1,4 +1,3 @@
-#define UNITY_EDITOR
 #if UNITY_EDITOR
 
 using System;

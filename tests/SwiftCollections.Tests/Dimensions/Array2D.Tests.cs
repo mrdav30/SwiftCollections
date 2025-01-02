@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using Xunit;
 
 namespace SwiftCollections.Dimensions.Tests
@@ -100,6 +101,43 @@ namespace SwiftCollections.Dimensions.Tests
 
             Assert.Equal(size * size, array.InnerArray.Length);
             Assert.All(array.InnerArray, value => Assert.Equal(99, value));
+        }
+
+        [Fact]
+        public void SerializeDeserialize_MaintainsDataAndStructure()
+        {
+            // Arrange
+            var originalArray = new Array2D<int>(3, 3);
+            originalArray[0, 0] = 42;
+            originalArray[1, 1] = 99;
+            originalArray[2, 2] = 7;
+
+            // Serialize the Array2D object
+            byte[] serializedData;
+            using (var memoryStream = new MemoryStream())
+            {
+                var formatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+                formatter.Serialize(memoryStream, originalArray);
+                serializedData = memoryStream.ToArray();
+            }
+
+            // Deserialize the Array2D object
+            Array2D<int> deserializedArray;
+            using (var memoryStream = new MemoryStream(serializedData))
+            {
+                var formatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+                deserializedArray = (Array2D<int>)formatter.Deserialize(memoryStream);
+            }
+
+            // Assert
+            Assert.Equal(originalArray.Width, deserializedArray.Width);
+            Assert.Equal(originalArray.Height, deserializedArray.Height);
+
+            for (int x = 0; x < originalArray.Width; x++)
+            {
+                for (int y = 0; y < originalArray.Height; y++)
+                    Assert.Equal(originalArray[x, y], deserializedArray[x, y]);
+            }
         }
     }
 }

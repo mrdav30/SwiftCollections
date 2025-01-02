@@ -213,7 +213,7 @@ namespace SwiftCollections
         /// </summary>
         /// <param name="index">The arrayIndex of the item to remove.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void RemoveAt(int index)
+        public void RemoveAt(int index)
         {
             _innerArray[index] = default;
             _count--;

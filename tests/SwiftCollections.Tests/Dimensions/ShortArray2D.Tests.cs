@@ -1,4 +1,6 @@
 ﻿using System;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 using Xunit;
 
 namespace SwiftCollections.Dimensions.Tests
@@ -43,8 +45,8 @@ namespace SwiftCollections.Dimensions.Tests
         [Fact]
         public void Clone_CreatesExactCopy()
         {
-            short[,] source = { { 1, 2 }, { 3, 4 } };
-            var clonedArray = ShortArray2D.Clone(source);
+            ShortArray2D source = new ShortArray2D(new short[,] { { 1, 2 }, { 3, 4 } });
+            var clonedArray = source.Clone();
 
             Assert.Equal(2, clonedArray.Width);
             Assert.Equal(2, clonedArray.Height);
@@ -55,7 +57,7 @@ namespace SwiftCollections.Dimensions.Tests
         public void HeightMapSimulation()
         {
             short[,] heights = { { 10, 20 }, { 30, 40 } };
-            var heightMap = ShortArray2D.Clone(heights);
+            var heightMap = new ShortArray2D(heights);
 
             heightMap.Normalize(0, 100);
             Assert.Equal(0, heightMap[0, 0]);
@@ -64,6 +66,40 @@ namespace SwiftCollections.Dimensions.Tests
             heightMap.Scale(2);
             Assert.Equal(0, heightMap[0, 0]);
             Assert.Equal(200, heightMap[1, 1]);
+        }
+
+        [Fact]
+        public void ShortArray2D_Serialization_Deserialization()
+        {
+            // Arrange
+            var originalArray = new ShortArray2D(3, 3, (short)0);
+            originalArray[0, 0] = 10;
+            originalArray[1, 1] = 20;
+            originalArray[2, 2] = 30;
+
+            ShortArray2D deserializedArray;
+
+            // Act
+            using (var stream = new MemoryStream())
+            {
+                var formatter = new BinaryFormatter();
+                formatter.Serialize(stream, originalArray);
+
+                stream.Seek(0, SeekOrigin.Begin);
+                deserializedArray = (ShortArray2D)formatter.Deserialize(stream);
+            }
+
+            // Assert
+            Assert.Equal(originalArray.Width, deserializedArray.Width);
+            Assert.Equal(originalArray.Height, deserializedArray.Height);
+
+            for (int x = 0; x < originalArray.Width; x++)
+            {
+                for (int y = 0; y < originalArray.Height; y++)
+                {
+                    Assert.Equal(originalArray[x, y], deserializedArray[x, y]);
+                }
+            }
         }
     }
 }

@@ -10,7 +10,7 @@ namespace SwiftCollections.Observable
     /// </summary>
     /// <typeparam name="TKey">The type of keys in the dictionary.</typeparam>
     /// <typeparam name="TValue">The type of values in the dictionary.</typeparam>
-    public class SwiftObservableDictionary<TKey, TValue> : Dictionary<TKey, TValue>, INotifyPropertyChanged, INotifyCollectionChanged
+    public class ObservableSwiftDictionary<TKey, TValue> : Dictionary<TKey, TValue>, INotifyPropertyChanged, INotifyCollectionChanged
     {
         #region Events
 

@@ -112,6 +112,8 @@ namespace SwiftCollections
 
         #region Properties
 
+        public T[] InnerArray => _innerArray;
+
         /// <inheritdoc cref="_count"/>
         public int Count => _count;
 

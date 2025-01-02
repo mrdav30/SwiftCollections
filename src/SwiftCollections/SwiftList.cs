@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System;
 using System.Runtime.CompilerServices;
-using UnityEngine;
 
 #if UNITY_EDITOR
 using UnityEngine;
@@ -118,6 +117,8 @@ namespace SwiftCollections
         #endregion
 
         #region Properties
+
+        public T[] InnerArray => _innerArray;
 
         /// <summary>
         /// Gets the total number of elements the SwiftList can hold without resizing.

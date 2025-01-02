@@ -42,6 +42,14 @@ namespace SwiftCollections.Dimensions
             Fill(defaultValue);
         }
 
+        public Array2D(T[,] source)
+        {
+            int width = source.GetLength(0);
+            int height = source.GetLength(1);
+
+            Initialize(width, height);
+        }
+
         #endregion
 
         #region Properties
@@ -84,11 +92,21 @@ namespace SwiftCollections.Dimensions
 
         #region Collection Management
 
-        private void Initialize(int width, int height)
+        /// <summary>
+        /// Adds the provides source into the current 2D Array.
+        /// </summary>
+        /// <remarks>
+        /// Will overwrite current values.
+        /// </remarks>
+        /// <param name="source"></param>
+        public void AddRange(T[,] source)
         {
-            _width = Math.Max(0, width);
-            _height = Math.Max(0, height);
-            _innerArray = new T[_width * _height];
+            Resize(source.GetLength(0), source.GetLength(1));
+            for (int i = 0; i < Width; i++)
+            {
+                for (int j = 0; j < Height; j++)
+                    this[i, j] = source[i, j];
+            }
         }
 
         /// <summary>
@@ -168,6 +186,13 @@ namespace SwiftCollections.Dimensions
 
         #region Utility Methods
 
+        private void Initialize(int width, int height)
+        {
+            _width = Math.Max(0, width);
+            _height = Math.Max(0, height);
+            _innerArray = new T[_width * _height];
+        }
+
         /// <summary>
         /// Validates the specified index coordinates.
         /// </summary>
@@ -197,6 +222,20 @@ namespace SwiftCollections.Dimensions
                 for (int y = 0; y < _height; y++)
                     result[x, y] = this[x, y];
             return result;
+        }
+
+        /// <summary>
+        /// Clones a 2D array into a new instance of Array2D.
+        /// </summary>
+        public Array2D<T> Clone()
+        {
+            var array2D = new Array2D<T>(Width, Height);
+            for (int x = 0; x < Width; x++)
+            {
+                for (int y = 0; y < Height; y++)
+                    array2D[x, y] = this[x, y];
+            }
+            return array2D;
         }
 
         #endregion

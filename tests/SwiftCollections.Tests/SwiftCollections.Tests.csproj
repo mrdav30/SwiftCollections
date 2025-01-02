@@ -8,54 +8,14 @@
     <IsTestProject>true</IsTestProject>
 	<ProjectGuid>{3D1E9931-4504-4E2D-8528-664D4015B740}</ProjectGuid>
 	<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+	<Configurations>Debug;Release;DebugUnity;ReleaseUnity</Configurations>
   </PropertyGroup>
-  <!-- Set OS-specific Unity Editor absolute/relative folder paths -->
-	<Choose>
-		<When Condition="$([MSBuild]::IsOsPlatform(Windows))">
-			<PropertyGroup>
-				<OSInstallRootPath Condition="'$(OSInstallRootPath)'==''">C:\Program Files</OSInstallRootPath>
-				<UnityManagedDir Condition="'$(UnityManagedDir)'==''">Editor\Data\Managed</UnityManagedDir>
-			</PropertyGroup>
-		</When>
-		<When Condition="$([MSBuild]::IsOsPlatform(OSX))">
-			<PropertyGroup>
-				<OSInstallRootPath Condition="'$(OSInstallRootPath)'==''">/Applications</OSInstallRootPath>
-				<UnityManagedDir Condition="'$(UnityManagedDir)'==''">Unity.app\Contents\Managed</UnityManagedDir>
-			</PropertyGroup>
-		</When>
-		<When Condition="$([MSBuild]::IsOsPlatform(Linux))">
-			<PropertyGroup>
-				<OSInstallRootPath Condition="'$(OSInstallRootPath)'==''">$([System.Environment]::GetFolderPath('System.Environment+SpecialFolder.UserProfile'))</OSInstallRootPath>
-				<UnityManagedDir Condition="'$(UnityManagedDir)'==''">Editor\Data\Managed</UnityManagedDir>
-			</PropertyGroup>
-		</When>
-	</Choose>
-	<!-- Unity Configuration -->
-	<PropertyGroup>
-		<UnityVersion Condition="'$(UnityVersion)'==''">2022.3.20f1</UnityVersion>
-		<!-- Target Version of Unity -->
-		<UnityInstallRootDir Condition="'$(UnityInstallRootDir)'==''">Unity\Hub\Editor</UnityInstallRootDir>
-		<UnityInstallRootPath Condition="'$(UnityInstallRootPath)'==''">$(OSInstallRootPath)\$(UnityInstallRootDir)</UnityInstallRootPath>
-		<UnityVersionInstallPath Condition="'$(UnityVersionInstallPath)'==''">$(UnityInstallRootPath)\$(UnityVersion)</UnityVersionInstallPath>
-		<UnityManagedPath Condition="'$(UnityManagedPath)'==''">$(UnityVersionInstallPath)\$(UnityManagedDir)</UnityManagedPath>
-		<UnityEnginePath Condition="'$(UnityEnginePath)'==''">$(UnityManagedPath)\UnityEngine.dll</UnityEnginePath>
-		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-	</PropertyGroup>
   <ItemGroup>
 	<ProjectReference Include="..\..\src\SwiftCollections\SwiftCollections.csproj">
 	  <Private>True</Private>
 	  <IncludeAssets>compile; build</IncludeAssets>
 	  <PrivateAssets>all</PrivateAssets>
 	</ProjectReference>
-	<Reference Include="UnityEngine">
-		<HintPath>$(UnityEnginePath)</HintPath>
-		<Private>True</Private>
-		<PrivateAssets>all</PrivateAssets>
-	</Reference>
-	<Reference Include="netstandard"> 
-		<HintPath>C:\Program Files\Unity\Hub\Editor\2022.3.20f1\Editor\Data\UnityReferenceAssemblies\unity-4.8-api\Facades\netstandard.dll</HintPath> 
-		<Private>True</Private> 
-	</Reference>
 	<PackageReference Include="FixedMathSharp" Version="1.0.0" />
 	<PackageReference Include="FluentAssertions" Version="6.12.1" />
     <PackageReference Include="xunit" Version="2.4.1" />

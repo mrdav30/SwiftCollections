@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 
 namespace SwiftCollections
 {
@@ -67,6 +68,7 @@ namespace SwiftCollections
         /// Expands the stack's capacity if necessary.
         /// </summary>
         /// <param name="value">The integer value to push.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Push(int value)
         {
             EnsureCapacity(_count + 1);
@@ -78,28 +80,21 @@ namespace SwiftCollections
         /// </summary>
         /// <returns>The top integer from the stack.</returns>
         /// <exception cref="InvalidOperationException">Thrown when attempting to pop from an empty stack.</exception>
-        public int Pop()
-        {
-            if (_count == 0)
-                return ThrowHelper.ThrowInvalidOperationException<int>("Cannot pop from an empty stack.");
-            return _array[--_count];
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Pop() => _array[--_count];
 
         /// <summary>
         /// Returns the top integer from the stack without removing it.
         /// </summary>
         /// <returns>The top integer from the stack.</returns>
         /// <exception cref="InvalidOperationException">Thrown when attempting to peek an empty stack.</exception>
-        public int Peek()
-        {
-            if (_count == 0)
-                return ThrowHelper.ThrowInvalidOperationException<int>("Cannot peek an empty stack.");
-            return _array[_count - 1];
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Peek() => _array[_count - 1];
 
         /// <summary>
         /// Resets the stack to it's initial state.
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Reset()
         {
             _array = new int[DefaultCapacity];
@@ -109,16 +104,15 @@ namespace SwiftCollections
         /// <summary>
         /// Removes all elements from the stack.
         /// </summary>
-        public void Clear()
-        {
-            _count = 0;
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Clear() => _count = 0;
 
         /// <summary>
         /// Ensures the stack has at least the specified capacity.
         /// Expands the internal array if necessary.
         /// </summary>
         /// <param name="capacity">The minimum capacity to ensure.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void EnsureCapacity(int capacity)
         {
             if (capacity >= _array.Length)

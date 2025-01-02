@@ -10,7 +10,7 @@ namespace SwiftCollections.Observable.Tests
         [Fact]
         public void Add_RaisesCollectionChangedEvent()
         {
-            var dictionary = new SwiftObservableDictionary<string, int>();
+            var dictionary = new ObservableSwiftDictionary<string, int>();
             NotifyCollectionChangedEventArgs eventArgs = null;
 
             dictionary.CollectionChanged += (sender, e) => eventArgs = e;
@@ -25,7 +25,7 @@ namespace SwiftCollections.Observable.Tests
         [Fact]
         public void Remove_RaisesCollectionChangedEvent()
         {
-            var dictionary = new SwiftObservableDictionary<string, int>
+            var dictionary = new ObservableSwiftDictionary<string, int>
             {
                 { "Key1", 100 }
             };
@@ -44,7 +44,7 @@ namespace SwiftCollections.Observable.Tests
         [Fact]
         public void Replace_RaisesCollectionChangedEvent()
         {
-            var dictionary = new SwiftObservableDictionary<string, int>
+            var dictionary = new ObservableSwiftDictionary<string, int>
             {
                 { "Key1", 100 }
             };
@@ -63,7 +63,7 @@ namespace SwiftCollections.Observable.Tests
         [Fact]
         public void Clear_RaisesResetCollectionChangedEvent()
         {
-            var dictionary = new SwiftObservableDictionary<string, int>
+            var dictionary = new ObservableSwiftDictionary<string, int>
             {
                 { "Key1", 100 },
                 { "Key2", 200 }
@@ -81,7 +81,7 @@ namespace SwiftCollections.Observable.Tests
         [Fact]
         public void PropertyChangedEvent_RaisedOnAdd()
         {
-            var dictionary = new SwiftObservableDictionary<string, int>();
+            var dictionary = new ObservableSwiftDictionary<string, int>();
             string propertyName = null;
 
             dictionary.PropertyChanged += (sender, e) => propertyName = e.PropertyName;
@@ -94,7 +94,7 @@ namespace SwiftCollections.Observable.Tests
         [Fact]
         public void PropertyChangedEvent_RaisedOnRemove()
         {
-            var dictionary = new SwiftObservableDictionary<string, int>
+            var dictionary = new ObservableSwiftDictionary<string, int>
             {
                 { "Key1", 100 }
             };
@@ -110,7 +110,7 @@ namespace SwiftCollections.Observable.Tests
         [Fact]
         public void KeyNotFoundException_OnInvalidKeyAccess()
         {
-            var dictionary = new SwiftObservableDictionary<string, int>();
+            var dictionary = new ObservableSwiftDictionary<string, int>();
 
             Assert.Throws<KeyNotFoundException>(() => dictionary["InvalidKey"]);
         }
@@ -118,7 +118,7 @@ namespace SwiftCollections.Observable.Tests
         [Fact]
         public void CollectionChanged_NotRaisedOnDuplicateAdd()
         {
-            var dictionary = new SwiftObservableDictionary<string, int>
+            var dictionary = new ObservableSwiftDictionary<string, int>
             {
                 { "Key1", 100 }
             };
@@ -134,7 +134,7 @@ namespace SwiftCollections.Observable.Tests
         [Fact]
         public void CollectionChanged_RaisedOnActualValueChange()
         {
-            var dictionary = new SwiftObservableDictionary<string, int>
+            var dictionary = new ObservableSwiftDictionary<string, int>
             {
                 { "Key1", 100 }
             };
@@ -154,7 +154,7 @@ namespace SwiftCollections.Observable.Tests
         [Fact]
         public void Count_ReflectsCorrectNumberOfItems()
         {
-            var dictionary = new SwiftObservableDictionary<string, int>();
+            var dictionary = new ObservableSwiftDictionary<string, int>();
             Assert.Empty(dictionary);
 
             dictionary.Add("Key1", 100);
@@ -167,7 +167,7 @@ namespace SwiftCollections.Observable.Tests
         [Fact]
         public void Enumerator_ReturnsAllItems()
         {
-            var dictionary = new SwiftObservableDictionary<string, int>
+            var dictionary = new ObservableSwiftDictionary<string, int>
             {
                 { "Key1", 100 },
                 { "Key2", 200 }

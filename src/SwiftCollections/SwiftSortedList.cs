@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using static UnityEditor.Experimental.GraphView.Port;
 
 #if UNITY_EDITOR
 using UnityEngine;
@@ -138,6 +137,8 @@ namespace SwiftCollections
         #endregion
 
         #region Properties
+
+        public T[] InnerArray => _innerArray;
 
         /// <summary>
         /// Gets the number of elements in the sorter.

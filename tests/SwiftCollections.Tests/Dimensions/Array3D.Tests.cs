@@ -1,6 +1,8 @@
 ﻿using Xunit;
 using System;
 using System.Threading.Tasks;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 
 namespace SwiftCollections.Dimensions.Tests
 {
@@ -244,6 +246,37 @@ namespace SwiftCollections.Dimensions.Tests
 
             Assert.Equal(0, array[2, 0, 2]); // Out-of-bounds value discarded
             Assert.Equal(0, array[1, 1, 1]); // Original position cleared
+        }
+
+        [Fact]
+        public void SerializeAndDeserialize_Array3D_PreservesData()
+        {
+            // Arrange
+            var originalArray = new Array3D<int>(2, 2, 2);
+            originalArray[0, 0, 0] = 1;
+            originalArray[1, 1, 1] = 42;
+
+            // Act
+            Array3D<int> deserializedArray;
+            using (var memoryStream = new MemoryStream())
+            {
+                // Serialize
+                var formatter = new BinaryFormatter();
+                formatter.Serialize(memoryStream, originalArray);
+
+                // Reset stream position for reading
+                memoryStream.Position = 0;
+
+                // Deserialize
+                deserializedArray = (Array3D<int>)formatter.Deserialize(memoryStream);
+            }
+
+            // Assert
+            Assert.Equal(originalArray.Width, deserializedArray.Width);
+            Assert.Equal(originalArray.Height, deserializedArray.Height);
+            Assert.Equal(originalArray.Length, deserializedArray.Length);
+            Assert.Equal(originalArray[0, 0, 0], deserializedArray[0, 0, 0]);
+            Assert.Equal(originalArray[1, 1, 1], deserializedArray[1, 1, 1]);
         }
     }
 }

@@ -16,6 +16,8 @@ namespace SwiftCollections.Dimensions
 
         public ShortArray2D(int width, int height, short defaultValue) : base(width, height, defaultValue) { }
 
+        public ShortArray2D(short[,] source) : base(source) { }
+
         #endregion
 
         #region Collection Management
@@ -47,27 +49,6 @@ namespace SwiftCollections.Dimensions
             // Normalize values
             for (int i = 0; i < InnerArray.Length; i++)
                 InnerArray[i] = (short)(((InnerArray[i] - currentMin) / (float)(currentMax - currentMin)) * (max - min) + min);
-        }
-
-        #endregion
-
-        #region Utility Methods
-
-        /// <summary>
-        /// Clones a 2D array into a new instance of ShortArray2D.
-        /// </summary>
-        public static ShortArray2D Clone(short[,] source)
-        {
-            int width = source.GetLength(0);
-            int height = source.GetLength(1);
-
-            var array2D = new ShortArray2D(width, height);
-            for (int x = 0; x < width; x++)
-            {
-                for (int y = 0; y < height; y++)
-                    array2D[x, y] = source[x, y];
-            }
-            return array2D;
         }
 
         #endregion

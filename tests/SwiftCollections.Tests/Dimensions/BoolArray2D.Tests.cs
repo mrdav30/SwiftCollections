@@ -1,4 +1,6 @@
-﻿using Xunit;
+﻿using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
+using Xunit;
 
 namespace SwiftCollections.Dimensions.Tests
 {
@@ -74,5 +76,38 @@ namespace SwiftCollections.Dimensions.Tests
             Assert.False(boolArray[0, 0]);
         }
 
+        [Fact]
+        public void BoolArray2D_Serialization_Deserialization()
+        {
+            // Arrange
+            var originalArray = new BoolArray2D(3, 3, false);
+            originalArray[0, 0] = true;
+            originalArray[1, 1] = true;
+            originalArray[2, 2] = true;
+
+            BoolArray2D deserializedArray;
+
+            // Act
+            using (var stream = new MemoryStream())
+            {
+                var formatter = new BinaryFormatter();
+                formatter.Serialize(stream, originalArray);
+
+                stream.Seek(0, SeekOrigin.Begin);
+                deserializedArray = (BoolArray2D)formatter.Deserialize(stream);
+            }
+
+            // Assert
+            Assert.Equal(originalArray.Width, deserializedArray.Width);
+            Assert.Equal(originalArray.Height, deserializedArray.Height);
+
+            for (int x = 0; x < originalArray.Width; x++)
+            {
+                for (int y = 0; y < originalArray.Height; y++)
+                {
+                    Assert.Equal(originalArray[x, y], deserializedArray[x, y]);
+                }
+            }
+        }
     }
 }

@@ -196,7 +196,7 @@ namespace SwiftCollections.Dimensions
         public virtual void ValidateIndex(int x, int y, int z)
         {
             if (!IsValidIndex(x, y, z))
-                throw new IndexOutOfRangeException($"Invalid index ({x}, {y}, {z}) for dimensions ({Width}, {Height}, {Length}).");
+               ThrowHelper.ThrowIndexOutOfRangeException($"Invalid index ({x}, {y}, {z}) for dimensions ({Width}, {Height}, {Length}).");
         }
 
         /// <summary>
@@ -220,9 +220,7 @@ namespace SwiftCollections.Dimensions
                 for (int y = 0; y < Height; y++)
                 {
                     for (int z = 0; z < Length; z++)
-                    {
                         yield return this[x, y, z];
-                    }
                 }
             }
         }

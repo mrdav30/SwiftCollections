@@ -16,6 +16,8 @@ namespace SwiftCollections.Dimensions
 
         public BoolArray2D(int width, int height, bool defaultValue) : base(width, height, defaultValue) { }
 
+        public BoolArray2D(bool[,] source) : base(source) { }
+
         #endregion
 
         #region Collection Management
@@ -58,23 +60,6 @@ namespace SwiftCollections.Dimensions
                 if (cell) count++;
             }
             return count;
-        }
-
-        /// <summary>
-        /// Clones a 2D array into a new instance of BoolArray2D.
-        /// </summary>
-        public static BoolArray2D Clone(bool[,] source)
-        {
-            int width = source.GetLength(0);
-            int height = source.GetLength(1);
-
-            var array2D = new BoolArray2D(width, height);
-            for (int x = 0; x < width; x++)
-            {
-                for (int y = 0; y < height; y++)
-                    array2D[x, y] = source[x, y];
-            }
-            return array2D;
         }
 
         #endregion

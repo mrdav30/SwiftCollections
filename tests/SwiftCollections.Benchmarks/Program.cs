@@ -6,7 +6,7 @@ namespace SwiftCollections.Benchmarks
     {
         static void Main(string[] args)
         {
-           // var ListIntegerBenchmarksSummary = BenchmarkRunner.Run<ListIntegerBenchmarks>();
+            // var ListIntegerBenchmarksSummary = BenchmarkRunner.Run<ListIntegerBenchmarks>();
 
             //var QueueIntegerBenchmarksSummary = BenchmarkRunner.Run<QueueIntegerBenchmarks>();
 
@@ -18,7 +18,7 @@ namespace SwiftCollections.Benchmarks
             // var summary = BenchmarkRunner.Run<DictionaryIntegerBenchmarks>();
             //var DictionaryStringBenchmarksSummary = BenchmarkRunner.Run<DictionaryStringBenchmarks>();
 
-           // var SortedListIntegerBenchmarksSummary = BenchmarkRunner.Run<SortedListIntegerBenchmarks>();
+            // var SortedListIntegerBenchmarksSummary = BenchmarkRunner.Run<SortedListIntegerBenchmarks>();
 
             //var HashSetIntegerBenchmarkSumary = BenchmarkRunner.Run<HashSetIntegerBenchmark>();
             // var HashSetStringBenchmarkSummary = BenchmarkRunner.Run<HashSetStringBenchmark>();

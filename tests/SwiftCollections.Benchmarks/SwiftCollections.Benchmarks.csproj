@@ -10,10 +10,11 @@
 	<NoWarn>$(NoWarn);CA1018;CA5351;CA1825</NoWarn>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <PlatformTarget>AnyCPU</PlatformTarget>
+	<Configurations>Debug;Release;DebugUnity;ReleaseUnity</Configurations>
   </PropertyGroup>
   <ItemGroup Condition=" '$(TargetFrameworkIdentifier)' == '.NETFramework' ">
-  <Reference Include="System.Reflection" />
-  <PackageReference Include="System.Memory" Version="4.5.5" />
+	  <Reference Include="System.Reflection" />
+	  <PackageReference Include="System.Memory" Version="4.5.5" />
   </ItemGroup>
   <ItemGroup>
   	<ProjectReference Include="..\..\src\SwiftCollections\SwiftCollections.csproj">

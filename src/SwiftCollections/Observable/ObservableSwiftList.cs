@@ -9,7 +9,7 @@ namespace SwiftCollections.Observable
     /// Notifies listeners of changes to its items and structure for reactive programming scenarios.
     /// </summary>
     /// <typeparam name="T">The type of elements in the list.</typeparam>
-    public class SwiftObservableList<T> : SwiftList<T>, INotifyPropertyChanged, INotifyCollectionChanged
+    public class ObservableSwiftList<T> : SwiftList<T>, INotifyPropertyChanged, INotifyCollectionChanged
     {
         #region Events
 
@@ -28,19 +28,19 @@ namespace SwiftCollections.Observable
         #region Constructors
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="SwiftObservableList{T}"/> class.
+        /// Initializes a new instance of the <see cref="ObservableSwiftList{T}"/> class.
         /// </summary>
-        public SwiftObservableList() : base() { }
+        public ObservableSwiftList() : base() { }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="SwiftObservableList{T}"/> class with the specified initial capacity.
+        /// Initializes a new instance of the <see cref="ObservableSwiftList{T}"/> class with the specified initial capacity.
         /// </summary>
-        public SwiftObservableList(int capacity) : base(capacity) { }
+        public ObservableSwiftList(int capacity) : base(capacity) { }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="SwiftObservableList{T}"/> class that contains elements copied from the specified collection.
+        /// Initializes a new instance of the <see cref="ObservableSwiftList{T}"/> class that contains elements copied from the specified collection.
         /// </summary>
-        public SwiftObservableList(IEnumerable<T> collection) : base(collection) { }
+        public ObservableSwiftList(IEnumerable<T> collection) : base(collection) { }
 
         #endregion
 
