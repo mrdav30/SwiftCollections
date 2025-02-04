@@ -13,12 +13,14 @@ namespace SwiftCollections.Pool
     {
         #region Fields
 
-        private readonly ConcurrentBag<T> _pool;
+        private readonly ConcurrentStack<T> _pool;
         private readonly Func<T> _createFunc;
         private readonly Action<T> _actionOnGet;
         private readonly Action<T> _actionOnRelease;
         private readonly Action<T> _actionOnDestroy;
         private readonly int _maxSize;
+
+        private volatile bool _disposed;
 
         #endregion
 
@@ -44,7 +46,7 @@ namespace SwiftCollections.Pool
             if (createFunc == null) ThrowHelper.ThrowArgumentNullException(nameof(createFunc));
             if (maxSize <= 0) ThrowHelper.ThrowArgumentException($"{nameof(maxSize)} must be greater than 0");
 
-            _pool = new ConcurrentBag<T>();
+            _pool = new ConcurrentStack<T>();
             _createFunc = createFunc;
             _actionOnGet = actionOnGet;
             _actionOnRelease = actionOnRelease;
@@ -83,7 +85,7 @@ namespace SwiftCollections.Pool
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T Rent()
         {
-            if (_pool.TryTake(out var obj))
+            if (_pool.TryPop(out var obj))
             {
                 _actionOnGet?.Invoke(obj);
                 return obj;
@@ -118,7 +120,7 @@ namespace SwiftCollections.Pool
             _actionOnRelease?.Invoke(element);
 
             if (_pool.Count < _maxSize)
-                _pool.Add(element);
+                _pool.Push(element);
             else
             {
                 _actionOnDestroy?.Invoke(element);
@@ -131,7 +133,10 @@ namespace SwiftCollections.Pool
         /// </summary>
         public void Clear()
         {
-            while (_pool.TryTake(out var obj))
+            if (_disposed)
+                return;
+
+            while (_pool.TryPop(out var obj))
                 _actionOnDestroy?.Invoke(obj);
 
             CountAll = 0;
@@ -141,8 +146,27 @@ namespace SwiftCollections.Pool
 
         #region IDisposable Implementation
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Dispose() => Clear();
+        /// <summary>
+        /// Releases all resources used by the SwiftArrayPool.
+        /// It is important to call Dispose() to release pooled arrays, preventing potential memory leaks.
+        /// </summary>
+        public void Dispose()
+        {
+            OnDispose();
+            GC.SuppressFinalize(this);  // Avoids calling the finalizer if already disposed.
+        }
+
+        private void OnDispose()
+        {
+            if (_disposed) 
+                return;
+
+            _disposed = true;
+
+            _pool.Clear();
+        }
+
+        ~SwiftObjectPool() => OnDispose();  // Called by GC if Dispose() wasn't called explicitly.
 
         #endregion
     }

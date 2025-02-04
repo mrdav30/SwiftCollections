@@ -27,7 +27,7 @@ namespace SwiftCollections.Pool
         /// <summary>
         /// Tracks whether the pool has been disposed.
         /// </summary>
-        private bool _disposed;
+        private volatile bool _disposed;
 
         #endregion
 
@@ -165,10 +165,15 @@ namespace SwiftCollections.Pool
 
         private void OnDispose()
         {
-            if (_disposed) return;
+            if (_disposed) 
+                return;
 
-            Clear();
             _disposed = true;
+
+            foreach (var pool in _sizePools.Values)
+                pool.Dispose();
+
+            _sizePools.Clear();
         }
 
         ~SwiftArrayPool() => OnDispose();  // Called by GC if Dispose() wasn't called explicitly.
