@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace SwiftCollections.Pool
@@ -126,6 +127,19 @@ namespace SwiftCollections.Pool
                 _actionOnDestroy?.Invoke(element);
                 CountAll--;
             }
+        }
+
+        /// <summary>
+        /// Releases all objects back to the pool for reuse.  If the pool has reached its maximum size, objects
+        /// are destroyed using the configured destroy action.
+        /// </summary>
+        /// <param name="elements"></param>
+        /// <exception cref="ArgumentNullException">Thrown if any object in <paramref name="elements"/> is null.</exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Release(IEnumerable<T> elements)
+        {
+            foreach (T item in elements)
+                Release(item);
         }
 
         /// <summary>
