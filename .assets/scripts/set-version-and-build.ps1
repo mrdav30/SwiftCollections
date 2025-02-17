@@ -1,5 +1,5 @@
 param (
-    [string]$BuildType = "Release",
+    [string]$BuildType = "Release"
 )
 
 # Import shared functions
