@@ -140,7 +140,7 @@ namespace SwiftCollections
         /// true if the source sequence contains any elements; otherwise, false.
         /// </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool Any<T>(this IEnumerable<T> source)
+        public static bool IsPopulated<T>(this IEnumerable<T> source)
         {
             if(source == null) return ThrowHelper.ThrowArgumentNullException<bool>(nameof(source));
             using IEnumerator<T> enumerator = source.GetEnumerator();
@@ -156,6 +156,6 @@ namespace SwiftCollections
         /// True if the collection is not null and contains at least one element; otherwise, false.
         /// </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsNotNullOrEmpty<T>(this IEnumerable<T> source) => source != null && source.Any();
+        public static bool IsPopulatedSafe<T>(this IEnumerable<T> source) => source != null && source.IsPopulated();
     }
 }
