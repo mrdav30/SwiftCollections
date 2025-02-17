@@ -3,10 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-#if UNITY_EDITOR
-using UnityEngine;
-#endif
-
 namespace SwiftCollections
 {
     /// <summary>
@@ -39,9 +35,6 @@ namespace SwiftCollections
 
         #region Fields
 
-#if UNITY_EDITOR
-        [SerializeField]
-#endif
         private Entry[] _innerArray;
 
         private int _count;

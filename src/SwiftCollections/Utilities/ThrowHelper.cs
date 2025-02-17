@@ -5,112 +5,112 @@ using System.Runtime.Serialization;
 
 namespace SwiftCollections
 {
-    internal static class ThrowHelper
+    public static class ThrowHelper
     {
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static Exception ThrowInvalidOperationException(string message)
+        public static Exception ThrowInvalidOperationException(string message)
         {
             throw new InvalidOperationException(message);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static T ThrowInvalidOperationException<T>(string message)
+        public static T ThrowInvalidOperationException<T>(string message)
         {
             throw new InvalidOperationException(message);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void ThrowArgumentOutOfRangeException(string msg = null)
+        public static void ThrowArgumentOutOfRangeException(string msg = null)
         {
             throw new ArgumentOutOfRangeException(msg);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static T ThrowArgumentOutOfRangeException<T>()
+        public static T ThrowArgumentOutOfRangeException<T>()
         {
             throw new ArgumentOutOfRangeException();
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void ThrowIndexOutOfRangeException(string msg = null)
+        public static void ThrowIndexOutOfRangeException(string msg = null)
         {
             throw new IndexOutOfRangeException();
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static T ThrowIndexOutOfRangeException<T>()
+        public static T ThrowIndexOutOfRangeException<T>()
         {
             throw new IndexOutOfRangeException();
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void ThrowArgumentNullException(string paramName)
+        public static void ThrowArgumentNullException(string paramName)
         {
             throw new ArgumentNullException(paramName);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static T ThrowArgumentNullException<T>(string paramName)
+        public static T ThrowArgumentNullException<T>(string paramName)
         {
             throw new ArgumentNullException(paramName);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void ThrowArgumentException(string msg)
+        public static void ThrowArgumentException(string msg)
         {
             throw new ArgumentException(msg);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static T ThrowArgumentException<T>(string msg)
+        public static T ThrowArgumentException<T>(string msg)
         {
             throw new ArgumentException(msg);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void ThrowKeyNotFoundException()
+        public static void ThrowKeyNotFoundException()
         {
             throw new KeyNotFoundException();
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static T ThrowKeyNotFoundException<T>()
+        public static T ThrowKeyNotFoundException<T>()
         {
             throw new KeyNotFoundException();
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void ThrowNotSupportedException(string msg = null)
+        public static void ThrowNotSupportedException(string msg = null)
         {
             throw new NotSupportedException(msg);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static T ThrowNotSupportedException<T>(string msg = null)
+        public static T ThrowNotSupportedException<T>(string msg = null)
         {
             throw new NotSupportedException(msg);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void ThrowSerializationException(string msg)
+        public static void ThrowSerializationException(string msg)
         {
             throw new SerializationException(msg);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static T ThrowSerializationException<T>(string msg)
+        public static T ThrowSerializationException<T>(string msg)
         {
             throw new SerializationException(msg);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void ThrowObjectDisposedException(string msg)
+        public static void ThrowObjectDisposedException(string msg)
         {
             throw new ObjectDisposedException(msg);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static T ThrowObjectDisposedException<T>(string msg)
+        public static T ThrowObjectDisposedException<T>(string msg)
         {
             throw new ObjectDisposedException(msg);
         }

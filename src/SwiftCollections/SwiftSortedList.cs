@@ -4,10 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
-#if UNITY_EDITOR
-using UnityEngine;
-#endif
-
 namespace SwiftCollections
 {
     /// <summary>
@@ -35,9 +31,6 @@ namespace SwiftCollections
         /// <summary>
         /// Represents the internal array that stores the sorted elements.
         /// </summary>
-#if UNITY_EDITOR
-        [SerializeField]
-#endif
         private T[] _innerArray;
 
         private int _count;

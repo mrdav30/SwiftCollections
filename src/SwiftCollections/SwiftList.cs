@@ -3,10 +3,6 @@ using System.Collections.Generic;
 using System;
 using System.Runtime.CompilerServices;
 
-#if UNITY_EDITOR
-using UnityEngine;
-#endif
-
 namespace SwiftCollections
 {
     /// <summary>
@@ -47,9 +43,6 @@ namespace SwiftCollections
         /// The internal array that stores elements of the SwiftList. Resized as needed to
         /// accommodate additional elements. Not directly exposed outside the list.
         /// </summary>
-#if UNITY_EDITOR
-        [SerializeField]
-#endif
         private T[] _innerArray;
 
         /// <summary>

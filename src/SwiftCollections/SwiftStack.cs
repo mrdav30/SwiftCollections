@@ -3,10 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-#if UNITY_EDITOR
-using UnityEngine;
-#endif
-
 namespace SwiftCollections
 {
     /// <summary>
@@ -44,9 +40,6 @@ namespace SwiftCollections
         /// The internal array that stores elements of the SwiftStack. Resized as needed to
         /// accommodate additional elements. Not directly exposed outside the stack.
         /// </summary>
-#if UNITY_EDITOR
-        [SerializeField]
-#endif
         private T[] _innerArray;
 
         /// <summary>
