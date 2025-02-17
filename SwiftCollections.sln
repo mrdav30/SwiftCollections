@@ -12,35 +12,21 @@ EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
-		DebugUnity|Any CPU = DebugUnity|Any CPU
 		Release|Any CPU = Release|Any CPU
-		ReleaseUnity|Any CPU = ReleaseUnity|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{009CBC1E-B915-476D-98D6-1081526F7A9E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{009CBC1E-B915-476D-98D6-1081526F7A9E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{009CBC1E-B915-476D-98D6-1081526F7A9E}.DebugUnity|Any CPU.ActiveCfg = DebugUnity|Any CPU
-		{009CBC1E-B915-476D-98D6-1081526F7A9E}.DebugUnity|Any CPU.Build.0 = DebugUnity|Any CPU
 		{009CBC1E-B915-476D-98D6-1081526F7A9E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{009CBC1E-B915-476D-98D6-1081526F7A9E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{009CBC1E-B915-476D-98D6-1081526F7A9E}.ReleaseUnity|Any CPU.ActiveCfg = ReleaseUnity|Any CPU
-		{009CBC1E-B915-476D-98D6-1081526F7A9E}.ReleaseUnity|Any CPU.Build.0 = ReleaseUnity|Any CPU
 		{3D1E9931-4504-4E2D-8528-664D4015B740}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{3D1E9931-4504-4E2D-8528-664D4015B740}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{3D1E9931-4504-4E2D-8528-664D4015B740}.DebugUnity|Any CPU.ActiveCfg = DebugUnity|Any CPU
-		{3D1E9931-4504-4E2D-8528-664D4015B740}.DebugUnity|Any CPU.Build.0 = DebugUnity|Any CPU
 		{3D1E9931-4504-4E2D-8528-664D4015B740}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3D1E9931-4504-4E2D-8528-664D4015B740}.Release|Any CPU.Build.0 = Release|Any CPU
-		{3D1E9931-4504-4E2D-8528-664D4015B740}.ReleaseUnity|Any CPU.ActiveCfg = ReleaseUnity|Any CPU
-		{3D1E9931-4504-4E2D-8528-664D4015B740}.ReleaseUnity|Any CPU.Build.0 = ReleaseUnity|Any CPU
 		{6D94D3E4-448E-4377-BFFD-E7C636E19F2B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{6D94D3E4-448E-4377-BFFD-E7C636E19F2B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{6D94D3E4-448E-4377-BFFD-E7C636E19F2B}.DebugUnity|Any CPU.ActiveCfg = DebugUnity|Any CPU
-		{6D94D3E4-448E-4377-BFFD-E7C636E19F2B}.DebugUnity|Any CPU.Build.0 = DebugUnity|Any CPU
 		{6D94D3E4-448E-4377-BFFD-E7C636E19F2B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6D94D3E4-448E-4377-BFFD-E7C636E19F2B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{6D94D3E4-448E-4377-BFFD-E7C636E19F2B}.ReleaseUnity|Any CPU.ActiveCfg = ReleaseUnity|Any CPU
-		{6D94D3E4-448E-4377-BFFD-E7C636E19F2B}.ReleaseUnity|Any CPU.Build.0 = ReleaseUnity|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
