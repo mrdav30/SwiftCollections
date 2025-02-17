@@ -47,9 +47,19 @@ Clone the repository and add it to your project:
 
 ### Unity
 
-SwiftCollections is now maintained as a separate Unity package.For Unity-specific implementations, refer to:
+SwiftCollections is now maintained as a separate Unity package. For Unity-specific implementations, refer to:
 
 🔗 [SwiftCollection-Unity Repository](https://github.com/mrdav30/SwiftCollections-Unity).
+
+---
+
+## 🧩 Dependencies
+
+SwiftCollections depends on the following library:
+
+- [FixedMathSharp](https://github.com/mrdav30/FixedMathSharp)
+
+This dependency is automatically included when installing.
 
 ---
 
