@@ -16,6 +16,12 @@ SwiftCollections
 
 ---
 
+## Dependencies
+
+- Requires [FixedMathSharp](https://github.com/mrdav30/FixedMathSharp).
+
+---
+
 ## 🚀 Installation
 
 Clone the repository and add it to your project:
@@ -41,17 +47,9 @@ Clone the repository and add it to your project:
 
 ### Unity
 
-To integrate **SwiftCollections** into your Unity project:
+SwiftCollections is now maintained as a separate Unity package.For Unity-specific implementations, refer to:
 
-1. **Download the Package**:
-   - Obtain the latest `SwiftCollections{{VERSION}}.unitypackage` from the [Releases](https://github.com/your-repo/SwiftCollections/releases) section of the repository.
-
-2. **Import into Unity**:
-   - In Unity, navigate to **Assets > Import Package > Custom Package...**.
-   - Select the downloaded `SwiftCollections{{VERSION}}.unitypackage` file.
-
-3. **Verify the Integration**:
-   - After importing, confirm that the `SwiftCollections` namespace is accessible in your scripts.
+🔗 [SwiftCollection-Unity Repository](https://github.com/mrdav30/SwiftCollections-Unity).
 
 ---
 
@@ -164,8 +162,10 @@ namespace SwiftCollections.Benchmarks
 
 ## 🛠️ Compatibility
 
-    Frameworks: .NET Framework 4.7.2+, .NET Core, Unity 2020+
-    Query Collections Precision: Supports both System.Numerics and FixedMathSharp.
+- **.NET Framework** 4.7.2+
+- **Unity 2020+** (via - [SwiftCollection-Unity](https://github.com/mrdav30/SwiftCollections-Unity).)
+- **Cross-Platform Support** (Windows, Linux, macOS)
+- **Query Collections Precision**: Supports both System.Numerics and FixedMathSharp.
 
 ## 📄 License
 
