@@ -14,7 +14,7 @@
   </PropertyGroup>
   <ItemGroup Condition=" '$(TargetFrameworkIdentifier)' == '.NETFramework' ">
 	  <Reference Include="System.Reflection" />
-	  <PackageReference Include="System.Memory" Version="4.5.5" />
+	  <PackageReference Include="System.Memory" Version="4.6.0" />
   </ItemGroup>
   <ItemGroup>
   	<ProjectReference Include="..\..\src\SwiftCollections\SwiftCollections.csproj">
@@ -23,7 +23,7 @@
 		<PrivateAssets>all</PrivateAssets>
 	</ProjectReference>
   	<PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
-  	<PackageReference Include="FixedMathSharp" Version="1.0.4" />
+  	<PackageReference Include="FixedMathSharp" Version="1.1.0" />
     <!-- The Test SDK is required only for the VSTest Adapter to work -->
   </ItemGroup>
   <ItemGroup>

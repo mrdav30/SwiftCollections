@@ -126,7 +126,7 @@ namespace SwiftCollections.Tests
             stack.EnsureCapacity(10);
 
             // Assert
-            stack.Capacity.Should().BeGreaterOrEqualTo(10);
+            stack.Capacity.Should().BeGreaterThanOrEqualTo(10);
             stack.Capacity.Should().BeGreaterThan(capacityBefore);
         }
 
@@ -430,7 +430,7 @@ namespace SwiftCollections.Tests
             var stack = new SwiftStack<int>(20);
 
             // Assert
-            stack.Capacity.Should().BeGreaterOrEqualTo(20);
+            stack.Capacity.Should().BeGreaterThanOrEqualTo(20);
             stack.Count.Should().Be(0);
         }
 
