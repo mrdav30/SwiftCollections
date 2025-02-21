@@ -86,6 +86,8 @@ namespace SwiftCollections.Pool
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T Rent()
         {
+            if (_disposed) ThrowHelper.ThrowObjectDisposedException(nameof(SwiftObjectPool<T>));
+
             if (_pool.TryPop(out var obj))
             {
                 _actionOnGet?.Invoke(obj);
@@ -116,6 +118,8 @@ namespace SwiftCollections.Pool
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Release(T element)
         {
+            if (_disposed) ThrowHelper.ThrowObjectDisposedException(nameof(SwiftObjectPool<T>));
+
             if (element == null) throw new ArgumentNullException(nameof(element));
 
             _actionOnRelease?.Invoke(element);
@@ -138,6 +142,8 @@ namespace SwiftCollections.Pool
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Release(IEnumerable<T> elements)
         {
+            if (_disposed) ThrowHelper.ThrowObjectDisposedException(nameof(SwiftObjectPool<T>));
+
             foreach (T item in elements)
                 Release(item);
         }
@@ -147,8 +153,7 @@ namespace SwiftCollections.Pool
         /// </summary>
         public void Clear()
         {
-            if (_disposed)
-                return;
+            if (_disposed) return;
 
             while (_pool.TryPop(out var obj))
                 _actionOnDestroy?.Invoke(obj);
@@ -161,26 +166,23 @@ namespace SwiftCollections.Pool
         #region IDisposable Implementation
 
         /// <summary>
-        /// Releases all resources used by the SwiftArrayPool.
+        /// Releases all resources used by the SwiftObjectPool.
         /// It is important to call Dispose() to release pooled arrays, preventing potential memory leaks.
         /// </summary>
         public void Dispose()
         {
-            OnDispose();
-            GC.SuppressFinalize(this);  // Avoids calling the finalizer if already disposed.
-        }
-
-        private void OnDispose()
-        {
             if (_disposed) 
                 return;
 
+            _pool.Clear();
+
             _disposed = true;
 
-            _pool.Clear();
+            // Suppress finalization to prevent unnecessary GC overhead
+            GC.SuppressFinalize(this);
         }
 
-        ~SwiftObjectPool() => OnDispose();  // Called by GC if Dispose() wasn't called explicitly.
+        ~SwiftObjectPool() => Dispose();
 
         #endregion
     }

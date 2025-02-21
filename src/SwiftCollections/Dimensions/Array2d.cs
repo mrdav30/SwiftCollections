@@ -48,6 +48,10 @@ namespace SwiftCollections.Dimensions
             int height = source.GetLength(1);
 
             Initialize(width, height);
+
+            for (int x = 0; x < width; x++)
+                for (int y = 0; y < height; y++)
+                    this[x, y] = source[x, y];
         }
 
         #endregion

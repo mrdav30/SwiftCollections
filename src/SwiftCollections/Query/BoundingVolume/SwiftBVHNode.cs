@@ -26,6 +26,8 @@
         /// </summary>
         public bool HasParent => ParentIndex != -1;
 
+        public int MyIndex { get; set; }
+
         /// <summary>
         /// Gets or sets the index of the left child node.
         /// </summary>
@@ -62,6 +64,26 @@
         public int SubtreeSize { get; set; }
 
         /// <summary>
+        /// Determines whether or not this node has been allocated from the pool or is a pooled instance
+        /// </summary>
+        public bool IsAllocated { get; set; }
+
+        /// <summary>
+        /// Provides a custom default instance of <see cref="SwiftBVHNode{T}"/>.
+        /// </summary>
+        public static SwiftBVHNode<T> Default => new SwiftBVHNode<T>
+        {
+            Value = default,
+            Bounds = default,
+            ParentIndex = -1,
+            LeftChildIndex = -1,
+            RightChildIndex = -1,
+            SubtreeSize = 0,
+            IsLeaf = false,
+            IsAllocated = false
+        };
+
+        /// <summary>
         /// Resets the node to its default state.
         /// Clears all references and metadata.
         /// </summary>
@@ -71,9 +93,11 @@
             Bounds = default;
             IsLeaf = false;
             ParentIndex = -1;
+            MyIndex = -1;
             LeftChildIndex = -1;
             RightChildIndex = -1;
             SubtreeSize = 0;
+            IsAllocated = false;
         }
     }
 }

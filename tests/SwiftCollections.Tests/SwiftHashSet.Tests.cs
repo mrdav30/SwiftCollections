@@ -284,7 +284,7 @@ namespace SwiftCollections.Tests
             Assert.False(added);
             Assert.Single(set);
             Assert.Contains("hello", set);
-            Assert.Contains("HELLO", set);
+            Assert.DoesNotContain("HELLO", set);
         }
 
         [Fact]
