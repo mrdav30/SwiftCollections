@@ -208,7 +208,7 @@ namespace SwiftCollections.Query.Tests
                 }
             }
 
-            ValidateParents(bvh.RootIndex);
+            ValidateParents(bvh.RootNodeIndex);
         }
 
         [Fact]
@@ -232,7 +232,7 @@ namespace SwiftCollections.Query.Tests
                 Traverse(bvh.NodePool[nodeIndex].RightChildIndex, depth + 1);
             }
 
-            Traverse(bvh.RootIndex, 1);
+            Traverse(bvh.RootNodeIndex, 1);
 
             double theoreticalMaxDepth = 2.5 * (Math.Log(numVolumes) / Math.Log(2));
             Assert.True(maxDepth < theoreticalMaxDepth, "Tree depth is excessively high.");
@@ -263,7 +263,7 @@ namespace SwiftCollections.Query.Tests
                 Traverse(bvh.NodePool[nodeIndex].RightChildIndex, depth + 1);
             }
 
-            Traverse(bvh.RootIndex, 1);
+            Traverse(bvh.RootNodeIndex, 1);
 
             double theoreticalMaxDepth = 2 * (Math.Log(numVolumes) / Math.Log(2));
             Assert.True(maxDepth < theoreticalMaxDepth, "Tree depth is excessively high.");
@@ -379,6 +379,8 @@ namespace SwiftCollections.Query.Tests
             int volumesPerThread = 100;
 
             var threads = new List<Thread>();
+
+            // PHASE 1: Insert all volumes
             for (int t = 0; t < numThreads; t++)
             {
                 int threadIndex = t;
@@ -389,7 +391,44 @@ namespace SwiftCollections.Query.Tests
                         int id = threadIndex * volumesPerThread + i;
                         var volume = new BoundVolume(new Vector3(id, id, id), new Vector3(id + 1, id + 1, id + 1));
                         bvh.Insert(id, volume);
-                        bvh.UpdateEntryBounds(id, new BoundVolume(new Vector3(id - 1, id - 1, id - 1), new Vector3(id + 2, id + 2, id + 2)));
+                    }
+                }));
+            }
+
+            foreach (var thread in threads) thread.Start();
+            foreach (var thread in threads) thread.Join();
+
+            threads.Clear(); // Reset thread list
+
+            // PHASE 2: Update all volumes
+            for (int t = 0; t < numThreads; t++)
+            {
+                int threadIndex = t;
+                threads.Add(new Thread(() =>
+                {
+                    for (int i = 0; i < volumesPerThread; i++)
+                    {
+                        int id = threadIndex * volumesPerThread + i;
+                        var newVolume = new BoundVolume(new Vector3(id - 1, id - 1, id - 1), new Vector3(id + 2, id + 2, id + 2));
+                        bvh.UpdateEntryBounds(id, newVolume);
+                    }
+                }));
+            }
+
+            foreach (var thread in threads) thread.Start();
+            foreach (var thread in threads) thread.Join();
+
+            threads.Clear();
+
+            // PHASE 3: Remove all volumes
+            for (int t = 0; t < numThreads; t++)
+            {
+                int threadIndex = t;
+                threads.Add(new Thread(() =>
+                {
+                    for (int i = 0; i < volumesPerThread; i++)
+                    {
+                        int id = threadIndex * volumesPerThread + i;
                         bvh.Remove(id);
                     }
                 }));
@@ -397,6 +436,9 @@ namespace SwiftCollections.Query.Tests
 
             foreach (var thread in threads) thread.Start();
             foreach (var thread in threads) thread.Join();
+
+            // Small delay to allow final removals to propagate
+            Thread.Sleep(5);
 
             var results = new List<int>();
             var queryVolume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(500, 500, 500));
@@ -504,7 +546,7 @@ namespace SwiftCollections.Query.Tests
                 }
             }
 
-            ValidateSubtreeSize(bvh.RootIndex);
+            ValidateSubtreeSize(bvh.RootNodeIndex);
         }
 
         [Fact]
