@@ -3,6 +3,8 @@ SwiftCollections
 
 ![SwiftCollections Icon](https://raw.githubusercontent.com/mrdav30/SwiftCollections/main/icon.png)
 
+[![.NET CI](https://github.com/mrdav30/SwiftCollections/actions/workflows/dotnet.yml/badge.svg)](https://github.com/mrdav30/SwiftCollections/actions/workflows/dotnet.yml)
+
 **SwiftCollections** is a high-performance, memory-efficient library of collections designed for game development, simulations, and other performance-critical applications.
 
 ---
