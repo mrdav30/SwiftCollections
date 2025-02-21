@@ -9,11 +9,17 @@ using System.Threading;
 /// <typeparam name="T">The type of the lazily initialized object, which must implement <see cref="IDisposable"/>.</typeparam>
 public class LazyDisposable<T> : Lazy<T>, IDisposable where T : IDisposable
 {
+    #region Fields
+
     /// <summary>
     /// Indicates whether the lazy instance has been disposed.
     /// Prevents multiple disposal attempts, ensuring safe resource cleanup.
     /// </summary>
-    private bool _disposed;
+    private volatile bool _disposed;
+
+    #endregion
+
+    #region Constructors
 
     /// <summary>
     ///  Initializes a new instance of the <see cref="LazyDisposable{T}"/> class.
@@ -76,7 +82,15 @@ public class LazyDisposable<T> : Lazy<T>, IDisposable where T : IDisposable
     /// </param>
     public LazyDisposable(Func<T> valueFactory, LazyThreadSafetyMode mode) : base(valueFactory, mode) { }
 
+    #endregion
+
+    #region Utility
+
     public override string ToString() => IsValueCreated ? Value.ToString() : "LazyDisposable (Not Created)";
+
+    #endregion
+
+    #region IDisposable Implementation
 
     /// <summary>
     /// Disposes the lazily initialized value if it has been created.
@@ -84,10 +98,20 @@ public class LazyDisposable<T> : Lazy<T>, IDisposable where T : IDisposable
     /// </summary>
     public void Dispose()
     {
-        if (!_disposed && this.IsValueCreated)
-        {
-            _disposed = true;
-            this.Value.Dispose();
-        }
+        if (_disposed || !this.IsValueCreated)
+            return;
+
+        _disposed = true;
+        this.Value.Dispose();
+
+        // Suppress finalization since we've manually disposed
+        GC.SuppressFinalize(this);
     }
+
+    /// <summary>
+    /// Finalizer to ensure disposal if Dispose() is never called.
+    /// </summary>
+    ~LazyDisposable() => Dispose();
+
+    #endregion
 }

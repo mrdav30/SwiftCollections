@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace SwiftCollections.Pool
 {
@@ -11,13 +12,22 @@ namespace SwiftCollections.Pool
     /// <typeparam name="T">The type of elements in the arrays being pooled. Must have a parameterless constructor.</typeparam>
     public sealed class SwiftArrayPool<T> : IDisposable where T : new()
     {
-        #region Fields
+        #region Singleton Instance
 
         /// <summary>
         /// A lazily initialized singleton instance of the array pool.
         /// </summary>
-        private static readonly Lazy<SwiftArrayPool<T>> _instance =
-            new Lazy<SwiftArrayPool<T>>(() => new SwiftArrayPool<T>());
+        private static readonly LazyDisposable<SwiftArrayPool<T>> _instance =
+            new LazyDisposable<SwiftArrayPool<T>>(() => new SwiftArrayPool<T>(), LazyThreadSafetyMode.ExecutionAndPublication);
+
+        /// <summary>
+        /// Gets the shared instance of the pool.
+        /// </summary>
+        public static SwiftArrayPool<T> Shared => _instance.Value;
+
+        #endregion
+
+        #region Fields
 
         /// <summary>
         /// A collection of object pools, keyed by the size of the arrays they manage.
@@ -52,17 +62,14 @@ namespace SwiftCollections.Pool
             PoolMaxCapacity = poolMaxCapacity;
 
             CreateFunc = createFunc ?? (size => new T[size]);
-            ActionOnRelease = actionOnRelease ?? (array => Array.Clear(array, 0, array.Length));
+            ActionOnRelease = actionOnRelease ?? (array => 
+                Array.Clear(array, 0, array.Length));
             ActionOnDestroy = actionOnDestroy;
         }
 
         #endregion
 
         #region Properties
-        /// <summary>
-        /// Gets the shared singleton instance of the array pool.
-        /// </summary>
-        public static SwiftArrayPool<T> Shared => _instance.Value;
 
         /// <summary>
         /// Gets the function used to create new arrays.
@@ -125,9 +132,9 @@ namespace SwiftCollections.Pool
         /// </summary>
         public void Clear()
         {
-            if (_disposed) ThrowHelper.ThrowObjectDisposedException(nameof(SwiftArrayPool<T>));
+            if (_disposed) return;
 
-            foreach (var pool in _sizePools.Values)
+            foreach (SwiftObjectPool<T[]> pool in _sizePools.Values)
                 pool.Clear();
 
             _sizePools.Clear();
@@ -159,24 +166,18 @@ namespace SwiftCollections.Pool
         /// </summary>
         public void Dispose()
         {
-            OnDispose();
-            GC.SuppressFinalize(this);  // Avoids calling the finalizer if already disposed.
-        }
-
-        private void OnDispose()
-        {
-            if (_disposed) 
-                return;
+            if (_disposed) return;
 
             _disposed = true;
-
-            foreach (var pool in _sizePools.Values)
+            foreach (SwiftObjectPool<T[]> pool in _sizePools.Values)
                 pool.Dispose();
-
             _sizePools.Clear();
+
+            // Suppress finalization to prevent unnecessary GC overhead
+            GC.SuppressFinalize(this);
         }
 
-        ~SwiftArrayPool() => OnDispose();  // Called by GC if Dispose() wasn't called explicitly.
+        ~SwiftArrayPool() => Dispose();
 
         #endregion
     }
