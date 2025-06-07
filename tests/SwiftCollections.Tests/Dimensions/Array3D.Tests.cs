@@ -1,8 +1,17 @@
-﻿using Xunit;
-using System;
+﻿using System;
 using System.Threading.Tasks;
+
+#if NET48_OR_GREATER
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+#endif
+
+#if NET8_0_OR_GREATER
+using System.Text.Json;
+using System.Text.Json.Serialization;
+#endif
+
+using Xunit;
 
 namespace SwiftCollections.Dimensions.Tests
 {
@@ -31,11 +40,8 @@ namespace SwiftCollections.Dimensions.Tests
         {
             var array = new Array3D<int>(3, 3, 3, 99);
 
-            Assert.All(array.GetType().GetField("_innerArray", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                .GetValue(array) as int[][][], layer =>
-                {
-                    Assert.All(layer, row => Assert.All(row, value => Assert.Equal(99, value)));
-                });
+            foreach (var item in array)
+                Assert.Equal(99, item); // Default value for int
         }
 
         [Fact]
@@ -95,11 +101,8 @@ namespace SwiftCollections.Dimensions.Tests
 
             array.Clear();
 
-            Assert.All(array.GetType().GetField("_innerArray", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                .GetValue(array) as int[][][], layer =>
-                {
-                    Assert.All(layer, row => Assert.All(row, value => Assert.Equal(0, value))); // Default value
-                });
+            foreach (var item in array)
+                Assert.Equal(0, item); // Default value for int
         }
 
         [Fact]
@@ -108,11 +111,8 @@ namespace SwiftCollections.Dimensions.Tests
             var array = new Array3D<int>(3, 3, 3);
             array.Fill(42);
 
-            Assert.All(array.GetType().GetField("_innerArray", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                .GetValue(array) as int[][][], layer =>
-                {
-                    Assert.All(layer, row => Assert.All(row, value => Assert.Equal(42, value)));
-                });
+            foreach (var item in array)
+                Assert.Equal(42, item);
         }
 
         [Fact]
@@ -257,6 +257,7 @@ namespace SwiftCollections.Dimensions.Tests
             originalArray[1, 1, 1] = 42;
 
             // Act
+#if NET48_OR_GREATER
             Array3D<int> deserializedArray;
             using (var memoryStream = new MemoryStream())
             {
@@ -270,6 +271,20 @@ namespace SwiftCollections.Dimensions.Tests
                 // Deserialize
                 deserializedArray = (Array3D<int>)formatter.Deserialize(memoryStream);
             }
+#endif
+
+#if NET8_0_OR_GREATER
+            var jsonOptions = new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                ReferenceHandler = ReferenceHandler.IgnoreCycles,
+                IncludeFields = true,
+                IgnoreReadOnlyProperties = true
+            };
+            jsonOptions.Converters.Add(new Array3DJsonConverter());
+            var json = JsonSerializer.SerializeToUtf8Bytes(originalArray, jsonOptions);
+            var deserializedArray = JsonSerializer.Deserialize<Array3D<int>>(json, jsonOptions);
+#endif
 
             // Assert
             Assert.Equal(originalArray.Width, deserializedArray.Width);

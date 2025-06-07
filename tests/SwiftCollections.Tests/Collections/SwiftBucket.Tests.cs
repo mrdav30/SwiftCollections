@@ -1,9 +1,17 @@
-﻿using System;
-using System.Collections;
+﻿using FluentAssertions;
+using System;
 using System.Collections.Generic;
+
+#if NET48_OR_GREATER
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
-using FluentAssertions;
+#endif
+
+#if NET8_0_OR_GREATER
+using System.Text.Json;
+using System.Text.Json.Serialization;
+#endif
+
 using Xunit;
 
 namespace SwiftCollections.Tests
@@ -387,7 +395,8 @@ namespace SwiftCollections.Tests
                 originalBucket.Add(i);
             }
 
-            // Serialize the SwiftList
+            // Serialize the SwiftBucket
+#if NET48_OR_GREATER
             var formatter = new BinaryFormatter();
             using var stream = new MemoryStream();
             formatter.Serialize(stream, originalBucket);
@@ -395,6 +404,19 @@ namespace SwiftCollections.Tests
             // Reset stream position and deserialize
             stream.Seek(0, SeekOrigin.Begin);
             var deserializedBucket = (SwiftBucket<int>)formatter.Deserialize(stream);
+#endif
+
+#if NET8_0_OR_GREATER
+            var jsonOptions = new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                ReferenceHandler = ReferenceHandler.IgnoreCycles,
+                IncludeFields = true,
+                IgnoreReadOnlyProperties = true
+            };
+            var json = JsonSerializer.SerializeToUtf8Bytes(originalBucket, jsonOptions);
+            var deserializedBucket = JsonSerializer.Deserialize<SwiftBucket<int>>(json, jsonOptions);
+#endif
 
             // Verify that the deserialized list matches the original
             Assert.Equal(originalBucket.Count, deserializedBucket.Count);

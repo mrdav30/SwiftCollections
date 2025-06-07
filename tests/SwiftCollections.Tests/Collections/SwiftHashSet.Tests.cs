@@ -1,5 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+
+#if NET48_OR_GREATER
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
+#endif
+
+#if NET8_0_OR_GREATER
+using System.Text.Json;
+using System.Text.Json.Serialization;
+#endif
+
 using Xunit;
 
 namespace SwiftCollections.Tests
@@ -454,13 +465,27 @@ namespace SwiftCollections.Tests
             var originalSet = new SwiftHashSet<int> { 1, 2, 3, 4, 5 };
 
             // Serialize the set
-            var formatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
-            using var memoryStream = new System.IO.MemoryStream();
+#if NET48_OR_GREATER
+            var formatter = new BinaryFormatter();
+            using var memoryStream = new MemoryStream();
             formatter.Serialize(memoryStream, originalSet);
 
             // Deserialize the set
-            memoryStream.Seek(0, System.IO.SeekOrigin.Begin);
+            memoryStream.Seek(0, SeekOrigin.Begin);
             var deserializedSet = (SwiftHashSet<int>)formatter.Deserialize(memoryStream);
+#endif
+
+#if NET8_0_OR_GREATER
+            var jsonOptions = new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                ReferenceHandler = ReferenceHandler.IgnoreCycles,
+                IncludeFields = true,
+                IgnoreReadOnlyProperties = true
+            };
+            var json = JsonSerializer.SerializeToUtf8Bytes(originalSet, jsonOptions);
+            var deserializedSet = JsonSerializer.Deserialize<SwiftHashSet<int>>(json, jsonOptions);
+#endif
 
             // Validate the deserialized set
             Assert.Equal(originalSet.Count, deserializedSet.Count);

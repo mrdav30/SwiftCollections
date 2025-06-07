@@ -1,6 +1,13 @@
-﻿using System;
+﻿#if NET48_OR_GREATER
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+#endif
+
+#if NET8_0_OR_GREATER
+using System.Text.Json;
+using System.Text.Json.Serialization;
+#endif
+
 using Xunit;
 
 namespace SwiftCollections.Dimensions.Tests
@@ -77,9 +84,9 @@ namespace SwiftCollections.Dimensions.Tests
             originalArray[1, 1] = 20;
             originalArray[2, 2] = 30;
 
-            ShortArray2D deserializedArray;
-
             // Act
+#if NET48_OR_GREATER
+            ShortArray2D deserializedArray;
             using (var stream = new MemoryStream())
             {
                 var formatter = new BinaryFormatter();
@@ -88,6 +95,20 @@ namespace SwiftCollections.Dimensions.Tests
                 stream.Seek(0, SeekOrigin.Begin);
                 deserializedArray = (ShortArray2D)formatter.Deserialize(stream);
             }
+#endif
+
+#if NET8_0_OR_GREATER
+            var jsonOptions = new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                ReferenceHandler = ReferenceHandler.IgnoreCycles,
+                IncludeFields = true,
+                IgnoreReadOnlyProperties = true
+            };
+            jsonOptions.Converters.Add(new Array2DJsonConverter());
+            var json = JsonSerializer.SerializeToUtf8Bytes(originalArray, jsonOptions);
+            var deserializedArray = JsonSerializer.Deserialize<ShortArray2D>(json, jsonOptions);
+#endif
 
             // Assert
             Assert.Equal(originalArray.Width, deserializedArray.Width);

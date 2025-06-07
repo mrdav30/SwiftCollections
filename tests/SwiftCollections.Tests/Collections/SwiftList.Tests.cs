@@ -1,7 +1,16 @@
 using System;
 using System.Collections.Generic;
+
+#if NET48_OR_GREATER
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+#endif
+
+#if NET8_0_OR_GREATER
+using System.Text.Json;
+using System.Text.Json.Serialization;
+#endif
+
 using Xunit;
 
 namespace SwiftCollections.Tests
@@ -200,9 +209,7 @@ namespace SwiftCollections.Tests
         public void Contains_ShouldReturnTrueIfItemExists()
         {
             var list = new SwiftList<int> { 1, 2, 3 };
-#pragma warning disable xUnit2017 // Do not use Contains() to check if a value exists in a collection
-            Assert.True(list.Contains(2));  // List contains 2
-#pragma warning restore xUnit2017
+            Assert.Contains(2, list);  // List contains 2
         }
 
         [Fact]
@@ -216,9 +223,7 @@ namespace SwiftCollections.Tests
         public void Contains_ShouldReturnFalseIfItemDoesNotExist()
         {
             var list = new SwiftList<int> { 1, 2, 3 };
-#pragma warning disable xUnit2017 // Do not use Contains() to check if a value exists in a collection
-            Assert.False(list.Contains(4));  // List does not contain 4
-#pragma warning restore xUnit2017
+            Assert.DoesNotContain(4, list);  // List does not contain 4
         }
 
         [Fact]
@@ -324,6 +329,7 @@ namespace SwiftCollections.Tests
             }
 
             // Serialize the SwiftList
+#if NET48_OR_GREATER
             var formatter = new BinaryFormatter();
             using var stream = new MemoryStream();
             formatter.Serialize(stream, originalList);
@@ -331,6 +337,19 @@ namespace SwiftCollections.Tests
             // Reset stream position and deserialize
             stream.Seek(0, SeekOrigin.Begin);
             var deserializedList = (SwiftList<int>)formatter.Deserialize(stream);
+#endif
+
+#if NET8_0_OR_GREATER
+            var jsonOptions = new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                ReferenceHandler = ReferenceHandler.IgnoreCycles,
+                IncludeFields = true,
+                IgnoreReadOnlyProperties = true
+            };
+            var json = JsonSerializer.SerializeToUtf8Bytes(originalList, jsonOptions);
+            var deserializedList = JsonSerializer.Deserialize<SwiftList<int>>(json, jsonOptions);
+#endif
 
             // Verify that the deserialized list matches the original
             Assert.Equal(originalList.Count, deserializedList.Count);

@@ -1,7 +1,15 @@
 ﻿using System;
+
+#if NET48_OR_GREATER
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
-using SwiftCollections;
+#endif
+
+#if NET8_0_OR_GREATER
+using System.Text.Json;
+using System.Text.Json.Serialization;
+#endif
+
 using Xunit;
 
 namespace SwiftCollections.Tests
@@ -220,7 +228,8 @@ namespace SwiftCollections.Tests
                 originalQueue.Enqueue(i);
             }
 
-            // Serialize the SwiftList
+            // Serialize the SwiftQueue
+#if NET48_OR_GREATER
             var formatter = new BinaryFormatter();
             using var stream = new MemoryStream();
             formatter.Serialize(stream, originalQueue);
@@ -228,6 +237,19 @@ namespace SwiftCollections.Tests
             // Reset stream position and deserialize
             stream.Seek(0, SeekOrigin.Begin);
             var deserializedQueue = (SwiftQueue<int>)formatter.Deserialize(stream);
+#endif
+
+#if NET8_0_OR_GREATER
+            var jsonOptions = new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                ReferenceHandler = ReferenceHandler.IgnoreCycles,
+                IncludeFields = true,
+                IgnoreReadOnlyProperties = true
+            };
+            var json = JsonSerializer.SerializeToUtf8Bytes(originalQueue, jsonOptions);
+            var deserializedQueue = JsonSerializer.Deserialize<SwiftQueue<int>>(json, jsonOptions);
+#endif
 
             // Verify that the deserialized list matches the original
             Assert.Equal(originalQueue.Count, deserializedQueue.Count);

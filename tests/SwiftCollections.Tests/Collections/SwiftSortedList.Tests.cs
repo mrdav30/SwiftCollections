@@ -1,7 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+
+#if NET48_OR_GREATER
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+#endif
+
+#if NET8_0_OR_GREATER
+using System.Text.Json;
+using System.Text.Json.Serialization;
+#endif
+
 using Xunit;
 
 namespace SwiftCollections.Tests
@@ -37,7 +46,7 @@ namespace SwiftCollections.Tests
         [Fact]
         public void Constructor_WithComparer_ShouldSetCustomComparer()
         {
-            Comparison<int> comparison = (x, y) => y.CompareTo(x);
+            static int comparison(int x, int y) => y.CompareTo(x);
             IComparer<int> comparer = Comparer<int>.Create(comparison);
             var sorter = new SwiftSortedList<int>(comparer);
             Assert.Equal(comparer, sorter.Comparer);
@@ -366,18 +375,32 @@ namespace SwiftCollections.Tests
             var sorter = new SwiftSortedList<int>();
             sorter.AddRange(new List<int> { 5, 10, 15 });
 
+#if NET48_OR_GREATER
             var formatter = new BinaryFormatter();
             using var stream = new MemoryStream();
             formatter.Serialize(stream, sorter);
 
             stream.Seek(0, SeekOrigin.Begin);
             var deserializedSorter = (SwiftSortedList<int>)formatter.Deserialize(stream);
+#endif
+
+#if NET8_0_OR_GREATER
+            var jsonOptions = new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                ReferenceHandler = ReferenceHandler.IgnoreCycles,
+                IncludeFields = true,
+                IgnoreReadOnlyProperties = true
+            };
+            var json = JsonSerializer.SerializeToUtf8Bytes(sorter, jsonOptions);
+            var deserializedSorter = JsonSerializer.Deserialize<SwiftSortedList<int>>(json, jsonOptions);
+#endif
 
             Assert.Equal(sorter.Count, deserializedSorter.Count);
             Assert.Equal(sorter.PeekMin(), deserializedSorter.PeekMin());
             Assert.Equal(sorter.PeekMax(), deserializedSorter.PeekMax());
         }
 
-        #endregion
+#endregion
     }
 }

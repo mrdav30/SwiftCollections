@@ -125,7 +125,6 @@ namespace SwiftCollections
             }
         }
 
-
         /// <summary>
         /// Computes a hash code for a string using the MurmurHash3 algorithm, incorporating entropy for randomization.
         /// </summary>

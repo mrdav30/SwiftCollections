@@ -1,5 +1,13 @@
-﻿using System.IO;
+﻿#if NET48_OR_GREATER
+using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+#endif
+
+#if NET8_0_OR_GREATER
+using System.Text.Json;
+using System.Text.Json.Serialization;
+#endif
+
 using Xunit;
 
 namespace SwiftCollections.Tests
@@ -96,12 +104,15 @@ namespace SwiftCollections.Tests
         public void BiDictionary_SerializationDeserialization_WithReverseMap_Test()
         {
             // Arrange
-            var originalBiDict = new SwiftBiDictionary<string, int>();
-            originalBiDict.Add("One", 1);
-            originalBiDict.Add("Two", 2);
-            originalBiDict.Add("Three", 3);
+            var originalBiDict = new SwiftBiDictionary<string, int>
+            {
+                { "One", 1 },
+                { "Two", 2 },
+                { "Three", 3 }
+            };
 
             // Act
+#if NET48_OR_GREATER
             byte[] serializedData;
             using (var memoryStream = new MemoryStream())
             {
@@ -116,6 +127,19 @@ namespace SwiftCollections.Tests
                 var formatter = new BinaryFormatter();
                 deserializedBiDict = (SwiftBiDictionary<string, int>)formatter.Deserialize(memoryStream);
             }
+#endif
+
+#if NET8_0_OR_GREATER
+            var jsonOptions = new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                ReferenceHandler = ReferenceHandler.IgnoreCycles,
+                IncludeFields = true,
+                IgnoreReadOnlyProperties = true
+            };
+            var json = JsonSerializer.SerializeToUtf8Bytes(originalBiDict, jsonOptions);
+            var deserializedBiDict = JsonSerializer.Deserialize<SwiftBiDictionary<string, int>>(json, jsonOptions);
+#endif
 
             // Assert
             Assert.NotNull(deserializedBiDict);
@@ -142,6 +166,7 @@ namespace SwiftCollections.Tests
             var originalBiDict = new SwiftBiDictionary<string, int>();
 
             // Act
+#if NET48_OR_GREATER
             byte[] serializedData;
             using (var memoryStream = new MemoryStream())
             {
@@ -156,6 +181,19 @@ namespace SwiftCollections.Tests
                 var formatter = new BinaryFormatter();
                 deserializedBiDict = (SwiftBiDictionary<string, int>)formatter.Deserialize(memoryStream);
             }
+#endif
+
+#if NET8_0_OR_GREATER
+            var jsonOptions = new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                ReferenceHandler = ReferenceHandler.IgnoreCycles,
+                IncludeFields = true,
+                IgnoreReadOnlyProperties = true
+            };
+            var json = JsonSerializer.SerializeToUtf8Bytes(originalBiDict, jsonOptions);
+            var deserializedBiDict = JsonSerializer.Deserialize<SwiftBiDictionary<string, int>>(json, jsonOptions);
+#endif
 
             // Assert
             Assert.NotNull(deserializedBiDict);

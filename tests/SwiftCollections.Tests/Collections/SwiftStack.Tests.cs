@@ -1,9 +1,18 @@
-﻿using System;
+﻿using FluentAssertions;
+using System;
 using System.Collections.Generic;
-using Xunit;
-using FluentAssertions;
+
+#if NET48_OR_GREATER
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+#endif
+
+#if NET8_0_OR_GREATER
+using System.Text.Json;
+using System.Text.Json.Serialization;
+#endif
+
+using Xunit;
 
 namespace SwiftCollections.Tests
 {
@@ -496,7 +505,8 @@ namespace SwiftCollections.Tests
                 originalStack.Push(i);
             }
 
-            // Serialize the SwiftList
+            // Serialize the SwiftStack
+#if NET48_OR_GREATER
             var formatter = new BinaryFormatter();
             using var stream = new MemoryStream();
             formatter.Serialize(stream, originalStack);
@@ -504,6 +514,20 @@ namespace SwiftCollections.Tests
             // Reset stream position and deserialize
             stream.Seek(0, SeekOrigin.Begin);
             var deserializedStack = (SwiftStack<int>)formatter.Deserialize(stream);
+#endif
+
+#if NET8_0_OR_GREATER
+            var jsonOptions = new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                ReferenceHandler = ReferenceHandler.IgnoreCycles,
+                IncludeFields = true,
+                IgnoreReadOnlyProperties = true
+            };
+            jsonOptions.Converters.Add(new SwiftStackJsonConverter<int>());
+            var json = JsonSerializer.SerializeToUtf8Bytes(originalStack, jsonOptions);
+            var deserializedStack = JsonSerializer.Deserialize<SwiftStack<int>>(json, jsonOptions);
+#endif
 
             // Verify that the deserialized list matches the original
             Assert.Equal(originalStack.Count, deserializedStack.Count);

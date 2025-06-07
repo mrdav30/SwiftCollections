@@ -1,8 +1,17 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+
+#if NET48_OR_GREATER
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+#endif
+
+#if NET8_0_OR_GREATER
+using System.Text.Json;
+using System.Text.Json.Serialization;
+#endif
+
 using Xunit;
 
 namespace SwiftCollections.Tests
@@ -551,6 +560,7 @@ namespace SwiftCollections.Tests
             // Create an empty SwiftDictionary
             var originalDict = new SwiftDictionary<string, int>();
 
+#if NET48_OR_GREATER
             // Serialize the dictionary to a memory stream
             var formatter = new BinaryFormatter();
             var stream = new MemoryStream();
@@ -561,6 +571,19 @@ namespace SwiftCollections.Tests
 
             // Deserialize the dictionary from the memory stream
             var deserializedDict = (SwiftDictionary<string, int>)formatter.Deserialize(stream);
+#endif
+
+#if NET8_0_OR_GREATER
+            var jsonOptions = new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                ReferenceHandler = ReferenceHandler.IgnoreCycles,
+                IncludeFields = true,
+                IgnoreReadOnlyProperties = true
+            };
+            var json = JsonSerializer.SerializeToUtf8Bytes(originalDict, jsonOptions);
+            var deserializedDict = JsonSerializer.Deserialize<SwiftDictionary<string, int>>(json, jsonOptions);
+#endif
 
             // Verify that the deserialized dictionary is empty
             Assert.Empty(deserializedDict);

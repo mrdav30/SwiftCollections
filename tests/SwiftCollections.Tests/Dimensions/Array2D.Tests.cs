@@ -1,5 +1,15 @@
 ﻿using System;
+
+#if NET48_OR_GREATER
 using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
+#endif
+
+#if NET8_0_OR_GREATER
+using System.Text.Json;
+using System.Text.Json.Serialization;
+#endif
+
 using Xunit;
 
 namespace SwiftCollections.Dimensions.Tests
@@ -112,11 +122,12 @@ namespace SwiftCollections.Dimensions.Tests
             originalArray[1, 1] = 99;
             originalArray[2, 2] = 7;
 
+#if NET48_OR_GREATER
             // Serialize the Array2D object
             byte[] serializedData;
             using (var memoryStream = new MemoryStream())
             {
-                var formatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+                var formatter = new BinaryFormatter();
                 formatter.Serialize(memoryStream, originalArray);
                 serializedData = memoryStream.ToArray();
             }
@@ -125,9 +136,23 @@ namespace SwiftCollections.Dimensions.Tests
             Array2D<int> deserializedArray;
             using (var memoryStream = new MemoryStream(serializedData))
             {
-                var formatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+                var formatter = new BinaryFormatter();
                 deserializedArray = (Array2D<int>)formatter.Deserialize(memoryStream);
             }
+#endif
+
+#if NET8_0_OR_GREATER
+            var jsonOptions = new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                ReferenceHandler = ReferenceHandler.IgnoreCycles,
+                IncludeFields = true,
+                IgnoreReadOnlyProperties = true
+            };
+            jsonOptions.Converters.Add(new Array2DJsonConverter());
+            var json = JsonSerializer.SerializeToUtf8Bytes(originalArray, jsonOptions);
+            var deserializedArray = JsonSerializer.Deserialize<Array2D<int>>(json, jsonOptions);
+#endif
 
             // Assert
             Assert.Equal(originalArray.Width, deserializedArray.Width);
