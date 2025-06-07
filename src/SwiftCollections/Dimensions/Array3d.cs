@@ -5,7 +5,7 @@ using System.Collections.Generic;
 namespace SwiftCollections.Dimensions
 {
     /// <summary>
-    /// Represents a generic 3D array with efficient indexing and resizing capabilities.
+    /// Represents a generic, flattened 3D array with efficient indexing and resizing capabilities.
     /// Optimized for use in performance-critical applications like game grids.
     /// </summary>
     /// <typeparam name="T">The type of elements in the 3D array.</typeparam>
@@ -14,7 +14,7 @@ namespace SwiftCollections.Dimensions
     {
         #region Fields and Properties
 
-        private T[][][] _innerArray;
+        private T[] _innerArray;
 
         public int Width { get; private set; }
         public int Height { get; private set; }
@@ -50,12 +50,12 @@ namespace SwiftCollections.Dimensions
             get
             {
                 ValidateIndex(x, y, z);
-                return _innerArray[x][y][z];
+                return _innerArray[GetIndex(x, y, z)];
             }
             set
             {
                 ValidateIndex(x, y, z);
-                _innerArray[x][y][z] = value;
+                _innerArray[GetIndex(x, y, z)] = value;
             }
         }
 
@@ -71,13 +71,7 @@ namespace SwiftCollections.Dimensions
             Width = width;
             Height = height;
             Length = length;
-            _innerArray = new T[width][][];
-            for (int x = 0; x < width; x++)
-            {
-                _innerArray[x] = new T[height][];
-                for (int y = 0; y < height; y++)
-                    _innerArray[x][y] = new T[length];
-            }
+            _innerArray = new T[width * height * length];
         }
 
         /// <summary>
@@ -86,13 +80,7 @@ namespace SwiftCollections.Dimensions
         /// </summary>
         public void Resize(int newWidth, int newHeight, int newLength)
         {
-            var newArray = new T[newWidth][][];
-            for (int x = 0; x < newWidth; x++)
-            {
-                newArray[x] = new T[newHeight][];
-                for (int y = 0; y < newHeight; y++)
-                    newArray[x][y] = new T[newLength];
-            }
+            var newArray = new T[newWidth * newHeight * newLength];
 
             int minWidth = Math.Min(Width, newWidth);
             int minHeight = Math.Min(Height, newHeight);
@@ -101,7 +89,14 @@ namespace SwiftCollections.Dimensions
             for (int x = 0; x < minWidth; x++)
             {
                 for (int y = 0; y < minHeight; y++)
-                    Array.Copy(_innerArray[x][y], 0, newArray[x][y], 0, minLength);
+                {
+                    for (int z = 0; z < minLength; z++)
+                    {
+                        int srcIndex = GetIndex(x, y, z);
+                        int dstIndex = x * (newHeight * newLength) + y * newLength + z;
+                        newArray[dstIndex] = _innerArray[srcIndex];
+                    }
+                }
             }
 
             _innerArray = newArray;
@@ -127,19 +122,8 @@ namespace SwiftCollections.Dimensions
         /// </remarks>
         public void Shift(int xOffset, int yOffset, int zOffset, bool wrap = true)
         {
-            var newArray = new T[Width][][];
+            var newArray = new T[Width * Height * Length];
 
-            // Initialize the new array
-            for (int x = 0; x < Width; x++)
-            {
-                newArray[x] = new T[Height][];
-                for (int y = 0; y < Height; y++)
-                {
-                    newArray[x][y] = new T[Length];
-                }
-            }
-
-            // Shift elements
             for (int x = 0; x < Width; x++)
             {
                 for (int y = 0; y < Height; y++)
@@ -150,10 +134,11 @@ namespace SwiftCollections.Dimensions
                         int newY = wrap ? (y + yOffset + Height) % Height : y + yOffset;
                         int newZ = wrap ? (z + zOffset + Length) % Length : z + zOffset;
 
-                        // Check if the destination index is valid
                         if (IsValidIndex(newX, newY, newZ))
                         {
-                            newArray[newX][newY][newZ] = _innerArray[x][y][z];
+                            int srcIndex = GetIndex(x, y, z);
+                            int dstIndex = GetIndex(newX, newY, newZ);
+                            newArray[dstIndex] = _innerArray[srcIndex];
                         }
                     }
                 }
@@ -165,28 +150,20 @@ namespace SwiftCollections.Dimensions
         /// <summary>
         /// Clears all elements in the array.
         /// </summary>
-        public void Clear()
-        {
-            foreach (var slice in _innerArray)
-            {
-                foreach (var row in slice)
-                    Array.Clear(row, 0, row.Length);
-            }
-        }
+        public void Clear() => Array.Clear(_innerArray, 0, _innerArray.Length);
 
         /// <summary>
         /// Fills the entire array with the specified value.
         /// </summary>
         public void Fill(T value)
         {
-            for (int x = 0; x < Width; x++)
-            {
-                for (int y = 0; y < Height; y++)
-                {
-                    for (int z = 0; z < Length; z++)
-                        _innerArray[x][y][z] = value;
-                }
-            }
+            for (int i = 0; i < _innerArray.Length; i++)
+                _innerArray[i] = value;
+        }
+
+        public virtual int GetIndex(int x, int y, int z)
+        {
+            return x * (Height * Length) + y * Length + z;
         }
 
         /// <summary>
