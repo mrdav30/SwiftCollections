@@ -50,21 +50,28 @@ jobs:
       - name: Determine Version
         id: version_step
         run: |
-          chown -R $(whoami) $(pwd)
-          dotnet-gitversion /output json
+            chown -R $(whoami) $(pwd)
+            dotnet-gitversion /output json > version.json
+            echo "FULL_SEM_VER=$(grep -oP '"FullSemVer":\s*"\K[^"]+' version.json)" >> $GITHUB_ENV
+            echo "ASSEMBLY_VERSION=$(grep -oP '"AssemblySemFileVer":\s*"\K[^"]+' version.json)" >> $GITHUB_ENV
           
       - name: Restore dependencies
         run: dotnet restore
 
       - name: Build Solution
         run: |
-          echo "Version: ${{ steps.version_step.outputs.fullSemVer }}\nAssembley Version: ${{ steps.version_step.outputs.fullSemVer }}"
-          dotnet build --configuration Debug --no-restore
+            echo "Version: ${{ env.FULL_SEM_VER }}"
+            echo "Assembly Version: ${{ env.ASSEMBLY_VERSION }}"
+            dotnet build --configuration Debug --no-restore
 
-      - name: Test
+      - name: Test .NET48
         run: |
           dotnet --info
-          mono ~/.nuget/packages/xunit.runner.console/2.9.3/tools/net472/xunit.console.exe ${{github.workspace}}/tests/SwiftCollections.Tests/bin/Debug/net48/SwiftCollections.Tests.dll
+          mono ~/.nuget/packages/xunit.runner.console/2.9.3/tools/net48/xunit.console.exe ${{github.workspace}}/tests/SwiftCollections.Tests/bin/Debug/net48/SwiftCollections.Tests.dll
+      
+      - name: Test .NET8
+        run: |
+            dotnet test -f net8 --verbosity normal
 
   build-and-test-windows:
     if: |
@@ -99,18 +106,22 @@ jobs:
             
       - name: Determine Version
         run: |
-          chown -R $(whoami) $(pwd)
-          dotnet-gitversion /output json
+          chown -R $env:USERNAME $(Get-Location)
+          dotnet-gitversion /output json | Out-File -FilePath version.json
+          $json = Get-Content version.json | ConvertFrom-Json
+          echo "FULL_SEM_VER=$($json.FullSemVer)" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "ASSEMBLY_VERSION=$($json.AssemblySemFileVer)" | Out-File -FilePath $env:GITHUB_ENV -Append
           
       - name: Restore dependencies
         run: dotnet restore
         
       - name: Build Solution
         run: |
-          echo "Version:${{ env.GitVersion_FullSemVer }}\nAssembley Version:${{env.GitVersion_AssemblySemFileVer }}"
-          dotnet build --configuration Release --no-restore
+          echo "Version: ${{ env.FULL_SEM_VER }}"
+          echo "Assembly Version: ${{ env.ASSEMBLY_VERSION }}"
+          dotnet build --configuration Debug --no-restore
           
-      - name: Test
+      - name: Test .NET48 & .NET8
         run: |
           dotnet --info
-          dotnet test ${{github.workspace}}\tests\SwiftCollections.Tests\bin\Release\net48\SwiftCollections.Tests.dll --verbosity normal
+          dotnet test --verbosity normal
