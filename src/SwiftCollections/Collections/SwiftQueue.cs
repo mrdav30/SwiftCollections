@@ -20,7 +20,7 @@ namespace SwiftCollections
     /// </summary>
     /// <typeparam name="T">Specifies the type of elements in the queue.</typeparam>
     [Serializable]
-    public sealed class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumerable, ICollection
+    public sealed class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumerable, ICollection<T>, ICollection
     {
         #region Constants
 
@@ -134,6 +134,7 @@ namespace SwiftCollections
 
         #region Properties
 
+        /// <inheritdoc cref="_innerArray"/>
         public T[] InnerArray => _innerArray;
 
         /// <inheritdoc cref="_count"/>
@@ -146,11 +147,18 @@ namespace SwiftCollections
         public int Capacity => _innerArray.Length;
 
         public bool IsSynchronized => false;
+
         object ICollection.SyncRoot => _syncRoot ??= new object();
+
+        /// <inheritdoc/>
+        public bool IsReadOnly => false;
 
         #endregion
 
         #region Collection Management
+
+        /// <inheritdoc/>
+        public void Add(T item) => Enqueue(item);
 
         /// <summary>
         /// Adds an item to the end of the queue. Automatically resizes the queue if the capacity is exceeded.
@@ -184,6 +192,8 @@ namespace SwiftCollections
             return item;
         }
 
+        bool ICollection<T>.Remove(T item) => throw new NotSupportedException("Remove is not supported for SwiftQueue.");
+
         /// <summary>
         /// Returns the item at the front of the queue without removing it. 
         /// Throws an InvalidOperationException if the queue is empty.
@@ -207,6 +217,23 @@ namespace SwiftCollections
             if ((uint)_count == 0) ThrowHelper.ThrowInvalidOperationException("Queue is Empty");
             int tailIndex = (_tail - 1) & _mask;
             return _innerArray[tailIndex];
+        }
+
+        /// <inheritdoc/>
+        public bool Contains(T item)
+        {
+            if ((uint)_count == 0) return false;
+
+            int index = _head;
+            for (int i = 0; i < _count; i++)
+            {
+                if (Equals(_innerArray[index], item))
+                    return true;
+
+                index = (index + 1) & _mask;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -344,6 +371,7 @@ namespace SwiftCollections
             return result;
         }
 
+        /// <inheritdoc/>
         public void CopyTo(Array array, int arrayIndex)
         {
             if (array == null) ThrowHelper.ThrowArgumentNullException(nameof(array));
@@ -357,17 +385,40 @@ namespace SwiftCollections
 
             try
             {
-                if ((uint)_head < (uint)_tail)
-                    Array.Copy(_innerArray, _head, array, arrayIndex, _count);
-                else
-                {
-                    Array.Copy(_innerArray, _head, array, arrayIndex, _innerArray.Length - _head);
-                    Array.Copy(_innerArray, 0, array, arrayIndex + _innerArray.Length - _head, _tail);
-                }
+                CopyToInternal(array, arrayIndex);
             }
             catch (ArrayTypeMismatchException)
             {
                 ThrowHelper.ThrowArgumentException("Invalid array type.");
+            }
+        }
+
+        /// <inheritdoc/>
+        public void CopyTo(T[] array, int arrayIndex)
+        {
+            if (array == null) ThrowHelper.ThrowArgumentNullException(nameof(array));
+            if ((uint)array.Rank != 1) ThrowHelper.ThrowArgumentException("Array must be single dimensional.");
+            if ((uint)array.GetLowerBound(0) != 0) ThrowHelper.ThrowArgumentException("Array must have zero-based indexing.");
+            if ((uint)arrayIndex > array.Length) ThrowHelper.ThrowArgumentOutOfRangeException();
+            if ((uint)(array.Length - arrayIndex) < _count) ThrowHelper.ThrowArgumentException("Destination array is not long enough.");
+
+            if ((uint)_count == 0) return;
+
+            CopyToInternal(array, arrayIndex);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void CopyToInternal(Array destination, int arrayIndex)
+        {
+            if ((uint)_head < (uint)_tail)
+            {
+                Array.Copy(_innerArray, _head, destination, arrayIndex, _count);
+            }
+            else
+            {
+                int firstPartLength = _innerArray.Length - _head;
+                Array.Copy(_innerArray, _head, destination, arrayIndex, firstPartLength);
+                Array.Copy(_innerArray, 0, destination, arrayIndex + firstPartLength, _tail);
             }
         }
 
@@ -376,9 +427,7 @@ namespace SwiftCollections
             if (output == null) ThrowHelper.ThrowArgumentNullException(nameof(output));
             output.Clear();
             foreach (var item in this)
-            {
                 output.Add(item);
-            }
         }
 
         #endregion
