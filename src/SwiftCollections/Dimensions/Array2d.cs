@@ -14,7 +14,9 @@ namespace SwiftCollections.Dimensions
         #region Fields
 
         private T[] _innerArray;
+
         private int _width;
+
         private int _height;
 
         #endregion
