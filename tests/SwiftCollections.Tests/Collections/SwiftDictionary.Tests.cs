@@ -137,6 +137,92 @@ namespace SwiftCollections.Tests
         }
 
         [Fact]
+        public void Indexer_Set_NewKeys_TriggersResizeAndAddsCorrectly()
+        {
+            // Use small initial capacity to trigger resize quickly
+            var dictionary = new SwiftDictionary<int, string>(4);
+
+            int itemCount = 1000;
+
+            for (int i = 0; i < itemCount; i++)
+            {
+                dictionary[i] = $"Value {i}";
+            }
+
+            // Verify all keys are present and correct
+            Assert.Equal(itemCount, dictionary.Count);
+
+            for (int i = 0; i < itemCount; i++)
+            {
+                Assert.True(dictionary.ContainsKey(i));
+                Assert.Equal($"Value {i}", dictionary[i]);
+            }
+        }
+
+        [Fact]
+        public void Indexer_Set_ExistingKeys_UpdatesValuesAcrossResizes()
+        {
+            // Small initial capacity to force resizes
+            var dictionary = new SwiftDictionary<int, string>(4);
+
+            int itemCount = 1000;
+
+            // Add initial values
+            for (int i = 0; i < itemCount; i++)
+            {
+                dictionary[i] = $"Initial {i}";
+            }
+
+            // Now update all values
+            for (int i = 0; i < itemCount; i++)
+            {
+                dictionary[i] = $"Updated {i}";
+            }
+
+            // Verify updated values
+            Assert.Equal(itemCount, dictionary.Count);
+
+            for (int i = 0; i < itemCount; i++)
+            {
+                Assert.True(dictionary.ContainsKey(i));
+                Assert.Equal($"Updated {i}", dictionary[i]);
+            }
+        }
+
+        [Fact]
+        public void Indexer_Set_MixedNewAndExistingKeys_BehavesCorrectly()
+        {
+            var dictionary = new SwiftDictionary<int, string>(4);
+
+            int initialInsertCount = 500;
+            int mixedOperationCount = 1000;
+
+            // Step 1: Add some initial keys
+            for (int i = 0; i < initialInsertCount; i++)
+            {
+                dictionary[i] = $"Initial {i}";
+            }
+
+            // Step 2: Mix updates to existing keys and insert new keys
+            for (int i = 0; i < mixedOperationCount; i++)
+            {
+                int key = i % (initialInsertCount * 2); // will cause overlap and new keys
+                dictionary[key] = $"Updated {key}";
+            }
+
+            // Step 3: Verify consistency of all keys present
+            int expectedCount = initialInsertCount * 2; // due to modulo range used
+
+            Assert.Equal(expectedCount, dictionary.Count);
+
+            for (int i = 0; i < expectedCount; i++)
+            {
+                Assert.True(dictionary.ContainsKey(i));
+                Assert.Equal($"Updated {i}", dictionary[i]);
+            }
+        }
+
+        [Fact]
         public void Indexer_Set_ExistingKey_UpdatesValue()
         {
             var dictionary = new SwiftDictionary<int, string>();

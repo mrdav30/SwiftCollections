@@ -174,8 +174,13 @@ namespace SwiftCollections
             set
             {
                 int index = FindEntry(key);
-                if (index >= 0) _entries[index].Value = value;
-                else InsertIfNotExist(key, value);
+                if (index >= 0)
+                    _entries[index].Value = value;
+                else
+                {
+                    CheckLoadThreshold();
+                    InsertIfNotExist(key, value);
+                }
             }
         }
 
