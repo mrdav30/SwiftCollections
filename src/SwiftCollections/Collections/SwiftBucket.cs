@@ -179,13 +179,15 @@ namespace SwiftCollections
         /// <param name="item">The object to remove.</param>
         /// <returns><c>true</c> if item was successfully removed; otherwise, <c>false</c>.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool Remove(T item)
+        public bool TryRemove(T item)
         {
             int index = IndexOf(item);
             if (index < 0) return false;
             RemoveAt(index);
             return true;
         }
+
+        bool ICollection<T>.Remove(T item) => TryRemove(item);
 
         /// <summary>
         /// Removes the item at the specified arrayIndex if it has been allocated.

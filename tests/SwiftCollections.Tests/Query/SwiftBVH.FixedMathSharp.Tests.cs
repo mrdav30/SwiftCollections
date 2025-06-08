@@ -305,7 +305,6 @@ namespace SwiftCollections.Query.Tests
             Assert.Equal(numVolumes, results.Count);
         }
 
-
         [Fact]
         public void MultiThreaded_ConcurrentOperations()
         {

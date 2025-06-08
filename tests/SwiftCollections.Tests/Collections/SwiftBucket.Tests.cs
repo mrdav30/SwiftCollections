@@ -61,7 +61,7 @@ namespace SwiftCollections.Tests
             bucket.Add("Item2");
 
             // Act
-            bool removed = bucket.Remove("Item1");
+            bool removed = bucket.TryRemove("Item1");
 
             // Assert
             removed.Should().BeTrue();
@@ -116,7 +116,7 @@ namespace SwiftCollections.Tests
             bucket.Add(2);
 
             // Act
-            bool removed = bucket.Remove(3);
+            bool removed = bucket.TryRemove(3);
 
             // Assert
             removed.Should().BeFalse();
