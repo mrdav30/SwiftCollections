@@ -192,6 +192,26 @@ namespace SwiftCollections
             return item;
         }
 
+        /// <summary>
+        /// Tries to remove and return the item at the front of the queue. 
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryDequeue(out T item)
+        {
+            if ((uint)_count == 0)
+            {
+                item = default;
+                return false;
+            }
+
+            item = _innerArray[_head];
+            _innerArray[_head] = default;
+            _head = (_head + 1) & _mask;
+            _count--;
+            _version++;
+            return true;
+        }
+
         bool ICollection<T>.Remove(T item) => throw new NotSupportedException("Remove is not supported for SwiftQueue.");
 
         /// <summary>
@@ -204,6 +224,22 @@ namespace SwiftCollections
         {
             if ((uint)_count == 0) ThrowHelper.ThrowInvalidOperationException("Queue is Empty");
             return _innerArray[_head];
+        }
+
+        /// <summary>
+        /// Tries to return the item at the front of the queue without removing it. 
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryPeek(out T item)
+        {
+            if ((uint)_count == 0)
+            {
+                item = default;
+                return false;
+            }
+
+            item = _innerArray[_head];
+            return true;
         }
 
         /// <summary>

@@ -169,6 +169,7 @@ namespace SwiftCollections
             CheckLoadThreshold();
             return InsertIfNotExists(item);
         }
+
         void ICollection<T>.Add(T item) => Add(item);
 
         /// <summary>
