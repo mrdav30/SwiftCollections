@@ -175,6 +175,7 @@ namespace SwiftCollections.Benchmarks
 ## 🛠️ Compatibility
 
 - **.NET Framework** 4.7.2+
+- .NET Core / .NET 6+
 - **Unity 2020+** (via - [SwiftCollection-Unity](https://github.com/mrdav30/SwiftCollections-Unity).)
 - **Cross-Platform Support** (Windows, Linux, macOS)
 - **Query Collections Precision**: Supports both System.Numerics and FixedMathSharp.
