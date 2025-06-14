@@ -23,7 +23,7 @@
 		<PrivateAssets>all</PrivateAssets>
 	</ProjectReference>
   	<PackageReference Include="BenchmarkDotNet" Version="0.15.0" />
-  	<PackageReference Include="FixedMathSharp" Version="1.2.3" />
+  	<PackageReference Include="FixedMathSharp" Version="1.3.0" />
     <!-- The Test SDK is required only for the VSTest Adapter to work -->
   </ItemGroup>
   <ItemGroup>
