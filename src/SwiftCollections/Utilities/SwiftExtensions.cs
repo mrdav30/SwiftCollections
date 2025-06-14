@@ -168,7 +168,7 @@ namespace SwiftCollections
                 return swift.FromEnd(reverseIndex);
 
             // fallback for generic IEnumerable
-            var buffer = new List<T>(source);
+            var buffer = new SwiftList<T>(source);
             return buffer.FromEnd(reverseIndex);
         }
 
