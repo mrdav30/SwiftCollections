@@ -96,7 +96,7 @@ namespace SwiftCollections.Query.Tests
         {
             var bvh = new SwiftBVH<int>(10000);
             int numVolumes = 1000;
-            var random = new Random();
+            var random = new Random(12345);
 
             for (int i = 0; i < numVolumes; i++)
             {
@@ -112,7 +112,10 @@ namespace SwiftCollections.Query.Tests
                 bvh.Insert(i, new BoundVolume(min, max));
             }
 
-            var queryVolume = new BoundVolume(new Vector3(50, 50, 50), new Vector3(60, 60, 60));
+            var queryVolume = new BoundVolume(
+                new Vector3(25, 25, 25),
+                new Vector3(75, 75, 75));
+
             var results = new List<int>();
             bvh.Query(queryVolume, results);
 

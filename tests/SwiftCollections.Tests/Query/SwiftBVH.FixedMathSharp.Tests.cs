@@ -96,7 +96,7 @@ namespace SwiftCollections.Query.Tests
         {
             var bvh = new SwiftBVH<int>(10000);
             int numVolumes = 1000;
-            var random = new Random();
+            var random = new Random(12345); // Deterministic seed
 
             for (int i = 0; i < numVolumes; i++)
             {
@@ -112,7 +112,10 @@ namespace SwiftCollections.Query.Tests
                 bvh.Insert(i, new FixedBoundVolume(min, max));
             }
 
-            var queryVolume = new FixedBoundVolume(new Vector3d(50, 50, 50), new Vector3d(60, 60, 60));
+            var queryVolume = new FixedBoundVolume(
+                new Vector3d(25, 25, 25),
+                new Vector3d(75, 75, 75));
+
             var results = new List<int>();
             bvh.Query(queryVolume, results);
 
