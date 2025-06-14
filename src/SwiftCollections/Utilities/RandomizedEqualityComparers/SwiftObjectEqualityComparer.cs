@@ -22,7 +22,7 @@ namespace SwiftCollections
         /// </summary>
         public SwiftObjectEqualityComparer()
         {
-            _entropy = HashHelper.GetEntropy();
+            _entropy = HashTools.GetEntropy();
         }
 
         /// <summary>

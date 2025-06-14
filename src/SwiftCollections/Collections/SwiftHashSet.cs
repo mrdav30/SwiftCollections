@@ -140,7 +140,7 @@ namespace SwiftCollections
         /// <param name="context"></param>
         public SwiftHashSet(SerializationInfo info, StreamingContext context)
         {
-            HashHelper.SerializationInfoTable.Add(this, info);
+            HashTools.SerializationInfoTable.Add(this, info);
         }
 
         #endregion
@@ -294,7 +294,7 @@ namespace SwiftCollections
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void EnsureCapacity(int capacity)
         {
-            capacity = HashHelper.NextPowerOfTwo(capacity);  // Capacity must be a power of 2 for proper masking
+            capacity = HashTools.NextPowerOfTwo(capacity);  // Capacity must be a power of 2 for proper masking
             if (capacity > _entries.Length)
                 Resize(capacity);
         }
@@ -344,7 +344,7 @@ namespace SwiftCollections
         /// </summary>
         public void TrimExcess()
         {
-            int newSize = _count <= DefaultCapacity ? DefaultCapacity : HashHelper.NextPowerOfTwo(_count);
+            int newSize = _count <= DefaultCapacity ? DefaultCapacity : HashTools.NextPowerOfTwo(_count);
             if (newSize >= _entries.Length) return;
 
             Entry[] newEntries = new Entry[newSize];
@@ -410,7 +410,7 @@ namespace SwiftCollections
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Initialize(int capacity)
         {
-            int size = capacity < DefaultCapacity ? DefaultCapacity: HashHelper.NextPowerOfTwo(capacity);
+            int size = capacity < DefaultCapacity ? DefaultCapacity: HashTools.NextPowerOfTwo(capacity);
             _entries = new Entry[size];
             _entryMask = size - 1;
 
@@ -479,7 +479,7 @@ namespace SwiftCollections
         private void SwitchToRandomizedComparer()
         {
             if (_comparer == EqualityComparer<string>.Default || _comparer == EqualityComparer<object>.Default)
-                _comparer = (IEqualityComparer<T>)HashHelper.GetSwiftEqualityComparer(_comparer);
+                _comparer = (IEqualityComparer<T>)HashTools.GetSwiftEqualityComparer(_comparer);
             else return; // nothing to do here
 
             RehashEntries();
@@ -651,7 +651,7 @@ namespace SwiftCollections
         {
             if (_entries != null) return; // Already initialized
 
-            if (!HashHelper.SerializationInfoTable.TryGetValue(this, out SerializationInfo info))
+            if (!HashTools.SerializationInfoTable.TryGetValue(this, out SerializationInfo info))
                 return;
 
             int realVersion = info.GetInt32("Version");
@@ -675,7 +675,7 @@ namespace SwiftCollections
                 Initialize(DefaultCapacity);
 
             _version = (uint)realVersion;
-            HashHelper.SerializationInfoTable.Remove(this);
+            HashTools.SerializationInfoTable.Remove(this);
         }
 
         #endregion

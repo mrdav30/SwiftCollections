@@ -22,7 +22,7 @@ namespace SwiftCollections
         /// </summary>
         public SwiftStringEqualityComparer()
         {
-            _entropy = HashHelper.GetEntropy();
+            _entropy = HashTools.GetEntropy();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -56,7 +56,7 @@ namespace SwiftCollections
         public int GetHashCode(string obj)
         {
             if (obj == null) return 0;
-            return HashHelper.MurmurHash3(obj, (int)(_entropy & 0x7FFFFFFF));
+            return HashTools.MurmurHash3(obj, (int)(_entropy & 0x7FFFFFFF));
         }
 
         /// <summary>
@@ -68,7 +68,7 @@ namespace SwiftCollections
         public int GetHashCode(object obj)
         {
             if (obj == null) return 0;
-            if (obj is string text) return HashHelper.MurmurHash3(text, (int)(_entropy & 0x7FFFFFFF));
+            if (obj is string text) return HashTools.MurmurHash3(text, (int)(_entropy & 0x7FFFFFFF));
             return obj.GetHashCode() ^ (int)(_entropy & 0x7FFFFFFF);
         }
 

@@ -44,7 +44,7 @@ namespace SwiftCollections.Query
         /// </summary>
         public SwiftBVH(int capacity)
         {
-            capacity = HashHelper.NextPowerOfTwo(capacity);
+            capacity = HashTools.NextPowerOfTwo(capacity);
             _nodePool = new SwiftBVHNode<T>[capacity].Populate(() =>
                 new SwiftBVHNode<T>() { ParentIndex = -1, LeftChildIndex = -1, RightChildIndex = -1 });
             _buckets = new int[capacity].Populate(() => -1);
@@ -423,7 +423,7 @@ namespace SwiftCollections.Query
         /// </summary>
         public void EnsureCapacity(int capacity)
         {
-            capacity = HashHelper.NextPowerOfTwo(capacity);
+            capacity = HashTools.NextPowerOfTwo(capacity);
             if (capacity > _nodePool.Length)
                 Resize(capacity);
         }

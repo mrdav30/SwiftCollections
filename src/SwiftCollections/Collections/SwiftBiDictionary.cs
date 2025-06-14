@@ -290,7 +290,7 @@ namespace SwiftCollections
             base.OnDeserialization(sender);
 
             // Retrieve the SerializationInfo from a SerializationInfo table or similar mechanism
-            HashHelper.SerializationInfoTable.TryGetValue(this, out SerializationInfo siInfo);
+            HashTools.SerializationInfoTable.TryGetValue(this, out SerializationInfo siInfo);
             if (siInfo == null) return;
 
             // Deserialize the reverse map
@@ -309,7 +309,7 @@ namespace SwiftCollections
             }
 
             // Remove the SerializationInfo from the table
-            HashHelper.SerializationInfoTable.Remove(this);
+            HashTools.SerializationInfoTable.Remove(this);
         }
 
 

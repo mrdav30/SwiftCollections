@@ -74,7 +74,7 @@ namespace SwiftCollections
         /// <param name="capacity">The initial capacity of the bucket.</param>
         public SwiftBucket(int capacity)
         {
-            capacity = capacity <= DefaultCapacity ? DefaultCapacity : HashHelper.NextPowerOfTwo(capacity);
+            capacity = capacity <= DefaultCapacity ? DefaultCapacity : HashTools.NextPowerOfTwo(capacity);
             _innerArray = new Entry[capacity];
             _freeIndices = new IntStack(IntStack.DefaultCapacity);
         }
@@ -236,7 +236,7 @@ namespace SwiftCollections
 
         public void EnsureCapacity(int capacity)
         {
-            capacity = HashHelper.NextPowerOfTwo(capacity);
+            capacity = HashTools.NextPowerOfTwo(capacity);
             if (capacity > _innerArray.Length)
                 Resize(capacity);
         }
@@ -258,7 +258,7 @@ namespace SwiftCollections
         /// </summary>
         public void TrimExcessCapacity()
         {
-            int newCapacity = _count <= DefaultCapacity ? DefaultCapacity : HashHelper.NextPowerOfTwo(_count);
+            int newCapacity = _count <= DefaultCapacity ? DefaultCapacity : HashTools.NextPowerOfTwo(_count);
 
             Entry[] newArray = new Entry[newCapacity];
             int newPeak = 0;

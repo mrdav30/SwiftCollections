@@ -9,9 +9,9 @@ using System.Threading;
 namespace SwiftCollections
 {
     /// <summary>
-    /// Provides helper methods and constants for hashing and power of two calculations used in hash-based collections.
+    /// Provides utility functions for generating, combining, and working with hash codes.
     /// </summary>
-    internal static class HashHelper
+    public static class HashTools
     {
         /// <summary>
         /// Provides a cryptographic random number generator for generating entropy.
@@ -31,7 +31,7 @@ namespace SwiftCollections
         /// <summary>
         /// Synchronization object for thread-safe operations.
         /// </summary>
-        private static readonly object lockObj = new object();
+        private static readonly object lockObj = new();
 
         /// <summary>
         /// Holds serialization information for objects during the serialization process.
@@ -84,6 +84,73 @@ namespace SwiftCollections
             value |= value >> 16;
             value++;
             return value;
+        }
+
+        /// <summary>
+        /// Combines the hash codes of the elements in a tuple using a DJB2-inspired mixing strategy.
+        /// </summary>
+        public static int CombineHashCodes(
+            this ITuple tupled,
+            int seed = 5381,
+            int shift1 = 16,
+            int shift2 = 5,
+            int shift3 = 27,
+            int factor3 = 1566083941)
+        {
+            int hash1 = (seed << shift1) + seed;
+            int hash2 = hash1;
+
+            for (int i = 0; i < tupled.Length; i++)
+            {
+                int itemHash = tupled[i]?.GetHashCode() ?? 0;
+                unchecked
+                {
+                    if (i % 2 == 0)
+                        hash1 = ((hash1 << shift2) + hash1 + (hash1 >> shift3)) ^ itemHash;
+                    else
+                        hash2 = ((hash2 << shift2) + hash2 + (hash2 >> shift3)) ^ itemHash;
+                }
+            }
+
+            return (hash1 ^ (hash2 * factor3));
+        }
+
+        /// <summary>
+        /// Combines the hash codes of a set of objects using a DJB2-inspired mixing strategy.
+        /// </summary>
+        public static int CombineHashCodes(
+            this object[] values,
+            int seed = 5381,
+            int shift1 = 16,
+            int shift2 = 5,
+            int shift3 = 27,
+            int factor3 = 1566083941)
+        {
+            int hash1 = (seed << shift1) + seed;
+            int hash2 = hash1;
+
+            for (int i = 0; i < values.Length; i++)
+            {
+                var itemHash = values[i]?.GetHashCode() ?? 0;
+                unchecked
+                {
+                    if ((i & 1) == 0)
+                        hash1 = ((hash1 << shift2) + hash1 + (hash1 >> shift3)) ^ itemHash;
+                    else
+                        hash2 = ((hash2 << shift2) + hash2 + (hash2 >> shift3)) ^ itemHash;
+                }
+            }
+
+            return hash1 + (hash2 * factor3);
+        }
+
+        /// <summary>
+        /// Combines the hash codes of the provided objects using a DJB2-inspired mixing strategy.
+        /// </summary>
+        public static int CombineHashCodes(
+            params object[] values)
+        {
+            return values.CombineHashCodes();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -186,33 +253,6 @@ namespace SwiftCollections
             h *= 0xc2b2ae35;
             h ^= h >> 16;
             return h;
-        }
-
-        // System.String.GetHashCode(): http://referencesource.microsoft.com/#mscorlib/system/string.cs,0a17bbac4851d0d4
-        // System.Web.Util.StringUtil.GetStringHashCode(System.String): http://referencesource.microsoft.com/#System.Web/Util/StringUtil.cs,c97063570b4e791a
-        public static int CombineHashCodes(
-            this ITuple tupled,
-            int seed = 5381,
-            int shift1 = 16,
-            int shift2 = 5,
-            int shift3 = 27,
-            int factor3 = 1566083941)
-        {
-            int hash1 = (seed << shift1) + seed;
-            int hash2 = hash1;
-
-            for (int i = 0; i < tupled.Length; i++)
-            {
-                unchecked
-                {
-                    if (i % 2 == 0)
-                        hash1 = ((hash1 << shift2) + hash1 + (hash1 >> shift3)) ^ tupled[i].GetHashCode();
-                    else
-                        hash2 = ((hash2 << shift2) + hash2 + (hash2 >> shift3)) ^ tupled[i].GetHashCode();
-                }
-            }
-
-            return hash1 + (hash2 * factor3);
-        }
+        }     
     }
 }

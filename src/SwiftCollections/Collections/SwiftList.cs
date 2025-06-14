@@ -74,7 +74,7 @@ namespace SwiftCollections
                 _innerArray = _emptyArray;
             else
             {
-                capacity = HashHelper.NextPowerOfTwo(capacity <= DefaultCapacity ? DefaultCapacity : capacity);
+                capacity = HashTools.NextPowerOfTwo(capacity <= DefaultCapacity ? DefaultCapacity : capacity);
                 _innerArray = new T[capacity];
             }          
         }
@@ -205,7 +205,7 @@ namespace SwiftCollections
                 // Ensure capacity to fit all new items
                 if (_count + collection.Count > _innerArray.Length)
                 {
-                    int newCapacity = HashHelper.NextPowerOfTwo(_count + collection.Count);
+                    int newCapacity = HashTools.NextPowerOfTwo(_count + collection.Count);
                     Resize(newCapacity);
                 }
 
@@ -381,7 +381,7 @@ namespace SwiftCollections
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void EnsureCapacity(int capacity)
         {
-            capacity = HashHelper.NextPowerOfTwo(capacity);
+            capacity = HashTools.NextPowerOfTwo(capacity);
             if (capacity > _innerArray.Length)
                 Resize(capacity);
         }
@@ -404,7 +404,7 @@ namespace SwiftCollections
         /// </summary>
         public void TrimExcessCapacity()
         {
-            int newCapacity = _count < DefaultCapacity ? DefaultCapacity : HashHelper.NextPowerOfTwo(_count);
+            int newCapacity = _count < DefaultCapacity ? DefaultCapacity : HashTools.NextPowerOfTwo(_count);
             Array.Resize(ref _innerArray, newCapacity);
             _version++;
         }

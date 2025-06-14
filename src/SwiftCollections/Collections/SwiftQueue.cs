@@ -105,7 +105,7 @@ namespace SwiftCollections
             }
             else
             {
-                capacity = capacity < DefaultCapacity ? DefaultCapacity : HashHelper.NextPowerOfTwo(capacity);
+                capacity = capacity < DefaultCapacity ? DefaultCapacity : HashTools.NextPowerOfTwo(capacity);
                 _innerArray = new T[capacity];
                 _mask = _innerArray.Length - 1;
             }
@@ -119,7 +119,7 @@ namespace SwiftCollections
             if (items == null) ThrowHelper.ThrowArgumentNullException(nameof(items));
             if (items is ICollection<T> collection)
             {
-                int capacity = collection.Count < DefaultCapacity ? DefaultCapacity : HashHelper.NextPowerOfTwo(collection.Count);
+                int capacity = collection.Count < DefaultCapacity ? DefaultCapacity : HashTools.NextPowerOfTwo(collection.Count);
                 _innerArray = new T[capacity];
             }
             else
@@ -313,7 +313,7 @@ namespace SwiftCollections
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void EnsureCapacity(int capacity)
         {
-            capacity = HashHelper.NextPowerOfTwo(capacity);  // Capacity must be a power of 2 for proper masking
+            capacity = HashTools.NextPowerOfTwo(capacity);  // Capacity must be a power of 2 for proper masking
             if (capacity > _innerArray.Length)
                 Resize(capacity);
         }
@@ -358,7 +358,7 @@ namespace SwiftCollections
         /// </summary>
         public void TrimExcessCapacity()
         {
-            int newSize = _count < DefaultCapacity ? DefaultCapacity : HashHelper.NextPowerOfTwo(_count);
+            int newSize = _count < DefaultCapacity ? DefaultCapacity : HashTools.NextPowerOfTwo(_count);
             if (newSize >= _innerArray.Length) return;
 
             var newArray = new T[newSize];

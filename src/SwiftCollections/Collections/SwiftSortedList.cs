@@ -85,7 +85,7 @@ namespace SwiftCollections
             }
             else
             {
-                capacity = capacity <= DefaultCapacity ? DefaultCapacity : HashHelper.NextPowerOfTwo(capacity);
+                capacity = capacity <= DefaultCapacity ? DefaultCapacity : HashTools.NextPowerOfTwo(capacity);
                 _innerArray = new T[capacity];
                 _offset = capacity >> 1; // initial offset half of capacity
             }
@@ -112,7 +112,7 @@ namespace SwiftCollections
                 }
                 else
                 {
-                    int capacity = HashHelper.NextPowerOfTwo(count <= DefaultCapacity ? DefaultCapacity : count);
+                    int capacity = HashTools.NextPowerOfTwo(count <= DefaultCapacity ? DefaultCapacity : count);
                     _innerArray = new T[capacity];
                     collection.CopyTo(_innerArray, 0);
                     Array.Sort(_innerArray, 0, _innerArray.Length, _comparer);
@@ -248,7 +248,7 @@ namespace SwiftCollections
             if ((uint)_count == 0)
             {
                 // If the list is empty, initialize with the sorted items
-                int initialCapacity = HashHelper.NextPowerOfTwo(sortedItems.Length);
+                int initialCapacity = HashTools.NextPowerOfTwo(sortedItems.Length);
                 int newOffset = (initialCapacity - sortedItems.Length) >> 1;
                 if ((uint)_innerArray.Length < initialCapacity) _innerArray = new T[initialCapacity];
                 Array.Copy(sortedItems, 0, _innerArray, newOffset, sortedItems.Length);
@@ -263,7 +263,7 @@ namespace SwiftCollections
             int totalRequiredCapacity = newCount + _offset;
 
             // Determine new capacity and offset
-            int newCapacity = HashHelper.NextPowerOfTwo(totalRequiredCapacity);
+            int newCapacity = HashTools.NextPowerOfTwo(totalRequiredCapacity);
             int mergedOffset = (newCapacity - newCount) >> 1;
 
             // Create a new array with the new capacity
@@ -436,7 +436,7 @@ namespace SwiftCollections
         /// </summary>
         public void EnsureCapacity(int capacity)
         {
-            capacity = HashHelper.NextPowerOfTwo(capacity);
+            capacity = HashTools.NextPowerOfTwo(capacity);
             if (capacity > _innerArray.Length)
                 Resize(capacity);
         }
