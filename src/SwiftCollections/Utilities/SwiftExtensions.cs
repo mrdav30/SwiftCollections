@@ -142,7 +142,7 @@ namespace SwiftCollections
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsPopulated<T>(this IEnumerable<T> source)
         {
-            if(source == null) return ThrowHelper.ThrowArgumentNullException<bool>(nameof(source));
+            if (source == null) return ThrowHelper.ThrowArgumentNullException<bool>(nameof(source));
             using IEnumerator<T> enumerator = source.GetEnumerator();
             return enumerator.MoveNext();
         }
@@ -188,6 +188,26 @@ namespace SwiftCollections
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T Last<T>(this IEnumerable<T> source) => source.FromEnd(1);
+
+        /// <summary>
+        /// Bypasses a specified number of elements from the end and then returns the remaining elements.
+        /// </summary>
+        public static IEnumerable<T> SkipFromEnd<T>(this IEnumerable<T> source, int count)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+            if (count < 0)
+                throw new ArgumentOutOfRangeException(nameof(count));
+
+            SwiftQueue<T> buffer = new();
+
+            foreach (T item in source)
+            {
+                buffer.Enqueue(item);
+                if (buffer.Count > count)
+                    yield return buffer.Dequeue();
+            }
+        }
 
         /// <summary>
         /// Returns the second-to-last item in the sequence.
