@@ -187,7 +187,7 @@ namespace SwiftCollections
         /// Returns the last item in the sequence.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T Last<T>(this IEnumerable<T> source) => source.FromEnd(1);
+        public static T PopLast<T>(this IEnumerable<T> source) => source.FromEnd(1);
 
         /// <summary>
         /// Bypasses a specified number of elements from the end and then returns the remaining elements.
