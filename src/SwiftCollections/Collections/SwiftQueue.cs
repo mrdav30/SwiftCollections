@@ -13,10 +13,6 @@ namespace SwiftCollections
     /// Aggressive inlining and optimized exception handling further reduce overhead, making SwiftQueue outperform traditional queues,
     /// especially in scenarios with high-frequency additions and removals.
     /// </para>
-    /// <para>
-    /// This implementation is optimized for performance and does not perform versioning checks.
-    /// Modifying the queue during enumeration may result in undefined behavior.
-    /// </para>
     /// </summary>
     /// <typeparam name="T">Specifies the type of elements in the queue.</typeparam>
     [Serializable]
@@ -158,7 +154,7 @@ namespace SwiftCollections
         #region Collection Management
 
         /// <inheritdoc/>
-        public void Add(T item) => Enqueue(item);
+        void ICollection<T>.Add(T item) => Enqueue(item);
 
         /// <summary>
         /// Adds an item to the end of the queue. Automatically resizes the queue if the capacity is exceeded.
@@ -173,6 +169,18 @@ namespace SwiftCollections
             _tail = (_tail + 1) & _mask;
             _count++;
             _version++;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void EnqueueRange(IEnumerable<T> items)
+        {
+            if (items == null) ThrowHelper.ThrowArgumentNullException(nameof(items));
+
+            if (items is ICollection<T> collection)
+                EnsureCapacity(collection.Count);
+
+            foreach (T item in items)
+                if (item != null) Enqueue(item);
         }
 
         /// <summary>

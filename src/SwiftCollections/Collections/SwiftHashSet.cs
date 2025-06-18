@@ -172,6 +172,26 @@ namespace SwiftCollections
 
         void ICollection<T>.Add(T item) => Add(item);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void AddRange(IEnumerable<T> items)
+        {
+            if (items == null) ThrowHelper.ThrowArgumentNullException(nameof(items));
+
+            if (items is ICollection<T> collection)
+            {
+                EnsureCapacity(collection.Count);
+
+                foreach (T item in collection)
+                    if (item != null) InsertIfNotExists(item);
+
+                return;
+            }
+
+            // Fallback for non-ICollection, adding each item individually
+            foreach (T item in items)
+                if (item != null) Add(item);
+        }
+
         /// <summary>
         /// Adds the specified element to the set if it's not already present.
         /// </summary>
@@ -410,7 +430,7 @@ namespace SwiftCollections
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Initialize(int capacity)
         {
-            int size = capacity < DefaultCapacity ? DefaultCapacity: HashTools.NextPowerOfTwo(capacity);
+            int size = capacity < DefaultCapacity ? DefaultCapacity : HashTools.NextPowerOfTwo(capacity);
             _entries = new Entry[size];
             _entryMask = size - 1;
 
@@ -546,7 +566,7 @@ namespace SwiftCollections
                     return -1;
                 if (entry.IsUsed && entry.HashCode == hashCode && _comparer.Equals(entry.Value, item))
                     return entryIndex; // Match found
-                                       
+
                 // Perform quadratic probing to see if maybe the entry was shifted.
                 step++;
                 entryIndex = (entryIndex + step * step) & _entryMask;

@@ -76,7 +76,7 @@ namespace SwiftCollections
             {
                 capacity = HashTools.NextPowerOfTwo(capacity <= DefaultCapacity ? DefaultCapacity : capacity);
                 _innerArray = new T[capacity];
-            }          
+            }
         }
 
         /// <summary>
@@ -213,12 +213,13 @@ namespace SwiftCollections
                 collection.CopyTo(_innerArray, _count);
                 _count += collection.Count;
                 _version++;
+
+                return;
             }
-            else
-            {
-                foreach (var item in items)
-                    Add(item);  // Fallback for non-ICollection, adding each item individually
-            }
+
+            // Fallback for non-ICollection, adding each item individually
+            foreach (T item in items)
+                Add(item);
         }
 
         /// <summary>
@@ -485,7 +486,7 @@ namespace SwiftCollections
         /// </summary>
         public void CopyTo(SwiftList<T> target)
         {
-            if(_count + 1 > target._innerArray.Length)
+            if (_count + 1 > target._innerArray.Length)
                 target.Resize(target._innerArray.Length * 2);
             Array.Copy(_innerArray, 0, target._innerArray, 0, _count);
             target._count = _count;
