@@ -1,9 +1,12 @@
 function Get-SolutionDirectory {
-    param ([string]$StartPath = $(Get-Location))
+    param (
+		[string]$StartPath = $(Get-Location),
+		[string]$SolutionPath = "SwiftCollections.sln"
+	)
 
     $currentPath = $StartPath
     while ($true) {
-        if (Test-Path (Join-Path $currentPath "SwiftCollections.sln")) {
+        if (Test-Path (Join-Path $currentPath $SolutionPath)) {
             return $currentPath
         }
         $parent = [System.IO.Directory]::GetParent($currentPath)
