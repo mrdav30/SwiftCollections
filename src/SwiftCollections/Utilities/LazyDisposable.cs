@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Threading;
 
+namespace SwiftCollections;
+
 /// <summary>
 /// A lazily initialized disposable object.
 /// This class extends <see cref="Lazy{T}"/> to support <see cref="IDisposable"/> objects,

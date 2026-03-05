@@ -1,6 +1,14 @@
-﻿using System;
+﻿using MemoryPack;
+using System;
 using System.Collections;
 using System.Collections.Generic;
+
+#if NET8_0_OR_GREATER
+using System.Text.Json.Serialization;
+#endif
+#if !NET8_0_OR_GREATER
+using System.Text.Json.Serialization.Shim;
+#endif
 
 namespace SwiftCollections.Dimensions
 {
@@ -10,20 +18,19 @@ namespace SwiftCollections.Dimensions
     /// </summary>
     /// <typeparam name="T">The type of elements in the 3D array.</typeparam>
     [Serializable]
-    public class Array3D<T> : IEnumerable<T>, IEnumerable
+    [JsonConverter(typeof(SwiftStateJsonConverterFactory))]
+    [MemoryPackable]
+    public partial class Array3D<T> : IEnumerable<T>, IEnumerable
     {
-        #region Fields and Properties
+        #region Fields
 
         private T[] _innerArray;
 
-        public int Width { get; private set; }
-        public int Height { get; private set; }
-        public int Length { get; private set; }
+        private int _width;
 
-        /// <summary>
-        /// Total number of elements in the 3D array.
-        /// </summary>
-        public int Size => Width * Height * Length;
+        private int _height;
+
+        private int _depth;
 
         #endregion
 
@@ -41,10 +48,43 @@ namespace SwiftCollections.Dimensions
             Fill(defaultValue);
         }
 
+        [MemoryPackConstructor]
+        public Array3D(Array3DState<T> state)
+        {
+            State = state;
+        }
+
         #endregion
 
-        #region Indexer
+        #region Properties
 
+
+        [JsonIgnore]
+        [MemoryPackIgnore]
+        public int Width => _width;
+
+        [JsonIgnore]
+        [MemoryPackIgnore]
+        public int Height => _height;
+
+        [JsonIgnore]
+        [MemoryPackIgnore]
+        public int Depth => _depth;
+
+        /// <summary>
+        /// Total size of the array.
+        /// </summary>
+        [JsonIgnore]
+        [MemoryPackIgnore]
+        public int Size => _width * _height * _depth;
+
+        /// <inheritdoc cref="Array.Length" />
+        [JsonIgnore]
+        [MemoryPackIgnore]
+        public int Length => _innerArray.Length;
+
+        [JsonIgnore]
+        [MemoryPackIgnore]
         public T this[int x, int y, int z]
         {
             get
@@ -59,6 +99,34 @@ namespace SwiftCollections.Dimensions
             }
         }
 
+        [JsonInclude]
+        [MemoryPackInclude]
+        public Array3DState<T> State
+        {
+            get
+            {
+                var data = new T[_innerArray.Length];
+                Array.Copy(_innerArray, data, data.Length);
+
+                return new Array3DState<T>(
+                    _width,
+                    _height,
+                    _depth,
+                    data
+                );
+            }
+
+            internal set
+            {
+                _width = value.Width;
+                _height = value.Height;
+                _depth = value.Depth;
+
+                _innerArray = new T[value.Data.Length];
+                Array.Copy(value.Data, _innerArray, value.Data.Length);
+            }
+        }
+
         #endregion
 
         #region Methods
@@ -66,43 +134,43 @@ namespace SwiftCollections.Dimensions
         /// <summary>
         /// Initializes the 3D array with the specified dimensions.
         /// </summary>
-        private void Initialize(int width, int height, int length)
+        private void Initialize(int width, int height, int depth)
         {
-            Width = width;
-            Height = height;
-            Length = length;
-            _innerArray = new T[width * height * length];
+            _width = width;
+            _height = height;
+            _depth = depth;
+            _innerArray = new T[width * height * depth];
         }
 
         /// <summary>
         /// Resizes the 3D array to the specified dimensions.
         /// Retains existing data where possible.
         /// </summary>
-        public void Resize(int newWidth, int newHeight, int newLength)
+        public void Resize(int newWidth, int newHeight, int newDepth)
         {
-            var newArray = new T[newWidth * newHeight * newLength];
+            var newArray = new T[newWidth * newHeight * newDepth];
 
             int minWidth = Math.Min(Width, newWidth);
             int minHeight = Math.Min(Height, newHeight);
-            int minLength = Math.Min(Length, newLength);
+            int minDepth = Math.Min(Depth, newDepth);
 
             for (int x = 0; x < minWidth; x++)
             {
                 for (int y = 0; y < minHeight; y++)
                 {
-                    for (int z = 0; z < minLength; z++)
+                    for (int z = 0; z < minDepth; z++)
                     {
                         int srcIndex = GetIndex(x, y, z);
-                        int dstIndex = x * (newHeight * newLength) + y * newLength + z;
+                        int dstIndex = x * (newHeight * newDepth) + y * newDepth + z;
                         newArray[dstIndex] = _innerArray[srcIndex];
                     }
                 }
             }
 
             _innerArray = newArray;
-            Width = newWidth;
-            Height = newHeight;
-            Length = newLength;
+            _width = newWidth;
+            _height = newHeight;
+            _depth = newDepth;
         }
 
         /// <summary>
@@ -122,17 +190,17 @@ namespace SwiftCollections.Dimensions
         /// </remarks>
         public void Shift(int xOffset, int yOffset, int zOffset, bool wrap = true)
         {
-            var newArray = new T[Width * Height * Length];
+            var newArray = new T[Width * Height * Depth];
 
             for (int x = 0; x < Width; x++)
             {
                 for (int y = 0; y < Height; y++)
                 {
-                    for (int z = 0; z < Length; z++)
+                    for (int z = 0; z < Depth; z++)
                     {
                         int newX = wrap ? (x + xOffset + Width) % Width : x + xOffset;
                         int newY = wrap ? (y + yOffset + Height) % Height : y + yOffset;
-                        int newZ = wrap ? (z + zOffset + Length) % Length : z + zOffset;
+                        int newZ = wrap ? (z + zOffset + Depth) % Depth : z + zOffset;
 
                         if (IsValidIndex(newX, newY, newZ))
                         {
@@ -163,7 +231,7 @@ namespace SwiftCollections.Dimensions
 
         public virtual int GetIndex(int x, int y, int z)
         {
-            return x * (Height * Length) + y * Length + z;
+            return x * (Height * Depth) + y * Depth + z;
         }
 
         /// <summary>
@@ -173,14 +241,14 @@ namespace SwiftCollections.Dimensions
         public virtual void ValidateIndex(int x, int y, int z)
         {
             if (!IsValidIndex(x, y, z))
-               ThrowHelper.ThrowIndexOutOfRangeException($"Invalid index ({x}, {y}, {z}) for dimensions ({Width}, {Height}, {Length}).");
+               ThrowHelper.ThrowIndexOutOfRangeException($"Invalid index ({x}, {y}, {z}) for dimensions ({Width}, {Height}, {Depth}).");
         }
 
         /// <summary>
         /// Checks if the specified indices are within bounds.
         /// </summary>
         public virtual bool IsValidIndex(int x, int y, int z) =>
-            x >= 0 && x < Width && y >= 0 && y < Height && z >= 0 && z < Length;
+            x >= 0 && x < Width && y >= 0 && y < Height && z >= 0 && z < Depth;
 
         #endregion
 
@@ -196,7 +264,7 @@ namespace SwiftCollections.Dimensions
             {
                 for (int y = 0; y < Height; y++)
                 {
-                    for (int z = 0; z < Length; z++)
+                    for (int z = 0; z < Depth; z++)
                         yield return this[x, y, z];
                 }
             }
