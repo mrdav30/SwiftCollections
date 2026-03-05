@@ -2,7 +2,7 @@
   <PropertyGroup>
     <LangVersion>9.0</LangVersion>
 	<OutputType>Exe</OutputType>
-    <TargetFrameworks>net48;net8</TargetFrameworks>
+    <TargetFrameworks>net8</TargetFrameworks>
 	<ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
 	<Optimize>true</Optimize>
@@ -22,8 +22,8 @@
 		<IncludeAssets>compile; build</IncludeAssets>
 		<PrivateAssets>all</PrivateAssets>
 	</ProjectReference>
-  	<PackageReference Include="BenchmarkDotNet" Version="0.15.0" />
-  	<PackageReference Include="FixedMathSharp" Version="1.3.0" />
+  	<PackageReference Include="BenchmarkDotNet" Version="0.15.8" />
+  	<PackageReference Include="FixedMathSharp" Version="2.0.0" />
     <!-- The Test SDK is required only for the VSTest Adapter to work -->
   </ItemGroup>
   <ItemGroup>
