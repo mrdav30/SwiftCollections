@@ -17,7 +17,7 @@ public class SwiftPackedSetTests
         set.Add("Alpha");
         set.Add("Beta");
 
-        Assert.True(set.Contains("Alpha"));
+        Assert.Contains("Alpha", set);
         Assert.True(set.Remove("Alpha"));
     }
 
@@ -29,8 +29,8 @@ public class SwiftPackedSetTests
         bool added = set.Add(42);
 
         Assert.True(added);
-        Assert.True(set.Contains(42));
-        Assert.Equal(1, set.Count);
+        Assert.Contains(42, set);
+        Assert.Single(set);
     }
 
     [Fact]
@@ -41,7 +41,7 @@ public class SwiftPackedSetTests
         Assert.True(set.Add(10));
         Assert.False(set.Add(10));
 
-        Assert.Equal(1, set.Count);
+        Assert.Single(set);
     }
 
     [Fact]
@@ -51,8 +51,8 @@ public class SwiftPackedSetTests
 
         set.Add(5);
 
-        Assert.True(set.Contains(5));
-        Assert.False(set.Contains(10));
+        Assert.Contains(5, set);
+        Assert.DoesNotContain(10, set);
     }
 
     [Fact]
@@ -66,8 +66,8 @@ public class SwiftPackedSetTests
         bool removed = set.Remove(1);
 
         Assert.True(removed);
-        Assert.False(set.Contains(1));
-        Assert.Equal(1, set.Count);
+        Assert.DoesNotContain(1, set);
+        Assert.Single(set);
     }
 
     [Fact]
@@ -92,9 +92,9 @@ public class SwiftPackedSetTests
         set.Remove(2);
 
         Assert.Equal(2, set.Count);
-        Assert.True(set.Contains(1));
-        Assert.True(set.Contains(3));
-        Assert.False(set.Contains(2));
+        Assert.Contains(1, set);
+        Assert.Contains(3, set);
+        Assert.DoesNotContain(2, set);
     }
 
     [Fact]
@@ -108,7 +108,7 @@ public class SwiftPackedSetTests
         set.Clear();
 
         Assert.Empty(set);
-        Assert.False(set.Contains(1));
+        Assert.DoesNotContain(1, set);
     }
 
     [Fact]
@@ -206,8 +206,8 @@ public class SwiftPackedSetTests
         var result = JsonSerializer.Deserialize<SwiftPackedSet<int>>(json);
 
         Assert.Equal(2, result.Count);
-        Assert.True(result.Contains(10));
-        Assert.True(result.Contains(20));
+        Assert.Contains(10, result);
+        Assert.Contains(20, result);
     }
 
     [Fact]
@@ -226,7 +226,7 @@ public class SwiftPackedSetTests
         var dense = result.Dense;
 
         for (int i = 0; i < result.Count; i++)
-            Assert.True(result.Contains(dense[i]));
+            Assert.Contains(dense[i], result);
     }
 
     [Fact]
@@ -254,8 +254,8 @@ public class SwiftPackedSetTests
         var result = MemoryPackSerializer.Deserialize<SwiftPackedSet<int>>(bytes);
 
         Assert.Equal(2, result.Count);
-        Assert.True(result.Contains(1));
-        Assert.True(result.Contains(2));
+        Assert.Contains(1, result);
+        Assert.Contains(2, result);
     }
 
     [Fact]
@@ -273,7 +273,7 @@ public class SwiftPackedSetTests
         Assert.Equal(1000, result.Count);
 
         for (int i = 0; i < 1000; i++)
-            Assert.True(result.Contains(i));
+            Assert.Contains(i, result);
     }
 
     [Fact]
