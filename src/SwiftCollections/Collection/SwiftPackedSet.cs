@@ -308,7 +308,15 @@ public sealed partial class SwiftPackedSet<T> :
         if (other == null)
             ThrowHelper.ThrowArgumentNullException(nameof(other));
 
-        foreach (var item in other)
+        if (ReferenceEquals(this, other))
+        {
+            Clear();
+            return;
+        }
+
+        var otherSet = new SwiftHashSet<T>(other);
+
+        foreach (var item in otherSet)
             Remove(item);
     }
 
@@ -317,7 +325,10 @@ public sealed partial class SwiftPackedSet<T> :
         if (other == null)
             ThrowHelper.ThrowArgumentNullException(nameof(other));
 
-        var otherSet = other as ISet<T> ?? new SwiftHashSet<T>(other);
+        if (ReferenceEquals(this, other))
+            return;
+
+        var otherSet = new SwiftHashSet<T>(other);
 
         for (int i = _count - 1; i >= 0; i--)
         {
@@ -332,7 +343,7 @@ public sealed partial class SwiftPackedSet<T> :
         if (other == null)
             ThrowHelper.ThrowArgumentNullException(nameof(other));
 
-        var set = other as ISet<T> ?? new SwiftHashSet<T>(other);
+        var set = new SwiftHashSet<T>(other);
 
         if (_count >= set.Count)
             return false;
@@ -349,17 +360,16 @@ public sealed partial class SwiftPackedSet<T> :
         if (other == null)
             ThrowHelper.ThrowArgumentNullException(nameof(other));
 
-        int count = 0;
+        var set = new SwiftHashSet<T>(other);
 
-        foreach (var item in other)
-        {
+        if (_count <= set.Count)
+            return false;
+
+        foreach (var item in set)
             if (!Contains(item))
                 return false;
 
-            count++;
-        }
-
-        return _count > count;
+        return true;
     }
 
     public bool IsSubsetOf(IEnumerable<T> other)
@@ -367,7 +377,7 @@ public sealed partial class SwiftPackedSet<T> :
         if (other == null)
             ThrowHelper.ThrowArgumentNullException(nameof(other));
 
-        var set = other as ISet<T> ?? new SwiftHashSet<T>(other);
+        var set = new SwiftHashSet<T>(other);
 
         if (_count > set.Count)
             return false;
@@ -408,7 +418,7 @@ public sealed partial class SwiftPackedSet<T> :
         if (other == null)
             ThrowHelper.ThrowArgumentNullException(nameof(other));
 
-        var set = other as ISet<T> ?? new SwiftHashSet<T>(other);
+        var set = new SwiftHashSet<T>(other);
 
         if (_count != set.Count)
             return false;
@@ -425,7 +435,15 @@ public sealed partial class SwiftPackedSet<T> :
         if (other == null)
             ThrowHelper.ThrowArgumentNullException(nameof(other));
 
-        foreach (var item in other)
+        if (ReferenceEquals(this, other))
+        {
+            Clear();
+            return;
+        }
+
+        var set = new SwiftHashSet<T>(other);
+
+        foreach (var item in set)
         {
             if (!Remove(item))
                 Add(item);

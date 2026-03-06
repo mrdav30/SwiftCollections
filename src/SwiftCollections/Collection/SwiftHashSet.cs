@@ -719,7 +719,15 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
         if (other == null)
             ThrowHelper.ThrowArgumentNullException(nameof(other));
 
-        foreach (var item in other)
+        if (ReferenceEquals(this, other))
+        {
+            Clear();
+            return;
+        }
+
+        var otherSet = new SwiftHashSet<T>(other, _comparer);
+
+        foreach (var item in otherSet)
             Remove(item);
     }
 
@@ -727,6 +735,9 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     {
         if (other == null)
             ThrowHelper.ThrowArgumentNullException(nameof(other));
+
+        if (ReferenceEquals(this, other))
+            return;
 
         var otherSet = new SwiftHashSet<T>(other, _comparer);
 
@@ -746,20 +757,16 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
         if (other == null)
             ThrowHelper.ThrowArgumentNullException(nameof(other));
 
-        if (other is ICollection<T> collection && Count >= collection.Count)
+        var otherSet = new SwiftHashSet<T>(other, _comparer);
+
+        if (Count >= otherSet.Count)
             return false;
 
-        int match = 0;
-        int total = 0;
+        for (int i = 0; i <= _lastIndex; i++)
+            if (_entries[i].IsUsed && !otherSet.Contains(_entries[i].Value))
+                return false;
 
-        foreach (var item in other)
-        {
-            total++;
-            if (Contains(item))
-                match++;
-        }
-
-        return match == Count && total > Count;
+        return true;
     }
 
     public bool IsProperSupersetOf(IEnumerable<T> other)
@@ -767,17 +774,16 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
         if (other == null)
             ThrowHelper.ThrowArgumentNullException(nameof(other));
 
-        int count = 0;
+        var otherSet = new SwiftHashSet<T>(other, _comparer);
 
-        foreach (var item in other)
-        {
+        if (Count <= otherSet.Count)
+            return false;
+
+        foreach (var item in otherSet)
             if (!Contains(item))
                 return false;
 
-            count++;
-        }
-
-        return Count > count;
+        return true;
     }
 
     public bool IsSubsetOf(IEnumerable<T> other)
@@ -785,18 +791,16 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
         if (other == null)
             ThrowHelper.ThrowArgumentNullException(nameof(other));
 
-        int match = 0;
+        var otherSet = new SwiftHashSet<T>(other, _comparer);
 
-        if (other is ICollection<T> collection && collection.Count < Count)
+        if (otherSet.Count < Count)
             return false;
 
-        foreach (var item in other)
-        {
-            if (Contains(item))
-                match++;
-        }
+        for (int i = 0; i <= _lastIndex; i++)
+            if (_entries[i].IsUsed && !otherSet.Contains(_entries[i].Value))
+                return false;
 
-        return match == Count;
+        return true;
     }
 
     public bool IsSupersetOf(IEnumerable<T> other)
@@ -847,7 +851,15 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
         if (other == null)
             ThrowHelper.ThrowArgumentNullException(nameof(other));
 
-        foreach (var item in other)
+        if (ReferenceEquals(this, other))
+        {
+            Clear();
+            return;
+        }
+
+        var otherSet = new SwiftHashSet<T>(other, _comparer);
+
+        foreach (var item in otherSet)
         {
             if (!Remove(item))
                 Add(item);
