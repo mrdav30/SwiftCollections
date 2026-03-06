@@ -288,5 +288,23 @@ public class SwiftPackedSetTests
         Assert.Empty(result);
     }
 
+    [Fact]
+    public void PackedSet_IsProperSupersetOf_IgnoresDuplicatesInOther()
+    {
+        var set = new SwiftPackedSet<int> { 1, 2 };
+
+        Assert.True(set.IsProperSupersetOf(new[] { 1, 1 }));
+    }
+
+    [Fact]
+    public void PackedSet_SymmetricExceptWith_Self_ClearsSet()
+    {
+        var set = new SwiftPackedSet<int> { 1, 2, 3 };
+
+        set.SymmetricExceptWith(set);
+
+        Assert.Empty(set);
+    }
+
     #endregion
 }

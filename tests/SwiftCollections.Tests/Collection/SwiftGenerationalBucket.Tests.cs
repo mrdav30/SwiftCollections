@@ -227,6 +227,25 @@ public class SwiftGenerationalBucketTests
         Assert.Equal(bucket.Count, count);
     }
 
+    [Fact]
+    public void StateConstructor_AllowsNullFreeIndices()
+    {
+        var state = new SwiftGenerationalBucketState<int>(
+            new[] { 10, 20, 30 },
+            new[] { true, false, true },
+            new uint[] { 1, 2, 3 },
+            null,
+            3);
+
+        var bucket = new SwiftGenerationalBucket<int>(state);
+
+        Assert.Equal(2, bucket.Count);
+        Assert.True(bucket.TryGet(new SwiftGenerationalBucket<int>.Handle(0, 1), out var first));
+        Assert.Equal(10, first);
+        Assert.True(bucket.TryGet(new SwiftGenerationalBucket<int>.Handle(2, 3), out var third));
+        Assert.Equal(30, third);
+    }
+
     #endregion
 
     #region Edge Cases

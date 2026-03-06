@@ -528,4 +528,52 @@ public class SwiftHashSetTests
 
         Assert.Contains("hello", result);
     }
+
+    [Fact]
+    public void HashSet_SetComparer_RehashesEntriesOutsideInitialProbeSample()
+    {
+        var comparer = new SelectiveIntHashComparer((15, 14));
+        var set = new SwiftHashSet<int>(16, comparer);
+
+        for (int i = 0; i < 8; i++)
+            set.Add(i);
+
+        set.Add(15);
+
+        byte[] json = JsonSerializer.SerializeToUtf8Bytes(set);
+        var result = JsonSerializer.Deserialize<SwiftHashSet<int>>(json);
+
+        Assert.Contains(15, result);
+
+        result.SetComparer(comparer);
+
+        Assert.Contains(15, result);
+    }
+
+    [Fact]
+    public void HashSet_IsSubsetOf_IgnoresDuplicatesInOther()
+    {
+        var set = new SwiftHashSet<int> { 1, 2 };
+
+        Assert.True(set.IsSubsetOf(new[] { 1, 1, 2 }));
+        Assert.True(set.IsProperSubsetOf(new[] { 1, 1, 2, 2, 3 }));
+    }
+
+    [Fact]
+    public void HashSet_IsProperSupersetOf_IgnoresDuplicatesInOther()
+    {
+        var set = new SwiftHashSet<int> { 1, 2 };
+
+        Assert.True(set.IsProperSupersetOf(new[] { 1, 1 }));
+    }
+
+    [Fact]
+    public void HashSet_SymmetricExceptWith_Self_ClearsSet()
+    {
+        var set = new SwiftHashSet<int> { 1, 2, 3 };
+
+        set.SymmetricExceptWith(set);
+
+        Assert.Empty(set);
+    }
 }

@@ -692,4 +692,26 @@ public class SwiftDictionaryTests
 
         Assert.Contains("hello", result);
     }
+
+    [Fact]
+    public void Dictionary_SetComparer_RehashesEntriesOutsideInitialProbeSample()
+    {
+        var comparer = new SelectiveIntHashComparer((15, 14));
+        var dictionary = new SwiftDictionary<int, string>(16, comparer);
+
+        for (int i = 0; i < 8; i++)
+            dictionary.Add(i, $"Value {i}");
+
+        dictionary.Add(15, "Target");
+
+        byte[] json = JsonSerializer.SerializeToUtf8Bytes(dictionary);
+        var result = JsonSerializer.Deserialize<SwiftDictionary<int, string>>(json);
+
+        Assert.True(result.ContainsKey(15));
+
+        result.SetComparer(comparer);
+
+        Assert.True(result.ContainsKey(15));
+        Assert.Equal("Target", result[15]);
+    }
 }

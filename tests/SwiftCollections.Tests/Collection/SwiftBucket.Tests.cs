@@ -417,4 +417,21 @@ public class SwiftBucketTests
         Assert.Equal(originalValue.PeakCount, deserializedValue.PeakCount);
         Assert.Equal(originalValue, deserializedValue);
     }
+
+    [Fact]
+    public void SwiftBucket_StateConstructor_AllowsNullFreeIndices()
+    {
+        var state = new SwiftBucketState<int>(
+            new[] { 10, 20, 30 },
+            new[] { true, false, true },
+            null,
+            3);
+
+        var bucket = new SwiftBucket<int>(state);
+
+        bucket.Count.Should().Be(2);
+        bucket.PeakCount.Should().Be(3);
+        bucket[0].Should().Be(10);
+        bucket[2].Should().Be(30);
+    }
 }

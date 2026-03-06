@@ -203,6 +203,32 @@ public class SwiftBiDictionaryTests
     }
 
     [Fact]
+    public void BiDictionary_SetComparer_RehashesForwardAndReverseMapsOutsideInitialProbeSample()
+    {
+        var keyComparer = new SelectiveIntHashComparer((15, 14));
+        var valueComparer = new SelectiveIntHashComparer((115, 114));
+        var dictionary = new SwiftBiDictionary<int, int>(keyComparer, valueComparer);
+
+        for (int i = 0; i < 8; i++)
+            dictionary.Add(i, 100 + i);
+
+        dictionary.Add(15, 115);
+
+        byte[] json = JsonSerializer.SerializeToUtf8Bytes(dictionary);
+        var result = JsonSerializer.Deserialize<SwiftBiDictionary<int, int>>(json);
+
+        Assert.True(result.ContainsKey(15));
+        Assert.True(result.ContainsValue(115));
+
+        result.SetComparer(keyComparer, valueComparer);
+
+        Assert.True(result.ContainsKey(15));
+        Assert.True(result.ContainsValue(115));
+        Assert.True(result.TryGetKey(115, out int key));
+        Assert.Equal(15, key);
+    }
+
+    [Fact]
     public void BiDictionary_TryAdd_DuplicateKey_ShouldReturnFalse()
     {
         // Arrange
