@@ -12,11 +12,32 @@ using System.Text.Json.Serialization.Shim;
 
 namespace SwiftCollections;
 
+/// <summary>
+/// Represents a high-performance set that stores unique values in a densely packed array
+/// while providing O(1) lookups via an internal hash map.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <see cref="SwiftPackedSet{T}"/> maintains values in a contiguous array for extremely
+/// cache-friendly iteration while using a hash-based lookup table to guarantee fast
+/// membership tests and removals.
+/// </para>
+/// <para>
+/// Removal uses a swap-back strategy that keeps the dense storage contiguous but does not
+/// preserve ordering. As a result, iteration order is not guaranteed to remain stable.
+/// </para>
+/// <para>
+/// This structure is commonly used in high-performance systems such as ECS (Entity Component Systems)
+/// where dense iteration speed is critical.
+/// </para>
+/// </remarks>
+/// <typeparam name="T">The type of elements contained in the set.</typeparam>
 [Serializable]
 [JsonConverter(typeof(SwiftStateJsonConverterFactory))]
 [MemoryPackable]
 public sealed partial class SwiftPackedSet<T> :
     ISwiftCloneable<T>,
+    ISet<T>,
     IEnumerable<T>,
     IEnumerable
 {
@@ -84,9 +105,9 @@ public sealed partial class SwiftPackedSet<T> :
     [MemoryPackIgnore]
     public T[] Dense => _dense;
 
-    #endregion
-
-    #region State
+    [JsonIgnore]
+    [MemoryPackIgnore]
+    public bool IsReadOnly => false;
 
     [JsonInclude]
     [MemoryPackInclude]
@@ -143,6 +164,8 @@ public sealed partial class SwiftPackedSet<T> :
 
         return true;
     }
+
+    void ICollection<T>.Add(T item) => Add(item);
 
     public bool Remove(T value)
     {
@@ -265,6 +288,157 @@ public sealed partial class SwiftPackedSet<T> :
 
         for (int i = 0; i < _count; i++)
             output.Add(_dense[i]);
+    }
+
+    public void CopyTo(T[] array, int arrayIndex)
+    {
+        if (array == null) ThrowHelper.ThrowArgumentNullException(nameof(array));
+        if ((uint)arrayIndex > array.Length) ThrowHelper.ThrowArgumentOutOfRangeException();
+        if (array.Length - arrayIndex < _count) ThrowHelper.ThrowArgumentException("Destination array is not long enough.");
+
+        Array.Copy(_dense, 0, array, arrayIndex, _count);
+    }
+
+    #endregion
+
+    #region ISet<T> Implementations
+
+    public void ExceptWith(IEnumerable<T> other)
+    {
+        if (other == null)
+            ThrowHelper.ThrowArgumentNullException(nameof(other));
+
+        foreach (var item in other)
+            Remove(item);
+    }
+
+    public void IntersectWith(IEnumerable<T> other)
+    {
+        if (other == null)
+            ThrowHelper.ThrowArgumentNullException(nameof(other));
+
+        var otherSet = other as ISet<T> ?? new SwiftHashSet<T>(other);
+
+        for (int i = _count - 1; i >= 0; i--)
+        {
+            var value = _dense[i];
+            if (!otherSet.Contains(value))
+                Remove(value);
+        }
+    }
+
+    public bool IsProperSubsetOf(IEnumerable<T> other)
+    {
+        if (other == null)
+            ThrowHelper.ThrowArgumentNullException(nameof(other));
+
+        var set = other as ISet<T> ?? new SwiftHashSet<T>(other);
+
+        if (_count >= set.Count)
+            return false;
+
+        for (int i = 0; i < _count; i++)
+            if (!set.Contains(_dense[i]))
+                return false;
+
+        return true;
+    }
+
+    public bool IsProperSupersetOf(IEnumerable<T> other)
+    {
+        if (other == null)
+            ThrowHelper.ThrowArgumentNullException(nameof(other));
+
+        int count = 0;
+
+        foreach (var item in other)
+        {
+            if (!Contains(item))
+                return false;
+
+            count++;
+        }
+
+        return _count > count;
+    }
+
+    public bool IsSubsetOf(IEnumerable<T> other)
+    {
+        if (other == null)
+            ThrowHelper.ThrowArgumentNullException(nameof(other));
+
+        var set = other as ISet<T> ?? new SwiftHashSet<T>(other);
+
+        if (_count > set.Count)
+            return false;
+
+        for (int i = 0; i < _count; i++)
+            if (!set.Contains(_dense[i]))
+                return false;
+
+        return true;
+    }
+
+    public bool IsSupersetOf(IEnumerable<T> other)
+    {
+        if (other == null)
+            ThrowHelper.ThrowArgumentNullException(nameof(other));
+
+        foreach (var item in other)
+            if (!Contains(item))
+                return false;
+
+        return true;
+    }
+
+    public bool Overlaps(IEnumerable<T> other)
+    {
+        if (other == null)
+            ThrowHelper.ThrowArgumentNullException(nameof(other));
+
+        foreach (var item in other)
+            if (Contains(item))
+                return true;
+
+        return false;
+    }
+
+    public bool SetEquals(IEnumerable<T> other)
+    {
+        if (other == null)
+            ThrowHelper.ThrowArgumentNullException(nameof(other));
+
+        var set = other as ISet<T> ?? new SwiftHashSet<T>(other);
+
+        if (_count != set.Count)
+            return false;
+
+        for (int i = 0; i < _count; i++)
+            if (!set.Contains(_dense[i]))
+                return false;
+
+        return true;
+    }
+
+    public void SymmetricExceptWith(IEnumerable<T> other)
+    {
+        if (other == null)
+            ThrowHelper.ThrowArgumentNullException(nameof(other));
+
+        foreach (var item in other)
+        {
+            if (!Remove(item))
+                Add(item);
+        }
+    }
+
+    public void UnionWith(IEnumerable<T> other)
+    {
+        if (other == null)
+            ThrowHelper.ThrowArgumentNullException(nameof(other));
+
+        foreach (var item in other)
+            Add(item);
     }
 
     #endregion

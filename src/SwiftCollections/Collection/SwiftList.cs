@@ -576,7 +576,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
         Array.Copy(_innerArray, 0, array, arrayIndex, _count);
     }
 
-    void ICollection.CopyTo(Array array, int arrayIndex)
+    public void CopyTo(Array array, int arrayIndex)
     {
         if (array == null) ThrowHelper.ThrowArgumentNullException(nameof(array));
         if (array.Rank != 1) ThrowHelper.ThrowArgumentException("Array must be single dimensional.");

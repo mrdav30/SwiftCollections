@@ -27,7 +27,7 @@ namespace SwiftCollections;
 [Serializable]
 [JsonConverter(typeof(SwiftStateJsonConverterFactory))]
 [MemoryPackable]
-public sealed partial class SwiftHashSet<T> : ICollection<T>, IEnumerable<T>, IEnumerable, IReadOnlyCollection<T>
+public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerable<T>, IEnumerable, IReadOnlyCollection<T>
 {
     #region Constants
 
@@ -700,9 +700,9 @@ public sealed partial class SwiftHashSet<T> : ICollection<T>, IEnumerable<T>, IE
             _current = default;
         }
 
-        public T Current => _current;
+        public readonly T Current => _current;
 
-        object IEnumerator.Current
+        readonly object IEnumerator.Current
         {
             get
             {
@@ -716,7 +716,8 @@ public sealed partial class SwiftHashSet<T> : ICollection<T>, IEnumerable<T>, IE
             if (_version != _set._version)
                 throw new InvalidOperationException("Collection was modified during enumeration.");
 
-            while (++_index <= (uint)_set._lastIndex)
+            uint last = (uint)_set._lastIndex;
+            while (++_index <= last)
             {
                 if (_entries[_index].IsUsed)
                 {
@@ -738,7 +739,160 @@ public sealed partial class SwiftHashSet<T> : ICollection<T>, IEnumerable<T>, IE
             _current = default;
         }
 
-        public void Dispose() { }
+        public readonly void Dispose() { }
+    }
+
+    #endregion
+
+    #region ISet<T> Implementations
+
+    public void ExceptWith(IEnumerable<T> other)
+    {
+        if (other == null)
+            ThrowHelper.ThrowArgumentNullException(nameof(other));
+
+        foreach (var item in other)
+            Remove(item);
+    }
+
+    public void IntersectWith(IEnumerable<T> other)
+    {
+        if (other == null)
+            ThrowHelper.ThrowArgumentNullException(nameof(other));
+
+        var otherSet = new SwiftHashSet<T>(other, _comparer);
+
+        for (int i = 0; i <= _lastIndex; i++)
+        {
+            if (_entries[i].IsUsed)
+            {
+                var value = _entries[i].Value;
+                if (!otherSet.Contains(value))
+                    Remove(value);
+            }
+        }
+    }
+
+    public bool IsProperSubsetOf(IEnumerable<T> other)
+    {
+        if (other == null)
+            ThrowHelper.ThrowArgumentNullException(nameof(other));
+
+        if (other is ICollection<T> collection && Count >= collection.Count)
+            return false;
+
+        int match = 0;
+        int total = 0;
+
+        foreach (var item in other)
+        {
+            total++;
+            if (Contains(item))
+                match++;
+        }
+
+        return match == Count && total > Count;
+    }
+
+    public bool IsProperSupersetOf(IEnumerable<T> other)
+    {
+        if (other == null)
+            ThrowHelper.ThrowArgumentNullException(nameof(other));
+
+        int count = 0;
+
+        foreach (var item in other)
+        {
+            if (!Contains(item))
+                return false;
+
+            count++;
+        }
+
+        return Count > count;
+    }
+
+    public bool IsSubsetOf(IEnumerable<T> other)
+    {
+        if (other == null)
+            ThrowHelper.ThrowArgumentNullException(nameof(other));
+
+        int match = 0;
+
+        if (other is ICollection<T> collection && collection.Count < Count)
+            return false;
+
+        foreach (var item in other)
+        {
+            if (Contains(item))
+                match++;
+        }
+
+        return match == Count;
+    }
+
+    public bool IsSupersetOf(IEnumerable<T> other)
+    {
+        if (other == null)
+            ThrowHelper.ThrowArgumentNullException(nameof(other));
+
+        foreach (var item in other)
+        {
+            if (!Contains(item))
+                return false;
+        }
+
+        return true;
+    }
+
+    public bool Overlaps(IEnumerable<T> other)
+    {
+        if (other == null)
+            ThrowHelper.ThrowArgumentNullException(nameof(other));
+
+        foreach (var item in other)
+            if (Contains(item))
+                return true;
+
+        return false;
+    }
+
+    public bool SetEquals(IEnumerable<T> other)
+    {
+        if (other == null)
+            ThrowHelper.ThrowArgumentNullException(nameof(other));
+
+        var otherSet = new SwiftHashSet<T>(other, _comparer);
+
+        if (otherSet.Count != Count)
+            return false;
+
+        foreach (var item in otherSet)
+            if (!Contains(item))
+                return false;
+
+        return true;
+    }
+
+    public void SymmetricExceptWith(IEnumerable<T> other)
+    {
+        if (other == null)
+            ThrowHelper.ThrowArgumentNullException(nameof(other));
+
+        foreach (var item in other)
+        {
+            if (!Remove(item))
+                Add(item);
+        }
+    }
+
+    public void UnionWith(IEnumerable<T> other)
+    {
+        if (other == null)
+            ThrowHelper.ThrowArgumentNullException(nameof(other));
+
+        foreach (var item in other)
+            Add(item);
     }
 
     #endregion
