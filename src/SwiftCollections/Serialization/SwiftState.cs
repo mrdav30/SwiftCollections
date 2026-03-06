@@ -76,6 +76,47 @@ public readonly partial struct SwiftBucketState<T>
 
 [Serializable]
 [MemoryPackable]
+public readonly partial struct SwiftGenerationalBucketState<T>
+{
+    [JsonInclude]
+    [MemoryPackInclude]
+    public readonly T[] Items;
+
+    [JsonInclude]
+    [MemoryPackInclude]
+    public readonly bool[] Allocated;
+
+    [JsonInclude]
+    [MemoryPackInclude]
+    public readonly uint[] Generations;
+
+    [JsonInclude]
+    [MemoryPackInclude]
+    public readonly int[] FreeIndices;
+
+    [JsonInclude]
+    [MemoryPackInclude]
+    public readonly int Peak;
+
+    [JsonConstructor]
+    [MemoryPackConstructor]
+    public SwiftGenerationalBucketState(
+        T[] items,
+        bool[] allocated,
+        uint[] generations,
+        int[] freeIndices,
+        int peak)
+    {
+        Items = items;
+        Allocated = allocated;
+        Generations = generations;
+        FreeIndices = freeIndices;
+        Peak = peak;
+    }
+}
+
+[Serializable]
+[MemoryPackable]
 public readonly partial struct Array2DState<T>
 {
     [JsonInclude]

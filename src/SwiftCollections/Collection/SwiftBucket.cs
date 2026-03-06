@@ -155,7 +155,7 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
 
     [JsonIgnore]
     [MemoryPackIgnore]
-    bool ICollection<T>.IsReadOnly => false;
+    public bool IsReadOnly => false;
 
     [JsonIgnore]
     [MemoryPackIgnore]
