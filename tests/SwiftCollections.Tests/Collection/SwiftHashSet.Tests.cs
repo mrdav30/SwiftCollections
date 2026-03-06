@@ -286,8 +286,10 @@ public class SwiftHashSetTests
 
         Assert.False(added);
         Assert.Single(set);
+
+        // Set should only contain one item due to case-insensitive comparer, but still should recognize both as present
         Assert.Contains("hello", set);
-        Assert.DoesNotContain("HELLO", set);
+        Assert.Contains("HELLO", set);
     }
 
     [Fact]
