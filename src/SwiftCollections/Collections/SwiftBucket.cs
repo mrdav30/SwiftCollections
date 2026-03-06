@@ -14,22 +14,29 @@ using System.Text.Json.Serialization.Shim;
 namespace SwiftCollections;
 
 /// <summary>
-/// Represents a high-performance bucket collection that allows O(1) addition and removal of items at any arrayIndex.
-/// Items maintain stable indices unless explicitly removed. Iteration does not guarantee any specific order.
+/// Represents a high-performance bucket collection that assigns and manages stable integer indices
+/// for stored items. Provides O(1) insertion, removal, and lookup by internally generated index.
 /// </summary>
 /// <remarks>
-/// <c>SwiftBucket&lt;T&gt;</c> provides significant performance benefits over <c>List&lt;T&gt;</c> in specific scenarios,
-/// particularly when dealing with frequent modifications at arbitrary positions within the collection.
-/// By leveraging its O(1) time complexity for both insertion and removal at any arrayIndex,
-/// it outperforms <c>List&lt;T&gt;</c> where such operations are a bottleneck.
+/// Unlike <see cref="SwiftSparseSet{T}"/>, which requires callers to provide the key used to store values,
+/// <see cref="SwiftBucket{T}"/> internally generates and manages indices for each inserted item.
 ///
-/// **Efficient Lookups Using Indices**:
-/// When you add items to the bucket using the <see cref="Add"/> method, it returns an arrayIndex that you can store externally.
-/// You can then use this arrayIndex to access the item directly via the indexer, and check if it's still present using the <see cref="IsAllocated"/> method.
-/// This approach allows for O(1) time complexity for lookups and existence checks, avoiding the need for O(n) searches using methods like <see cref="IndexOf"/> or <see cref="Contains"/>.
+/// These indices remain stable for the lifetime of the item unless it is removed.
 ///
-/// **Note**: Operations like <see cref="Contains"/> and <see cref="IndexOf"/> have O(n) time complexity due to the underlying data structure.
-/// Additionally, iteration over the collection does not follow any guaranteed order and depends on internal allocation.
+/// The container is optimized for scenarios requiring:
+/// <list type="bullet">
+///     <item>
+///         <description>Stable handles or identifiers.</description>
+///     </item>
+///     <item>
+///         <description>Fast addition and removal.</description>
+///     </item>
+///     <item>
+///         <description>Dense storage and iteration performance.</description>
+///     </item>
+/// </list>
+///
+/// Iteration order is not guaranteed.
 /// </remarks>
 /// <typeparam name="T">Specifies the type of elements in the bucket.</typeparam>
 [Serializable]
