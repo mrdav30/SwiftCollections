@@ -147,7 +147,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     [JsonIgnore]
     [MemoryPackIgnore]
     bool ICollection<T>.IsReadOnly => false;
-    
+
     [JsonIgnore]
     [MemoryPackIgnore]
     public bool IsSynchronized => false;
@@ -429,7 +429,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
                 _index--;
             }
 
-            if( _index >= 0)
+            if (_index >= 0)
             {
                 _current = _array[_index];
                 return true;

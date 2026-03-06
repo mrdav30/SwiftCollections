@@ -1,7 +1,7 @@
-﻿using System;
+﻿using MemoryPack;
+using System;
 using System.Linq;
 using System.Text.Json;
-using MemoryPack;
 using Xunit;
 
 namespace SwiftCollections.Tests;

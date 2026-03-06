@@ -137,12 +137,20 @@ dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c Debug 
 
 Run benchmarks:
 
-1. Select the benchmark in `tests/SwiftCollections.Benchmarks/Program.cs`.
-2. Run:
+```bash
+dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8
+```
+
+Useful benchmark runner commands:
 
 ```bash
-dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release
+dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- list
+dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- dictionary
+dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- hashset --filter "*Contains*"
+dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- all --list flat
 ```
+
+With no extra arguments, BenchmarkDotNet's default switcher behavior is used. Leading non-option arguments are treated as benchmark selection aliases, and any remaining arguments are forwarded to BenchmarkDotNet.
 
 ## Compatibility
 

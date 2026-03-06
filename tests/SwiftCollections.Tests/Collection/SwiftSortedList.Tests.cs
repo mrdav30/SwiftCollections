@@ -219,7 +219,8 @@ public class SwiftSortedListTests
         Assert.Throws<IndexOutOfRangeException>(() => sorter.PeekMin());
     }
 
-    [Fact]        public void PeekMax_OnEmpty_ShouldThrowException()
+    [Fact]
+    public void PeekMax_OnEmpty_ShouldThrowException()
     {
         var sorter = new SwiftSortedList<int>();
         Assert.Throws<IndexOutOfRangeException>(() => sorter.PeekMax());

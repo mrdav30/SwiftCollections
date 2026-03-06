@@ -62,7 +62,7 @@ namespace SwiftCollections.Pool
             PoolMaxCapacity = poolMaxCapacity;
 
             CreateFunc = createFunc ?? (size => new T[size]);
-            ActionOnRelease = actionOnRelease ?? (array => 
+            ActionOnRelease = actionOnRelease ?? (array =>
                 Array.Clear(array, 0, array.Length));
             ActionOnDestroy = actionOnDestroy;
         }

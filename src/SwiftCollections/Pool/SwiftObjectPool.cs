@@ -171,7 +171,7 @@ namespace SwiftCollections.Pool
         /// </summary>
         public void Dispose()
         {
-            if (_disposed) 
+            if (_disposed)
                 return;
 
             _pool.Clear();

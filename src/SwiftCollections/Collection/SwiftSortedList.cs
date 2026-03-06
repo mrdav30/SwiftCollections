@@ -579,7 +579,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetComparer(IComparer<T> comparer)
     {
-        if (comparer == null) 
+        if (comparer == null)
             ThrowHelper.ThrowArgumentNullException(nameof(comparer));
         if (ReferenceEquals(comparer, _comparer))
             return;

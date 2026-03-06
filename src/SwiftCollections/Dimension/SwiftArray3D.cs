@@ -241,7 +241,7 @@ public partial class SwiftArray3D<T> : IEnumerable<T>, IEnumerable
     public virtual void ValidateIndex(int x, int y, int z)
     {
         if (!IsValidIndex(x, y, z))
-           ThrowHelper.ThrowIndexOutOfRangeException($"Invalid index ({x}, {y}, {z}) for dimensions ({Width}, {Height}, {Depth}).");
+            ThrowHelper.ThrowIndexOutOfRangeException($"Invalid index ({x}, {y}, {z}) for dimensions ({Width}, {Height}, {Depth}).");
     }
 
     /// <summary>

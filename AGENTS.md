@@ -39,7 +39,7 @@ This repository contains the `SwiftCollections` .NET library, its unit tests, an
 - JSON serialization support is conditional:
   - `net8.0` uses `System.Text.Json` converter implementations.
   - Older targets rely on shim types under `SerializationAttributes.Shim.cs`.
-- The repo has very little ignore coverage. Build and test outputs can dirty the working tree easily. Do not commit generated `bin/`, `obj/`, or `TestResults/` content unless explicitly asked.
+- The repo has very little ignore coverage. Build and test outputs can dirty the working tree easily. Do not commit generated `bin/`, `obj/` content unless explicitly asked.
 
 ## Code Style And Conventions
 
@@ -68,8 +68,10 @@ Use the solution root as the working directory.
 - Run unit tests:
   - `dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c Debug --no-build`
 - Run benchmarks:
-  - Select the benchmark in `tests/SwiftCollections.Benchmarks/Program.cs`
-  - `dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release`
+  - `dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8`
+  - `dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- list`
+  - `dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- dictionary`
+  - `dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- hashset --filter "*Contains*"`
 
 These commands were verified successfully in this repository during AGENTS creation.
 

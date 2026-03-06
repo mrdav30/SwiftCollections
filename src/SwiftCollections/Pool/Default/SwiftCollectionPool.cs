@@ -18,7 +18,7 @@ namespace SwiftCollections.Pool
         /// Internal object pool for managing the lifecycle of pooled collections.
         /// Uses <see cref="Lazy{T}"/> to ensure lazy initialization.
         /// </summary>
-        private SwiftLazyDisposable<SwiftObjectPool<TCollection>> _lazyCollectionPool = 
+        private SwiftLazyDisposable<SwiftObjectPool<TCollection>> _lazyCollectionPool =
             new SwiftLazyDisposable<SwiftObjectPool<TCollection>>(() =>
             {
                 return new SwiftObjectPool<TCollection>(

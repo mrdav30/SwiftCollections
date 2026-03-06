@@ -1,28 +1,85 @@
 ﻿using BenchmarkDotNet.Running;
+using System;
+using System.Linq;
 
-namespace SwiftCollections.Benchmarks
+namespace SwiftCollections.Benchmarks;
+
+internal static class Program
 {
-    class Program
+    private static readonly BenchmarkCatalog _catalog = BenchmarkCatalog.Create(typeof(Program).Assembly);
+
+    private static int Main(string[] args)
     {
-        static void Main(string[] args)
+        if (args.Length == 0)
         {
-            // var ListIntegerBenchmarksSummary = BenchmarkRunner.Run<ListIntegerBenchmarks>();
-
-            //var QueueIntegerBenchmarksSummary = BenchmarkRunner.Run<QueueIntegerBenchmarks>();
-
-            var StackIntegerBenchmarksSummary = BenchmarkRunner.Run<StackIntegerBenchmarks>();
-
-            //var BucketIntegerBenchmarksSummary = BenchmarkRunner.Run<BucketIntegerBenchmarks>();
-            //var BucketRemovalInsertionBenchmarksSummary = BenchmarkRunner.Run<BucketRemovalInsertionBenchmarks>();
-
-            // var summary = BenchmarkRunner.Run<DictionaryIntegerBenchmarks>();
-            //var DictionaryStringBenchmarksSummary = BenchmarkRunner.Run<DictionaryStringBenchmarks>();
-
-            // var SortedListIntegerBenchmarksSummary = BenchmarkRunner.Run<SortedListIntegerBenchmarks>();
-
-            //var HashSetIntegerBenchmarkSumary = BenchmarkRunner.Run<HashSetIntegerBenchmark>();
-            // var HashSetStringBenchmarkSummary = BenchmarkRunner.Run<HashSetStringBenchmark>();
-            // var HashSetObjectBenchmarkSummary = BenchmarkRunner.Run<HashSetObjectBenchmark>();
+            BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+            return 0;
         }
+
+        string command = args[0];
+
+        if (string.Equals(command, "list", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(command, "ls", StringComparison.OrdinalIgnoreCase))
+        {
+            _catalog.WriteAvailableSelections(Console.Out);
+            return 0;
+        }
+
+        if (string.Equals(command, "help", StringComparison.OrdinalIgnoreCase))
+        {
+            WriteUsage();
+            return 0;
+        }
+
+        if (string.Equals(command, "all", StringComparison.OrdinalIgnoreCase))
+        {
+            if (args.Length > 1 && !args[1].StartsWith("-", StringComparison.Ordinal))
+            {
+                Console.Error.WriteLine("The 'all' selection cannot be combined with other benchmark aliases.");
+                Console.Error.WriteLine();
+                WriteUsage();
+                return 1;
+            }
+
+            BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args.Skip(1).ToArray());
+            return 0;
+        }
+
+        int aliasCount = 0;
+        while (aliasCount < args.Length && !args[aliasCount].StartsWith("-", StringComparison.Ordinal))
+            aliasCount++;
+
+        if (aliasCount == 0)
+        {
+            BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+            return 0;
+        }
+
+        Type[] selectedTypes = _catalog.Resolve(args.Take(aliasCount).ToArray(), out string unknownAlias);
+        if (unknownAlias != null)
+        {
+            Console.Error.WriteLine($"Unknown benchmark selection '{unknownAlias}'.");
+            Console.Error.WriteLine();
+            WriteUsage();
+            return 1;
+        }
+
+        BenchmarkSwitcher.FromTypes(selectedTypes).Run(args.Skip(aliasCount).ToArray());
+        return 0;
+    }
+
+    private static void WriteUsage()
+    {
+        Console.WriteLine("Usage:");
+        Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8");
+        Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- list");
+        Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- dictionary");
+        Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- hashset --filter \"*Contains*\"");
+        Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- all --list flat");
+        Console.WriteLine();
+        Console.WriteLine("Leading arguments that do not start with '-' are treated as benchmark selections.");
+        Console.WriteLine("Remaining arguments are forwarded to BenchmarkDotNet.");
+        Console.WriteLine();
+        _catalog.WriteAvailableSelections(Console.Out);
     }
 }

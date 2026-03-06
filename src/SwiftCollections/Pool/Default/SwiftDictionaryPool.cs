@@ -10,7 +10,7 @@ namespace SwiftCollections.Pool
     /// </summary>
     /// <typeparam name="TKey">The type of keys in the dictionary.</typeparam>
     /// <typeparam name="TValue">The type of values in the dictionary.</typeparam>
-    public sealed class SwiftDictionaryPool<TKey, TValue> : 
+    public sealed class SwiftDictionaryPool<TKey, TValue> :
         SwiftCollectionPool<SwiftDictionary<TKey, TValue>, KeyValuePair<TKey, TValue>>, IDisposable
     {
         #region Singleton Instance

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
@@ -25,7 +24,8 @@ internal sealed class SwiftStringEqualityComparer : IEqualityComparer<string>, I
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool Equals(string x, string y) {
+    public bool Equals(string x, string y)
+    {
         // Use a single null check for both objects to minimize branching
         return x != null && y != null && x.Equals(y);
     }

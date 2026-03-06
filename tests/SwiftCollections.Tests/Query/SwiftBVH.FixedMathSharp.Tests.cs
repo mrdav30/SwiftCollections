@@ -335,7 +335,7 @@ namespace SwiftCollections.Query.Tests
 
             var results = new List<int>();
             var queryVolume = new FixedBoundVolume(new Vector3d(0, 0, 0), new Vector3d(200, 200, 200));
-            
+
             bvh.Query(queryVolume, results);
 
             Assert.Equal(numThreads * volumesPerThread, results.Count);
@@ -360,9 +360,9 @@ namespace SwiftCollections.Query.Tests
                         var volume = new FixedBoundVolume(new Vector3d(id, id, id), new Vector3d(id + 1, id + 1, id + 1));
                         bvh.Insert(id, volume);
                         bvh.UpdateEntryBounds(
-                            id, 
+                            id,
                             new FixedBoundVolume(
-                                new Vector3d(id - 1, id - 1, id - 1), 
+                                new Vector3d(id - 1, id - 1, id - 1),
                                 new Vector3d(id + 2, id + 2, id + 2)));
                     }
                 }));

@@ -2,8 +2,8 @@
 
 namespace SwiftCollections;
 
-	public interface ISwiftCloneable<T>
-	{
+public interface ISwiftCloneable<T>
+{
     /// <summary>
     /// Clones the entire <see cref="ISwiftCloneable{T}"/> into a new target <see cref="ICollection{T}"/>, 
     /// ensuring that the target list is an exact copy. Clears the target list first 

@@ -36,6 +36,14 @@ namespace SwiftCollections;
 ///     </item>
 /// </list>
 ///
+/// **Efficient Lookups Using Indices**:
+/// When you add items to the bucket using the <see cref="Add"/> method, it returns an arrayIndex that you can store externally.
+/// You can then use this arrayIndex to access the item directly via the indexer, and check if it's still present using the <see cref="IsAllocated"/> method.
+/// This approach allows for O(1) time complexity for lookups and existence checks, avoiding the need for O(n) searches using methods like <see cref="IndexOf"/> or <see cref="Contains"/>.
+///
+/// **Note**: Operations like <see cref="Contains"/> and <see cref="IndexOf"/> have O(n) time complexity due to the underlying data structure.
+/// Additionally, iteration over the collection does not follow any guaranteed order and depends on internal allocation.
+/// 
 /// Iteration order is not guaranteed.
 /// </remarks>
 /// <typeparam name="T">Specifies the type of elements in the bucket.</typeparam>
@@ -370,7 +378,7 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
         int newCapacity = newSize <= DefaultCapacity ? DefaultCapacity : newSize;
 
         Entry[] newArray = new Entry[newCapacity];
-        if (_count > 0) 
+        if (_count > 0)
             Array.Copy(_innerArray, 0, newArray, 0, _count);
         _innerArray = newArray;
 
@@ -581,7 +589,8 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
             if (_version != _bucket._version)
                 ThrowHelper.ThrowInvalidOperationException("Enumerator modified outside of enumeration!");
 
-            while (++_index < (uint)_bucket._peakCount)
+            uint count = (uint)_bucket._peakCount;
+            while (++_index < count)
             {
                 if (_entries[_index].IsUsed)
                 {

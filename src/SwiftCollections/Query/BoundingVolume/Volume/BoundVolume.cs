@@ -121,7 +121,7 @@ namespace SwiftCollections.Query
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public IBoundVolume Union(IBoundVolume other)
         {
-            if(other is BoundVolume otherBV)
+            if (other is BoundVolume otherBV)
                 return Union(otherBV);
 
             return ThrowHelper.ThrowArgumentException<IBoundVolume>($"Mismatched bounding volume type detected!: {nameof(other)}");
@@ -131,10 +131,10 @@ namespace SwiftCollections.Query
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public BoundVolume Union(BoundVolume other)
         {
-                return new BoundVolume(
-                    new Vector3(Math.Min(Min.X, other.Min.X), Math.Min(Min.Y, other.Min.Y), Math.Min(Min.Z, other.Min.Z)),
-                    new Vector3(Math.Max(Max.X, other.Max.X), Math.Max(Max.Y, other.Max.Y), Math.Max(Max.Z, other.Max.Z))
-                );
+            return new BoundVolume(
+                new Vector3(Math.Min(Min.X, other.Min.X), Math.Min(Min.Y, other.Min.Y), Math.Min(Min.Z, other.Min.Z)),
+                new Vector3(Math.Max(Max.X, other.Max.X), Math.Max(Max.Y, other.Max.Y), Math.Max(Max.Z, other.Max.Z))
+            );
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
