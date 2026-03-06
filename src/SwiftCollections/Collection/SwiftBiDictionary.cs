@@ -313,35 +313,6 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>
 
     #region Utility Methods
 
-    private bool ComparersHaveSameBehavior(IEqualityComparer<T1> newComparer1, IEqualityComparer<T2> newComparer2)
-    {
-        if (Count == 0)
-            return true;
-
-        int tested = 0;
-
-        foreach (var kv in this)
-        {
-            int oldHash1 = _comparer.GetHashCode(kv.Key);
-            int newHash1 = newComparer1.GetHashCode(kv.Key);
-
-            if (oldHash1 != newHash1)
-                return false;
-
-            int oldHash2 = _reverseComparer.GetHashCode(kv.Value);
-            int newHash2 = newComparer2.GetHashCode(kv.Value);
-
-            if (oldHash2 != newHash2)
-                return false;
-
-            tested++;
-            if (tested >= 8)
-                break;
-        }
-
-        return true;
-    }
-
     /// <summary>
     /// Sets the comparers used to determine equality for keys and values in the dictionary.
     /// </summary>
@@ -359,13 +330,6 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>
 
         lock (ReverseSyncRoot)
         {
-            if (ComparersHaveSameBehavior(comparer1, comparer2))
-            {
-                _comparer = comparer1;
-                _reverseComparer = comparer2;
-                return;
-            }
-
             var newReverseMap = new SwiftDictionary<T2, T1>(Count, comparer2);
             foreach (var kv in this)
                 newReverseMap.Add(kv.Value, kv.Key);

@@ -728,32 +728,6 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
         }
     }
 
-    private bool ComparerHasSameBehavior(IEqualityComparer<TKey> newComparer)
-    {
-        if (_count == 0)
-            return true;
-
-        int tested = 0;
-
-        for (int i = 0; i <= _lastIndex && tested < 8; i++)
-        {
-            if (_entries[i].IsUsed)
-            {
-                var value = _entries[i].Key;
-
-                int oldHash = _comparer.GetHashCode(value);
-                int newHash = newComparer.GetHashCode(value);
-
-                if (oldHash != newHash)
-                    return false;
-
-                tested++;
-            }
-        }
-
-        return true;
-    }
-
     /// <summary>
     /// Sets a new comparer for the dictionary and rehashes the entries.
     /// </summary>
@@ -765,16 +739,10 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
             ThrowHelper.ThrowArgumentNullException(nameof(comparer));
         if (ReferenceEquals(comparer, _comparer))
             return;
-        if (ComparerHasSameBehavior(comparer))
-        {
-            _comparer = comparer;
-            return;
-        }
 
         _comparer = comparer;
         RehashEntries();
         _maxStepCount = 0;
-        _version++;
     }
 
     /// <summary>

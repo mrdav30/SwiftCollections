@@ -539,32 +539,6 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
         }
     }
 
-    private bool ComparerHasSameBehavior(IEqualityComparer<T> newComparer)
-    {
-        if (_count == 0)
-            return true;
-
-        int tested = 0;
-
-        for (int i = 0; i <= _lastIndex && tested < 8; i++)
-        {
-            if (_entries[i].IsUsed)
-            {
-                var value = _entries[i].Value;
-
-                int oldHash = _comparer.GetHashCode(value);
-                int newHash = newComparer.GetHashCode(value);
-
-                if (oldHash != newHash)
-                    return false;
-
-                tested++;
-            }
-        }
-
-        return true;
-    }
-
     /// <summary>
     /// Switches the hash set's comparer and rehashes all entries 
     /// using the new comparer to redistribute them across <see cref="_entries"/>.
@@ -576,15 +550,9 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
             ThrowHelper.ThrowArgumentNullException(nameof(comparer));
         if (ReferenceEquals(comparer, _comparer))
             return;
-        if (ComparerHasSameBehavior(comparer))
-        {
-            _comparer = comparer;
-            return;
-        }
 
         _comparer = comparer;
         RehashEntries();
-        _version++;
     }
 
     /// <summary>
