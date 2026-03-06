@@ -367,7 +367,7 @@ public sealed partial class SwiftHashSet<T> : ICollection<T>, IEnumerable<T>, IE
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void EnsureCapacity(int capacity)
     {
-        capacity = HashTools.NextPowerOfTwo(capacity);  // Capacity must be a power of 2 for proper masking
+        capacity = SwiftHashTools.NextPowerOfTwo(capacity);  // Capacity must be a power of 2 for proper masking
         if (capacity > _entries.Length)
             Resize(capacity);
     }
@@ -417,7 +417,7 @@ public sealed partial class SwiftHashSet<T> : ICollection<T>, IEnumerable<T>, IE
     /// </summary>
     public void TrimExcess()
     {
-        int newSize = _count <= DefaultCapacity ? DefaultCapacity : HashTools.NextPowerOfTwo(_count);
+        int newSize = _count <= DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(_count);
         if (newSize >= _entries.Length) return;
 
         Entry[] newEntries = new Entry[newSize];
@@ -499,7 +499,7 @@ public sealed partial class SwiftHashSet<T> : ICollection<T>, IEnumerable<T>, IE
     {
         _comparer = comparer ?? EqualityComparer<T>.Default;
 
-        int size = capacity < DefaultCapacity ? DefaultCapacity : HashTools.NextPowerOfTwo(capacity);
+        int size = capacity < DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(capacity);
         _entries = new Entry[size];
         _entryMask = size - 1;
 
@@ -568,7 +568,7 @@ public sealed partial class SwiftHashSet<T> : ICollection<T>, IEnumerable<T>, IE
     private void SwitchToRandomizedComparer()
     {
         if (_comparer == EqualityComparer<string>.Default || _comparer == EqualityComparer<object>.Default)
-            _comparer = (IEqualityComparer<T>)HashTools.GetSwiftEqualityComparer(_comparer);
+            _comparer = (IEqualityComparer<T>)SwiftHashTools.GetSwiftEqualityComparer(_comparer);
         else return; // nothing to do here
 
         RehashEntries();

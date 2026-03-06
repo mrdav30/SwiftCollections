@@ -88,7 +88,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
             _innerArray = _emptyArray;
         else
         {
-            capacity = HashTools.NextPowerOfTwo(capacity <= DefaultCapacity ? DefaultCapacity : capacity);
+            capacity = SwiftHashTools.NextPowerOfTwo(capacity <= DefaultCapacity ? DefaultCapacity : capacity);
             _innerArray = new T[capacity];
         }
     }
@@ -279,7 +279,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
             // Ensure capacity to fit all new items
             if (_count + collection.Count > _innerArray.Length)
             {
-                int newCapacity = HashTools.NextPowerOfTwo(_count + collection.Count);
+                int newCapacity = SwiftHashTools.NextPowerOfTwo(_count + collection.Count);
                 Resize(newCapacity);
             }
 
@@ -456,7 +456,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void EnsureCapacity(int capacity)
     {
-        capacity = HashTools.NextPowerOfTwo(capacity);
+        capacity = SwiftHashTools.NextPowerOfTwo(capacity);
         if (capacity > _innerArray.Length)
             Resize(capacity);
     }
@@ -479,7 +479,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     /// </summary>
     public void TrimExcessCapacity()
     {
-        int newCapacity = _count < DefaultCapacity ? DefaultCapacity : HashTools.NextPowerOfTwo(_count);
+        int newCapacity = _count < DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(_count);
         Array.Resize(ref _innerArray, newCapacity);
         _version++;
     }

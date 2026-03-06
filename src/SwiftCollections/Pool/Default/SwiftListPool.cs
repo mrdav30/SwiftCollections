@@ -14,10 +14,10 @@ namespace SwiftCollections.Pool
 
         /// <summary>
         /// Shared instance of the hash set pool, providing a globally accessible pool.
-        /// Uses <see cref="LazyDisposable{T}"/> to ensure lazy initialization and proper disposal.
+        /// Uses <see cref="SwiftLazyDisposable{T}"/> to ensure lazy initialization and proper disposal.
         /// </summary>
-        private readonly static LazyDisposable<SwiftListPool<T>> _lazyInstance =
-            new LazyDisposable<SwiftListPool<T>>(() => new SwiftListPool<T>(), LazyThreadSafetyMode.ExecutionAndPublication);
+        private readonly static SwiftLazyDisposable<SwiftListPool<T>> _lazyInstance =
+            new SwiftLazyDisposable<SwiftListPool<T>>(() => new SwiftListPool<T>(), LazyThreadSafetyMode.ExecutionAndPublication);
 
         /// <summary>
         /// Gets the shared instance of the pool.

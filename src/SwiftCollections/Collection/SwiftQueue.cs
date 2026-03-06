@@ -102,7 +102,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         }
         else
         {
-            capacity = capacity < DefaultCapacity ? DefaultCapacity : HashTools.NextPowerOfTwo(capacity);
+            capacity = capacity < DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(capacity);
             _innerArray = new T[capacity];
             _mask = _innerArray.Length - 1;
         }
@@ -116,7 +116,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         if (items == null) ThrowHelper.ThrowArgumentNullException(nameof(items));
         if (items is ICollection<T> collection)
         {
-            int capacity = collection.Count < DefaultCapacity ? DefaultCapacity : HashTools.NextPowerOfTwo(collection.Count);
+            int capacity = collection.Count < DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(collection.Count);
             _innerArray = new T[capacity];
         }
         else
@@ -221,7 +221,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
                 return;
             }
 
-            int capacity = HashTools.NextPowerOfTwo(count <= DefaultCapacity ? DefaultCapacity : count);
+            int capacity = SwiftHashTools.NextPowerOfTwo(count <= DefaultCapacity ? DefaultCapacity : count);
 
             _innerArray = new T[capacity];
             Array.Copy(value.Items, 0, _innerArray, 0, count);
@@ -407,7 +407,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void EnsureCapacity(int capacity)
     {
-        capacity = HashTools.NextPowerOfTwo(capacity);  // Capacity must be a power of 2 for proper masking
+        capacity = SwiftHashTools.NextPowerOfTwo(capacity);  // Capacity must be a power of 2 for proper masking
         if (capacity > _innerArray.Length)
             Resize(capacity);
     }
@@ -452,7 +452,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     /// </summary>
     public void TrimExcessCapacity()
     {
-        int newSize = _count < DefaultCapacity ? DefaultCapacity : HashTools.NextPowerOfTwo(_count);
+        int newSize = _count < DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(_count);
         if (newSize >= _innerArray.Length) return;
 
         var newArray = new T[newSize];

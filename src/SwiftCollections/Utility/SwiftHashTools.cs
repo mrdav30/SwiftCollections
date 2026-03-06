@@ -11,7 +11,7 @@ namespace SwiftCollections;
 /// <summary>
 /// Provides utility functions for generating, combining, and working with hash codes.
 /// </summary>
-public static class HashTools
+public static class SwiftHashTools
 {
     /// <summary>
     /// Provides a cryptographic random number generator for generating entropy.

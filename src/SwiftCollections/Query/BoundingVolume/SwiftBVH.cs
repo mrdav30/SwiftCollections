@@ -13,8 +13,8 @@ namespace SwiftCollections.Query
         #region Static & Constants
 
         // Thread-local stack for queries
-        private static readonly ThreadLocal<IntStack> _threadLocalNodeStack =
-            new ThreadLocal<IntStack>(() => new IntStack(0));
+        private static readonly ThreadLocal<SwiftIntStack> _threadLocalNodeStack =
+            new ThreadLocal<SwiftIntStack>(() => new SwiftIntStack(0));
 
         private const int _childBalanceThreshold = 2;
 
@@ -29,7 +29,7 @@ namespace SwiftCollections.Query
         private int[] _buckets; // Maps hash indices to node indices
         private int _bucketMask; // Always _nodePool.Length - 1
 
-        private readonly IntStack _freeIndices = new IntStack();
+        private readonly SwiftIntStack _freeIndices = new SwiftIntStack();
 
         private int _rootNodeIndex;
 
@@ -44,7 +44,7 @@ namespace SwiftCollections.Query
         /// </summary>
         public SwiftBVH(int capacity)
         {
-            capacity = HashTools.NextPowerOfTwo(capacity);
+            capacity = SwiftHashTools.NextPowerOfTwo(capacity);
             _nodePool = new SwiftBVHNode<T>[capacity].Populate(() =>
                 new SwiftBVHNode<T>() { ParentIndex = -1, LeftChildIndex = -1, RightChildIndex = -1 });
             _buckets = new int[capacity].Populate(() => -1);
@@ -52,7 +52,7 @@ namespace SwiftCollections.Query
             _bucketMask = capacity - 1;
             _rootNodeIndex = -1;
 
-            _freeIndices = new IntStack(IntStack.DefaultCapacity);
+            _freeIndices = new SwiftIntStack(SwiftIntStack.DefaultCapacity);
         }
 
         #endregion
@@ -423,7 +423,7 @@ namespace SwiftCollections.Query
         /// </summary>
         public void EnsureCapacity(int capacity)
         {
-            capacity = HashTools.NextPowerOfTwo(capacity);
+            capacity = SwiftHashTools.NextPowerOfTwo(capacity);
             if (capacity > _nodePool.Length)
                 Resize(capacity);
         }
@@ -505,7 +505,7 @@ namespace SwiftCollections.Query
             _bvhLock.EnterReadLock();
             try
             {
-                IntStack nodeStack = _threadLocalNodeStack.Value;
+                SwiftIntStack nodeStack = _threadLocalNodeStack.Value;
                 nodeStack.EnsureCapacity(_peakIndex + 1);
                 nodeStack.Clear();
 

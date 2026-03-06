@@ -17,10 +17,10 @@ namespace SwiftCollections.Pool
 
         /// <summary>
         /// Shared instance of the dictionary pool, providing a globally accessible pool.
-        /// Uses <see cref="LazyDisposable{T}"/> to ensure lazy initialization and proper disposal.
+        /// Uses <see cref="SwiftLazyDisposable{T}"/> to ensure lazy initialization and proper disposal.
         /// </summary>
-        private readonly static LazyDisposable<SwiftDictionaryPool<TKey, TValue>> _lazyInstance =
-            new LazyDisposable<SwiftDictionaryPool<TKey, TValue>>(
+        private readonly static SwiftLazyDisposable<SwiftDictionaryPool<TKey, TValue>> _lazyInstance =
+            new SwiftLazyDisposable<SwiftDictionaryPool<TKey, TValue>>(
                     () => new SwiftDictionaryPool<TKey, TValue>(), LazyThreadSafetyMode.ExecutionAndPublication
                 );
 

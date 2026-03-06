@@ -58,7 +58,7 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
 
     private int _peakCount;
 
-    private IntStack _freeIndices;
+    private SwiftIntStack _freeIndices;
 
     [NonSerialized]
     private uint _version;
@@ -92,9 +92,9 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
     /// <param name="capacity">The initial capacity of the bucket.</param>
     public SwiftBucket(int capacity)
     {
-        capacity = capacity <= DefaultCapacity ? DefaultCapacity : HashTools.NextPowerOfTwo(capacity);
+        capacity = capacity <= DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(capacity);
         _innerArray = new Entry[capacity];
-        _freeIndices = new IntStack(IntStack.DefaultCapacity);
+        _freeIndices = new SwiftIntStack(SwiftIntStack.DefaultCapacity);
     }
 
     ///  <summary>
@@ -200,10 +200,10 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
             var items = value.Items;
             var allocated = value.Allocated;
 
-            int capacity = items.Length < DefaultCapacity ? DefaultCapacity : HashTools.NextPowerOfTwo(items.Length);
+            int capacity = items.Length < DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(items.Length);
 
             _innerArray = new Entry[capacity];
-            _freeIndices = new IntStack(value.FreeIndices.Length);
+            _freeIndices = new SwiftIntStack(value.FreeIndices.Length);
             _peakCount = value.PeakCount;
 
             _count = 0;
@@ -340,7 +340,7 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
 
     public void EnsureCapacity(int capacity)
     {
-        capacity = HashTools.NextPowerOfTwo(capacity);
+        capacity = SwiftHashTools.NextPowerOfTwo(capacity);
         if (capacity > _innerArray.Length)
             Resize(capacity);
     }
@@ -362,7 +362,7 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
     /// </summary>
     public void TrimExcessCapacity()
     {
-        int newCapacity = _count <= DefaultCapacity ? DefaultCapacity : HashTools.NextPowerOfTwo(_count);
+        int newCapacity = _count <= DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(_count);
 
         Entry[] newArray = new Entry[newCapacity];
         int newPeak = 0;

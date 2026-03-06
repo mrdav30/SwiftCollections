@@ -104,7 +104,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
         }
         else
         {
-            capacity = capacity <= DefaultCapacity ? DefaultCapacity : HashTools.NextPowerOfTwo(capacity);
+            capacity = capacity <= DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(capacity);
             _innerArray = new T[capacity];
             _offset = capacity >> 1; // initial offset half of capacity
         }
@@ -131,7 +131,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
             }
             else
             {
-                int capacity = HashTools.NextPowerOfTwo(count <= DefaultCapacity ? DefaultCapacity : count);
+                int capacity = SwiftHashTools.NextPowerOfTwo(count <= DefaultCapacity ? DefaultCapacity : count);
                 _innerArray = new T[capacity];
                 collection.CopyTo(_innerArray, 0);
                 Array.Sort(_innerArray, 0, _innerArray.Length, _comparer);
@@ -240,7 +240,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
             }
             else
             {
-                int capacity = HashTools.NextPowerOfTwo(count <= DefaultCapacity ? DefaultCapacity : count);
+                int capacity = SwiftHashTools.NextPowerOfTwo(count <= DefaultCapacity ? DefaultCapacity : count);
                 _innerArray = new T[capacity];
 
                 int newOffset = (capacity - count) >> 1;
@@ -339,7 +339,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
         if ((uint)_count == 0)
         {
             // If the list is empty, initialize with the sorted items
-            int initialCapacity = HashTools.NextPowerOfTwo(sortedItems.Length < DefaultCapacity ? DefaultCapacity : sortedItems.Length);
+            int initialCapacity = SwiftHashTools.NextPowerOfTwo(sortedItems.Length < DefaultCapacity ? DefaultCapacity : sortedItems.Length);
             int newOffset = (initialCapacity - sortedItems.Length) >> 1;
             if ((uint)_innerArray.Length < initialCapacity) _innerArray = new T[initialCapacity];
             Array.Copy(sortedItems, 0, _innerArray, newOffset, sortedItems.Length);
@@ -354,7 +354,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
         int totalRequiredCapacity = newCount + _offset;
 
         // Determine new capacity and offset
-        int newCapacity = HashTools.NextPowerOfTwo(totalRequiredCapacity);
+        int newCapacity = SwiftHashTools.NextPowerOfTwo(totalRequiredCapacity);
         int mergedOffset = (newCapacity - newCount) >> 1;
 
         // Create a new array with the new capacity
@@ -527,7 +527,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     /// </summary>
     public void EnsureCapacity(int capacity)
     {
-        capacity = HashTools.NextPowerOfTwo(capacity);
+        capacity = SwiftHashTools.NextPowerOfTwo(capacity);
         if (capacity > _innerArray.Length)
             Resize(capacity);
     }

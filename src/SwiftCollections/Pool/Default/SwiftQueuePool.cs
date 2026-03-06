@@ -14,9 +14,9 @@ namespace SwiftCollections.Pool
 
         /// <summary>
         /// Shared instance of the queue pool, providing a globally accessible pool.
-        /// Uses <see cref="LazyDisposable{T}"/> to ensure lazy initialization and proper disposal.
+        /// Uses <see cref="SwiftLazyDisposable{T}"/> to ensure lazy initialization and proper disposal.
         /// </summary>
-        private readonly static LazyDisposable<SwiftQueuePool<T>> _lazyInstance =
+        private readonly static SwiftLazyDisposable<SwiftQueuePool<T>> _lazyInstance =
             new(() => new SwiftQueuePool<T>(), LazyThreadSafetyMode.ExecutionAndPublication);
 
         /// <summary>

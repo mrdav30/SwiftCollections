@@ -82,7 +82,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
             _innerArray = _emptyArray;
         else
         {
-            capacity = capacity <= DefaultCapacity ? DefaultCapacity : HashTools.NextPowerOfTwo(capacity);
+            capacity = capacity <= DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(capacity);
             _innerArray = new T[capacity];
         }
     }
@@ -98,7 +98,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
                 _innerArray = _emptyArray;
             else
             {
-                int capacity = HashTools.NextPowerOfTwo(count <= DefaultCapacity ? DefaultCapacity : count);
+                int capacity = SwiftHashTools.NextPowerOfTwo(count <= DefaultCapacity ? DefaultCapacity : count);
                 _innerArray = new T[capacity];
                 collection.CopyTo(_innerArray, 0);
                 _count = count;
@@ -199,7 +199,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
                 return;
             }
 
-            int capacity = HashTools.NextPowerOfTwo(count <= DefaultCapacity ? DefaultCapacity : count);
+            int capacity = SwiftHashTools.NextPowerOfTwo(count <= DefaultCapacity ? DefaultCapacity : count);
 
             _innerArray = new T[capacity];
             Array.Copy(value.Items, 0, _innerArray, 0, count);
@@ -276,7 +276,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
 
     public void EnsureCapacity(int capacity)
     {
-        capacity = HashTools.NextPowerOfTwo(capacity);
+        capacity = SwiftHashTools.NextPowerOfTwo(capacity);
         if (capacity > _innerArray.Length)
             Resize(capacity);
     }
@@ -304,7 +304,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void TrimCapacity()
     {
-        int newCapacity = _count <= DefaultCapacity ? DefaultCapacity : HashTools.NextPowerOfTwo(_count);
+        int newCapacity = _count <= DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(_count);
         T[] newArray = new T[newCapacity];
         if ((uint)_count > 0)
             Array.Copy(_innerArray, 0, newArray, 0, _count);

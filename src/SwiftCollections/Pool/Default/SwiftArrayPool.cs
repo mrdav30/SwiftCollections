@@ -17,8 +17,8 @@ namespace SwiftCollections.Pool
         /// <summary>
         /// A lazily initialized singleton instance of the array pool.
         /// </summary>
-        private static readonly LazyDisposable<SwiftArrayPool<T>> _instance =
-            new LazyDisposable<SwiftArrayPool<T>>(() => new SwiftArrayPool<T>(), LazyThreadSafetyMode.ExecutionAndPublication);
+        private static readonly SwiftLazyDisposable<SwiftArrayPool<T>> _instance =
+            new SwiftLazyDisposable<SwiftArrayPool<T>>(() => new SwiftArrayPool<T>(), LazyThreadSafetyMode.ExecutionAndPublication);
 
         /// <summary>
         /// Gets the shared instance of the pool.

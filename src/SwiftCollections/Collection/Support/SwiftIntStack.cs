@@ -8,7 +8,7 @@ namespace SwiftCollections;
 /// Optimized for internal use in within the SwiftCollections library.
 /// </summary>
 [Serializable]
-internal class IntStack
+internal class SwiftIntStack
 {
     #region Constants
 
@@ -36,15 +36,15 @@ internal class IntStack
     #region Constructors
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="IntStack"/> class with the default capacity.
+    /// Initializes a new instance of the <see cref="SwiftIntStack"/> class with the default capacity.
     /// </summary>
-    public IntStack() : this(DefaultCapacity) { }
+    public SwiftIntStack() : this(DefaultCapacity) { }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="IntStack"/> class with a specified initial capacity.
+    /// Initializes a new instance of the <see cref="SwiftIntStack"/> class with a specified initial capacity.
     /// </summary>
     /// <param name="capacity">The initial capacity of the stack.</param>
-    public IntStack(int capacity)
+    public SwiftIntStack(int capacity)
     {
         Array = capacity == 0 ? new int[DefaultCapacity] : new int[capacity];
         Count = 0;
@@ -60,7 +60,7 @@ internal class IntStack
     /// <param name="array">The array that provides the underlying storage for the stack. This parameter cannot be null.</param>
     /// <param name="count">The number of elements initially contained in the stack. Must be a non-negative integer and cannot exceed the
     /// length of the array.</param>
-    public IntStack(int[] array, int count)
+    public SwiftIntStack(int[] array, int count)
     {
         Array = array;
         Count = count;

@@ -48,7 +48,7 @@ public sealed partial class SwiftPackedSet<T> :
     {
         capacity = capacity <= DefaultCapacity
             ? DefaultCapacity
-            : HashTools.NextPowerOfTwo(capacity);
+            : SwiftHashTools.NextPowerOfTwo(capacity);
 
         _dense = new T[capacity];
         _lookup = new SwiftDictionary<T, int>(capacity);
