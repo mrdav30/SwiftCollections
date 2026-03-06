@@ -18,8 +18,11 @@ namespace SwiftCollections;
 /// </summary>
 /// <typeparam name="T">The type of elements in the set.</typeparam>
 /// <remarks>
-/// Note: The comparer is not serialized. After deserialization, the hashset uses <c>IEqualityComparer&lt;T&gt;.Default</c>. 
-/// If a custom comparer is required, it must be re-specified.
+/// The comparer is not serialized. After deserialization the set uses
+/// <see cref="EqualityComparer{T}.Default"/>. 
+/// 
+/// If a custom comparer is required it can be reapplied using
+/// <see cref="SetComparer(IEqualityComparer{T})"/>.
 /// </remarks>
 [Serializable]
 [JsonConverter(typeof(SwiftStateJsonConverterFactory))]
@@ -477,19 +480,6 @@ public sealed partial class SwiftHashSet<T> : ICollection<T>, IEnumerable<T>, IE
     #region Utility Methods
 
     /// <summary>
-    /// Sets a new comparer for the sorted list.
-    /// </summary>
-    /// <param name="comparer">The new comparer to use.</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void SetComparer(IEqualityComparer<T> comparer)
-    {
-        if (comparer == null) ThrowHelper.ThrowArgumentNullException(nameof(comparer));
-        if (comparer == _comparer) return;
-        _comparer = comparer;
-        _version++;
-    }
-
-    /// <summary>
     /// Initializes the hash set with a given capacity, ensuring it starts with an optimal internal structure.
     /// </summary>
     /// <param name="capacity"></param>
@@ -549,15 +539,50 @@ public sealed partial class SwiftHashSet<T> : ICollection<T>, IEnumerable<T>, IE
         }
     }
 
+    private bool ComparerHasSameBehavior(IEqualityComparer<T> newComparer)
+    {
+        if (_count == 0)
+            return true;
+
+        int tested = 0;
+
+        for (int i = 0; i <= _lastIndex && tested < 8; i++)
+        {
+            if (_entries[i].IsUsed)
+            {
+                var value = _entries[i].Value;
+
+                int oldHash = _comparer.GetHashCode(value);
+                int newHash = newComparer.GetHashCode(value);
+
+                if (oldHash != newHash)
+                    return false;
+
+                tested++;
+            }
+        }
+
+        return true;
+    }
+
     /// <summary>
     /// Switches the hash set's comparer and rehashes all entries 
     /// using the new comparer to redistribute them across <see cref="_entries"/>.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void SwitchComparer(IEqualityComparer<T> newComparer = null)
+    public void SetComparer(IEqualityComparer<T> comparer = null)
     {
-        if (newComparer == null || newComparer.Equals(this)) return;
-        _comparer = newComparer;
+        if (comparer == null)
+            ThrowHelper.ThrowArgumentNullException(nameof(comparer));
+        if (ReferenceEquals(comparer, _comparer))
+            return;
+        if (ComparerHasSameBehavior(comparer))
+        {
+            _comparer = comparer;
+            return;
+        }
+
+        _comparer = comparer;
         RehashEntries();
         _version++;
     }

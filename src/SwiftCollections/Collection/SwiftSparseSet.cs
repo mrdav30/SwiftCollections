@@ -129,12 +129,20 @@ public sealed partial class SwiftSparseSet<T> : ISwiftCloneable<T>, IEnumerable<
     [MemoryPackIgnore]
     public int[] DenseKeys => _denseKeys;
 
+    [JsonIgnore]
+    [MemoryPackIgnore]
+    public Span<int> Keys => _denseKeys.AsSpan(0, _count);
+
     /// <summary>
     /// Returns the dense values array (valid range: [0..Count)).
     /// </summary>
     [JsonIgnore]
     [MemoryPackIgnore]
     public T[] DenseValues => _denseValues;
+
+    [JsonIgnore]
+    [MemoryPackIgnore]
+    public Span<T> Values => _denseValues.AsSpan(0, _count);
 
     /// <summary>
     /// Gets/sets the value for a key. Setting:

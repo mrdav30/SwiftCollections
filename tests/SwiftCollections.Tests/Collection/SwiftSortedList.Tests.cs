@@ -399,7 +399,26 @@ public class SwiftSortedListTests
         Assert.Equal(sorter.PeekMax(), deserializedSorter.PeekMax());
     }
 
-    // TODO: serialization test with custom comparison that tests they aren't equal, then equal after re-applying comparison
+    [Fact]
+    public void SortedList_CustomComparer_RoundTrip()
+    {
+        var comparer = Comparer<string>.Create(
+            (a, b) => string.Compare(a, b, StringComparison.OrdinalIgnoreCase));
+
+        var list = new SwiftSortedList<string>(comparer)
+        {
+            "Bravo",
+            "alpha"
+        };
+
+        byte[] json = JsonSerializer.SerializeToUtf8Bytes(list);
+
+        var result = JsonSerializer.Deserialize<SwiftSortedList<string>>(json);
+
+        result.SetComparer(comparer);
+
+        Assert.Equal("alpha", result[0]);
+    }
 
     #endregion
 }

@@ -20,8 +20,11 @@ namespace SwiftCollections;
 /// <typeparam name="T1">The type of the keys in the forward dictionary.</typeparam>
 /// <typeparam name="T2">The type of the values in the forward dictionary.</typeparam>
 /// <remarks>
-/// Note: The comparer is not serialized. After deserialization, the dictionary uses <c>IEqualityComparer&lt;T&gt;.Default</c>. 
-/// If a custom comparer is required, it must be re-specified.
+/// The comparer is not serialized. After deserialization the dictionary uses
+/// <see cref="EqualityComparer{T1}.Default"/> for keys and <see cref="EqualityComparer{T2}.Default"/> for values.
+/// 
+/// If a custom comparer is required it can be reapplied using
+/// <see cref="SetComparer(IEqualityComparer{T1}, IEqualityComparer{T2})"/>.
 /// </remarks>
 [Serializable]
 [JsonConverter(typeof(SwiftStateJsonConverterFactory))]
@@ -309,6 +312,70 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>
     #endregion
 
     #region Utility Methods
+
+    private bool ComparersHaveSameBehavior(IEqualityComparer<T1> newComparer1, IEqualityComparer<T2> newComparer2)
+    {
+        if (Count == 0)
+            return true;
+
+        int tested = 0;
+
+        foreach (var kv in this)
+        {
+            int oldHash1 = _comparer.GetHashCode(kv.Key);
+            int newHash1 = newComparer1.GetHashCode(kv.Key);
+
+            if (oldHash1 != newHash1)
+                return false;
+
+            int oldHash2 = _reverseComparer.GetHashCode(kv.Value);
+            int newHash2 = newComparer2.GetHashCode(kv.Value);
+
+            if (oldHash2 != newHash2)
+                return false;
+
+            tested++;
+            if (tested >= 8)
+                break;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Sets the comparers used to determine equality for keys and values in the dictionary.
+    /// </summary>
+    /// <remarks>This method updates the internal comparers and rebuilds the reverse mapping using the
+    /// specified value comparer. The operation is thread-safe and locks the internal state during the update. Changing
+    /// comparers may affect key and value lookup behavior.</remarks>
+    /// <param name="comparer1">The equality comparer to use for keys of type T1. Cannot be null.</param>
+    /// <param name="comparer2">The equality comparer to use for values of type T2. Cannot be null.</param>
+    public void SetComparer(IEqualityComparer<T1> comparer1, IEqualityComparer<T2> comparer2)
+    {
+        if (comparer1 == null) ThrowHelper.ThrowArgumentNullException(nameof(comparer1));
+        if (comparer2 == null) ThrowHelper.ThrowArgumentNullException(nameof(comparer2));
+        if (ReferenceEquals(comparer1, _comparer) && ReferenceEquals(comparer2, _reverseComparer))
+            return;
+
+        lock (ReverseSyncRoot)
+        {
+            if (ComparersHaveSameBehavior(comparer1, comparer2))
+            {
+                _comparer = comparer1;
+                _reverseComparer = comparer2;
+                return;
+            }
+
+            var newReverseMap = new SwiftDictionary<T2, T1>(Count, comparer2);
+            foreach (var kv in this)
+                newReverseMap.Add(kv.Value, kv.Key);
+
+            _reverseMap = newReverseMap;
+            _reverseComparer = comparer2;
+
+            base.SetComparer(comparer1);
+        }
+    }
 
     /// <summary>
     /// Attempts to get the key associated with the specified value.

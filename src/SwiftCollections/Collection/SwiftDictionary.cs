@@ -19,8 +19,11 @@ namespace SwiftCollections;
 /// <typeparam name="TKey">Specifies the type of keys in the dictionary.</typeparam>
 /// <typeparam name="TValue">Specifies the type of values in the dictionary.</typeparam>
 /// <remarks>
-/// Note: The comparer is not serialized. After deserialization, the dictionary uses <c>IEqualityComparer&lt;T&gt;.Default</c>. 
-/// If a custom comparer is required, it must be re-specified.
+/// The comparer is not serialized. After deserialization the dictionary uses
+/// <see cref="EqualityComparer{TKey}.Default"/>. 
+/// 
+/// If a custom comparer is required it can be reapplied using
+/// <see cref="SetComparer(IEqualityComparer{TKey})"/>.
 /// </remarks>
 [Serializable]
 [JsonConverter(typeof(SwiftStateJsonConverterFactory))]
@@ -67,7 +70,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
     /// <summary>
     /// The comparer used to determine equality of keys and to generate hash codes.
     /// </summary>
-    private IEqualityComparer<TKey> _comparer;
+    protected IEqualityComparer<TKey> _comparer;
 
     /// <summary>
     /// Specifies the dynamic growth factor for resizing, adjusted based on recent usage patterns.
@@ -223,7 +226,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
         }
         set
         {
-            ThrowIfNullAndNullsAreIllegal(value);
+            SwiftDictionary<TKey, TValue>.ThrowIfNullAndNullsAreIllegal(value);
             try
             {
                 TKey tempKey = (TKey)obj;
@@ -350,7 +353,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
     void IDictionary<TKey, TValue>.Add(TKey key, TValue value) => Add(key, value);
     void IDictionary.Add(object key, object value)
     {
-        ThrowIfNullAndNullsAreIllegal(value);
+        SwiftDictionary<TKey, TValue>.ThrowIfNullAndNullsAreIllegal(value);
 
         try
         {
@@ -725,6 +728,55 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
         }
     }
 
+    private bool ComparerHasSameBehavior(IEqualityComparer<TKey> newComparer)
+    {
+        if (_count == 0)
+            return true;
+
+        int tested = 0;
+
+        for (int i = 0; i <= _lastIndex && tested < 8; i++)
+        {
+            if (_entries[i].IsUsed)
+            {
+                var value = _entries[i].Key;
+
+                int oldHash = _comparer.GetHashCode(value);
+                int newHash = newComparer.GetHashCode(value);
+
+                if (oldHash != newHash)
+                    return false;
+
+                tested++;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Sets a new comparer for the dictionary and rehashes the entries.
+    /// </summary>
+    /// <param name="comparer">The new comparer to use.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void SetComparer(IEqualityComparer<TKey> comparer)
+    {
+        if (comparer == null)
+            ThrowHelper.ThrowArgumentNullException(nameof(comparer));
+        if (ReferenceEquals(comparer, _comparer))
+            return;
+        if (ComparerHasSameBehavior(comparer))
+        {
+            _comparer = comparer;
+            return;
+        }
+
+        _comparer = comparer;
+        RehashEntries();
+        _maxStepCount = 0;
+        _version++;
+    }
+
     /// <summary>
     /// Switches the dictionary's comparer to a randomized comparer to mitigate the effects of high collision counts,
     /// and rehashes all entries using the new comparer to redistribute them across <see cref="_entries"/>.
@@ -801,7 +853,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
                 return -1;
             if (entry.IsUsed && entry.HashCode == hashCode && _comparer.Equals(entry.Key, key))
                 return entryIndex; // Match found
-                                   
+
             // Perform quadratic probing to see if maybe the entry was shifted.
             step++;
             entryIndex = (entryIndex + step * step) & _entryMask;
@@ -815,7 +867,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
     /// <param name="value">The value to check.</param>
     /// <exception cref="ArgumentNullException">The value is null and TValue is a value type.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void ThrowIfNullAndNullsAreIllegal(object value)
+    private static void ThrowIfNullAndNullsAreIllegal(object value)
     {
         if (value == null && !(default(TValue) == null))
             ThrowHelper.ThrowArgumentNullException(nameof(value));
@@ -1039,9 +1091,10 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
 
             object IEnumerator.Current
             {
-                get {
+                get
+                {
                     if (_index > (uint)_dictionary._lastIndex) ThrowHelper.ThrowInvalidOperationException("Bad enumeration");
-                    return _currentKey; 
+                    return _currentKey;
                 }
             }
 

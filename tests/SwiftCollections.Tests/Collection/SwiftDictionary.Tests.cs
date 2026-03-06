@@ -674,5 +674,22 @@ public class SwiftDictionaryTests
         Assert.Equal(originalValue, deserializedValue);
     }
 
-    // TODO: serialization test with custom comparison that tests they aren't equal, then equal after re-applying comparison
+    [Fact]
+    public void Dictionary_CustomComparer_RoundTrip()
+    {
+        var comparer = StringComparer.OrdinalIgnoreCase;
+
+        var dict = new SwiftDictionary<string, int>(8, comparer);
+        dict.Add("Hello", 1);
+
+        byte[] json = JsonSerializer.SerializeToUtf8Bytes(dict);
+
+        var result = JsonSerializer.Deserialize<SwiftDictionary<string, int>>(json);
+
+        Assert.DoesNotContain("hello", result);
+
+        result.SetComparer(comparer);
+
+        Assert.Contains("hello", result);
+    }
 }

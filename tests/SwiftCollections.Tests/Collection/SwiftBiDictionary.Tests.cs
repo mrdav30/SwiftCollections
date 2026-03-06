@@ -1,5 +1,7 @@
 ﻿
 using MemoryPack;
+using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Xunit;
@@ -177,6 +179,27 @@ public class SwiftBiDictionaryTests
         // Check that deserialized values match the original
         Assert.Equal(originalValue.Count, deserializedValue.Count);
         Assert.Equal(originalValue, deserializedValue);
+    }
+
+    [Fact]
+    public void BiDictionary_CustomComparer_RoundTrip()
+    {
+        var keyComparer = StringComparer.OrdinalIgnoreCase;
+        var valueComparer = StringComparer.OrdinalIgnoreCase;
+
+        var dict = new SwiftBiDictionary<string, string>(8, keyComparer, valueComparer);
+
+        dict.Add("Key", "Value");
+
+        byte[] json = JsonSerializer.SerializeToUtf8Bytes(dict);
+
+        var result = JsonSerializer.Deserialize<SwiftBiDictionary<string, string>>(json);
+
+        Assert.False(result.ContainsKey("key"));
+
+        result.SetComparer(keyComparer, valueComparer);
+
+        Assert.True(result.ContainsKey("key"));
     }
 
     [Fact]

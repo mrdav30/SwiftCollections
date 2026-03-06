@@ -19,8 +19,11 @@ namespace SwiftCollections;
 /// Provides efficient O(log n) operations for adding, removing, and checking for the presence of elements.
 /// </summary>
 /// <remarks>
-/// Note: The comparer is not serialized. After deserialization, the list uses <c>Comparer&lt;T&gt;.Default</c>. 
-/// If a custom comparer is required, it must be re-specified.
+/// The comparer is not serialized. After deserialization the list uses
+/// <see cref="Comparer{T}.Default"/>. 
+/// 
+/// If a custom comparer is required it can be reapplied using
+/// <see cref="SetComparer(IComparer{T})"/>.
 /// </remarks>
 /// <typeparam name="T">The type of elements in the collection.</typeparam>
 [Serializable]
@@ -576,8 +579,11 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetComparer(IComparer<T> comparer)
     {
-        if (comparer == null) ThrowHelper.ThrowArgumentNullException(nameof(comparer));
-        if (comparer == _comparer) return;
+        if (comparer == null) 
+            ThrowHelper.ThrowArgumentNullException(nameof(comparer));
+        if (ReferenceEquals(comparer, _comparer))
+            return;
+
         _comparer = comparer;
         Array.Sort(_innerArray, _offset, _count, _comparer);
         _version++;

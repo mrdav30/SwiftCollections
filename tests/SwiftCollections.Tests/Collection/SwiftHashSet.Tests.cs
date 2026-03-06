@@ -483,5 +483,47 @@ public class SwiftHashSetTests
         Assert.Equal(originalValue, deserializedValue);
     }
 
-    // TODO: serialization test with custom comparison that tests they aren't equal, then equal after re-applying comparison
+    [Fact]
+    public void HashSet_CustomComparer_RoundTrip()
+    {
+        var comparer = StringComparer.OrdinalIgnoreCase;
+
+        var set = new SwiftHashSet<string>(comparer)
+        {
+            "Hello",
+            "World"
+        };
+
+        byte[] json = JsonSerializer.SerializeToUtf8Bytes(set);
+
+        var result = JsonSerializer.Deserialize<SwiftHashSet<string>>(json);
+
+        // default comparer now
+        Assert.DoesNotContain("hello", result);
+
+        result.SetComparer(comparer);
+
+        Assert.Contains("hello", result);
+    }
+
+    [Fact]
+    public void HashSet_CustomComparer_MemoryPackRoundTrip()
+    {
+        var comparer = StringComparer.OrdinalIgnoreCase;
+
+        var set = new SwiftHashSet<string>(comparer)
+        {
+            "Hello"
+        };
+
+        byte[] bytes = MemoryPackSerializer.Serialize(set);
+
+        var result = MemoryPackSerializer.Deserialize<SwiftHashSet<string>>(bytes);
+
+        Assert.DoesNotContain("hello", result);
+
+        result.SetComparer(comparer);
+
+        Assert.Contains("hello", result);
+    }
 }
