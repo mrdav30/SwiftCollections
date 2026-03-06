@@ -16,20 +16,20 @@ namespace SwiftCollections.Dimensions;
 [Serializable]
 [JsonConverter(typeof(SwiftStateJsonConverterFactory))]
 [MemoryPackable]
-public partial class ShortArray2D : Array2D<short>
+public partial class SwiftShortArray2D : SwiftArray2D<short>
 {
     #region Constructors
 
-    public ShortArray2D() { }
+    public SwiftShortArray2D() { }
 
-    public ShortArray2D(int width, int height) : base(width, height) { }
+    public SwiftShortArray2D(int width, int height) : base(width, height) { }
 
-    public ShortArray2D(int width, int height, short defaultValue) : base(width, height, defaultValue) { }
+    public SwiftShortArray2D(int width, int height, short defaultValue) : base(width, height, defaultValue) { }
 
-    public ShortArray2D(short[,] source) : base(source) { }
+    public SwiftShortArray2D(short[,] source) : base(source) { }
 
     [MemoryPackConstructor]
-    public ShortArray2D(Array2DState<short> state) : base(state) { }
+    public SwiftShortArray2D(Array2DState<short> state) : base(state) { }
 
     #endregion
 

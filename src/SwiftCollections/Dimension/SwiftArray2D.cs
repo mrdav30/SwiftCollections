@@ -19,7 +19,7 @@ namespace SwiftCollections.Dimensions;
 [Serializable]
 [JsonConverter(typeof(SwiftStateJsonConverterFactory))]
 [MemoryPackable]
-public partial class Array2D<T> : IEnumerable<T>, IEnumerable
+public partial class SwiftArray2D<T> : IEnumerable<T>, IEnumerable
 {
     #region Fields
 
@@ -34,27 +34,27 @@ public partial class Array2D<T> : IEnumerable<T>, IEnumerable
     #region Constructors
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="Array2D{T}"/> class.
+    /// Initializes a new instance of the <see cref="SwiftArray2D{T}"/> class.
     /// </summary>
-    public Array2D() : this(0, 0) { }
+    public SwiftArray2D() : this(0, 0) { }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="Array2D{T}"/> class with specified dimensions.
+    /// Initializes a new instance of the <see cref="SwiftArray2D{T}"/> class with specified dimensions.
     /// </summary>
-    public Array2D(int width, int height)
+    public SwiftArray2D(int width, int height)
     {
         Initialize(width, height);
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="Array2D{T}"/> class with specified dimensions and default value.
+    /// Initializes a new instance of the <see cref="SwiftArray2D{T}"/> class with specified dimensions and default value.
     /// </summary>
-    public Array2D(int width, int height, T defaultValue) : this(width, height)
+    public SwiftArray2D(int width, int height, T defaultValue) : this(width, height)
     {
         Fill(defaultValue);
     }
 
-    public Array2D(T[,] source)
+    public SwiftArray2D(T[,] source)
     {
         int width = source.GetLength(0);
         int height = source.GetLength(1);
@@ -67,7 +67,7 @@ public partial class Array2D<T> : IEnumerable<T>, IEnumerable
     }
 
     [MemoryPackConstructor]
-    public Array2D(Array2DState<T> state)
+    public SwiftArray2D(Array2DState<T> state)
     {
         State = state;
     }
@@ -295,9 +295,9 @@ public partial class Array2D<T> : IEnumerable<T>, IEnumerable
     /// <summary>
     /// Clones a 2D array into a new instance of Array2D.
     /// </summary>
-    public Array2D<T> Clone()
+    public SwiftArray2D<T> Clone()
     {
-        var array2D = new Array2D<T>(Width, Height);
+        var array2D = new SwiftArray2D<T>(Width, Height);
         for (int x = 0; x < Width; x++)
         {
             for (int y = 0; y < Height; y++)

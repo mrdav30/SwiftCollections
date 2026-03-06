@@ -16,20 +16,20 @@ namespace SwiftCollections.Dimensions;
 [Serializable]
 [JsonConverter(typeof(SwiftStateJsonConverterFactory))]
 [MemoryPackable]
-public partial class BoolArray2D : Array2D<bool>
+public partial class SwiftBoolArray2D : SwiftArray2D<bool>
 {
     #region Constructors
 
-    public BoolArray2D() { }
+    public SwiftBoolArray2D() { }
 
-    public BoolArray2D(int width, int height) : base(width, height) { }
+    public SwiftBoolArray2D(int width, int height) : base(width, height) { }
 
-    public BoolArray2D(int width, int height, bool defaultValue) : base(width, height, defaultValue) { }
+    public SwiftBoolArray2D(int width, int height, bool defaultValue) : base(width, height, defaultValue) { }
 
-    public BoolArray2D(bool[,] source) : base(source) { }
+    public SwiftBoolArray2D(bool[,] source) : base(source) { }
 
     [MemoryPackConstructor]
-    public BoolArray2D(Array2DState<bool> state) : base(state) { }
+    public SwiftBoolArray2D(Array2DState<bool> state) : base(state) { }
 
     #endregion
 

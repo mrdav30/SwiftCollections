@@ -5,12 +5,12 @@ using Xunit;
 
 namespace SwiftCollections.Dimensions.Tests;
 
-public class ShortArray2DTests
+public class SwiftShortArray2DTests
 {
     [Fact]
     public void Normalize_AdjustsValuesToRange()
     {
-        var shortArray = new ShortArray2D(2, 2);
+        var shortArray = new SwiftShortArray2D(2, 2);
         shortArray[0, 0] = 10;
         shortArray[0, 1] = 20;
         shortArray[1, 0] = 30;
@@ -27,7 +27,7 @@ public class ShortArray2DTests
     [Fact]
     public void Normalize_SingleValue_NoChange()
     {
-        var shortArray = new ShortArray2D(3, 3, 10);
+        var shortArray = new SwiftShortArray2D(3, 3, 10);
         shortArray.Normalize(0, 100);
 
         Assert.All(shortArray.InnerArray, value => Assert.Equal(0, value));
@@ -36,7 +36,7 @@ public class ShortArray2DTests
     [Fact]
     public void Scale_MultipliesValues()
     {
-        var shortArray = new ShortArray2D(3, 3, 2);
+        var shortArray = new SwiftShortArray2D(3, 3, 2);
         shortArray.Scale(3);
 
         Assert.All(shortArray.InnerArray, value => Assert.Equal(6, value));
@@ -45,7 +45,7 @@ public class ShortArray2DTests
     [Fact]
     public void Clone_CreatesExactCopy()
     {
-        ShortArray2D source = new ShortArray2D(new short[,] { { 1, 2 }, { 3, 4 } });
+        SwiftShortArray2D source = new SwiftShortArray2D(new short[,] { { 1, 2 }, { 3, 4 } });
         var clonedArray = source.Clone();
 
         Assert.Equal(2, clonedArray.Width);
@@ -57,7 +57,7 @@ public class ShortArray2DTests
     public void HeightMapSimulation()
     {
         short[,] heights = { { 10, 20 }, { 30, 40 } };
-        var heightMap = new ShortArray2D(heights);
+        var heightMap = new SwiftShortArray2D(heights);
 
         heightMap.Normalize(0, 100);
         Assert.Equal(0, heightMap[0, 0]);
@@ -72,7 +72,7 @@ public class ShortArray2DTests
     public void ShortArray2D_Serialization_Deserialization()
     {
         // Arrange
-        var originalArray = new ShortArray2D(3, 3, (short)0);
+        var originalArray = new SwiftShortArray2D(3, 3, (short)0);
         originalArray[0, 0] = 10;
         originalArray[1, 1] = 20;
         originalArray[2, 2] = 30;
@@ -84,7 +84,7 @@ public class ShortArray2DTests
             ReferenceHandler = ReferenceHandler.IgnoreCycles
         };
         var json = JsonSerializer.SerializeToUtf8Bytes(originalArray, jsonOptions);
-        var deserializedArray = JsonSerializer.Deserialize<ShortArray2D>(json, jsonOptions);
+        var deserializedArray = JsonSerializer.Deserialize<SwiftShortArray2D>(json, jsonOptions);
 
         // Assert
         Assert.Equal(originalArray.Width, deserializedArray.Width);
@@ -103,14 +103,14 @@ public class ShortArray2DTests
     public void ShortArray2D_MemoryPackSerialization_RoundTripMaintainsData()
     {
         // Arrange
-        var originalValue = new ShortArray2D(3, 3, (short)0);
+        var originalValue = new SwiftShortArray2D(3, 3, (short)0);
         originalValue[0, 0] = 10;
         originalValue[1, 1] = 20;
         originalValue[2, 2] = 30;
 
         // Act
         byte[] bytes = MemoryPackSerializer.Serialize(originalValue);
-        ShortArray2D deserializedValue = MemoryPackSerializer.Deserialize<ShortArray2D>(bytes);
+        SwiftShortArray2D deserializedValue = MemoryPackSerializer.Deserialize<SwiftShortArray2D>(bytes);
 
         // Check that deserialized values match the original
         Assert.Equal(originalValue.Length, deserializedValue.Length);

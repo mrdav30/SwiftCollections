@@ -6,12 +6,12 @@ using Xunit;
 
 namespace SwiftCollections.Dimensions.Tests;
 
-public class Array2DTests
+public class SwiftArray2DTests
 {
     [Fact]
     public void Indexing_WorksAsExpected()
     {
-        var array = new Array2D<int>(3, 3);
+        var array = new SwiftArray2D<int>(3, 3);
         array[1, 1] = 42;
         Assert.Equal(42, array[1, 1]);
     }
@@ -19,7 +19,7 @@ public class Array2DTests
     [Fact]
     public void Resize_PreservesExistingValues()
     {
-        var array = new Array2D<int>(2, 2);
+        var array = new SwiftArray2D<int>(2, 2);
         array[0, 0] = 1;
         array[1, 1] = 2;
         array.Resize(3, 3);
@@ -32,7 +32,7 @@ public class Array2DTests
     [Fact]
     public void Shift_MovesElementsCorrectly()
     {
-        var array = new Array2D<int>(3, 3, 0);
+        var array = new SwiftArray2D<int>(3, 3, 0);
         array[1, 1] = 42;
         array.Shift(1, 1);
 
@@ -43,7 +43,7 @@ public class Array2DTests
     [Fact]
     public void Shift_WrapAround_ValidIndices()
     {
-        var array = new Array2D<int>(3, 3);
+        var array = new SwiftArray2D<int>(3, 3);
         array[1, 1] = 42;
 
         array.Shift(1, 1);
@@ -55,7 +55,7 @@ public class Array2DTests
     [Fact]
     public void Shift_NonWrapping_DiscardOutOfBounds()
     {
-        var array = new Array2D<int>(3, 3);
+        var array = new SwiftArray2D<int>(3, 3);
         array[1, 1] = 42;
 
         // Shift with large offsets that push the value out of bounds
@@ -68,7 +68,7 @@ public class Array2DTests
     [Fact]
     public void Fill_SetsAllElements()
     {
-        var array = new Array2D<int>(2, 2);
+        var array = new SwiftArray2D<int>(2, 2);
         array.Fill(99);
 
         Assert.All(array.InnerArray, item => Assert.Equal(99, item));
@@ -77,7 +77,7 @@ public class Array2DTests
     [Fact]
     public void OutOfBoundsAccess_ThrowsException()
     {
-        var array = new Array2D<int>(3, 3);
+        var array = new SwiftArray2D<int>(3, 3);
         Assert.Throws<IndexOutOfRangeException>(() => array[-1, 0]);
         Assert.Throws<IndexOutOfRangeException>(() => array[3, 3]);
     }
@@ -85,7 +85,7 @@ public class Array2DTests
     [Fact]
     public void Resize_SmallerDimensions_TrimsData()
     {
-        var array = new Array2D<int>(4, 4);
+        var array = new SwiftArray2D<int>(4, 4);
         array.Fill(42);
         array.Resize(2, 2);
 
@@ -98,7 +98,7 @@ public class Array2DTests
     public void LargeArray_PerformanceAndCorrectness()
     {
         const int size = 1000;
-        var array = new Array2D<int>(size, size);
+        var array = new SwiftArray2D<int>(size, size);
         array.Fill(99);
 
         Assert.Equal(size * size, array.InnerArray.Length);
@@ -109,7 +109,7 @@ public class Array2DTests
     public void SerializeDeserialize_MaintainsDataAndStructure()
     {
         // Arrange
-        var originalArray = new Array2D<int>(3, 3);
+        var originalArray = new SwiftArray2D<int>(3, 3);
         originalArray[0, 0] = 42;
         originalArray[1, 1] = 99;
         originalArray[2, 2] = 7;
@@ -120,7 +120,7 @@ public class Array2DTests
             ReferenceHandler = ReferenceHandler.IgnoreCycles
         };
         var json = JsonSerializer.SerializeToUtf8Bytes(originalArray, jsonOptions);
-        var deserializedArray = JsonSerializer.Deserialize<Array2D<int>>(json, jsonOptions);
+        var deserializedArray = JsonSerializer.Deserialize<SwiftArray2D<int>>(json, jsonOptions);
 
         // Assert
         Assert.Equal(originalArray.Width, deserializedArray.Width);
@@ -137,14 +137,14 @@ public class Array2DTests
     public void Array2D_MemoryPackSerialization_RoundTripMaintainsData()
     {
         // Arrange
-        var originalValue = new Array2D<int>(3, 3);
+        var originalValue = new SwiftArray2D<int>(3, 3);
         originalValue[0, 0] = 42;
         originalValue[1, 1] = 99;
         originalValue[2, 2] = 7;
 
         // Act
         byte[] bytes = MemoryPackSerializer.Serialize(originalValue);
-        Array2D<int> deserializedValue = MemoryPackSerializer.Deserialize<Array2D<int>>(bytes);
+        SwiftArray2D<int> deserializedValue = MemoryPackSerializer.Deserialize<SwiftArray2D<int>>(bytes);
 
         // Check that deserialized values match the original
         Assert.Equal(originalValue.Length, deserializedValue.Length);

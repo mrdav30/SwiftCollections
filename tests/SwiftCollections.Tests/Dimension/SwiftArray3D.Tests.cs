@@ -7,12 +7,12 @@ using Xunit;
 
 namespace SwiftCollections.Dimensions.Tests;
 
-public class Array3DTests
+public class SwiftArray3DTests
 {
     [Fact]
     public void Indexing_WorksAsExpected()
     {
-        var array = new Array3D<int>(3, 3, 3);
+        var array = new SwiftArray3D<int>(3, 3, 3);
         array[1, 1, 1] = 42;
 
         Assert.Equal(42, array[1, 1, 1]);
@@ -21,7 +21,7 @@ public class Array3DTests
     [Fact]
     public void Indexing_OutOfBounds_ThrowsException()
     {
-        var array = new Array3D<int>(3, 3, 3);
+        var array = new SwiftArray3D<int>(3, 3, 3);
 
         Assert.Throws<IndexOutOfRangeException>(() => array[-1, 0, 0]);
         Assert.Throws<IndexOutOfRangeException>(() => array[3, 3, 3]);
@@ -30,7 +30,7 @@ public class Array3DTests
     [Fact]
     public void Initialization_WithDefaultValue_SetsAllElements()
     {
-        var array = new Array3D<int>(3, 3, 3, 99);
+        var array = new SwiftArray3D<int>(3, 3, 3, 99);
 
         foreach (var item in array)
             Assert.Equal(99, item); // Default value for int
@@ -39,7 +39,7 @@ public class Array3DTests
     [Fact]
     public void Resize_LargerDimensions_RetainsData()
     {
-        var array = new Array3D<int>(2, 2, 2);
+        var array = new SwiftArray3D<int>(2, 2, 2);
         array[0, 0, 0] = 1;
         array[1, 1, 1] = 2;
 
@@ -53,7 +53,7 @@ public class Array3DTests
     [Fact]
     public void Resize_SmallerDimensions_TrimsData()
     {
-        var array = new Array3D<int>(3, 3, 3);
+        var array = new SwiftArray3D<int>(3, 3, 3);
         array[2, 2, 2] = 42;
 
         array.Resize(2, 2, 2);
@@ -64,7 +64,7 @@ public class Array3DTests
     [Fact]
     public void Shift_PositiveOffsets_ShiftsElements()
     {
-        var array = new Array3D<int>(3, 3, 3);
+        var array = new SwiftArray3D<int>(3, 3, 3);
         array[0, 0, 0] = 42;
 
         array.Shift(1, 1, 1);
@@ -76,7 +76,7 @@ public class Array3DTests
     [Fact]
     public void Shift_NegativeOffsets_ShiftsElements()
     {
-        var array = new Array3D<int>(3, 3, 3);
+        var array = new SwiftArray3D<int>(3, 3, 3);
         array[2, 2, 2] = 42;
 
         array.Shift(-1, -1, -1);
@@ -88,7 +88,7 @@ public class Array3DTests
     [Fact]
     public void Clear_ResetsAllElementsToDefault()
     {
-        var array = new Array3D<int>(3, 3, 3);
+        var array = new SwiftArray3D<int>(3, 3, 3);
         array.Fill(42);
 
         array.Clear();
@@ -100,7 +100,7 @@ public class Array3DTests
     [Fact]
     public void Fill_SetsAllElementsToSpecifiedValue()
     {
-        var array = new Array3D<int>(3, 3, 3);
+        var array = new SwiftArray3D<int>(3, 3, 3);
         array.Fill(42);
 
         foreach (var item in array)
@@ -110,7 +110,7 @@ public class Array3DTests
     [Fact]
     public void IsValidIndex_ValidatesCorrectly()
     {
-        var array = new Array3D<int>(3, 3, 3);
+        var array = new SwiftArray3D<int>(3, 3, 3);
 
         Assert.True(array.IsValidIndex(0, 0, 0));
         Assert.False(array.IsValidIndex(-1, 0, 0));
@@ -121,7 +121,7 @@ public class Array3DTests
     public void StressTest_LargeArray()
     {
         const int size = 100;
-        var array = new Array3D<int>(size, size, size);
+        var array = new SwiftArray3D<int>(size, size, size);
 
         // Fill array with values
         for (int x = 0; x < size; x++)
@@ -139,7 +139,7 @@ public class Array3DTests
     [Fact]
     public void ResizeAndShift_CombinedOperations()
     {
-        var array = new Array3D<int>(4, 4, 4);
+        var array = new SwiftArray3D<int>(4, 4, 4);
         array[0, 0, 0] = 1;
         array[3, 3, 3] = 99;
 
@@ -164,7 +164,7 @@ public class Array3DTests
     public void RandomizedData_MaintainsIntegrity()
     {
         const int size = 50;
-        var array = new Array3D<int>(size, size, size);
+        var array = new SwiftArray3D<int>(size, size, size);
         var random = new Random();
 
         // Fill array with random data
@@ -184,7 +184,7 @@ public class Array3DTests
     public void MultiThreadedAccess_DoesNotCorruptData()
     {
         const int size = 10;
-        var array = new Array3D<int>(size, size, size);
+        var array = new SwiftArray3D<int>(size, size, size);
 
         Parallel.For(0, size, x =>
         {
@@ -206,7 +206,7 @@ public class Array3DTests
     [Fact]
     public void Resize_ToZeroDimensions_ClearsArray()
     {
-        var array = new Array3D<int>(3, 3, 3);
+        var array = new SwiftArray3D<int>(3, 3, 3);
         array.Fill(42);
 
         array.Resize(0, 0, 0);
@@ -219,7 +219,7 @@ public class Array3DTests
     [Fact]
     public void Shift_NonUniformOffsets()
     {
-        var array = new Array3D<int>(3, 3, 3);
+        var array = new SwiftArray3D<int>(3, 3, 3);
         array[1, 1, 1] = 42;
 
         array.Shift(1, -1, 2);
@@ -231,7 +231,7 @@ public class Array3DTests
     [Fact]
     public void Shift_NonWrapping_DiscardOutOfBounds()
     {
-        var array = new Array3D<int>(3, 3, 3);
+        var array = new SwiftArray3D<int>(3, 3, 3);
         array[1, 1, 1] = 42;
 
         array.Shift(1, -1, 2, wrap: false);
@@ -244,7 +244,7 @@ public class Array3DTests
     public void SerializeAndDeserialize_Array3D_PreservesData()
     {
         // Arrange
-        var originalArray = new Array3D<int>(2, 2, 2);
+        var originalArray = new SwiftArray3D<int>(2, 2, 2);
         originalArray[0, 0, 0] = 1;
         originalArray[1, 1, 1] = 42;
 
@@ -254,7 +254,7 @@ public class Array3DTests
             ReferenceHandler = ReferenceHandler.IgnoreCycles
         };
         var json = JsonSerializer.SerializeToUtf8Bytes(originalArray, jsonOptions);
-        var deserializedArray = JsonSerializer.Deserialize<Array3D<int>>(json, jsonOptions);
+        var deserializedArray = JsonSerializer.Deserialize<SwiftArray3D<int>>(json, jsonOptions);
 
         // Assert
         Assert.Equal(originalArray.Width, deserializedArray.Width);
@@ -268,13 +268,13 @@ public class Array3DTests
     public void Array3D_MemoryPackSerialization_RoundTripMaintainsData()
     {
         // Arrange
-        var originalValue = new Array3D<int>(2, 2, 2);
+        var originalValue = new SwiftArray3D<int>(2, 2, 2);
         originalValue[0, 0, 0] = 1;
         originalValue[1, 1, 1] = 42;
 
         // Act
         byte[] bytes = MemoryPackSerializer.Serialize(originalValue);
-        Array3D<int> deserializedValue = MemoryPackSerializer.Deserialize<Array3D<int>>(bytes);
+        SwiftArray3D<int> deserializedValue = MemoryPackSerializer.Deserialize<SwiftArray3D<int>>(bytes);
 
         // Check that deserialized values match the original
         Assert.Equal(originalValue.Length, deserializedValue.Length);
