@@ -192,33 +192,55 @@ public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEn
             var items = value.Items ?? Array.Empty<T>();
             var allocated = value.Allocated ?? Array.Empty<bool>();
             var generations = value.Generations ?? Array.Empty<uint>();
+            var freeIndices = value.FreeIndices ?? Array.Empty<int>();
 
-            int capacity = items.Length < DefaultCapacity
+            int sourceLength = Math.Max(items.Length, Math.Max(allocated.Length, generations.Length));
+            int capacity = sourceLength < DefaultCapacity
                 ? DefaultCapacity
-                : SwiftHashTools.NextPowerOfTwo(items.Length);
+                : SwiftHashTools.NextPowerOfTwo(sourceLength);
 
             _entries = new Entry[capacity];
-            _freeIndices = new SwiftIntStack(value.FreeIndices.Length);
+            _freeIndices = new SwiftIntStack(Math.Max(SwiftIntStack.DefaultCapacity, freeIndices.Length));
 
-            _peak = value.Peak;
             _count = 0;
+            int maxReferencedIndex = -1;
 
-            for (int i = 0; i < items.Length; i++)
+            for (int i = 0; i < sourceLength; i++)
             {
                 ref Entry entry = ref _entries[i];
 
                 entry.Generation = generations.Length > i ? generations[i] : 0;
+                if (entry.Generation != 0)
+                    maxReferencedIndex = i;
 
                 if (allocated.Length > i && allocated[i])
                 {
-                    entry.Value = items[i];
+                    if (items.Length > i)
+                        entry.Value = items[i];
+
                     entry.IsUsed = true;
                     _count++;
+                    maxReferencedIndex = i;
                 }
             }
 
-            foreach (var index in value.FreeIndices)
+            foreach (var index in freeIndices)
+            {
+                if ((uint)index >= (uint)capacity)
+                    ThrowHelper.ThrowArgumentException("Free index is out of range.");
+
                 _freeIndices.Push(index);
+                if (index > maxReferencedIndex)
+                    maxReferencedIndex = index;
+            }
+
+            int peak = value.Peak;
+            if (peak < 0)
+                peak = 0;
+
+            _peak = Math.Max(peak, maxReferencedIndex + 1);
+            if (_peak > capacity)
+                _peak = capacity;
 
             _version = 0;
         }

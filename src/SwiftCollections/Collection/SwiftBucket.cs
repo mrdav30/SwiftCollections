@@ -197,29 +197,49 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
         }
         internal set
         {
-            var items = value.Items;
-            var allocated = value.Allocated;
+            var items = value.Items ?? Array.Empty<T>();
+            var allocated = value.Allocated ?? Array.Empty<bool>();
+            var freeIndices = value.FreeIndices ?? Array.Empty<int>();
 
-            int capacity = items.Length < DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(items.Length);
+            int sourceLength = Math.Max(items.Length, allocated.Length);
+            int capacity = sourceLength < DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(sourceLength);
 
             _innerArray = new Entry[capacity];
-            _freeIndices = new SwiftIntStack(value.FreeIndices.Length);
-            _peakCount = value.PeakCount;
+            _freeIndices = new SwiftIntStack(Math.Max(SwiftIntStack.DefaultCapacity, freeIndices.Length));
 
             _count = 0;
+            int maxReferencedIndex = -1;
 
-            for (int i = 0; i < capacity; i++)
+            for (int i = 0; i < sourceLength; i++)
             {
-                if (allocated[i])
+                if (allocated.Length > i && allocated[i])
                 {
-                    _innerArray[i].Value = items[i];
+                    if (items.Length > i)
+                        _innerArray[i].Value = items[i];
+
                     _innerArray[i].IsUsed = true;
                     _count++;
+                    maxReferencedIndex = i;
                 }
             }
 
-            foreach (var index in value.FreeIndices)
+            foreach (var index in freeIndices)
+            {
+                if ((uint)index >= (uint)capacity)
+                    ThrowHelper.ThrowArgumentException("Free index is out of range.");
+
                 _freeIndices.Push(index);
+                if (index > maxReferencedIndex)
+                    maxReferencedIndex = index;
+            }
+
+            int peakCount = value.PeakCount;
+            if (peakCount < 0)
+                peakCount = 0;
+
+            _peakCount = Math.Max(peakCount, maxReferencedIndex + 1);
+            if (_peakCount > capacity)
+                _peakCount = capacity;
 
             _version = 0;
         }

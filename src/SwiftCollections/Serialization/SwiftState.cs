@@ -67,9 +67,9 @@ public readonly partial struct SwiftBucketState<T>
     [MemoryPackConstructor]
     public SwiftBucketState(T[] items, bool[] allocated, int[] freeIndices, int peakCount)
     {
-        Items = items;
-        Allocated = allocated;
-        FreeIndices = freeIndices;
+        Items = items ?? Array.Empty<T>();
+        Allocated = allocated ?? Array.Empty<bool>();
+        FreeIndices = freeIndices ?? Array.Empty<int>();
         PeakCount = peakCount;
     }
 }
@@ -107,10 +107,10 @@ public readonly partial struct SwiftGenerationalBucketState<T>
         int[] freeIndices,
         int peak)
     {
-        Items = items;
-        Allocated = allocated;
-        Generations = generations;
-        FreeIndices = freeIndices;
+        Items = items ?? Array.Empty<T>();
+        Allocated = allocated ?? Array.Empty<bool>();
+        Generations = generations ?? Array.Empty<uint>();
+        FreeIndices = freeIndices ?? Array.Empty<int>();
         Peak = peak;
     }
 }
