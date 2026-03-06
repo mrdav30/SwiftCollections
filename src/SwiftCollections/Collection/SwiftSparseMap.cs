@@ -14,13 +14,13 @@ using System.Text.Json.Serialization.Shim;
 namespace SwiftCollections;
 
 /// <summary>
-/// Represents a high-performance sparse set that stores values indexed by externally supplied integer keys.
+/// Represents a high-performance sparse map that stores values indexed by externally supplied integer keys.
 /// Provides O(1) Add, Remove, Contains, and lookup operations while maintaining densely packed storage
 /// for cache-friendly iteration.
 /// </summary>
 /// <remarks>
 /// Unlike <see cref="SwiftBucket{T}"/>, which internally assigns and manages item indices,
-/// <see cref="SwiftSparseSet{T}"/> is externally keyed. The caller supplies the integer key
+/// <see cref="SwiftSparseMap{T}"/> is externally keyed. The caller supplies the integer key
 /// (for example, an entity ID or handle) used to index the value.
 ///
 /// Internally, the container maintains:
@@ -43,7 +43,7 @@ namespace SwiftCollections;
 [Serializable]
 [JsonConverter(typeof(SwiftStateJsonConverterFactory))]
 [MemoryPackable]
-public sealed partial class SwiftSparseSet<T> : ISwiftCloneable<T>, IEnumerable<KeyValuePair<int, T>>, IEnumerable
+public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<KeyValuePair<int, T>>, IEnumerable
 {
     #region Constants
 
@@ -72,9 +72,9 @@ public sealed partial class SwiftSparseSet<T> : ISwiftCloneable<T>, IEnumerable<
 
     #region Constructors
 
-    public SwiftSparseSet() : this(DefaultSparseCapacity, DefaultDenseCapacity) { }
+    public SwiftSparseMap() : this(DefaultSparseCapacity, DefaultDenseCapacity) { }
 
-    public SwiftSparseSet(int sparseCapacity, int denseCapacity)
+    public SwiftSparseMap(int sparseCapacity, int denseCapacity)
     {
         if (sparseCapacity < 0) ThrowArgumentOutOfRange(nameof(sparseCapacity));
         if (denseCapacity < 0) ThrowArgumentOutOfRange(nameof(denseCapacity));
@@ -87,7 +87,7 @@ public sealed partial class SwiftSparseSet<T> : ISwiftCloneable<T>, IEnumerable<
     }
 
     [MemoryPackConstructor]
-    public SwiftSparseSet(SwiftSparseSetState<T> state)
+    public SwiftSparseMap(SwiftSparseSetState<T> state)
     {
         State = state;
     }
@@ -441,14 +441,14 @@ public sealed partial class SwiftSparseSet<T> : ISwiftCloneable<T>, IEnumerable<
 
     public struct Enumerator : IEnumerator<KeyValuePair<int, T>>
     {
-        private readonly SwiftSparseSet<T> _set;
+        private readonly SwiftSparseMap<T> _set;
         private readonly int[] _keys;
         private readonly T[] _values;
         private readonly int _count;
         private readonly uint _version;
         private int _index;
 
-        internal Enumerator(SwiftSparseSet<T> set)
+        internal Enumerator(SwiftSparseMap<T> set)
         {
             _set = set;
             _keys = set._denseKeys;

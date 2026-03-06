@@ -18,7 +18,7 @@ namespace SwiftCollections;
 /// for stored items. Provides O(1) insertion, removal, and lookup by internally generated index.
 /// </summary>
 /// <remarks>
-/// Unlike <see cref="SwiftSparseSet{T}"/>, which requires callers to provide the key used to store values,
+/// Unlike <see cref="SwiftSparseMap{T}"/>, which requires callers to provide the key used to store values,
 /// <see cref="SwiftBucket{T}"/> internally generates and manages indices for each inserted item.
 ///
 /// These indices remain stable for the lifetime of the item unless it is removed.

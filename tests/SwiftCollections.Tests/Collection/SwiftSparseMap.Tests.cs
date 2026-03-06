@@ -6,12 +6,12 @@ using Xunit;
 
 namespace SwiftCollections.Tests;
 
-public class SwiftSparseSetTests
+public class SwiftSparseMapTests
 {
     [Fact]
     public void Add_InsertsItem()
     {
-        var set = new SwiftSparseSet<int>();
+        var set = new SwiftSparseMap<int>();
 
         set.Add(5, 42);
 
@@ -23,7 +23,7 @@ public class SwiftSparseSetTests
     [Fact]
     public void TryAdd_ReturnsFalseForExistingKey()
     {
-        var set = new SwiftSparseSet<int>();
+        var set = new SwiftSparseMap<int>();
 
         Assert.True(set.TryAdd(1, 10));
         Assert.False(set.TryAdd(1, 20));
@@ -34,7 +34,7 @@ public class SwiftSparseSetTests
     [Fact]
     public void Indexer_OverwritesExistingValue()
     {
-        var set = new SwiftSparseSet<int>();
+        var set = new SwiftSparseMap<int>();
 
         set.Add(2, 5);
         set[2] = 10;
@@ -45,7 +45,7 @@ public class SwiftSparseSetTests
     [Fact]
     public void ContainsKey_ReturnsFalseForMissingKey()
     {
-        var set = new SwiftSparseSet<int>();
+        var set = new SwiftSparseMap<int>();
 
         Assert.False(set.ContainsKey(100));
     }
@@ -53,7 +53,7 @@ public class SwiftSparseSetTests
     [Fact]
     public void TryGetValue_ReturnsTrueWhenPresent()
     {
-        var set = new SwiftSparseSet<int>();
+        var set = new SwiftSparseMap<int>();
 
         set.Add(3, 99);
 
@@ -66,7 +66,7 @@ public class SwiftSparseSetTests
     [Fact]
     public void TryGetValue_ReturnsFalseWhenMissing()
     {
-        var set = new SwiftSparseSet<int>();
+        var set = new SwiftSparseMap<int>();
 
         bool result = set.TryGetValue(10, out int value);
 
@@ -77,7 +77,7 @@ public class SwiftSparseSetTests
     [Fact]
     public void Remove_RemovesExistingKey()
     {
-        var set = new SwiftSparseSet<int>();
+        var set = new SwiftSparseMap<int>();
 
         set.Add(1, 10);
 
@@ -91,7 +91,7 @@ public class SwiftSparseSetTests
     [Fact]
     public void Remove_ReturnsFalseForMissingKey()
     {
-        var set = new SwiftSparseSet<int>();
+        var set = new SwiftSparseMap<int>();
 
         Assert.False(set.Remove(50));
     }
@@ -99,7 +99,7 @@ public class SwiftSparseSetTests
     [Fact]
     public void Remove_PerformsSwapBackCorrectly()
     {
-        var set = new SwiftSparseSet<int>();
+        var set = new SwiftSparseMap<int>();
 
         set.Add(1, 100);
         set.Add(2, 200);
@@ -117,7 +117,7 @@ public class SwiftSparseSetTests
     [Fact]
     public void Clear_RemovesAllItems()
     {
-        var set = new SwiftSparseSet<int>();
+        var set = new SwiftSparseMap<int>();
 
         set.Add(1, 10);
         set.Add(2, 20);
@@ -130,7 +130,7 @@ public class SwiftSparseSetTests
     [Fact]
     public void DenseArrays_MatchStoredValues()
     {
-        var set = new SwiftSparseSet<int>();
+        var set = new SwiftSparseMap<int>();
 
         set.Add(1, 10);
         set.Add(2, 20);
@@ -150,7 +150,7 @@ public class SwiftSparseSetTests
     [Fact]
     public void SupportsLargeKeys()
     {
-        var set = new SwiftSparseSet<int>();
+        var set = new SwiftSparseMap<int>();
 
         int largeKey = 1_000_000;
 
@@ -163,7 +163,7 @@ public class SwiftSparseSetTests
     [Fact]
     public void Enumerator_ReturnsAllItems()
     {
-        var set = new SwiftSparseSet<int>();
+        var set = new SwiftSparseMap<int>();
 
         set.Add(1, 10);
         set.Add(2, 20);
@@ -178,7 +178,7 @@ public class SwiftSparseSetTests
     [Fact]
     public void Enumerator_ModificationThrows()
     {
-        var set = new SwiftSparseSet<int>();
+        var set = new SwiftSparseMap<int>();
 
         set.Add(1, 10);
         set.Add(2, 20);
@@ -195,14 +195,14 @@ public class SwiftSparseSetTests
     [Fact]
     public void Json_RoundTrip_PreservesData()
     {
-        var set = new SwiftSparseSet<int>();
+        var set = new SwiftSparseMap<int>();
 
         set.Add(1, 10);
         set.Add(2, 20);
 
         byte[] json = JsonSerializer.SerializeToUtf8Bytes(set);
 
-        var result = JsonSerializer.Deserialize<SwiftSparseSet<int>>(json);
+        var result = JsonSerializer.Deserialize<SwiftSparseMap<int>>(json);
 
         Assert.Equal(2, result.Count);
         Assert.Equal(10, result[1]);
@@ -212,14 +212,14 @@ public class SwiftSparseSetTests
     [Fact]
     public void Json_RoundTrip_PreservesDenseIteration()
     {
-        var set = new SwiftSparseSet<int>();
+        var set = new SwiftSparseMap<int>();
 
         set.Add(5, 50);
         set.Add(10, 100);
 
         byte[] json = JsonSerializer.SerializeToUtf8Bytes(set);
 
-        var result = JsonSerializer.Deserialize<SwiftSparseSet<int>>(json);
+        var result = JsonSerializer.Deserialize<SwiftSparseMap<int>>(json);
 
         var keys = result.DenseKeys;
 
@@ -232,14 +232,14 @@ public class SwiftSparseSetTests
     [Fact]
     public void MemoryPack_RoundTrip_PreservesData()
     {
-        var set = new SwiftSparseSet<int>();
+        var set = new SwiftSparseMap<int>();
 
         set.Add(1, 10);
         set.Add(2, 20);
 
         byte[] bytes = MemoryPackSerializer.Serialize(set);
 
-        var result = MemoryPackSerializer.Deserialize<SwiftSparseSet<int>>(bytes);
+        var result = MemoryPackSerializer.Deserialize<SwiftSparseMap<int>>(bytes);
 
         Assert.Equal(2, result.Count);
         Assert.Equal(10, result[1]);
@@ -249,13 +249,13 @@ public class SwiftSparseSetTests
     [Fact]
     public void MemoryPack_RoundTrip_PreservesLargeKeys()
     {
-        var set = new SwiftSparseSet<int>();
+        var set = new SwiftSparseMap<int>();
 
         set.Add(50000, 99);
 
         byte[] bytes = MemoryPackSerializer.Serialize(set);
 
-        var result = MemoryPackSerializer.Deserialize<SwiftSparseSet<int>>(bytes);
+        var result = MemoryPackSerializer.Deserialize<SwiftSparseMap<int>>(bytes);
 
         Assert.True(result.ContainsKey(50000));
         Assert.Equal(99, result[50000]);

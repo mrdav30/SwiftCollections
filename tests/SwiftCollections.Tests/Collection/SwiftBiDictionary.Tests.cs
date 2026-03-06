@@ -187,7 +187,7 @@ public class SwiftBiDictionaryTests
         var keyComparer = StringComparer.OrdinalIgnoreCase;
         var valueComparer = StringComparer.OrdinalIgnoreCase;
 
-        var dict = new SwiftBiDictionary<string, string>(8, keyComparer, valueComparer);
+        var dict = new SwiftBiDictionary<string, string>(keyComparer, valueComparer);
 
         dict.Add("Key", "Value");
 
