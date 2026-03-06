@@ -1,67 +1,55 @@
-SwiftCollections
+# SwiftCollections
+
 ==============
 
 ![SwiftCollections Icon](https://raw.githubusercontent.com/mrdav30/SwiftCollections/main/icon.png)
 
 [![.NET CI](https://github.com/mrdav30/SwiftCollections/actions/workflows/dotnet.yml/badge.svg)](https://github.com/mrdav30/SwiftCollections/actions/workflows/dotnet.yml)
 
-**SwiftCollections** is a high-performance, memory-efficient library of collections designed for game development, simulations, and other performance-critical applications.
+**SwiftCollections** is a high-performance collection library for performance-sensitive .NET workloads, including game systems, simulations, and spatial queries.
 
 ---
 
 ## 🛠️ Key Features
 
 - **Optimized for Performance**: Designed for low time complexity and minimal memory allocations.
-- **Versatile Use Cases**: Suitable for data structures in 3D environments and complex spatial queries.
 - **Unity-Compatible**: Fully functional within Unity's ecosystem.
-- **Customizable**: Use pre-built implementations or extend functionality with custom interfaces.
+- **Fast core collections**: `SwiftDictionary`, `SwiftHashSet`, `SwiftList`, `SwiftQueue`, `SwiftStack`, `SwiftSortedList`
+- **Specialized containers**: `SwiftBucket`, `SwiftGenerationalBucket`, `SwiftPackedSet`, `SwiftSparseMap`, `SwiftBiDictionary`
+- **Flat 2D/3D storage**: `SwiftArray2D`, `SwiftArray3D`, `SwiftBoolArray2D`, `SwiftShortArray2D`
+- **Pools**: `SwiftObjectPool`, `SwiftArrayPool`, `SwiftCollectionPool`, and typed pool helpers
+- **Observable collections** for change-tracking scenarios
+- **Spatial queries** via `SwiftBVH` with both `System.Numerics` and `FixedMathSharp` bounds
 
 ---
 
-## Dependencies
+## Installation
 
-- Requires [FixedMathSharp](https://github.com/mrdav30/FixedMathSharp).
+### NuGet
 
----
+```bash
+dotnet add package SwiftCollections
+```
 
-## 🚀 Installation
+### Source
 
-Clone the repository and add it to your project:
+```bash
+git clone https://github.com/mrdav30/SwiftCollections.git
+```
 
-### Non-Unity Projects
-
-1. **Install via NuGet**:
-   - Add SwiftCollections to your project using the following command:
-   
-     ```bash
-     dotnet add package SwiftCollections
-     ```
-
-2. **Or Download/Clone**:
-   - Clone the repository or download the source code.
-   
-     ```bash
-     git clone https://github.com/mrdav30/SwiftCollections.git
-     ```
-
-3. **Add to Project**:
-   - Include the `SwiftCollections` project or its DLLs in your build process.
+Then reference `src/SwiftCollections/SwiftCollections.csproj` or build the package locally.
 
 ### Unity
 
-SwiftCollections is now maintained as a separate Unity package. For Unity-specific implementations, refer to:
+Unity support is maintained separately:
 
-🔗 [SwiftCollection-Unity Repository](https://github.com/mrdav30/SwiftCollections-Unity).
+[SwiftCollections-Unity](https://github.com/mrdav30/SwiftCollections-Unity)
 
 ---
 
 ## 🧩 Dependencies
 
-SwiftCollections depends on the following library:
-
 - [FixedMathSharp](https://github.com/mrdav30/FixedMathSharp)
-
-This dependency is automatically included when installing.
 
 ---
 
@@ -73,6 +61,9 @@ This dependency is automatically included when installing.
 - **SwiftBiDictionary**: A bidirectional dictionary for efficient forward and reverse lookups in O(1).
 - **SwiftHashSet**: An optimized set for unique values with fast operations.
 - **SwiftBucket**: High-performance collection for O(1) addition and removal with stable indexing.
+- **SwiftGenerationalBucket**: A bucket variant that tracks generations to prevent stale references.
+- **SwiftPackedSet**: A compact set implementation for dense integer keys.
+- **SwiftSparseMap**: A memory-efficient map for sparse key distributions.
 - **SwiftQueue**: Circular-buffer-based queue for ultra-low-latency operations.
 - **SwiftList**: A dynamic list optimized for speed-critical applications.
 - **SwiftSortedList**: Dynamically sorted collection with O(log n) operations.
@@ -92,8 +83,7 @@ This dependency is automatically included when installing.
 
 ### Observable Collections
 
-- **ObservableArray / ObservableSwiftList / ObservableDictionary**: Reactive, observable collections with property and collection change notifications. 
-
+- **SwiftObservableArray / SwiftObservableList / SwiftObservableDictionary**: Reactive, observable collections with property and collection change notifications.
 
 ## 📖 Usage Examples
 
@@ -131,59 +121,40 @@ Console.WriteLine(queue.Dequeue()); // Output: 5
 var array = new int[10].Populate(() => new Random().Next(1, 100));
 ```
 
-## 🧪 Testing and Validation
+## 🧪 Development
 
-SwiftCollections includes a comprehensive suite of xUnit tests for validation.
-
-### Running Unit Tests
-
-To execute all unit tests, use the following command:
+Build the solution:
 
 ```bash
-dotnet test -c debug
+dotnet build SwiftCollections.sln -c Debug
 ```
 
-### Running Benchmarks
+Run the unit tests:
 
-The library includes benchmarks to measure the performance of its collections. Benchmarks are powered by BenchmarkDotNet and can be run as follows:
-
-1. Open the SwiftCollections.Benchmarks project.
-
-2. Modify the Program.cs file to select the desired benchmark. Uncomment the relevant BenchmarkRunner lines.
-	- Example Program.cs setup:
-
-```csharp
-using BenchmarkDotNet.Running;
-
-namespace SwiftCollections.Benchmarks
-{
-    class Program
-    {
-        static void Main(string[] args)
-        {
-            // Uncomment the benchmark you want to run:
-            // var ListIntegerBenchmarksSummary = BenchmarkRunner.Run<ListIntegerBenchmarks>();
-            var StackIntegerBenchmarksSummary = BenchmarkRunner.Run<StackIntegerBenchmarks>();
-            // var DictionaryStringBenchmarksSummary = BenchmarkRunner.Run<DictionaryStringBenchmarks>();
-        }
-    }
-}
+```bash
+dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c Debug --no-build
 ```
 
-3. Build and run the project. The results will be displayed in the console and saved to a results file for further analysis.
+Run benchmarks:
 
-## 🛠️ Compatibility
+1. Select the benchmark in `tests/SwiftCollections.Benchmarks/Program.cs`.
+2. Run:
 
-- **.NET Framework** 4.7.2+
-- .NET Core / .NET 6+
-- **Unity 2020+** (via - [SwiftCollection-Unity](https://github.com/mrdav30/SwiftCollections-Unity).)
-- **Cross-Platform Support** (Windows, Linux, macOS)
-- **Query Collections Precision**: Supports both System.Numerics and FixedMathSharp.
+```bash
+dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release
+```
 
-## 📄 License
+## Compatibility
 
-This project is licensed under the MIT License - see the `LICENSE` file
-for details.
+- `netstandard2.1`
+- `net8.0`
+- Windows, Linux, and macOS
+
+`FixedMathSharp` is used for the fixed-point BVH path.
+
+## License
+
+MIT. See `LICENSE.md`.
 
 ---
 
