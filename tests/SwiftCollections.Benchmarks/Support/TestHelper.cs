@@ -44,4 +44,25 @@ public static class TestHelper
             array[i] = elementGenerator();
         return array;
     }
+
+    /// <summary>
+    /// Generates a shuffled range of unique integers from 0 to length - 1.
+    /// </summary>
+    public static int[] GenerateShuffledRange(int length, int seed = 42)
+    {
+        var values = new int[length];
+        for (int i = 0; i < length; i++)
+            values[i] = i;
+
+        var random = new Random(seed);
+        for (int i = length - 1; i > 0; i--)
+        {
+            int swapIndex = random.Next(i + 1);
+            int current = values[i];
+            values[i] = values[swapIndex];
+            values[swapIndex] = current;
+        }
+
+        return values;
+    }
 }

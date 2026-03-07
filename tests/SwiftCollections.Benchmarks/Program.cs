@@ -18,8 +18,9 @@ internal static class Program
 
         string command = args[0];
 
-        if (string.Equals(command, "list", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(command, "ls", StringComparison.OrdinalIgnoreCase))
+        if ((string.Equals(command, "list", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(command, "ls", StringComparison.OrdinalIgnoreCase)) &&
+            args.Length == 1)
         {
             _catalog.WriteAvailableSelections(Console.Out);
             return 0;
@@ -73,8 +74,8 @@ internal static class Program
         Console.WriteLine("Usage:");
         Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8");
         Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- list");
-        Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- dictionary");
-        Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- hashset --filter \"*Contains*\"");
+        Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- dictionary-parity");
+        Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- set-workload --list flat");
         Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- all --list flat");
         Console.WriteLine();
         Console.WriteLine("Leading arguments that do not start with '-' are treated as benchmark selections.");

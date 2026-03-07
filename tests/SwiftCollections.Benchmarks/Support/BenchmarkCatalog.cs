@@ -30,9 +30,16 @@ internal sealed class BenchmarkCatalog
     };
     private static readonly Dictionary<string, string[]> _aliasSynonyms = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
     {
-        ["dictionary"] = new[] { "dict" },
-        ["dictionary-integer"] = new[] { "dict-integer" },
-        ["dictionary-string"] = new[] { "dict-string" }
+        ["list-parity"] = new[] { "list", "list-integer" },
+        ["dictionary-parity"] = new[] { "dict", "dictionary", "dict-parity" },
+        ["dictionary-parity-integer"] = new[] { "dict-integer", "dictionary-integer", "dict-parity-integer" },
+        ["dictionary-parity-string"] = new[] { "dict-string", "dictionary-string", "dict-parity-string" },
+        ["dense-map-workload"] = new[] { "map-workload", "sparse-map", "sparse-map-workload" },
+        ["queue-parity"] = new[] { "queue", "queue-integer" },
+        ["queue-workload"] = new[] { "queue-showcase" },
+        ["stack-parity"] = new[] { "stack", "stack-integer" },
+        ["stack-workload"] = new[] { "stack-showcase" },
+        ["sorted-list-workload"] = new[] { "sorted-list", "sorted-list-integer", "sorted-workload" }
     };
 
     private readonly Dictionary<string, Type[]> _aliasLookup;
