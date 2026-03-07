@@ -75,7 +75,7 @@
 	</ItemGroup>
 	<!-- Dependencies and Package References -->
 	<ItemGroup>	
-		<PackageReference Include="FixedMathSharp" Version="2.0.0">
+		<PackageReference Include="FixedMathSharp" Version="2.1.0">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>compile</IncludeAssets>
 		</PackageReference>	
