@@ -13,7 +13,8 @@
 ## 🛠️ Key Features
 
 - **Optimized for Performance**: Designed for low time complexity and minimal memory allocations.
-- **Unity-Compatible**: Fully functional within Unity's ecosystem.
+- **Framework Agnostic** : Works with .NET, Unity, and other game engines.
+- **Full Serialization Support**: Out-of-the-box round-trip serialization via MemoryPack across most core collections, with System.Text.Json constructor support on .NET 8+.
 - **Fast core collections**: `SwiftDictionary`, `SwiftHashSet`, `SwiftList`, `SwiftQueue`, `SwiftStack`, `SwiftSortedList`
 - **Specialized containers**: `SwiftBucket`, `SwiftGenerationalBucket`, `SwiftPackedSet`, `SwiftSparseMap`, `SwiftBiDictionary`
 - **Flat 2D/3D storage**: `SwiftArray2D`, `SwiftArray3D`, `SwiftBoolArray2D`, `SwiftShortArray2D`
