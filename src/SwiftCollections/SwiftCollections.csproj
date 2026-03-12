@@ -12,7 +12,7 @@
 		<InfoVer Condition="'$(InfoVer)' == ''">$(SemVer)</InfoVer>
 		<!-- Set Assembly and File Versions -->
 		<AssemblySemVer Condition="'$(GitVersion_AssemblySemVer)' != ''">$(GitVersion_AssemblySemVer)</AssemblySemVer>
-		<AssemblySemVer Condition="'$(AssemblySemVer)' == ''">$(SemVer).0</AssemblySemVer>  
+		<AssemblySemVer Condition="'$(AssemblySemVer)' == ''">$(SemVer).0</AssemblySemVer>
 		<AssemblySemFileVer Condition="'$(GitVersion_AssemblySemFileVer)' != ''">$(GitVersion_AssemblySemFileVer)</AssemblySemFileVer>
 		<AssemblySemFileVer Condition="'$(AssemblySemFileVer)' == ''">$(AssemblySemVer)</AssemblySemFileVer>
 		<!-- Set final versions for the project -->
@@ -54,7 +54,7 @@
 		<PackageIcon>icon.png</PackageIcon>
 		<PackageIconUrl>https://raw.githubusercontent.com/mrdav30/swiftcollections/main/icon.png</PackageIconUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 	</PropertyGroup>
@@ -66,24 +66,26 @@
 		<OutputPath>bin\$(Configuration)\</OutputPath>
 	</PropertyGroup>
 	<ItemGroup>
-	  <Compile Remove="Query\Octree\**" />
-	  <Compile Remove="Query\SpatialHash\**" />
-	  <EmbeddedResource Remove="Query\Octree\**" />
-	  <EmbeddedResource Remove="Query\SpatialHash\**" />
-	  <None Remove="Query\Octree\**" />
-	  <None Remove="Query\SpatialHash\**" />
+		<Compile Remove="Query\Octree\**" />
+		<Compile Remove="Query\SpatialHash\**" />
+		<EmbeddedResource Remove="Query\Octree\**" />
+		<EmbeddedResource Remove="Query\SpatialHash\**" />
+		<None Remove="Query\Octree\**" />
+		<None Remove="Query\SpatialHash\**" />
 	</ItemGroup>
 	<!-- Dependencies and Package References -->
-	<ItemGroup>	
+	<ItemGroup>
 		<PackageReference Include="FixedMathSharp" Version="2.1.0">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>compile</IncludeAssets>
-		</PackageReference>	
+		</PackageReference>
 		<PackageReference Include="MemoryPack" Version="1.21.4" />
 	</ItemGroup>
 	<!-- Ensure LICENSE, README, & icon files are included in the NuGet package -->
 	<ItemGroup>
-		<None Include="..\..\LICENSE.md" Pack="true" PackagePath="\" Visible="false" />
+		<None Include="..\..\COPYRIGHT" Pack="true" PackagePath="\" Visible="false" />
+		<None Include="..\..\NOTICE" Pack="true" PackagePath="\" Visible="false" />
+		<None Include="..\..\LICENSE" Pack="true" PackagePath="\" Visible="false" />
 		<None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
 		<None Include="..\..\icon.png" Pack="true" PackagePath="\" Visible="false" />
 		<None Remove=".gitignore" />
