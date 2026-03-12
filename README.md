@@ -161,9 +161,11 @@ With no extra arguments, BenchmarkDotNet's default switcher behavior is used. Le
 
 `FixedMathSharp` is used for the fixed-point BVH path.
 
-## License
+---
 
-MIT. See `LICENSE.md`.
+## 🤝 Contributing
+
+We welcome contributions! Please see our [CONTRIBUTING](https://github.com/mrdav30/SwiftCollections/blob/main/CONTRIBUTING.md) guide for details on how to propose changes, report issues, and interact with the community.
 
 ---
 
@@ -183,3 +185,15 @@ For questions, discussions, or general support, join the official Discord commun
 For bug reports or feature requests, please open an issue in this repository.
 
 We welcome feedback, contributors, and community discussion across all projects.
+
+---
+
+## License
+
+This project is licensed under the MIT License.
+
+See the following files for details:
+
+- LICENSE – standard MIT license
+- NOTICE – additional terms regarding project branding and redistribution
+- COPYRIGHT – authorship information
