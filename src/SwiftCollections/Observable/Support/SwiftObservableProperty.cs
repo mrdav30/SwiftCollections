@@ -2,13 +2,7 @@
 using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-
-#if NET8_0_OR_GREATER
 using System.Text.Json.Serialization;
-#endif
-#if !NET8_0_OR_GREATER
-using System.Text.Json.Serialization.Shim;
-#endif
 
 namespace SwiftCollections.Observable;
 

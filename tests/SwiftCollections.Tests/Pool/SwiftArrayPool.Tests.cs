@@ -80,8 +80,8 @@ namespace SwiftCollections.Pool.Tests
             var pool = new SwiftArrayPool<int>();
 
             // Act & Assert
-            Assert.Throws<ArgumentException>(() => pool.Rent(0));
-            Assert.Throws<ArgumentException>(() => pool.Rent(-1));
+            Assert.Throws<ArgumentOutOfRangeException>(() => pool.Rent(0));
+            Assert.Throws<ArgumentOutOfRangeException>(() => pool.Rent(-1));
         }
 
         [Fact]

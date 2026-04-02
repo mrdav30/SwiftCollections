@@ -4,13 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
-
-#if NET8_0_OR_GREATER
 using System.Text.Json.Serialization;
-#endif
-#if !NET8_0_OR_GREATER
-using System.Text.Json.Serialization.Shim;
-#endif
 
 namespace SwiftCollections;
 

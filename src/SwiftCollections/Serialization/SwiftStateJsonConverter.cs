@@ -1,14 +1,10 @@
-﻿#if NET8_0_OR_GREATER
-
-using System;
+﻿using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace SwiftCollections;
 
-public sealed class SwiftStateJsonConverter<TCollection, TState>
-    : JsonConverter<TCollection>
-    where TCollection : class
+public sealed class SwiftStateJsonConverter<TCollection, TState> : JsonConverter<TCollection> where TCollection : class
 {
     private readonly Func<TState, TCollection> _factory;
     private readonly Func<TCollection, TState> _stateGetter;
@@ -55,5 +51,3 @@ public sealed class SwiftStateJsonConverter<TCollection, TState>
         writer.WriteEndObject();
     }
 }
-
-#endif

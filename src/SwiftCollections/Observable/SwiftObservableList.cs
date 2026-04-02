@@ -3,14 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
-
-
-#if NET8_0_OR_GREATER
 using System.Text.Json.Serialization;
-#endif
-#if !NET8_0_OR_GREATER
-using System.Text.Json.Serialization.Shim;
-#endif
 
 namespace SwiftCollections.Observable;
 

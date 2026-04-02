@@ -3,13 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-
-#if NET8_0_OR_GREATER
 using System.Text.Json.Serialization;
-#endif
-#if !NET8_0_OR_GREATER
-using System.Text.Json.Serialization.Shim;
-#endif
 
 namespace SwiftCollections;
 
@@ -166,13 +160,13 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            if ((uint)index >= (uint)_count) throw new IndexOutOfRangeException();
+            ThrowHelper.ThrowIfIndexInvalid(index, _count);
             return _innerArray[index];
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set
         {
-            if ((uint)index >= (uint)_count) throw new IndexOutOfRangeException();
+            ThrowHelper.ThrowIfIndexInvalid(index, _count);
             _innerArray[index] = value;
         }
     }

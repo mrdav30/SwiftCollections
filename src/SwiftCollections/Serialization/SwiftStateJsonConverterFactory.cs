@@ -1,14 +1,4 @@
-﻿#if !NET8_0_OR_GREATER
-
-namespace SwiftCollections;
-
-public sealed class SwiftStateJsonConverterFactory {}
-
-#endif
-
-#if NET8_0_OR_GREATER
-
-using System;
+﻿using System;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.Json;
@@ -69,5 +59,3 @@ public sealed class SwiftStateJsonConverterFactory : JsonConverterFactory
             getterDelegate);
     }
 }
-
-#endif

@@ -192,7 +192,7 @@ public class SwiftStackTests
         Action act = () => { var item = stack[2]; };
 
         // Assert
-        act.Should().Throw<ArgumentOutOfRangeException>();
+        act.Should().Throw<IndexOutOfRangeException>();
     }
 
     [Fact]

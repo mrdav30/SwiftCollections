@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 
 namespace SwiftCollections;
@@ -67,4 +69,31 @@ public static class ThrowHelper
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void ThrowObjectDisposedException(string? objectName) =>
         throw new ObjectDisposedException(objectName);
+
+    /// <inheritdoc cref="KeyNotFoundException"/>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void ThrowIfKeyInvalid(int key, int? max = null)
+    {
+        if (key < 0 || (max.HasValue && key >= max.Value))
+            ThrowKeyNotFoundException(key);
+    }
+
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowKeyNotFoundException(int key) =>
+        throw new KeyNotFoundException($"Key not found: {key}");
+
+    /// <inheritdoc cref="IndexOutOfRangeException"/>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void ThrowIfIndexInvalid(int index, int count)
+    {
+        if ((uint)index >= (uint)count)
+            ThrowIndexOutOfRangeException(index);
+    }
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowIndexOutOfRangeException(int value) =>
+        throw new IndexOutOfRangeException($"Index out of range: {value}");
 }

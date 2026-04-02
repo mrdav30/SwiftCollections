@@ -3,13 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-
-#if NET8_0_OR_GREATER
 using System.Text.Json.Serialization;
-#endif
-#if !NET8_0_OR_GREATER
-using System.Text.Json.Serialization.Shim;
-#endif
 
 namespace SwiftCollections;
 
@@ -192,7 +186,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
         get
         {
             int index = FindEntry(key);
-            ThrowHelper.ThrowIfNegativeOrZero(index);
+            ThrowHelper.ThrowIfKeyInvalid(index);
             return _entries[index].Value;
         }
         set

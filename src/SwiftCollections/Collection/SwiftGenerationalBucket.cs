@@ -2,14 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-
-#if NET8_0_OR_GREATER
 using System.Text.Json.Serialization;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-#endif
-#if !NET8_0_OR_GREATER
-using System.Text.Json.Serialization.Shim;
-#endif
 
 namespace SwiftCollections;
 
