@@ -67,6 +67,16 @@ public class SwiftListTests
     }
 
     [Fact]
+    public void AddRange_ReadOnlySpan_ShouldAppendElements()
+    {
+        var list = new SwiftList<int> { 1, 2 };
+
+        list.AddRange(new[] { 3, 4, 5 }.AsSpan());
+
+        Assert.Equal(new[] { 1, 2, 3, 4, 5 }, list.ToArray());
+    }
+
+    [Fact]
     public void Remove_ShouldRemoveElement()
     {
         var list = new SwiftList<int> { 1, 2, 3 };
@@ -181,6 +191,39 @@ public class SwiftListTests
         var list = new SwiftList<int> { 1, 2, 3 };
         int[] array = list.ToArray();
         Assert.Equal(new[] { 1, 2, 3 }, array);
+    }
+
+    [Fact]
+    public void AsSpan_ShouldExposeLiveViewOverPopulatedItems()
+    {
+        var list = new SwiftList<int> { 1, 2, 3 };
+
+        Span<int> span = list.AsSpan();
+        span[1] = 42;
+
+        Assert.Equal(3, span.Length);
+        Assert.Equal(42, list[1]);
+    }
+
+    [Fact]
+    public void AsReadOnlySpan_ShouldOnlyIncludeActiveItems()
+    {
+        var list = new SwiftList<int>(16) { 1, 2, 3 };
+
+        ReadOnlySpan<int> span = list.AsReadOnlySpan();
+
+        Assert.Equal(new[] { 1, 2, 3 }, span.ToArray());
+    }
+
+    [Fact]
+    public void CopyTo_Span_ShouldCopyItems()
+    {
+        var list = new SwiftList<int> { 1, 2, 3 };
+        var destination = new int[5];
+
+        list.CopyTo(destination.AsSpan(1, list.Count));
+
+        Assert.Equal(new[] { 0, 1, 2, 3, 0 }, destination);
     }
 
     [Fact]

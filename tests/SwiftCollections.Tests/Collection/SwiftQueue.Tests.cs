@@ -21,6 +21,17 @@ public class SwiftQueueTests
     }
 
     [Fact]
+    public void EnqueueRange_ReadOnlySpan_AppendsItemsInQueueOrder()
+    {
+        var queue = new SwiftQueue<int>();
+        queue.Enqueue(1);
+
+        queue.EnqueueRange(new[] { 2, 3, 4 }.AsSpan());
+
+        Assert.Equal(new[] { 1, 2, 3, 4 }, queue.ToArray());
+    }
+
+    [Fact]
     public void Dequeue_RemovesAndReturnsElements()
     {
         var queue = new SwiftQueue<int>();
@@ -127,6 +138,52 @@ public class SwiftQueueTests
         Assert.Equal(5, array.Length);
         Assert.Equal(0, array[0]);
         Assert.Equal(4, array[4]);
+    }
+
+    [Fact]
+    public void GetSegments_ReturnsSingleSegmentForContiguousQueue()
+    {
+        var queue = new SwiftQueue<int>();
+        queue.EnqueueRange(new[] { 1, 2, 3 }.AsSpan());
+
+        queue.GetSegments(out ReadOnlySpan<int> first, out ReadOnlySpan<int> second);
+
+        Assert.Equal(new[] { 1, 2, 3 }, first.ToArray());
+        Assert.True(second.IsEmpty);
+    }
+
+    [Fact]
+    public void GetSegments_ReturnsWrappedSegmentsForWrappedQueue()
+    {
+        var queue = new SwiftQueue<int>(8);
+        queue.EnqueueRange(new[] { 0, 1, 2, 3, 4, 5 }.AsSpan());
+
+        for (int i = 0; i < 4; i++)
+            queue.Dequeue();
+
+        queue.EnqueueRange(new[] { 6, 7, 8 }.AsSpan());
+
+        queue.GetSegments(out ReadOnlySpan<int> first, out ReadOnlySpan<int> second);
+
+        Assert.Equal(new[] { 4, 5, 6, 7 }, first.ToArray());
+        Assert.Equal(new[] { 8 }, second.ToArray());
+    }
+
+    [Fact]
+    public void CopyTo_Span_CopiesItemsInQueueOrder()
+    {
+        var queue = new SwiftQueue<int>(8);
+        queue.EnqueueRange(new[] { 0, 1, 2, 3, 4, 5 }.AsSpan());
+
+        for (int i = 0; i < 4; i++)
+            queue.Dequeue();
+
+        queue.EnqueueRange(new[] { 6, 7, 8 }.AsSpan());
+
+        var destination = new int[queue.Count];
+        queue.CopyTo(destination);
+
+        Assert.Equal(new[] { 4, 5, 6, 7, 8 }, destination);
     }
 
     [Fact]

@@ -538,6 +538,32 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         return result;
     }
 
+    /// <summary>
+    /// Returns the current queue contents as up to two read-only spans.
+    /// </summary>
+    /// <param name="first">The first contiguous queue segment.</param>
+    /// <param name="second">The wrapped tail segment, if any.</param>
+    public void GetSegments(out ReadOnlySpan<T> first, out ReadOnlySpan<T> second)
+    {
+        if ((uint)_count == 0)
+        {
+            first = ReadOnlySpan<T>.Empty;
+            second = ReadOnlySpan<T>.Empty;
+            return;
+        }
+
+        if ((uint)_head < (uint)_tail)
+        {
+            first = _innerArray.AsSpan(_head, _count);
+            second = ReadOnlySpan<T>.Empty;
+            return;
+        }
+
+        int firstPartLength = _innerArray.Length - _head;
+        first = _innerArray.AsSpan(_head, firstPartLength);
+        second = _innerArray.AsSpan(0, _tail);
+    }
+
     /// <inheritdoc/>
     public void CopyTo(Array array, int arrayIndex)
     {
@@ -572,6 +598,22 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         if ((uint)_count == 0) return;
 
         CopyToInternal(array, arrayIndex);
+    }
+
+    /// <summary>
+    /// Copies the elements of the SwiftQueue into the specified destination span.
+    /// </summary>
+    /// <param name="destination">The destination span.</param>
+    public void CopyTo(Span<T> destination)
+    {
+        if (destination.Length < _count)
+            throw new ArgumentException("Destination span is not long enough.", nameof(destination));
+
+        GetSegments(out ReadOnlySpan<T> first, out ReadOnlySpan<T> second);
+        first.CopyTo(destination);
+
+        if (second.Length > 0)
+            second.CopyTo(destination.Slice(first.Length));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

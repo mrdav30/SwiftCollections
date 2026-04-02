@@ -163,6 +163,18 @@ public class SwiftPackedSetTests
     }
 
     [Fact]
+    public void AsReadOnlySpan_ExposesActiveDenseValues()
+    {
+        var set = new SwiftPackedSet<int>();
+
+        set.Add(10);
+        set.Add(20);
+        set.Add(30);
+
+        Assert.Equal(set.Dense.AsSpan(0, set.Count).ToArray(), set.AsReadOnlySpan().ToArray());
+    }
+
+    [Fact]
     public void Enumerator_ReturnsAllValues()
     {
         var set = new SwiftPackedSet<int>();

@@ -147,6 +147,11 @@ public sealed partial class SwiftPackedSet<T> :
         => _lookup.ContainsKey(value);
 
     /// <summary>
+    /// Returns a read-only span over the populated dense portion of the set.
+    /// </summary>
+    public ReadOnlySpan<T> AsReadOnlySpan() => _dense.AsSpan(0, _count);
+
+    /// <summary>
     /// Determines whether the <see cref="SwiftPackedSet{T}"/> contains an element that matches the conditions defined by the specified predicate.
     /// </summary>
     /// <param name="match">The predicate that defines the conditions of the element to search for.</param>

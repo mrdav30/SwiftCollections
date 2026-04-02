@@ -290,6 +290,15 @@ public class SwiftSortedListTests
     }
 
     [Fact]
+    public void AsReadOnlySpan_ReturnsSortedWindow()
+    {
+        var sorter = new SwiftSortedList<int>();
+        sorter.AddRange(new[] { 5, 1, 4, 2 });
+
+        Assert.Equal(new[] { 1, 2, 4, 5 }, sorter.AsReadOnlySpan().ToArray());
+    }
+
+    [Fact]
     public void IndexOf_FindsCorrectIndex()
     {
         var sorter = new SwiftSortedList<int>();

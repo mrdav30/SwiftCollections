@@ -592,6 +592,12 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     private int GetPhysicalIndex(int logicalIndex) => _offset + logicalIndex;
 
     /// <summary>
+    /// Returns a read-only span over the populated sorted portion of the list.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ReadOnlySpan<T> AsReadOnlySpan() => _innerArray.AsSpan(_offset, _count);
+
+    /// <summary>
     /// Returns the minimum element in the sorter without removing it.
     /// </summary>
     /// <returns>The minimum element.</returns>

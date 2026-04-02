@@ -223,6 +223,26 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         _version++;
     }
 
+    /// <summary>
+    /// Pushes the elements of the specified span onto the stack in order.
+    /// </summary>
+    /// <param name="items">The span whose elements should be pushed.</param>
+    public void PushRange(ReadOnlySpan<T> items)
+    {
+        if (items.Length == 0)
+            return;
+
+        if (_count + items.Length > _innerArray.Length)
+        {
+            int newCapacity = SwiftHashTools.NextPowerOfTwo(_count + items.Length);
+            Resize(newCapacity);
+        }
+
+        items.CopyTo(_innerArray.AsSpan(_count, items.Length));
+        _count += items.Length;
+        _version++;
+    }
+
     bool ICollection<T>.Remove(T item)
     {
         throw new NotSupportedException("Remove is not supported on Stack.");
@@ -324,6 +344,18 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override string ToString() => (uint)_count == 0 ? $"{typeof(SwiftStack<T>)}: Empty" : $"{typeof(SwiftStack<T>)}: Count = {_count}";
 
+    /// <summary>
+    /// Returns a mutable span over the populated portion of the stack.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Span<T> AsSpan() => _innerArray.AsSpan(0, _count);
+
+    /// <summary>
+    /// Returns a read-only span over the populated portion of the stack.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ReadOnlySpan<T> AsReadOnlySpan() => _innerArray.AsSpan(0, _count);
+
     public void CopyTo(T[] array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
@@ -331,6 +363,18 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         if ((uint)(array.Length - arrayIndex) < (uint)_count) throw new ArgumentException("Destination array is not long enough.");
 
         Array.Copy(_innerArray, 0, array, arrayIndex, _count);
+    }
+
+    /// <summary>
+    /// Copies the populated elements of the SwiftStack into the specified destination span.
+    /// </summary>
+    /// <param name="destination">The destination span.</param>
+    public void CopyTo(Span<T> destination)
+    {
+        if (destination.Length < _count)
+            throw new ArgumentException("Destination span is not long enough.", nameof(destination));
+
+        AsSpan().CopyTo(destination);
     }
 
     void ICollection.CopyTo(Array array, int arrayIndex)

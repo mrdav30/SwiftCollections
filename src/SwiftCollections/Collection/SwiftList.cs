@@ -291,6 +291,36 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     }
 
     /// <summary>
+    /// Adds the elements of the specified array to the end of the SwiftList.
+    /// </summary>
+    /// <param name="items">The array whose elements should be appended.</param>
+    public void AddRange(T[] items)
+    {
+        SwiftThrowHelper.ThrowIfNull(items, nameof(items));
+        AddRange(items.AsSpan());
+    }
+
+    /// <summary>
+    /// Adds the elements of the specified span to the end of the SwiftList.
+    /// </summary>
+    /// <param name="items">The span whose elements should be appended.</param>
+    public void AddRange(ReadOnlySpan<T> items)
+    {
+        if (items.Length == 0)
+            return;
+
+        if (_count + items.Length > _innerArray.Length)
+        {
+            int newCapacity = SwiftHashTools.NextPowerOfTwo(_count + items.Length);
+            Resize(newCapacity);
+        }
+
+        items.CopyTo(_innerArray.AsSpan(_count, items.Length));
+        _count += items.Length;
+        _version++;
+    }
+
+    /// <summary>
     /// Removes the first occurrence of a specific object from the SwiftList.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -513,6 +543,18 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     }
 
     /// <summary>
+    /// Returns a mutable span over the populated portion of the list.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Span<T> AsSpan() => _innerArray.AsSpan(0, _count);
+
+    /// <summary>
+    /// Returns a read-only span over the populated portion of the list.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ReadOnlySpan<T> AsReadOnlySpan() => _innerArray.AsSpan(0, _count);
+
+    /// <summary>
     /// Returns a string that represents the current object.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -604,6 +646,18 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
         if (array.Length - arrayIndex < _count) throw new ArgumentException("Destination array is not long enough.", nameof(array));
 
         Array.Copy(_innerArray, 0, array, arrayIndex, _count);
+    }
+
+    /// <summary>
+    /// Copies the populated elements of the SwiftList into the specified destination span.
+    /// </summary>
+    /// <param name="destination">The destination span.</param>
+    public void CopyTo(Span<T> destination)
+    {
+        if (destination.Length < _count)
+            throw new ArgumentException("Destination span is not long enough.", nameof(destination));
+
+        AsSpan().CopyTo(destination);
     }
 
     public void CopyTo(Array array, int arrayIndex)

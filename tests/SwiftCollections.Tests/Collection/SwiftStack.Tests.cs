@@ -84,6 +84,18 @@ public class SwiftStackTests
     }
 
     [Fact]
+    public void PushRange_ShouldAppendItemsInStorageOrder()
+    {
+        var stack = new SwiftStack<int>();
+
+        stack.Push(1);
+        stack.PushRange(new[] { 2, 3, 4 }.AsSpan());
+
+        stack.AsReadOnlySpan().ToArray().Should().Equal(1, 2, 3, 4);
+        stack.Peek().Should().Be(4);
+    }
+
+    [Fact]
     public void Clear_ShouldRemoveAllElements()
     {
         // Arrange
@@ -179,6 +191,33 @@ public class SwiftStackTests
 
         // Assert
         stack[1].Should().Be("modified");
+    }
+
+    [Fact]
+    public void AsSpan_ShouldExposeLiveViewOverPopulatedItems()
+    {
+        var stack = new SwiftStack<int>();
+        stack.Push(1);
+        stack.Push(2);
+        stack.Push(3);
+
+        Span<int> span = stack.AsSpan();
+        span[0] = 10;
+
+        span.Length.Should().Be(3);
+        stack[0].Should().Be(10);
+    }
+
+    [Fact]
+    public void CopyTo_Span_ShouldCopyItems()
+    {
+        var stack = new SwiftStack<int>();
+        stack.PushRange(new[] { 1, 2, 3 }.AsSpan());
+
+        var destination = new int[5];
+        stack.CopyTo(destination.AsSpan(1, stack.Count));
+
+        destination.Should().Equal(0, 1, 2, 3, 0);
     }
 
     [Fact]
