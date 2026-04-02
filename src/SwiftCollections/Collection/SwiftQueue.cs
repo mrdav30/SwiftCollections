@@ -361,6 +361,49 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     }
 
     /// <summary>
+    /// Determines whether the <see cref="SwiftQueue{T}"/> contains an element that matches the conditions defined by the specified predicate.
+    /// </summary>
+    /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
+    /// <returns><c>true</c> if the <see cref="SwiftQueue{T}"/> contains one or more elements that match the specified predicate; otherwise, <c>false</c>.</returns>
+    public bool Exists(Predicate<T> match)
+    {
+        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+
+        int index = _head;
+        for (int i = 0; i < _count; i++)
+        {
+            if (match(_innerArray[index]))
+                return true;
+
+            index = (index + 1) & _mask;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Searches for an element that matches the conditions defined by the specified predicate, and returns the first matching element in queue order.
+    /// </summary>
+    /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
+    /// <returns>The first element that matches the conditions defined by the specified predicate, if found; otherwise, the default value for type <typeparamref name="T"/>.</returns>
+    public T Find(Predicate<T> match)
+    {
+        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+
+        int index = _head;
+        for (int i = 0; i < _count; i++)
+        {
+            T item = _innerArray[index];
+            if (match(item))
+                return item;
+
+            index = (index + 1) & _mask;
+        }
+
+        return default;
+    }
+
+    /// <summary>
     /// Removes all elements from the SwiftQueue, resetting its count to zero.
     /// </summary>
     public void Clear()

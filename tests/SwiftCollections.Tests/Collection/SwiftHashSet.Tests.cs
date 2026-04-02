@@ -93,6 +93,30 @@ public class SwiftHashSetTests
     }
 
     [Fact]
+    public void Exists_MatchingItem_ReturnsTrue()
+    {
+        var set = new SwiftHashSet<int> { 1, 2, 3 };
+
+        Assert.True(set.Exists(i => i == 2));
+    }
+
+    [Fact]
+    public void Find_MatchingItem_ReturnsValue()
+    {
+        var set = new SwiftHashSet<int> { 1, 2, 3 };
+
+        Assert.Equal(2, set.Find(i => i == 2));
+    }
+
+    [Fact]
+    public void Find_MissingItem_ReturnsDefault()
+    {
+        var set = new SwiftHashSet<int> { 1, 2, 3 };
+
+        Assert.Equal(default, set.Find(i => i == 4));
+    }
+
+    [Fact]
     public void Clear_RemovesAllItems()
     {
         var set = new SwiftHashSet<int> { 1, 2, 3 };

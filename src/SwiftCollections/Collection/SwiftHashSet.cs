@@ -555,6 +555,42 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     public bool Contains(T item) => FindEntry(item) >= 0;
 
     /// <summary>
+    /// Determines whether the <see cref="SwiftHashSet{T}"/> contains an element that matches the conditions defined by the specified predicate.
+    /// </summary>
+    /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
+    /// <returns><c>true</c> if the <see cref="SwiftHashSet{T}"/> contains one or more elements that match the specified predicate; otherwise, <c>false</c>.</returns>
+    public bool Exists(Predicate<T> match)
+    {
+        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+
+        for (int i = 0; i <= _lastIndex; i++)
+        {
+            if (_entries[i].IsUsed && match(_entries[i].Value))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Searches for an element that matches the conditions defined by the specified predicate, and returns the first matching element.
+    /// </summary>
+    /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
+    /// <returns>The first element that matches the conditions defined by the specified predicate, if found; otherwise, the default value for type <typeparamref name="T"/>.</returns>
+    public T Find(Predicate<T> match)
+    {
+        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+
+        for (int i = 0; i <= _lastIndex; i++)
+        {
+            if (_entries[i].IsUsed && match(_entries[i].Value))
+                return _entries[i].Value;
+        }
+
+        return default;
+    }
+
+    /// <summary>
     /// Searches the set for a given value and returns the equal value it finds, if any.
     /// </summary>
     public bool TryGetValue(T expected, out T actual)

@@ -376,6 +376,59 @@ public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEn
         }
     }
 
+    /// <summary>
+    /// Determines whether the <see cref="SwiftGenerationalBucket{T}"/> contains an element that matches the conditions defined by the specified predicate.
+    /// </summary>
+    /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
+    /// <returns><c>true</c> if the <see cref="SwiftGenerationalBucket{T}"/> contains one or more elements that match the specified predicate; otherwise, <c>false</c>.</returns>
+    public bool Exists(Predicate<T> match)
+    {
+        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+
+        uint count = 0;
+        uint peak = (uint)_peak;
+
+        for (uint i = 0; i < peak && count < (uint)_count; i++)
+        {
+            if (_entries[i].IsUsed)
+            {
+                if (match(_entries[i].Value))
+                    return true;
+
+                count++;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Searches for an element that matches the conditions defined by the specified predicate, and returns the first matching element in bucket iteration order.
+    /// </summary>
+    /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
+    /// <returns>The first element that matches the conditions defined by the specified predicate, if found; otherwise, the default value for type <typeparamref name="T"/>.</returns>
+    public T Find(Predicate<T> match)
+    {
+        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+
+        uint count = 0;
+        uint peak = (uint)_peak;
+
+        for (uint i = 0; i < peak && count < (uint)_count; i++)
+        {
+            if (_entries[i].IsUsed)
+            {
+                T item = _entries[i].Value;
+                if (match(item))
+                    return item;
+
+                count++;
+            }
+        }
+
+        return default;
+    }
+
     #endregion
 
     #region Enumeration

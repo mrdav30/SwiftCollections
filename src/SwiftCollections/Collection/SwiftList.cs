@@ -524,6 +524,42 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Contains(T item) => IndexOf(item) != -1;
 
+    /// <summary>
+    /// Determines whether the <see cref="SwiftList{T}"/> contains an element that matches the conditions defined by the specified predicate.
+    /// </summary>
+    /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
+    /// <returns><c>true</c> if the <see cref="SwiftList{T}"/> contains one or more elements that match the specified predicate; otherwise, <c>false</c>.</returns>
+    public bool Exists(Predicate<T> match)
+    {
+        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+
+        for (int i = 0; i < _count; i++)
+        {
+            if (match(_innerArray[i]))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Searches for an element that matches the conditions defined by the specified predicate, and returns the first occurrence within the entire <see cref="SwiftList{T}"/>.
+    /// </summary>
+    /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
+    /// <returns>The first element that matches the conditions defined by the specified predicate, if found; otherwise, the default value for type <typeparamref name="T"/>.</returns>
+    public T Find(Predicate<T> match)
+    {
+        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+
+        for (int i = 0; i < _count; i++)
+        {
+            if (match(_innerArray[i]))
+                return _innerArray[i];
+        }
+
+        return default;
+    }
+
     bool IList.Contains(object value)
     {
         int index = -1;

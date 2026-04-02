@@ -219,6 +219,62 @@ public class SwiftListTests
     }
 
     [Fact]
+    public void Exists_ShouldReturnTrueIfMatchIsFound()
+    {
+        var list = new SwiftList<int> { 1, 2, 3 };
+
+        Assert.True(list.Exists(i => i > 2));
+    }
+
+    [Fact]
+    public void Exists_ShouldReturnFalseIfMatchIsNotFound()
+    {
+        var list = new SwiftList<int> { 1, 2, 3 };
+
+        Assert.False(list.Exists(i => i > 10));
+    }
+
+    [Fact]
+    public void Exists_ShouldThrowIfMatchIsNull()
+    {
+        var list = new SwiftList<int> { 1, 2, 3 };
+
+        Assert.Throws<ArgumentNullException>(() => list.Exists(null));
+    }
+
+    [Fact]
+    public void Find_ShouldReturnFirstMatchingItem()
+    {
+        var list = new SwiftList<int> { 1, 2, 3, 4 };
+
+        Assert.Equal(3, list.Find(i => i > 2));
+    }
+
+    [Fact]
+    public void Find_ShouldReturnDefaultIfMatchIsNotFound()
+    {
+        var list = new SwiftList<int> { 1, 2, 3 };
+
+        Assert.Equal(default, list.Find(i => i > 10));
+    }
+
+    [Fact]
+    public void Find_ShouldReturnNullForReferenceTypesWhenMatchIsNotFound()
+    {
+        var list = new SwiftList<string> { "a", "b" };
+
+        Assert.Null(list.Find(s => s == "missing"));
+    }
+
+    [Fact]
+    public void Find_ShouldThrowIfMatchIsNull()
+    {
+        var list = new SwiftList<int> { 1, 2, 3 };
+
+        Assert.Throws<ArgumentNullException>(() => list.Find(null));
+    }
+
+    [Fact]
     public void Reverse_ShouldReverseListOrder()
     {
         var list = new SwiftList<int> { 1, 2, 3 };

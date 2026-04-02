@@ -160,6 +160,40 @@ public class SwiftQueueTests
     }
 
     [Fact]
+    public void Exists_ReturnsTrueIfMatchIsFound()
+    {
+        var queue = new SwiftQueue<int>();
+        for (int i = 0; i < 5; i++) queue.Enqueue(i);
+
+        Assert.True(queue.Exists(i => i == 3));
+    }
+
+    [Fact]
+    public void Find_ReturnsFirstMatchInQueueOrder_WhenWrapped()
+    {
+        var queue = new SwiftQueue<int>(8);
+        for (int i = 0; i < 6; i++) queue.Enqueue(i);
+
+        for (int i = 0; i < 4; i++) queue.Dequeue();
+
+        queue.Enqueue(6);
+        queue.Enqueue(7);
+        queue.Enqueue(8);
+        queue.Enqueue(9);
+
+        Assert.Equal(8, queue.Find(i => i > 7));
+    }
+
+    [Fact]
+    public void Find_ReturnsDefaultIfMatchIsNotFound()
+    {
+        var queue = new SwiftQueue<int>();
+        for (int i = 0; i < 5; i++) queue.Enqueue(i);
+
+        Assert.Equal(default, queue.Find(i => i > 10));
+    }
+
+    [Fact]
     public void EnqueueDequeue_WrapsAroundArrayCorrectly()
     {
         var queue = new SwiftQueue<int>(4);

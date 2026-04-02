@@ -232,6 +232,38 @@ public class SwiftBucketTests
     }
 
     [Fact]
+    public void Exists_ShouldReturnTrueIfMatchIsFound()
+    {
+        var bucket = new SwiftBucket<int>();
+        bucket.Add(1);
+        bucket.Add(2);
+        bucket.Add(3);
+
+        bucket.Exists(i => i == 2).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Find_ShouldReturnMatchingItem()
+    {
+        var bucket = new SwiftBucket<int>();
+        bucket.Add(1);
+        bucket.Add(2);
+        bucket.Add(3);
+
+        bucket.Find(i => i == 2).Should().Be(2);
+    }
+
+    [Fact]
+    public void Find_ShouldReturnDefaultIfMatchIsNotFound()
+    {
+        var bucket = new SwiftBucket<int>();
+        bucket.Add(1);
+        bucket.Add(2);
+
+        bucket.Find(i => i > 10).Should().Be(default);
+    }
+
+    [Fact]
     public void CopyTo_ShouldCopyItemsToArray()
     {
         // Arrange

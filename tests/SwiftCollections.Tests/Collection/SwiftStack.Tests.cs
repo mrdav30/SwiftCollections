@@ -227,6 +227,39 @@ public class SwiftStackTests
     }
 
     [Fact]
+    public void Exists_ShouldReturnTrueIfMatchIsFound()
+    {
+        var stack = new SwiftStack<int>();
+        stack.Push(1);
+        stack.Push(2);
+        stack.Push(3);
+
+        stack.Exists(i => i == 2).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Find_ShouldReturnFirstMatchInStackOrder()
+    {
+        var stack = new SwiftStack<int>();
+        stack.Push(1);
+        stack.Push(2);
+        stack.Push(3);
+        stack.Push(4);
+
+        stack.Find(i => i % 2 == 0).Should().Be(4);
+    }
+
+    [Fact]
+    public void Find_ShouldReturnDefaultIfMatchIsNotFound()
+    {
+        var stack = new SwiftStack<int>();
+        stack.Push(1);
+        stack.Push(2);
+
+        stack.Find(i => i > 10).Should().Be(default);
+    }
+
+    [Fact]
     public void CopyTo_ShouldCopyElementsToArray()
     {
         // Arrange

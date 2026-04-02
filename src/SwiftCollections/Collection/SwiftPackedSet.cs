@@ -146,6 +146,42 @@ public sealed partial class SwiftPackedSet<T> :
     public bool Contains(T value)
         => _lookup.ContainsKey(value);
 
+    /// <summary>
+    /// Determines whether the <see cref="SwiftPackedSet{T}"/> contains an element that matches the conditions defined by the specified predicate.
+    /// </summary>
+    /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
+    /// <returns><c>true</c> if the <see cref="SwiftPackedSet{T}"/> contains one or more elements that match the specified predicate; otherwise, <c>false</c>.</returns>
+    public bool Exists(Predicate<T> match)
+    {
+        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+
+        for (int i = 0; i < _count; i++)
+        {
+            if (match(_dense[i]))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Searches for an element that matches the conditions defined by the specified predicate, and returns the first matching element in dense iteration order.
+    /// </summary>
+    /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
+    /// <returns>The first element that matches the conditions defined by the specified predicate, if found; otherwise, the default value for type <typeparamref name="T"/>.</returns>
+    public T Find(Predicate<T> match)
+    {
+        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+
+        for (int i = 0; i < _count; i++)
+        {
+            if (match(_dense[i]))
+                return _dense[i];
+        }
+
+        return default;
+    }
+
     public bool Add(T value)
     {
         if (_lookup.ContainsKey(value))

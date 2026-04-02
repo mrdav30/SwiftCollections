@@ -56,6 +56,41 @@ public class SwiftPackedSetTests
     }
 
     [Fact]
+    public void Exists_ReturnsTrueIfMatchIsFound()
+    {
+        var set = new SwiftPackedSet<int>();
+
+        set.Add(1);
+        set.Add(2);
+        set.Add(3);
+
+        Assert.True(set.Exists(i => i == 2));
+    }
+
+    [Fact]
+    public void Find_ReturnsMatchingItem()
+    {
+        var set = new SwiftPackedSet<int>();
+
+        set.Add(1);
+        set.Add(2);
+        set.Add(3);
+
+        Assert.Equal(2, set.Find(i => i == 2));
+    }
+
+    [Fact]
+    public void Find_ReturnsDefaultIfMatchIsNotFound()
+    {
+        var set = new SwiftPackedSet<int>();
+
+        set.Add(1);
+        set.Add(2);
+
+        Assert.Equal(default, set.Find(i => i > 10));
+    }
+
+    [Fact]
     public void Remove_RemovesItem()
     {
         var set = new SwiftPackedSet<int>();

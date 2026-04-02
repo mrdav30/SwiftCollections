@@ -249,6 +249,33 @@ public class SwiftSortedListTests
     }
 
     [Fact]
+    public void Exists_MatchingElement_ShouldReturnTrue()
+    {
+        var sorter = new SwiftSortedList<int>();
+        sorter.AddRange(new[] { 5, 1, 4, 2 });
+
+        Assert.True(sorter.Exists(i => i == 4));
+    }
+
+    [Fact]
+    public void Find_MatchingElement_ShouldReturnFirstInSortedOrder()
+    {
+        var sorter = new SwiftSortedList<int>();
+        sorter.AddRange(new[] { 5, 1, 4, 2 });
+
+        Assert.Equal(4, sorter.Find(i => i > 2));
+    }
+
+    [Fact]
+    public void Find_MissingElement_ShouldReturnDefault()
+    {
+        var sorter = new SwiftSortedList<int>();
+        sorter.AddRange(new[] { 5, 1, 4, 2 });
+
+        Assert.Equal(default, sorter.Find(i => i > 10));
+    }
+
+    [Fact]
     public void IndexOf_FindsCorrectIndex()
     {
         var sorter = new SwiftSortedList<int>();

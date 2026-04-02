@@ -170,6 +170,41 @@ public class SwiftGenerationalBucketTests
             Assert.Contains(value, clone);
     }
 
+    [Fact]
+    public void Exists_ReturnsTrueIfMatchIsFound()
+    {
+        var bucket = new SwiftGenerationalBucket<int>();
+
+        bucket.Add(1);
+        bucket.Add(2);
+        bucket.Add(3);
+
+        Assert.True(bucket.Exists(i => i == 2));
+    }
+
+    [Fact]
+    public void Find_ReturnsMatchingItem()
+    {
+        var bucket = new SwiftGenerationalBucket<int>();
+
+        bucket.Add(1);
+        bucket.Add(2);
+        bucket.Add(3);
+
+        Assert.Equal(2, bucket.Find(i => i == 2));
+    }
+
+    [Fact]
+    public void Find_ReturnsDefaultIfMatchIsNotFound()
+    {
+        var bucket = new SwiftGenerationalBucket<int>();
+
+        bucket.Add(1);
+        bucket.Add(2);
+
+        Assert.Equal(default, bucket.Find(i => i > 10));
+    }
+
     #endregion
 
     #region JSON Serialization
