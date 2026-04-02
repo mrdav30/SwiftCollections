@@ -72,6 +72,8 @@ Unity support is maintained separately:
 - **SwiftArray2D / SwiftArray3D**: Efficient, flat-mapped arrays for 2D and 3D data.
 - **SwiftBVH**: A Bounding Volume Hierarchy optimized for spatial queries.
 
+`SwiftDictionary<TKey, TValue>` and `SwiftHashSet<T>` use deterministic default comparers for `string` keys when no comparer is supplied. `object` keys also get a SwiftCollections default comparer that hashes strings deterministically, but non-string object-key determinism still depends on the underlying key type. Custom comparers are still supported.
+
 ### Pools
 
 - **SwiftObjectPool**: Thread-safe generic object pooling for improved memory usage and performance.

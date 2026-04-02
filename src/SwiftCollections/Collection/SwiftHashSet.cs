@@ -12,8 +12,13 @@ namespace SwiftCollections;
 /// </summary>
 /// <typeparam name="T">The type of elements in the set.</typeparam>
 /// <remarks>
-/// The comparer is not serialized. After deserialization the set uses
-/// <see cref="EqualityComparer{T}.Default"/>. 
+/// The comparer is not serialized. After deserialization the set reverts
+/// to the same default comparer selection used by a new instance. String values
+/// use SwiftCollections' deterministic default comparer. Object values use a
+/// SwiftCollections comparer that hashes strings deterministically, while other
+/// object-value determinism still depends on the underlying value type's
+/// <see cref="object.GetHashCode()"/> implementation. Other types use
+/// <see cref="EqualityComparer{T}.Default"/>.
 /// 
 /// If a custom comparer is required it can be reapplied using
 /// <see cref="SetComparer(IEqualityComparer{T})"/>.
@@ -528,7 +533,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void Initialize(int capacity, IEqualityComparer<T> comparer = null)
     {
-        _comparer = comparer ?? EqualityComparer<T>.Default;
+        _comparer = SwiftHashTools.GetDefaultEqualityComparer(comparer);
 
         int size = capacity < DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(capacity);
         _entries = new Entry[size];
@@ -600,7 +605,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     /// </summary>
     private void SwitchToRandomizedComparer()
     {
-        if (_comparer == EqualityComparer<string>.Default || _comparer == EqualityComparer<object>.Default)
+        if (SwiftHashTools.IsWellKnownEqualityComparer(_comparer))
             _comparer = (IEqualityComparer<T>)SwiftHashTools.GetSwiftEqualityComparer(_comparer);
         else return; // nothing to do here
 

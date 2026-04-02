@@ -26,8 +26,7 @@ internal sealed class SwiftStringEqualityComparer : IEqualityComparer<string>, I
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Equals(string x, string y)
     {
-        // Use a single null check for both objects to minimize branching
-        return x != null && y != null && x.Equals(y);
+        return x == y || (x != null && y != null && x.Equals(y));
     }
 
     /// <summary>

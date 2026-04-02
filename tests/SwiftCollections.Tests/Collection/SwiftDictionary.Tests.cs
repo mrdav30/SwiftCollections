@@ -18,6 +18,26 @@ public class SwiftDictionaryTests
     }
 
     [Fact]
+    public void Constructor_DefaultStringComparer_UsesDeterministicHashesAcrossInstances()
+    {
+        var first = new SwiftDictionary<string, int>();
+        var second = new SwiftDictionary<string, int>();
+
+        Assert.NotSame(EqualityComparer<string>.Default, first.Comparer);
+        Assert.Equal(first.Comparer.GetHashCode("Hello"), second.Comparer.GetHashCode("Hello"));
+    }
+
+    [Fact]
+    public void Constructor_DefaultObjectComparer_UsesDeterministicStringHashesAcrossInstances()
+    {
+        var first = new SwiftDictionary<object, int>();
+        var second = new SwiftDictionary<object, int>();
+
+        Assert.NotSame(EqualityComparer<object>.Default, first.Comparer);
+        Assert.Equal(first.Comparer.GetHashCode("Hello"), second.Comparer.GetHashCode("Hello"));
+    }
+
+    [Fact]
     public void Constructor_WithCapacity_CreatesDictionaryWithCapacity()
     {
         int capacity = 100;
@@ -687,6 +707,7 @@ public class SwiftDictionaryTests
         var result = JsonSerializer.Deserialize<SwiftDictionary<string, int>>(json);
 
         Assert.DoesNotContain("hello", result);
+        Assert.Equal(new SwiftDictionary<string, int>().Comparer.GetHashCode("Hello"), result.Comparer.GetHashCode("Hello"));
 
         result.SetComparer(comparer);
 

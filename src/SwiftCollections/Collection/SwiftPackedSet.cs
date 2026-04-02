@@ -119,9 +119,12 @@ public sealed partial class SwiftPackedSet<T> :
             var values = value.Items ?? Array.Empty<T>();
 
             int n = values.Length;
+            int newCapacity = n < DefaultCapacity 
+                ? DefaultCapacity 
+                : SwiftHashTools.NextPowerOfTwo(n);
 
-            _dense = new T[Math.Max(DefaultCapacity, n)];
-            _lookup = new SwiftDictionary<T, int>(n);
+            _dense = new T[newCapacity];
+            _lookup = new SwiftDictionary<T, int>(newCapacity);
 
             if (n > 0)
             {
@@ -200,14 +203,11 @@ public sealed partial class SwiftPackedSet<T> :
 
     public void EnsureCapacity(int capacity)
     {
-        if (capacity <= _dense.Length)
+        int newCapacity = SwiftHashTools.NextPowerOfTwo(capacity);
+        if (newCapacity <= _dense.Length)
             return;
 
-        int newSize = _dense.Length * 2;
-        if (newSize < capacity)
-            newSize = capacity;
-
-        var newArray = new T[newSize];
+        var newArray = new T[newCapacity];
         Array.Copy(_dense, newArray, _count);
 
         _dense = newArray;

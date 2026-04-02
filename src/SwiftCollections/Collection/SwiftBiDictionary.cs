@@ -14,8 +14,14 @@ namespace SwiftCollections;
 /// <typeparam name="T1">The type of the keys in the forward dictionary.</typeparam>
 /// <typeparam name="T2">The type of the values in the forward dictionary.</typeparam>
 /// <remarks>
-/// The comparer is not serialized. After deserialization the dictionary uses
-/// <see cref="EqualityComparer{T1}.Default"/> for keys and <see cref="EqualityComparer{T2}.Default"/> for values.
+/// The comparer is not serialized. After deserialization the dictionary reverts
+/// to the same default comparer selection used by a new instance for both the
+/// forward and reverse maps. String keys use SwiftCollections' deterministic
+/// default comparer. Object keys use a SwiftCollections comparer that hashes
+/// strings deterministically, while other object-key determinism still depends
+/// on the underlying key type's <see cref="object.GetHashCode()"/>
+/// implementation. Other key types use <see cref="EqualityComparer{T1}.Default"/>
+/// and <see cref="EqualityComparer{T2}.Default"/>.
 /// 
 /// If a custom comparer is required it can be reapplied using
 /// <see cref="SetComparer(IEqualityComparer{T1}, IEqualityComparer{T2})"/>.
@@ -60,7 +66,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>
     /// <param name="comparer2">The comparer to use for the values.</param>
     public SwiftBiDictionary(IEqualityComparer<T1> comparer1, IEqualityComparer<T2> comparer2) : base(DefaultCapacity, comparer1)
     {
-        _reverseComparer = comparer2 ?? EqualityComparer<T2>.Default;
+        _reverseComparer = SwiftHashTools.GetDefaultEqualityComparer(comparer2);
         _reverseMap = new SwiftDictionary<T2, T1>(DefaultCapacity, _reverseComparer);
     }
 
@@ -162,7 +168,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>
 
         internal set
         {
-            _reverseComparer = EqualityComparer<T2>.Default;
+            _reverseComparer = SwiftHashTools.GetDefaultEqualityComparer<T2>();
             _reverseMap = new SwiftDictionary<T2, T1>(value.Items.Length, _reverseComparer);
 
             base.State = value;

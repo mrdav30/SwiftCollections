@@ -337,9 +337,18 @@ public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEn
 
     #region Capacity
 
+    public void EnsureCapacity(int capacity)
+    {
+        capacity = SwiftHashTools.NextPowerOfTwo(capacity);
+        if (capacity > _entries.Length)
+            Resize(capacity);
+    }
+
     private void Resize(int newSize)
     {
-        Entry[] newArray = new Entry[newSize];
+        int newCapacity = newSize <= DefaultCapacity ? DefaultCapacity : newSize;
+
+        Entry[] newArray = new Entry[newCapacity];
         Array.Copy(_entries, newArray, _entries.Length);
         _entries = newArray;
     }

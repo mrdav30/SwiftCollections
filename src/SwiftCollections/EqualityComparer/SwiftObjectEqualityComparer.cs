@@ -53,6 +53,7 @@ internal sealed class SwiftObjectEqualityComparer : IEqualityComparer<object>, I
     public int GetHashCode(object obj)
     {
         if (obj == null) return 0;
+        if (obj is string text) return SwiftHashTools.MurmurHash3(text, (int)(_entropy & 0x7FFFFFFF));
         return obj.GetHashCode() ^ (int)(_entropy & 0x7FFFFFFF);
     }
 

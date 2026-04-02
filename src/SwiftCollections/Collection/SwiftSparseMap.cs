@@ -87,8 +87,16 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
         SwiftThrowHelper.ThrowIfNegative(sparseCapacity, nameof(sparseCapacity));
         SwiftThrowHelper.ThrowIfNegative(denseCapacity, nameof(denseCapacity));
 
-        _sparse = sparseCapacity == 0 ? Array.Empty<int>() : new int[sparseCapacity];
-        _denseKeys = denseCapacity == 0 ? Array.Empty<int>() : new int[Math.Max(DefaultDenseCapacity, denseCapacity)];
+        int sparseSize = sparseCapacity == 0 ? 0 : SwiftHashTools.NextPowerOfTwo(sparseCapacity);
+        _sparse = sparseCapacity == 0 
+            ? Array.Empty<int>() 
+            : new int[sparseSize];
+        int denseSize = denseCapacity < DefaultDenseCapacity 
+            ? DefaultDenseCapacity 
+            : SwiftHashTools.NextPowerOfTwo(denseCapacity);
+        _denseKeys = denseCapacity == 0 
+            ? Array.Empty<int>() 
+            : new int[denseSize];
         _denseValues = _denseKeys.Length == 0 ? Array.Empty<T>() : new T[_denseKeys.Length];
 
         _count = 0;
@@ -372,6 +380,8 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
         int newCap = _denseKeys.Length == 0 ? DefaultDenseCapacity : _denseKeys.Length * 2;
         if (newCap < capacity) newCap = capacity;
 
+        newCap = SwiftHashTools.NextPowerOfTwo(newCap);
+
         var newKeys = new int[newCap];
         var newVals = new T[newCap];
 
@@ -391,8 +401,12 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
     {
         if (capacity <= _sparse.Length) return;
 
-        int newCap = _sparse.Length == 0 ? DefaultSparseCapacity : _sparse.Length * 2;
+        int newCap = _sparse.Length == 0 
+            ? DefaultSparseCapacity 
+            : _sparse.Length * 2;
         if (newCap < capacity) newCap = capacity;
+
+        newCap = SwiftHashTools.NextPowerOfTwo(newCap);
 
         var newSparse = new int[newCap];
         if (_sparse.Length > 0)

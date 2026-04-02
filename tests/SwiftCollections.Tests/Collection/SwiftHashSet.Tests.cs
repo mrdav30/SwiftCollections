@@ -21,6 +21,26 @@ public class SwiftHashSetTests
     }
 
     [Fact]
+    public void Constructor_DefaultStringComparer_UsesDeterministicHashesAcrossInstances()
+    {
+        var first = new SwiftHashSet<string>();
+        var second = new SwiftHashSet<string>();
+
+        Assert.NotSame(EqualityComparer<string>.Default, first.Comparer);
+        Assert.Equal(first.Comparer.GetHashCode("Hello"), second.Comparer.GetHashCode("Hello"));
+    }
+
+    [Fact]
+    public void Constructor_DefaultObjectComparer_UsesDeterministicStringHashesAcrossInstances()
+    {
+        var first = new SwiftHashSet<object>();
+        var second = new SwiftHashSet<object>();
+
+        Assert.NotSame(EqualityComparer<object>.Default, first.Comparer);
+        Assert.Equal(first.Comparer.GetHashCode("Hello"), second.Comparer.GetHashCode("Hello"));
+    }
+
+    [Fact]
     public void Add_DuplicateItem_ReturnsFalse()
     {
         var set = new SwiftHashSet<int>
@@ -549,6 +569,7 @@ public class SwiftHashSetTests
 
         // default comparer now
         Assert.DoesNotContain("hello", result);
+        Assert.Equal(new SwiftHashSet<string>().Comparer.GetHashCode("Hello"), result.Comparer.GetHashCode("Hello"));
 
         result.SetComparer(comparer);
 
@@ -570,6 +591,7 @@ public class SwiftHashSetTests
         var result = MemoryPackSerializer.Deserialize<SwiftHashSet<string>>(bytes);
 
         Assert.DoesNotContain("hello", result);
+        Assert.Equal(new SwiftHashSet<string>().Comparer.GetHashCode("Hello"), result.Comparer.GetHashCode("Hello"));
 
         result.SetComparer(comparer);
 

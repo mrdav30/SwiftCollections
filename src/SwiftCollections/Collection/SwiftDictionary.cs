@@ -13,8 +13,13 @@ namespace SwiftCollections;
 /// <typeparam name="TKey">Specifies the type of keys in the dictionary.</typeparam>
 /// <typeparam name="TValue">Specifies the type of values in the dictionary.</typeparam>
 /// <remarks>
-/// The comparer is not serialized. After deserialization the dictionary uses
-/// <see cref="EqualityComparer{TKey}.Default"/>. 
+/// The comparer is not serialized. After deserialization the dictionary reverts
+/// to the same default comparer selection used by a new instance. String keys
+/// use SwiftCollections' deterministic default comparer. Object keys use a
+/// SwiftCollections comparer that hashes strings deterministically, while other
+/// object-key determinism still depends on the underlying key type's
+/// <see cref="object.GetHashCode()"/> implementation. Other key types use
+/// <see cref="EqualityComparer{TKey}.Default"/>.
 /// 
 /// If a custom comparer is required it can be reapplied using
 /// <see cref="SetComparer(IEqualityComparer{TKey})"/>.
@@ -178,6 +183,10 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Capacity => _entries.Length;
+
+    [JsonIgnore]
+    [MemoryPackIgnore]
+    public IEqualityComparer<TKey> Comparer => _comparer;
 
     [JsonIgnore]
     [MemoryPackIgnore]
@@ -625,7 +634,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void Initialize(int capacity, IEqualityComparer<TKey> comparer = null)
     {
-        _comparer = comparer ?? EqualityComparer<TKey>.Default;
+        _comparer = SwiftHashTools.GetDefaultEqualityComparer(comparer);
 
         int size = capacity < DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(capacity);
         _entries = new Entry[size];
@@ -743,7 +752,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void SwitchToRandomizedComparer()
     {
-        if (_comparer == EqualityComparer<string>.Default || _comparer == EqualityComparer<object>.Default)
+        if (SwiftHashTools.IsWellKnownEqualityComparer(_comparer))
             _comparer = (IEqualityComparer<TKey>)SwiftHashTools.GetSwiftEqualityComparer(_comparer);
         else return; // nothing to do here
 
