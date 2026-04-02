@@ -89,7 +89,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
 
     public SwiftStack(IEnumerable<T> items)
     {
-        if (items == null) ThrowHelper.ThrowArgumentNullException(nameof(items));
+        ThrowHelper.ThrowIfNull(items, nameof(items));
 
         if (items is ICollection<T> collection)
         {
@@ -166,13 +166,13 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            if ((uint)index >= (uint)_count) ThrowHelper.ThrowArgumentOutOfRangeException();
+            if ((uint)index >= (uint)_count) throw new IndexOutOfRangeException();
             return _innerArray[index];
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set
         {
-            if ((uint)index >= (uint)_count) ThrowHelper.ThrowArgumentOutOfRangeException();
+            if ((uint)index >= (uint)_count) throw new IndexOutOfRangeException();
             _innerArray[index] = value;
         }
     }
@@ -241,7 +241,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Pop()
     {
-        if ((uint)_count == 0) ThrowHelper.ThrowInvalidOperationException("Stack is empty.");
+        if ((uint)_count == 0) throw new InvalidOperationException("Stack is empty.");
         T item = _innerArray[--_count];
         _innerArray[_count] = default;
         _version++;
@@ -323,7 +323,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Peek()
     {
-        if ((uint)_count == 0) ThrowHelper.ThrowInvalidOperationException("Stack is empty.");
+        if ((uint)_count == 0) throw new InvalidOperationException("Stack is empty.");
         return _innerArray[_count - 1];
     }
 
@@ -332,20 +332,20 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
 
     public void CopyTo(T[] array, int arrayIndex)
     {
-        if (array == null) ThrowHelper.ThrowArgumentNullException(nameof(array));
-        if ((uint)arrayIndex > array.Length) ThrowHelper.ThrowArgumentOutOfRangeException();
-        if ((uint)(array.Length - arrayIndex) < (uint)_count) ThrowHelper.ThrowArgumentException("Destination array is not long enough.");
+        ThrowHelper.ThrowIfNull(array, nameof(array));
+        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException();
+        if ((uint)(array.Length - arrayIndex) < (uint)_count) throw new ArgumentException("Destination array is not long enough.");
 
         Array.Copy(_innerArray, 0, array, arrayIndex, _count);
     }
 
     void ICollection.CopyTo(Array array, int arrayIndex)
     {
-        if (array == null) ThrowHelper.ThrowArgumentNullException(nameof(array));
-        if ((uint)array.Rank != 1) ThrowHelper.ThrowArgumentException("Array must be single dimensional.");
-        if ((uint)array.GetLowerBound(0) != 0) ThrowHelper.ThrowArgumentException("Array must have zero-based indexing.");
-        if ((uint)arrayIndex > array.Length) ThrowHelper.ThrowArgumentOutOfRangeException();
-        if ((uint)(array.Length - arrayIndex) < _count) ThrowHelper.ThrowArgumentException("Destination array is not long enough.");
+        ThrowHelper.ThrowIfNull(array, nameof(array));
+        if ((uint)array.Rank != 1) throw new ArgumentException("Array must be single dimensional.");
+        if ((uint)array.GetLowerBound(0) != 0) throw new ArgumentException("Array must have zero-based indexing.");
+        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException();
+        if ((uint)(array.Length - arrayIndex) < _count) throw new ArgumentException("Destination array is not long enough.");
 
         try
         {
@@ -354,7 +354,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         }
         catch (ArrayTypeMismatchException)
         {
-            ThrowHelper.ThrowArgumentException("Invalid array type.");
+            throw new ArgumentException("Invalid array type.");
         }
     }
 
@@ -409,7 +409,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         {
             get
             {
-                if ((uint)_index > _count) ThrowHelper.ThrowInvalidOperationException("Bad enumeration");
+                if ((uint)_index > _count) throw new InvalidOperationException("Bad enumeration");
                 return _current;
             }
         }
@@ -418,7 +418,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         public bool MoveNext()
         {
             if (_version != _stack._version)
-                ThrowHelper.ThrowInvalidOperationException("Enumerator modified outside of enumeration!");
+                throw new InvalidOperationException("Enumerator modified outside of enumeration!");
 
             if (_index == -2)
             {
@@ -443,7 +443,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         public void Reset()
         {
             if (_version != _stack._version)
-                ThrowHelper.ThrowInvalidOperationException("Enumerator modified outside of enumeration!");
+                throw new InvalidOperationException("Enumerator modified outside of enumeration!");
 
             _index = -2;
             _current = default;

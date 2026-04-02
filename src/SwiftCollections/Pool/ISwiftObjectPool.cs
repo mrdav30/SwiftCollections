@@ -1,15 +1,14 @@
-﻿namespace SwiftCollections.Pool
+﻿namespace SwiftCollections.Pool;
+
+public interface ISwiftObjectPool<T> where T : class
 {
-    public interface ISwiftObjectPool<T> where T : class
-    {
-        int CountInactive { get; }
+    int CountInactive { get; }
 
-        T Rent();
+    T Rent();
 
-        SwiftPooledObject<T> Rent(out T v);
+    SwiftPooledObject<T> Rent(out T v);
 
-        void Release(T element);
+    void Release(T element);
 
-        void Clear();
-    }
+    void Clear();
 }

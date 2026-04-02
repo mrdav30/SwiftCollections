@@ -104,7 +104,7 @@ public partial class SwiftObservableList<T> : SwiftList<T>, INotifyPropertyChang
 
     public override void AddRange(IEnumerable<T> items)
     {
-        if (items == null) ThrowHelper.ThrowArgumentNullException(nameof(items));
+        ThrowHelper.ThrowIfNull(items, nameof(items));
 
         foreach (T item in items)
             Add(item);
@@ -143,7 +143,7 @@ public partial class SwiftObservableList<T> : SwiftList<T>, INotifyPropertyChang
 
     public override int RemoveAll(Predicate<T> match)
     {
-        if (match == null) ThrowHelper.ThrowArgumentNullException(nameof(match));
+        ThrowHelper.ThrowIfNull(match, nameof(match));
 
         int i = 0;
         // Move to the first element that should be removed

@@ -227,7 +227,7 @@ public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEn
             foreach (var index in freeIndices)
             {
                 if ((uint)index >= (uint)capacity)
-                    ThrowHelper.ThrowArgumentException("Free index is out of range.");
+                    throw new ArgumentException("Free index is out of range.");
 
                 _freeIndices.Push(index);
                 if (index > maxReferencedIndex)
@@ -302,7 +302,7 @@ public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEn
         ref Entry entry = ref _entries[handle.Index];
 
         if (!entry.IsUsed || entry.Generation != handle.Generation)
-            ThrowHelper.ThrowInvalidOperationException("Invalid handle");
+            throw new InvalidOperationException("Invalid handle");
 
         return ref entry.Value;
     }
@@ -357,8 +357,7 @@ public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEn
 
     public void CloneTo(ICollection<T> output)
     {
-        if (output == null)
-            ThrowHelper.ThrowArgumentNullException(nameof(output));
+        ThrowHelper.ThrowIfNull(output, nameof(output));
 
         output.Clear();
 
@@ -406,7 +405,7 @@ public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEn
         public bool MoveNext()
         {
             if (_version != _bucket._version)
-                ThrowHelper.ThrowInvalidOperationException("Collection modified");
+                throw new InvalidOperationException("Collection modified");
 
             uint peak = (uint)_bucket._peak;
             while (++_index < peak)

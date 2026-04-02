@@ -121,10 +121,10 @@ namespace SwiftCollections.Query
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public IBoundVolume Union(IBoundVolume other)
         {
-            if (other is BoundVolume otherBV)
-                return Union(otherBV);
+            if (other is not BoundVolume otherBV)
+                throw new ArgumentException($"Mismatched bounding volume type detected!: {nameof(other)}");
 
-            return ThrowHelper.ThrowArgumentException<IBoundVolume>($"Mismatched bounding volume type detected!: {nameof(other)}");
+            return Union(otherBV);
         }
 
         /// <inheritdoc cref="Union(IBoundVolume)"/>
@@ -140,23 +140,21 @@ namespace SwiftCollections.Query
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Intersects(IBoundVolume other)
         {
-            if (other is BoundVolume otherBVH)
-            {
-                return !(Min.X > otherBVH.Max.X || Max.X < otherBVH.Min.X ||
-                 Min.Y > otherBVH.Max.Y || Max.Y < otherBVH.Min.Y ||
-                 Min.Z > otherBVH.Max.Z || Max.Z < otherBVH.Min.Z);
-            }
+            if (other is not BoundVolume otherBVH)
+                throw new ArgumentException($"Mismatched bounding volume type detected!: {nameof(other)}");
 
-            return ThrowHelper.ThrowArgumentException<bool>($"Mismatched bounding volume type detected!: {nameof(other)}");
+            return !(Min.X > otherBVH.Max.X || Max.X < otherBVH.Min.X ||
+                     Min.Y > otherBVH.Max.Y || Max.Y < otherBVH.Min.Y ||
+                     Min.Z > otherBVH.Max.Z || Max.Z < otherBVH.Min.Z);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int GetCost(IBoundVolume other)
         {
-            if (other is BoundVolume otherBVH)
-                return (int)Math.Floor(Union(otherBVH).Volume - otherBVH.Volume);
+            if (other is not BoundVolume otherBVH)
+                throw new ArgumentException($"Mismatched bounding volume type detected!: {nameof(other)}");
 
-            return ThrowHelper.ThrowArgumentException<int>($"Mismatched bounding volume type detected!: {nameof(other)}");
+            return (int)Math.Floor(Union(otherBVH).Volume - otherBVH.Volume);
         }
 
         public override string ToString() => $"Min: {Min}, Max: {Max}";

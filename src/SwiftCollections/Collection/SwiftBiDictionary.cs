@@ -85,8 +85,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>
     public SwiftBiDictionary(IDictionary<T1, T2> dictionary, IEqualityComparer<T1> comparer1, IEqualityComparer<T2> comparer2)
         : this(comparer1, comparer2)
     {
-        if (dictionary == null)
-            ThrowHelper.ThrowArgumentNullException(nameof(dictionary));
+        ThrowHelper.ThrowIfNull(dictionary, nameof(dictionary));
 
         foreach (var kvp in dictionary)
             Add(kvp.Key, kvp.Value);
@@ -118,8 +117,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>
 
         set
         {
-            if (key == null)
-                ThrowHelper.ThrowArgumentNullException(nameof(key));
+            ThrowHelper.ThrowIfNull(key, nameof(key));
 
             lock (ReverseSyncRoot)
             {
@@ -131,7 +129,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>
 
                     // Prevent duplicate values
                     if (_reverseMap.ContainsKey(value))
-                        ThrowHelper.ThrowArgumentException("Value already exists");
+                        throw new ArgumentException("Value already exists", nameof(value));
 
                     // Remove old reverse mapping
                     _reverseMap.Remove(oldValue);
@@ -149,7 +147,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>
                 {
                     // New insert
                     if (_reverseMap.ContainsKey(value))
-                        ThrowHelper.ThrowArgumentException("Value already exists");
+                        throw new ArgumentException("Value already exists", nameof(value));
 
                     CheckLoadThreshold();
 
@@ -198,8 +196,8 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>
     /// <returns><c>true</c> if the element is successfully found and removed; otherwise, <c>false</c>.</returns>
     public bool Remove(T1 key, T2 value)
     {
-        if (key == null) ThrowHelper.ThrowArgumentNullException(nameof(key));
-        if (value == null) ThrowHelper.ThrowArgumentNullException(nameof(value));
+        ThrowHelper.ThrowIfNull(key, nameof(key));
+        ThrowHelper.ThrowIfNull(value, nameof(value));
 
         if (TryGetValue(key, out T2 existingValue))
         {
@@ -228,8 +226,8 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>
     /// <exception cref="ArgumentException">An element with the same key or value already exists.</exception>
     public override bool Add(T1 key, T2 value)
     {
-        if (key == null) ThrowHelper.ThrowArgumentNullException(nameof(key));
-        if (value == null) ThrowHelper.ThrowArgumentNullException(nameof(value));
+        ThrowHelper.ThrowIfNull(key, nameof(key));
+        ThrowHelper.ThrowIfNull(value, nameof(value));
 
         if (ContainsKey(key))
             return false;
@@ -278,7 +276,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>
     /// <returns><c>true</c> if the element is successfully found and removed; otherwise, <c>false</c>.</returns>
     public override bool Remove(T1 key)
     {
-        if (key == null) ThrowHelper.ThrowArgumentNullException(nameof(key));
+        ThrowHelper.ThrowIfNull(key, nameof(key));
 
         if (TryGetValue(key, out T2 value))
         {
@@ -323,8 +321,8 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>
     /// <param name="comparer2">The equality comparer to use for values of type T2. Cannot be null.</param>
     public void SetComparer(IEqualityComparer<T1> comparer1, IEqualityComparer<T2> comparer2)
     {
-        if (comparer1 == null) ThrowHelper.ThrowArgumentNullException(nameof(comparer1));
-        if (comparer2 == null) ThrowHelper.ThrowArgumentNullException(nameof(comparer2));
+        ThrowHelper.ThrowIfNull(comparer1, nameof(comparer1));
+        ThrowHelper.ThrowIfNull(comparer2, nameof(comparer2));
         if (ReferenceEquals(comparer1, _comparer) && ReferenceEquals(comparer2, _reverseComparer))
             return;
 
@@ -349,7 +347,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>
     /// <returns><c>true</c> if the key was found; otherwise, <c>false</c>.</returns>
     public bool TryGetKey(T2 value, out T1 key)
     {
-        if (value == null) ThrowHelper.ThrowArgumentNullException(nameof(value));
+        ThrowHelper.ThrowIfNull(value, nameof(value));
 
         lock (ReverseSyncRoot)
             return _reverseMap.TryGetValue(value, out key);
@@ -363,7 +361,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>
     /// <exception cref="KeyNotFoundException">The property is retrieved and <paramref name="value"/> does not exist in the reverse map.</exception>
     public T1 GetKey(T2 value)
     {
-        if (value == null) ThrowHelper.ThrowArgumentNullException(nameof(value));
+        ThrowHelper.ThrowIfNull(value, nameof(value));
 
         lock (ReverseSyncRoot)
             return _reverseMap[value];
@@ -376,7 +374,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>
     /// <returns><c>true</c> if the dictionary contains an element with the specified value; otherwise, <c>false</c>.</returns>
     public bool ContainsValue(T2 value)
     {
-        if (value == null) ThrowHelper.ThrowArgumentNullException(nameof(value));
+        ThrowHelper.ThrowIfNull(value, nameof(value));
 
         lock (ReverseSyncRoot)
             return _reverseMap.ContainsKey(value);

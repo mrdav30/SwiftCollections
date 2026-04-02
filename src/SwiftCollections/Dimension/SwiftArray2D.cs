@@ -231,8 +231,8 @@ public partial class SwiftArray2D<T> : IEnumerable<T>, IEnumerable
     /// </summary>
     public void Resize(int newWidth, int newHeight)
     {
-        if (newWidth < 0 || newHeight < 0)
-            ThrowHelper.ThrowArgumentOutOfRangeException("Width and height must be non-negative.");
+        ThrowHelper.ThrowIfNegative(newWidth, nameof(newWidth));
+        ThrowHelper.ThrowIfNegative(newHeight, nameof(newHeight));
 
         if (newWidth == _width && newHeight == _height)
             return;
@@ -267,7 +267,7 @@ public partial class SwiftArray2D<T> : IEnumerable<T>, IEnumerable
     public virtual void ValidateIndex(int x, int y)
     {
         if (x < 0 || x >= _width || y < 0 || y >= _height)
-            ThrowHelper.ThrowIndexOutOfRangeException($"Invalid index: ({x}, {y})");
+            throw new IndexOutOfRangeException($"Invalid index: ({x}, {y})");
     }
 
     /// <summary>

@@ -120,7 +120,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     /// <exception cref="ArgumentException">Thrown if the input collection does not have a known count.</exception>
     public SwiftSortedList(IEnumerable<T> items, IComparer<T> comparer = null)
     {
-        if (items == null) ThrowHelper.ThrowArgumentNullException(nameof(items));
+        ThrowHelper.ThrowIfNull(nameof(items));
 
         _comparer = comparer ?? Comparer<T>.Default;
 
@@ -216,7 +216,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            if ((uint)index >= (uint)_count) ThrowHelper.ThrowArgumentOutOfRangeException();
+            if ((uint)index >= (uint)_count) throw new ArgumentOutOfRangeException(nameof(index));
             return _innerArray[GetPhysicalIndex(index)];
         }
     }
@@ -319,7 +319,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     /// </remarks>
     public void AddRange(IEnumerable<T> items)
     {
-        if (items == null) ThrowHelper.ThrowArgumentNullException(nameof(items));
+        ThrowHelper.ThrowIfNull(items, nameof(items));
 
         // Convert items to a sorted array
         T[] sortedItems;
@@ -407,7 +407,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     /// <returns>The minimum element.</returns>
     public T PopMin()
     {
-        if ((uint)_count == 0) ThrowHelper.ThrowIndexOutOfRangeException();
+        if ((uint)_count == 0) throw new IndexOutOfRangeException();
 
         int index = GetPhysicalIndex(0);
         T ret = _innerArray[index];
@@ -427,7 +427,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     /// <returns>The maximum element.</returns>
     public T PopMax()
     {
-        if ((uint)_count == 0) ThrowHelper.ThrowIndexOutOfRangeException();
+        if ((uint)_count == 0) throw new IndexOutOfRangeException();
 
         int index = GetPhysicalIndex(--_count);
         T ret = _innerArray[index];
@@ -458,7 +458,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     /// <param name="index">The zero-based arrayIndex of the element to remove.</param>
     public void RemoveAt(int index)
     {
-        if ((uint)index >= (uint)_count) ThrowHelper.ThrowArgumentOutOfRangeException();
+        if ((uint)index >= (uint)_count) throw new ArgumentOutOfRangeException(nameof(index));
 
         int physicalIndex = GetPhysicalIndex(index);
 
@@ -579,8 +579,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetComparer(IComparer<T> comparer)
     {
-        if (comparer == null)
-            ThrowHelper.ThrowArgumentNullException(nameof(comparer));
+        ThrowHelper.ThrowIfNull(comparer, nameof(comparer));
         if (ReferenceEquals(comparer, _comparer))
             return;
 
@@ -603,7 +602,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     /// <returns>The minimum element.</returns>
     public T PeekMin()
     {
-        if ((uint)_count == 0) ThrowHelper.ThrowIndexOutOfRangeException();
+        if ((uint)_count == 0) throw new IndexOutOfRangeException();
         return _innerArray[GetPhysicalIndex(0)];
     }
 
@@ -614,7 +613,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T PeekMax()
     {
-        if ((uint)_count == 0) ThrowHelper.ThrowIndexOutOfRangeException();
+        if ((uint)_count == 0) throw new IndexOutOfRangeException();
         return _innerArray[GetPhysicalIndex(_count - 1)];
     }
 
@@ -675,18 +674,18 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
 
     public void CopyTo(T[] array, int arrayIndex)
     {
-        if (array == null) ThrowHelper.ThrowArgumentNullException(nameof(array));
-        if ((uint)arrayIndex > array.Length) ThrowHelper.ThrowArgumentOutOfRangeException();
-        if (array.Length - arrayIndex < _count) ThrowHelper.ThrowArgumentException("The target array is too small.");
+        ThrowHelper.ThrowIfNull(array, nameof(array));
+        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+        if (array.Length - arrayIndex < _count) throw new ArgumentException("The target array is too small.", nameof(array));
 
         Array.Copy(_innerArray, _offset, array, arrayIndex, _count);
     }
 
     public void CopyTo(Array array, int arrayIndex)
     {
-        if (array == null) ThrowHelper.ThrowArgumentNullException(nameof(array));
-        if ((uint)arrayIndex > array.Length) ThrowHelper.ThrowArgumentOutOfRangeException();
-        if (array.Length - arrayIndex < _count) ThrowHelper.ThrowArgumentException("The target array is too small.");
+        ThrowHelper.ThrowIfNull(array, nameof(array));
+        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+        if (array.Length - arrayIndex < _count) throw new ArgumentException("The target array is too small.", nameof(array));
 
         Array.Copy(_innerArray, _offset, array, arrayIndex, _count);
     }
@@ -736,7 +735,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                if ((uint)_index > _count) ThrowHelper.ThrowInvalidOperationException("Bad enumeration");
+                if ((uint)_index > _count) throw new InvalidOperationException("Bad enumeration");
                 return _current;
             }
 
@@ -746,7 +745,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
         public bool MoveNext()
         {
             if (_version != _list._version)
-                ThrowHelper.ThrowInvalidOperationException("Enumerator modified outside of enumeration!");
+                throw new InvalidOperationException("Enumerator modified outside of enumeration!");
 
             if (_index < _count)
             {
@@ -763,7 +762,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
         public void Reset()
         {
             if (_version != _list._version)
-                ThrowHelper.ThrowInvalidOperationException("Enumerator modified outside of enumeration!");
+                throw new InvalidOperationException("Enumerator modified outside of enumeration!");
 
             _index = 0;
             _current = default;

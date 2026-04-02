@@ -135,7 +135,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     /// <param name="comparer">The comparer to use when comparing elements.</param>
     public SwiftHashSet(IEnumerable<T> collection, IEqualityComparer<T> comparer = null)
     {
-        if (collection == null) ThrowHelper.ThrowArgumentNullException(nameof(collection));
+        ThrowHelper.ThrowIfNull(collection, nameof(collection));
 
         int count = (collection as ICollection<T>)?.Count ?? DefaultCapacity;
         int size = (int)(count / _LoadFactorThreshold);  // Dynamic padding based on collision estimation
@@ -231,7 +231,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void AddRange(IEnumerable<T> items)
     {
-        if (items == null) ThrowHelper.ThrowArgumentNullException(nameof(items));
+        ThrowHelper.ThrowIfNull(items, nameof(items));
 
         if (items is ICollection<T> collection)
         {
@@ -254,7 +254,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool InsertIfNotExists(T item)
     {
-        if (item == null) ThrowHelper.ThrowArgumentNullException(nameof(item));
+        ThrowHelper.ThrowIfNull(item, nameof(item));
 
         int hashCode = _comparer.GetHashCode(item) & 0x7FFFFFFF;
         int entryIndex = hashCode & _entryMask;
@@ -296,7 +296,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     /// </returns>
     public bool Remove(T item)
     {
-        if (item == null) ThrowHelper.ThrowArgumentNullException(nameof(item));
+        ThrowHelper.ThrowIfNull(item, nameof(item));
 
         int hashCode = _comparer.GetHashCode(item) & 0x7FFFFFFF;
         int entryIndex = hashCode & _entryMask;
@@ -528,9 +528,9 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     /// </summary>
     public void CopyTo(T[] array, int arrayIndex)
     {
-        if (array == null) ThrowHelper.ThrowArgumentNullException(nameof(array));
-        if ((uint)arrayIndex > array.Length) ThrowHelper.ThrowArgumentOutOfRangeException();
-        if (array.Length - arrayIndex < _count) ThrowHelper.ThrowInvalidOperationException("The array is not large enough to hold the elements.");
+        ThrowHelper.ThrowIfNull(array, nameof(array));
+        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+        if (array.Length - arrayIndex < _count) throw new InvalidOperationException("The array is not large enough to hold the elements.");
 
         for (uint i = 0; i <= (uint)_lastIndex; i++)
         {
@@ -546,8 +546,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetComparer(IEqualityComparer<T> comparer = null)
     {
-        if (comparer == null)
-            ThrowHelper.ThrowArgumentNullException(nameof(comparer));
+        ThrowHelper.ThrowIfNull(comparer, nameof(comparer));
         if (ReferenceEquals(comparer, _comparer))
             return;
 
@@ -674,7 +673,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
         {
             get
             {
-                if (_index > (uint)_set._lastIndex) ThrowHelper.ThrowInvalidOperationException("Bad enumeration");
+                if (_index > (uint)_set._lastIndex) throw new InvalidOperationException("Bad enumeration");
                 return _current;
             }
         }
@@ -701,7 +700,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
         public void Reset()
         {
             if (_version != _set._version)
-                ThrowHelper.ThrowInvalidOperationException("Collection was modified during enumeration.");
+                throw new InvalidOperationException("Collection was modified during enumeration.");
 
             _index = -1;
             _current = default;
@@ -716,8 +715,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
 
     public void ExceptWith(IEnumerable<T> other)
     {
-        if (other == null)
-            ThrowHelper.ThrowArgumentNullException(nameof(other));
+        ThrowHelper.ThrowIfNull(other, nameof(other));
 
         if (ReferenceEquals(this, other))
         {
@@ -733,8 +731,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
 
     public void IntersectWith(IEnumerable<T> other)
     {
-        if (other == null)
-            ThrowHelper.ThrowArgumentNullException(nameof(other));
+        ThrowHelper.ThrowIfNull(other, nameof(other));
 
         if (ReferenceEquals(this, other))
             return;
@@ -754,8 +751,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
 
     public bool IsProperSubsetOf(IEnumerable<T> other)
     {
-        if (other == null)
-            ThrowHelper.ThrowArgumentNullException(nameof(other));
+        ThrowHelper.ThrowIfNull(other, nameof(other));
 
         var otherSet = new SwiftHashSet<T>(other, _comparer);
 
@@ -771,8 +767,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
 
     public bool IsProperSupersetOf(IEnumerable<T> other)
     {
-        if (other == null)
-            ThrowHelper.ThrowArgumentNullException(nameof(other));
+        ThrowHelper.ThrowIfNull(other, nameof(other));
 
         var otherSet = new SwiftHashSet<T>(other, _comparer);
 
@@ -788,8 +783,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
 
     public bool IsSubsetOf(IEnumerable<T> other)
     {
-        if (other == null)
-            ThrowHelper.ThrowArgumentNullException(nameof(other));
+        ThrowHelper.ThrowIfNull(other, nameof(other));
 
         var otherSet = new SwiftHashSet<T>(other, _comparer);
 
@@ -805,8 +799,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
 
     public bool IsSupersetOf(IEnumerable<T> other)
     {
-        if (other == null)
-            ThrowHelper.ThrowArgumentNullException(nameof(other));
+        ThrowHelper.ThrowIfNull(other, nameof(other));
 
         foreach (var item in other)
         {
@@ -819,8 +812,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
 
     public bool Overlaps(IEnumerable<T> other)
     {
-        if (other == null)
-            ThrowHelper.ThrowArgumentNullException(nameof(other));
+        ThrowHelper.ThrowIfNull(other, nameof(other));
 
         foreach (var item in other)
             if (Contains(item))
@@ -831,8 +823,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
 
     public bool SetEquals(IEnumerable<T> other)
     {
-        if (other == null)
-            ThrowHelper.ThrowArgumentNullException(nameof(other));
+        ThrowHelper.ThrowIfNull(other, nameof(other));
 
         var otherSet = new SwiftHashSet<T>(other, _comparer);
 
@@ -848,8 +839,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
 
     public void SymmetricExceptWith(IEnumerable<T> other)
     {
-        if (other == null)
-            ThrowHelper.ThrowArgumentNullException(nameof(other));
+        ThrowHelper.ThrowIfNull(other, nameof(other));
 
         if (ReferenceEquals(this, other))
         {
@@ -868,8 +858,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
 
     public void UnionWith(IEnumerable<T> other)
     {
-        if (other == null)
-            ThrowHelper.ThrowArgumentNullException(nameof(other));
+        ThrowHelper.ThrowIfNull(other, nameof(other));
 
         foreach (var item in other)
             Add(item);

@@ -41,10 +41,7 @@ namespace SwiftCollections;
 /// You can then use this arrayIndex to access the item directly via the indexer, and check if it's still present using the <see cref="IsAllocated"/> method.
 /// This approach allows for O(1) time complexity for lookups and existence checks, avoiding the need for O(n) searches using methods like <see cref="IndexOf"/> or <see cref="Contains"/>.
 ///
-/// **Note**: Operations like <see cref="Contains"/> and <see cref="IndexOf"/> have O(n) time complexity due to the underlying data structure.
-/// Additionally, iteration over the collection does not follow any guaranteed order and depends on internal allocation.
-/// 
-/// Iteration order is not guaranteed.
+/// **Note**: iteration over the collection does not follow any guaranteed order and depends on internal allocation.
 /// </remarks>
 /// <typeparam name="T">Specifies the type of elements in the bucket.</typeparam>
 [Serializable]
@@ -149,13 +146,13 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            if (!IsAllocated(index)) ThrowHelper.ThrowArgumentOutOfRangeException();
+            if (!IsAllocated(index)) throw new ArgumentOutOfRangeException(nameof(index));
             return _innerArray[index].Value;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set
         {
-            if (!IsAllocated(index)) ThrowHelper.ThrowArgumentOutOfRangeException();
+            if (!IsAllocated(index)) throw new ArgumentOutOfRangeException(nameof(index));
             _innerArray[index].Value = value;
             _version++;
         }
@@ -234,7 +231,7 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
             foreach (var index in freeIndices)
             {
                 if ((uint)index >= (uint)capacity)
-                    ThrowHelper.ThrowArgumentException("Free index is out of range.");
+                    throw new ArgumentOutOfRangeException(nameof(index), "Free index is out of range.");
 
                 _freeIndices.Push(index);
                 if (index > maxReferencedIndex)
@@ -291,7 +288,7 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
     /// <param name="item">The item to insert.</param>
     public void InsertAt(int index, T item)
     {
-        if (index < 0) ThrowHelper.ThrowArgumentOutOfRangeException();
+        ThrowHelper.ThrowIfNegative(index, nameof(index));
         if ((uint)index >= (uint)_innerArray.Length)
             Resize(_innerArray.Length * 2);
         if (!_innerArray[index].IsUsed)
@@ -488,9 +485,9 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
     /// <param name="arrayIndex">The zero-based arrayIndex in array at which copying begins.</param>
     public void CopyTo(T[] array, int arrayIndex)
     {
-        if (array == null) ThrowHelper.ThrowArgumentNullException(nameof(array));
-        if ((uint)arrayIndex > array.Length) ThrowHelper.ThrowArgumentOutOfRangeException();
-        if (array.Length - arrayIndex < _count) ThrowHelper.ThrowInvalidOperationException("The array is not large enough to hold the elements.");
+        ThrowHelper.ThrowIfNull(array, nameof(array));
+        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+        if (array.Length - arrayIndex < _count) throw new InvalidOperationException("The array is not large enough to hold the elements.");
 
         uint count = 0;
         for (uint i = 0; i < (uint)_peakCount && count < (uint)_count; i++)
@@ -505,11 +502,11 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
 
     void ICollection.CopyTo(Array array, int arrayIndex)
     {
-        if (array == null) ThrowHelper.ThrowArgumentNullException(nameof(array));
-        if ((uint)array.Rank != 1) ThrowHelper.ThrowArgumentException("Array must be single dimensional.");
-        if ((uint)array.GetLowerBound(0) != 0) ThrowHelper.ThrowArgumentException("Array must have zero-based indexing.");
-        if ((uint)arrayIndex > array.Length) ThrowHelper.ThrowArgumentOutOfRangeException();
-        if (array.Length - arrayIndex < _count) ThrowHelper.ThrowInvalidOperationException("The array is not large enough to hold the elements.");
+        ThrowHelper.ThrowIfNull(array, nameof(array));
+        if ((uint)array.Rank != 1) throw new ArgumentException("Array must be single dimensional.");
+        if ((uint)array.GetLowerBound(0) != 0) throw new ArgumentException("Array must have zero-based indexing.");
+        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+        if (array.Length - arrayIndex < _count) throw new InvalidOperationException("The array is not large enough to hold the elements.");
 
         try
         {
@@ -525,7 +522,7 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
         }
         catch (ArrayTypeMismatchException)
         {
-            ThrowHelper.ThrowArgumentException("Invalid array type.");
+            throw new ArgumentException("Invalid array type.");
         }
     }
 
@@ -578,7 +575,7 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
         {
             get
             {
-                if (_index > (uint)_bucket._count) ThrowHelper.ThrowInvalidOperationException("Bad enumeration");
+                if (_index > (uint)_bucket._count) throw new InvalidOperationException("Bad enumeration");
                 return _current;
             }
         }
@@ -587,7 +584,7 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
         public bool MoveNext()
         {
             if (_version != _bucket._version)
-                ThrowHelper.ThrowInvalidOperationException("Enumerator modified outside of enumeration!");
+                throw new InvalidOperationException("Enumerator modified outside of enumeration!");
 
             uint count = (uint)_bucket._peakCount;
             while (++_index < count)
@@ -604,7 +601,7 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
         public void Reset()
         {
             if (_version != _bucket._version)
-                ThrowHelper.ThrowInvalidOperationException("Enumerator modified outside of enumeration!");
+                throw new InvalidOperationException("Enumerator modified outside of enumeration!");
 
             _index = -1;
             _current = default;

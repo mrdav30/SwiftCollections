@@ -113,7 +113,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     /// </summary>
     public SwiftQueue(IEnumerable<T> items)
     {
-        if (items == null) ThrowHelper.ThrowArgumentNullException(nameof(items));
+        ThrowHelper.ThrowIfNull(items, nameof(items));
         if (items is ICollection<T> collection)
         {
             int capacity = collection.Count < DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(collection.Count);
@@ -182,13 +182,13 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            if ((uint)index >= (uint)_count) ThrowHelper.ThrowArgumentOutOfRangeException();
+            if ((uint)index >= (uint)_count) throw new ArgumentOutOfRangeException(nameof(index));
             return _innerArray[(_head + index) & _mask];
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set
         {
-            if ((uint)index >= (uint)_count) ThrowHelper.ThrowArgumentOutOfRangeException();
+            if ((uint)index >= (uint)_count) throw new ArgumentOutOfRangeException(nameof(index));
             _innerArray[(_head + index) & _mask] = value;
         }
     }
@@ -260,7 +260,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void EnqueueRange(IEnumerable<T> items)
     {
-        if (items == null) ThrowHelper.ThrowArgumentNullException(nameof(items));
+        ThrowHelper.ThrowIfNull(items, nameof(items));
 
         if (items is ICollection<T> collection)
             EnsureCapacity(collection.Count);
@@ -277,7 +277,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Dequeue()
     {
-        if ((uint)_count == 0) ThrowHelper.ThrowInvalidOperationException("Queue is Empty");
+        if ((uint)_count == 0) throw new InvalidOperationException("Queue is Empty");
         T item = _innerArray[_head];
         _innerArray[_head] = default;
         _head = (_head + 1) & _mask;
@@ -316,7 +316,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Peek()
     {
-        if ((uint)_count == 0) ThrowHelper.ThrowInvalidOperationException("Queue is Empty");
+        if ((uint)_count == 0) throw new InvalidOperationException("Queue is Empty");
         return _innerArray[_head];
     }
 
@@ -344,7 +344,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T PeekTail()
     {
-        if ((uint)_count == 0) ThrowHelper.ThrowInvalidOperationException("Queue is Empty");
+        if ((uint)_count == 0) throw new InvalidOperationException("Queue is Empty");
         int tailIndex = (_tail - 1) & _mask;
         return _innerArray[tailIndex];
     }
@@ -504,11 +504,11 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     /// <inheritdoc/>
     public void CopyTo(Array array, int arrayIndex)
     {
-        if (array == null) ThrowHelper.ThrowArgumentNullException(nameof(array));
-        if ((uint)array.Rank != 1) ThrowHelper.ThrowArgumentException("Array must be single dimensional.");
-        if ((uint)array.GetLowerBound(0) != 0) ThrowHelper.ThrowArgumentException("Array must have zero-based indexing.");
-        if ((uint)arrayIndex > array.Length) ThrowHelper.ThrowArgumentOutOfRangeException();
-        if ((uint)(array.Length - arrayIndex) < _count) ThrowHelper.ThrowArgumentException("Destination array is not long enough.");
+        ThrowHelper.ThrowIfNull(array, nameof(array));
+        if ((uint)array.Rank != 1) throw new ArgumentException("Array must be single dimensional.", nameof(array));
+        if ((uint)array.GetLowerBound(0) != 0) throw new ArgumentException("Array must have zero-based indexing.", nameof(array));
+        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+        if ((uint)(array.Length - arrayIndex) < _count) throw new ArgumentException("Destination array is not long enough.", nameof(array));
 
         if ((uint)_count == 0)
             return;
@@ -519,18 +519,18 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         }
         catch (ArrayTypeMismatchException)
         {
-            ThrowHelper.ThrowArgumentException("Invalid array type.");
+            throw new ArgumentException("Invalid array type.", nameof(array));
         }
     }
 
     /// <inheritdoc/>
     public void CopyTo(T[] array, int arrayIndex)
     {
-        if (array == null) ThrowHelper.ThrowArgumentNullException(nameof(array));
-        if ((uint)array.Rank != 1) ThrowHelper.ThrowArgumentException("Array must be single dimensional.");
-        if ((uint)array.GetLowerBound(0) != 0) ThrowHelper.ThrowArgumentException("Array must have zero-based indexing.");
-        if ((uint)arrayIndex > array.Length) ThrowHelper.ThrowArgumentOutOfRangeException();
-        if ((uint)(array.Length - arrayIndex) < _count) ThrowHelper.ThrowArgumentException("Destination array is not long enough.");
+        ThrowHelper.ThrowIfNull(array, nameof(array));
+        if ((uint)array.Rank != 1) throw new ArgumentException("Array must be single dimensional.", nameof(array));
+        if ((uint)array.GetLowerBound(0) != 0) throw new ArgumentException("Array must have zero-based indexing.", nameof(array));
+        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+        if ((uint)(array.Length - arrayIndex) < _count) throw new ArgumentException("Destination array is not long enough.", nameof(array));
 
         if ((uint)_count == 0) return;
 
@@ -554,7 +554,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
 
     public void CloneTo(ICollection<T> output)
     {
-        if (output == null) ThrowHelper.ThrowArgumentNullException(nameof(output));
+        ThrowHelper.ThrowIfNull(output, nameof(output));
         output.Clear();
         foreach (var item in this)
             output.Add(item);
@@ -591,14 +591,14 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
             _current = default;
         }
 
-        public T Current => _current;
+        public readonly T Current => _current;
 
-        object IEnumerator.Current
+        readonly object IEnumerator.Current
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                if (_index >= (uint)_queue._count) ThrowHelper.ThrowInvalidOperationException("Bad enumeration");
+                if (_index >= (uint)_queue._count) throw new InvalidOperationException("Bad enumeration");
                 return _current;
             }
         }

@@ -100,7 +100,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     /// <exception cref="ArgumentException">Thrown if the input collection does not have a known count.</exception>
     public SwiftList(IEnumerable<T> items)
     {
-        if (items == null) ThrowHelper.ThrowArgumentNullException(nameof(items));
+        ThrowHelper.ThrowIfNull(items, nameof(items));
 
         if (items is ICollection<T> collection)
         {
@@ -181,7 +181,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
             }
             catch
             {
-                ThrowHelper.ThrowNotSupportedException($"Unsupported value type for {value}");
+                throw new NotSupportedException($"Unsupported value type for {value}");
             }
         }
     }
@@ -196,13 +196,13 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            if ((uint)index >= (uint)_count) ThrowHelper.ThrowArgumentOutOfRangeException();
+            if ((uint)index >= (uint)_count) throw new ArgumentOutOfRangeException(nameof(index));
             return _innerArray[index];
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set
         {
-            if ((uint)index >= (uint)_count) ThrowHelper.ThrowArgumentOutOfRangeException();
+            if ((uint)index >= (uint)_count) throw new ArgumentOutOfRangeException(nameof(index));
             _innerArray[index] = value;
         }
     }
@@ -261,7 +261,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
         }
         catch (InvalidCastException)
         {
-            ThrowHelper.ThrowNotSupportedException($"Wrong value type for {value}");
+            throw new NotSupportedException($"Wrong value type for {value}");
         }
 
         return _count - 1;
@@ -272,7 +272,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     /// </summary>
     public virtual void AddRange(IEnumerable<T> items)
     {
-        if (items == null) ThrowHelper.ThrowArgumentNullException(nameof(items));
+        ThrowHelper.ThrowIfNull(items, nameof(items));
 
         if (items is ICollection<T> collection)
         {
@@ -316,7 +316,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
         }
         catch (InvalidCastException)
         {
-            ThrowHelper.ThrowNotSupportedException($"Wrong value type for {value}");
+            throw new NotSupportedException($"Wrong value type for {value}");
         }
     }
 
@@ -325,7 +325,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     /// </summary>
     public virtual void RemoveAt(int index)
     {
-        if ((uint)index >= (uint)_count) ThrowHelper.ThrowArgumentOutOfRangeException();
+        if ((uint)index >= (uint)_count) throw new ArgumentOutOfRangeException(nameof(index));
         Array.Copy(_innerArray, index + 1, _innerArray, index, _count - index - 1);
         _count--;
         _innerArray[_count] = default;
@@ -337,7 +337,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     /// </summary>
     public virtual int RemoveAll(Predicate<T> match)
     {
-        if (match == null) ThrowHelper.ThrowArgumentNullException(nameof(match));
+        ThrowHelper.ThrowIfNull(match, nameof(match));
 
         int i = 0;
         // Move to the first element that should be removed
@@ -371,7 +371,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     /// </summary>
     public virtual void Insert(int index, T item)
     {
-        if ((uint)index > (uint)_innerArray.Length) ThrowHelper.ThrowArgumentOutOfRangeException();
+        if ((uint)index > (uint)_innerArray.Length) throw new ArgumentOutOfRangeException(nameof(index));
         if ((uint)_count == (uint)_innerArray.Length)
             Resize(_innerArray.Length * 2);
         if ((uint)index < (uint)_count)
@@ -389,7 +389,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
         }
         catch (InvalidCastException)
         {
-            ThrowHelper.ThrowNotSupportedException($"Wrong value type for {value}");
+            throw new NotSupportedException($"Wrong value type for {value}");
         }
     }
 
@@ -503,7 +503,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
         }
         catch
         {
-            ThrowHelper.ThrowNotSupportedException($"Unsupported value type for {value}");
+            throw new NotSupportedException($"Unsupported value type for {value}");
         }
         return index;
     }
@@ -539,7 +539,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
         }
         catch
         {
-            ThrowHelper.ThrowNotSupportedException($"Unsupported value type for {value}");
+            throw new NotSupportedException($"Unsupported value type for {value}");
         }
         return index != -1;
     }
@@ -569,20 +569,20 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
 
     public void CopyTo(T[] array, int arrayIndex)
     {
-        if (array == null) ThrowHelper.ThrowArgumentNullException(nameof(array));
-        if ((uint)arrayIndex > array.Length) ThrowHelper.ThrowArgumentOutOfRangeException();
-        if (array.Length - arrayIndex < _count) ThrowHelper.ThrowArgumentException("Destination array is not long enough.");
+        ThrowHelper.ThrowIfNull(array, nameof(array));
+        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+        if (array.Length - arrayIndex < _count) throw new ArgumentException("Destination array is not long enough.", nameof(array));
 
         Array.Copy(_innerArray, 0, array, arrayIndex, _count);
     }
 
     public void CopyTo(Array array, int arrayIndex)
     {
-        if (array == null) ThrowHelper.ThrowArgumentNullException(nameof(array));
-        if (array.Rank != 1) ThrowHelper.ThrowArgumentException("Array must be single dimensional.");
-        if (array.GetLowerBound(0) != 0) ThrowHelper.ThrowArgumentException("Array must have zero-based indexing.");
-        if ((uint)arrayIndex > array.Length) ThrowHelper.ThrowArgumentOutOfRangeException();
-        if (array.Length - arrayIndex < _count) ThrowHelper.ThrowArgumentException("Destination array is not long enough.");
+        ThrowHelper.ThrowIfNull(array, nameof(array));
+        if (array.Rank != 1) throw new ArgumentException("Array must be single dimensional.", nameof(array));
+        if (array.GetLowerBound(0) != 0) throw new ArgumentException("Array must have zero-based indexing.", nameof(array));
+        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+        if (array.Length - arrayIndex < _count) throw new ArgumentException("Destination array is not long enough.", nameof(array));
 
         Array.Copy(_innerArray, 0, array, arrayIndex, _count);
     }
@@ -632,7 +632,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                if (_index >= _count) ThrowHelper.ThrowInvalidOperationException("Bad enumeration");
+                if (_index >= _count) throw new InvalidOperationException("Bad enumeration");
                 return _current;
             }
         }
