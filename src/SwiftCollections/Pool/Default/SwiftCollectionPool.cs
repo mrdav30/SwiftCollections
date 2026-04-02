@@ -67,7 +67,11 @@ public abstract class SwiftCollectionPool<TCollection, TItem> where TCollection 
     /// <summary>
     /// Clears all collections from the pool.
     /// </summary>
-    public virtual void Clear() => CollectionPool?.Clear();
+    public virtual void Clear()
+    {
+        if (_lazyCollectionPool.IsValueCreated)
+            _lazyCollectionPool.Value.Clear();
+    }
 
     #endregion
 
