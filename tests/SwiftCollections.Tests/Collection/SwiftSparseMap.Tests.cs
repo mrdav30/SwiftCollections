@@ -32,6 +32,17 @@ public class SwiftSparseMapTests
     }
 
     [Fact]
+    public void Add_ZeroKey_InsertsItem()
+    {
+        var set = new SwiftSparseMap<int>();
+
+        set.Add(0, 7);
+
+        Assert.True(set.ContainsKey(0));
+        Assert.Equal(7, set[0]);
+    }
+
+    [Fact]
     public void Indexer_OverwritesExistingValue()
     {
         var set = new SwiftSparseMap<int>();
@@ -48,6 +59,22 @@ public class SwiftSparseMapTests
         var set = new SwiftSparseMap<int>();
 
         Assert.False(set.ContainsKey(100));
+    }
+
+    [Fact]
+    public void Add_NegativeKey_Throws()
+    {
+        var set = new SwiftSparseMap<int>();
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => set.Add(-1, 5));
+    }
+
+    [Fact]
+    public void Add_IntMaxKey_Throws()
+    {
+        var set = new SwiftSparseMap<int>();
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => set.Add(int.MaxValue, 5));
     }
 
     [Fact]
@@ -148,16 +175,16 @@ public class SwiftSparseMapTests
     }
 
     [Fact]
-    public void SupportsLargeKeys()
+    public void SupportsNonSequentialKeys()
     {
         var set = new SwiftSparseMap<int>();
 
-        int largeKey = 1_000_000;
+        const int sparseKey = 64;
 
-        set.Add(largeKey, 99);
+        set.Add(sparseKey, 99);
 
-        Assert.True(set.ContainsKey(largeKey));
-        Assert.Equal(99, set[largeKey]);
+        Assert.True(set.ContainsKey(sparseKey));
+        Assert.Equal(99, set[sparseKey]);
     }
 
     [Fact]
@@ -247,18 +274,18 @@ public class SwiftSparseMapTests
     }
 
     [Fact]
-    public void MemoryPack_RoundTrip_PreservesLargeKeys()
+    public void MemoryPack_RoundTrip_PreservesSparseKeys()
     {
         var set = new SwiftSparseMap<int>();
 
-        set.Add(50000, 99);
+        set.Add(64, 99);
 
         byte[] bytes = MemoryPackSerializer.Serialize(set);
 
         var result = MemoryPackSerializer.Deserialize<SwiftSparseMap<int>>(bytes);
 
-        Assert.True(result.ContainsKey(50000));
-        Assert.Equal(99, result[50000]);
+        Assert.True(result.ContainsKey(64));
+        Assert.Equal(99, result[64]);
     }
 
     #endregion

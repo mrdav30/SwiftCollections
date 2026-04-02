@@ -32,6 +32,12 @@ namespace SwiftCollections;
 ///
 /// Removal uses a swap-back strategy to keep dense storage contiguous. As a result,
 /// iteration order is not guaranteed to remain stable.
+///
+/// Keys are used as direct indices into the sparse lookup table, so memory usage scales
+/// with the highest stored key rather than the number of stored values. This container is
+/// intended for compact, non-negative IDs such as entity handles or slot indices. It is
+/// not a good fit for arbitrary hashes or widely spaced keys; for those workloads prefer
+/// <c>SwiftDictionary&lt;TKey, TValue&gt;</c>.
 /// </remarks>
 /// <typeparam name="T">Value type stored by key.</typeparam>
 [Serializable]
@@ -68,6 +74,14 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
 
     public SwiftSparseMap() : this(DefaultSparseCapacity, DefaultDenseCapacity) { }
 
+    /// <summary>
+    /// Initializes a new sparse map with the specified sparse and dense capacities.
+    /// </summary>
+    /// <param name="sparseCapacity">
+    /// Initial sparse lookup capacity. This should track the highest expected key plus one,
+    /// not the number of stored values.
+    /// </param>
+    /// <param name="denseCapacity">Initial dense storage capacity for values.</param>
     public SwiftSparseMap(int sparseCapacity, int denseCapacity)
     {
         SwiftThrowHelper.ThrowIfNegative(sparseCapacity, nameof(sparseCapacity));
@@ -103,6 +117,7 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
 
     /// <summary>
     /// Capacity of the sparse array (max key+1 that can be mapped without resizing).
+    /// Memory usage grows with this capacity.
     /// </summary>
     [JsonIgnore]
     [MemoryPackIgnore]
@@ -154,9 +169,7 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
         }
         set
         {
-            SwiftThrowHelper.ThrowIfIndexInvalid(key, _count);
-
-            EnsureSparseCapacity(key + 1);
+            EnsureSparseCapacity(GetRequiredSparseCapacity(key));
 
             int slot = _sparse[key];
             if (slot != NotPresent)
@@ -227,7 +240,9 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
             }
 
             // Allocate sparse map
-            int sparseSize = Math.Max(DefaultSparseCapacity, maxKey + 1);
+            int sparseSize = maxKey < 0
+                ? DefaultSparseCapacity
+                : Math.Max(DefaultSparseCapacity, GetRequiredSparseCapacity(maxKey));
             _sparse = new int[sparseSize];
 
             // Rebuild sparse lookup
@@ -262,9 +277,7 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
     /// </summary>
     public bool TryAdd(int key, T value)
     {
-        SwiftThrowHelper.ThrowIfNegativeOrZero(key);
-
-        EnsureSparseCapacity(key + 1);
+        EnsureSparseCapacity(GetRequiredSparseCapacity(key));
         if (_sparse[key] != NotPresent)
             return false;
 
@@ -411,7 +424,9 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
         for (int i = 0; i < _count; i++)
             if (_denseKeys[i] > maxKey) maxKey = _denseKeys[i];
 
-        int newSparse = Math.Max(DefaultSparseCapacity, maxKey + 1);
+        int newSparse = maxKey < 0
+            ? DefaultSparseCapacity
+            : Math.Max(DefaultSparseCapacity, GetRequiredSparseCapacity(maxKey));
         if (newSparse < _sparse.Length)
         {
             var newMap = new int[newSparse];
@@ -493,6 +508,18 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
         keys = _denseKeys;
         values = _denseValues;
         count = _count;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int GetRequiredSparseCapacity(int key)
+    {
+        if (key < 0)
+            throw new ArgumentOutOfRangeException(nameof(key), "Key must be non-negative.");
+
+        if (key == int.MaxValue)
+            throw new ArgumentOutOfRangeException(nameof(key), "Key is too large for direct sparse indexing.");
+
+        return key + 1;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
