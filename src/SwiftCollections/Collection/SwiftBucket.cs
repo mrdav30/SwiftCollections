@@ -415,6 +415,24 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
     #region Utility Methods
 
     /// <summary>
+    /// Attempts to get the value at the specified arrayIndex.
+    /// </summary>
+    /// <param name="key">The arrayIndex of the item to get.</param>
+    /// <param name="value">When this method returns, contains the value associated with the specified arrayIndex, if the arrayIndex is found; otherwise, the default value for the type of the value parameter.</param>
+    /// <returns><c>true</c> if the bucket contains an element at the specified arrayIndex; otherwise, <c>false</c>.</returns>
+    public bool TryGetValue(int key, out T value)
+    {
+        if (!IsAllocated(key))
+        {
+            value = default;
+            return false;
+        }
+
+        value = _innerArray[key].Value;
+        return true;
+    }
+
+    /// <summary>
     /// Determines whether the bucket contains a specific value.
     /// </summary>
     /// <param name="item">The object to locate in the bucket.</param>
