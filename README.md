@@ -79,6 +79,7 @@ Unity support is maintained separately:
 - **SwiftObjectPool**: Thread-safe generic object pooling for improved memory usage and performance.
 - **SwiftArrayPool**: Array-specific pool for efficient reuse of arrays.
 - **SwiftCollectionPool**: Pool for reusable collection instances (e.g., List, HashSet).
+- **Default Collection Pools**: Ready-to-use pools are available for `SwiftList`, `SwiftQueue`, `SwiftHashSet`, `SwiftDictionary`, `SwiftStack`, `SwiftPackedSet`, and `SwiftSparseMap`.
 
 ### Spatial Data Structures
 
