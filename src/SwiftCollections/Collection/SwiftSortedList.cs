@@ -114,7 +114,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     /// <exception cref="ArgumentException">Thrown if the input collection does not have a known count.</exception>
     public SwiftSortedList(IEnumerable<T> items, IComparer<T> comparer = null)
     {
-        SwiftThrowHelper.ThrowIfNull(nameof(items));
+        SwiftThrowHelper.ThrowIfNull(items, nameof(items));
 
         _comparer = comparer ?? Comparer<T>.Default;
 
@@ -130,9 +130,10 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
             {
                 int capacity = SwiftHashTools.NextPowerOfTwo(count <= DefaultCapacity ? DefaultCapacity : count);
                 _innerArray = new T[capacity];
-                collection.CopyTo(_innerArray, 0);
-                Array.Sort(_innerArray, 0, _innerArray.Length, _comparer);
-                _offset = capacity >> 1; // initial offset half of capacity
+                _offset = (capacity - count) >> 1;
+                collection.CopyTo(_innerArray, _offset);
+                Array.Sort(_innerArray, _offset, count, _comparer);
+                _count = count;
             }
         }
         else

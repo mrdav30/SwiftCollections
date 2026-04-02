@@ -44,6 +44,20 @@ public class SwiftSortedListTests
         Assert.Equal(comparer, sorter.Comparer);
     }
 
+    [Fact]
+    public void Constructor_WithEnumerable_ShouldInitializeCountAndSortedValues()
+    {
+        var sorter = new SwiftSortedList<int>(new[] { 7, 3, 9, 1 });
+
+        Assert.Equal(4, sorter.Count);
+        Assert.Equal(1, sorter.PeekMin());
+        Assert.Equal(9, sorter.PeekMax());
+
+        int index = 0;
+        foreach (int item in sorter)
+            Assert.Equal(new[] { 1, 3, 7, 9 }[index++], item);
+    }
+
     #endregion
 
     #region Test: Add and AddRange
