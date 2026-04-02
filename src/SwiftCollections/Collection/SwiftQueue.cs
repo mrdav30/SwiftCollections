@@ -257,10 +257,41 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         SwiftThrowHelper.ThrowIfNull(items, nameof(items));
 
         if (items is ICollection<T> collection)
-            EnsureCapacity(collection.Count);
+            EnsureCapacity(_count + collection.Count);
 
         foreach (T item in items)
             if (item != null) Enqueue(item);
+    }
+
+    /// <summary>
+    /// Adds the elements of the specified array to the end of the queue in queue order.
+    /// </summary>
+    /// <param name="items">The array whose elements should be enqueued.</param>
+    public void EnqueueRange(T[] items)
+    {
+        SwiftThrowHelper.ThrowIfNull(items, nameof(items));
+        EnqueueRange(items.AsSpan());
+    }
+
+    /// <summary>
+    /// Adds the elements of the specified span to the end of the queue in queue order.
+    /// </summary>
+    /// <param name="items">The span whose elements should be enqueued.</param>
+    public void EnqueueRange(ReadOnlySpan<T> items)
+    {
+        if (items.Length == 0)
+            return;
+
+        EnsureCapacity(_count + items.Length);
+
+        for (int i = 0; i < items.Length; i++)
+        {
+            _innerArray[_tail] = items[i];
+            _tail = (_tail + 1) & _mask;
+        }
+
+        _count += items.Length;
+        _version++;
     }
 
     /// <summary>
