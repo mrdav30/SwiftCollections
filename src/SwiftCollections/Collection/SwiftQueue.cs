@@ -659,7 +659,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
                 throw new InvalidOperationException("Collection was modified during enumeration.");
 
             _index = 0;
-            _currentIndex = 0;
+            _currentIndex = (uint)_queue._head - 1;
             _current = default;
         }
 

@@ -160,6 +160,32 @@ public class SwiftQueueTests
     }
 
     [Fact]
+    public void Enumerator_Reset_RestartsWrappedQueueFromHead()
+    {
+        var queue = new SwiftQueue<int>(8);
+        for (int i = 0; i < 6; i++) queue.Enqueue(i);
+
+        for (int i = 0; i < 4; i++) queue.Dequeue();
+
+        queue.Enqueue(6);
+        queue.Enqueue(7);
+        queue.Enqueue(8);
+        queue.Enqueue(9);
+
+        var enumerator = queue.GetEnumerator();
+
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal(4, enumerator.Current);
+
+        enumerator.Reset();
+
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal(4, enumerator.Current);
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal(5, enumerator.Current);
+    }
+
+    [Fact]
     public void Exists_ReturnsTrueIfMatchIsFound()
     {
         var queue = new SwiftQueue<int>();
