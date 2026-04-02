@@ -186,7 +186,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
         get
         {
             int index = FindEntry(key);
-            SwiftThrowHelper.ThrowIfKeyInvalid(index);
+            SwiftThrowHelper.ThrowIfKeyInvalid(index, key);
             return _entries[index].Value;
         }
         set

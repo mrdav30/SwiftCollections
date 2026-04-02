@@ -70,8 +70,8 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
 
     public SwiftSparseMap(int sparseCapacity, int denseCapacity)
     {
-        if (sparseCapacity < 0) ThrowArgumentOutOfRange(nameof(sparseCapacity));
-        if (denseCapacity < 0) ThrowArgumentOutOfRange(nameof(denseCapacity));
+        SwiftThrowHelper.ThrowIfNegative(sparseCapacity, nameof(sparseCapacity));
+        SwiftThrowHelper.ThrowIfNegative(denseCapacity, nameof(denseCapacity));
 
         _sparse = sparseCapacity == 0 ? Array.Empty<int>() : new int[sparseCapacity];
         _denseKeys = denseCapacity == 0 ? Array.Empty<int>() : new int[Math.Max(DefaultDenseCapacity, denseCapacity)];
@@ -154,8 +154,7 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
         }
         set
         {
-            if ((uint)key > int.MaxValue) ThrowArgumentOutOfRange(nameof(key));
-            if (key < 0) ThrowArgumentOutOfRange(nameof(key));
+            SwiftThrowHelper.ThrowIfIndexInvalid(key, _count);
 
             EnsureSparseCapacity(key + 1);
 
@@ -201,7 +200,7 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
             int n = value.DenseKeys?.Length ?? 0;
 
             if (n != (value.DenseValues?.Length ?? 0))
-                ThrowArgumentException("DenseKeys and DenseValues length mismatch.");
+                throw new ArgumentException("DenseKeys and DenseValues length mismatch.");
 
             // Allocate dense storage
             _denseKeys = n == 0 ? Array.Empty<int>() : new int[Math.Max(DefaultDenseCapacity, n)];
@@ -221,7 +220,7 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
             {
                 int key = _denseKeys[i];
                 if (key < 0)
-                    ThrowArgumentException("Key cannot be negative.");
+                    throw new ArgumentException("Key cannot be negative.");
 
                 if (key > maxKey)
                     maxKey = key;
@@ -237,7 +236,7 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
                 int key = _denseKeys[i];
 
                 if (_sparse[key] != NotPresent)
-                    ThrowArgumentException("Duplicate key in DenseKeys.");
+                    throw new ArgumentException("Duplicate key in DenseKeys.");
 
                 _sparse[key] = i + 1;
             }
@@ -263,7 +262,7 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
     /// </summary>
     public bool TryAdd(int key, T value)
     {
-        if (key < 0) ThrowArgumentOutOfRange(nameof(key));
+        SwiftThrowHelper.ThrowIfNegativeOrZero(key);
 
         EnsureSparseCapacity(key + 1);
         if (_sparse[key] != NotPresent)
@@ -459,7 +458,7 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
         public bool MoveNext()
         {
             if (_version != _set._version)
-                ThrowInvalidOperation("Collection was modified during enumeration.");
+                throw new InvalidOperationException("Collection was modified during enumeration.");
 
             int next = _index + 1;
             if (next >= _count)
@@ -476,7 +475,7 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
         public void Reset()
         {
             if (_version != _set._version)
-                ThrowInvalidOperation("Collection was modified during enumeration.");
+                throw new InvalidOperationException("Collection was modified during enumeration.");
             _index = -1;
             Current = default;
         }
@@ -500,31 +499,18 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
     private int GetDenseIndexOrThrow(int key)
     {
         if ((uint)key >= (uint)_sparse.Length)
-            ThrowKeyNotFound();
+           throw new KeyNotFoundException($"Key not found: {key}");
 
         int slot = _sparse[key];
         if (slot == NotPresent)
-            ThrowKeyNotFound();
+            throw new KeyNotFoundException($"Key not found: {key}");
 
         return slot - 1;
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowKeyNotFound() => throw new KeyNotFoundException();
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowArgumentOutOfRange(string name) => throw new ArgumentOutOfRangeException(name);
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowArgumentException(string message) => throw new ArgumentException(message);
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowInvalidOperation(string message) => throw new InvalidOperationException(message);
-
     public void CloneTo(ICollection<T> output)
     {
-        if (output == null)
-            ThrowArgumentException(nameof(output));
+        SwiftThrowHelper.ThrowIfNull(output, nameof(output));
 
         output.Clear();
 

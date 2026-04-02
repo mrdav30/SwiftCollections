@@ -71,16 +71,15 @@ public static class SwiftThrowHelper
 
     /// <inheritdoc cref="KeyNotFoundException"/>
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public static void ThrowIfKeyInvalid(int key, int? max = null)
+    public static void ThrowIfKeyInvalid(int index, object? key = null)
     {
-        if (key < 0 || (max.HasValue && key >= max.Value))
-            ThrowKeyNotFoundException(key);
+        if (index < 0)
+            ThrowKeyNotFoundException(index, key);
     }
-
 
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowKeyNotFoundException(int key) =>
+    private static void ThrowKeyNotFoundException(int index, object? key) =>
         throw new KeyNotFoundException($"Key not found: {key}");
 
     /// <inheritdoc cref="IndexOutOfRangeException"/>

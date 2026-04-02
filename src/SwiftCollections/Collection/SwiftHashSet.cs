@@ -183,7 +183,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
         get
         {
             int index = FindEntry(key);
-            SwiftThrowHelper.ThrowIfKeyInvalid(index);
+            SwiftThrowHelper.ThrowIfKeyInvalid(index, key);
             return _entries[index].Value;
         }
     }
