@@ -48,7 +48,7 @@ public sealed class SwiftDictionaryPool<TKey, TValue> :
     /// <returns>A <see cref="SwiftDictionary{TKey, TValue}"/> instance.</returns>
     public override SwiftDictionary<TKey, TValue> Rent()
     {
-        ThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftDictionaryPool<TKey, TValue>));
+        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftDictionaryPool<TKey, TValue>));
 
         return base.Rent();
     }
@@ -62,7 +62,7 @@ public sealed class SwiftDictionaryPool<TKey, TValue> :
     /// </remarks>
     public override void Release(SwiftDictionary<TKey, TValue> dictionary)
     {
-        ThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftDictionaryPool<TKey, TValue>));
+        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftDictionaryPool<TKey, TValue>));
 
         if (dictionary == null) return;
 

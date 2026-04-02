@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 
 namespace SwiftCollections;
 
-public static class ThrowHelper
+public static class SwiftThrowHelper
 {
 #nullable enable
 

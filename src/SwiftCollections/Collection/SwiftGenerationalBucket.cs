@@ -350,7 +350,7 @@ public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEn
 
     public void CloneTo(ICollection<T> output)
     {
-        ThrowHelper.ThrowIfNull(output, nameof(output));
+        SwiftThrowHelper.ThrowIfNull(output, nameof(output));
 
         output.Clear();
 

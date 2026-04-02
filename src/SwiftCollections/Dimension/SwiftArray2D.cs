@@ -225,8 +225,8 @@ public partial class SwiftArray2D<T> : IEnumerable<T>, IEnumerable
     /// </summary>
     public void Resize(int newWidth, int newHeight)
     {
-        ThrowHelper.ThrowIfNegative(newWidth, nameof(newWidth));
-        ThrowHelper.ThrowIfNegative(newHeight, nameof(newHeight));
+        SwiftThrowHelper.ThrowIfNegative(newWidth, nameof(newWidth));
+        SwiftThrowHelper.ThrowIfNegative(newHeight, nameof(newHeight));
 
         if (newWidth == _width && newHeight == _height)
             return;

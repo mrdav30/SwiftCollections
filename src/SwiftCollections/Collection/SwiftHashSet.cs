@@ -129,7 +129,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     /// <param name="comparer">The comparer to use when comparing elements.</param>
     public SwiftHashSet(IEnumerable<T> collection, IEqualityComparer<T> comparer = null)
     {
-        ThrowHelper.ThrowIfNull(collection, nameof(collection));
+        SwiftThrowHelper.ThrowIfNull(collection, nameof(collection));
 
         int count = (collection as ICollection<T>)?.Count ?? DefaultCapacity;
         int size = (int)(count / _LoadFactorThreshold);  // Dynamic padding based on collision estimation
@@ -225,7 +225,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void AddRange(IEnumerable<T> items)
     {
-        ThrowHelper.ThrowIfNull(items, nameof(items));
+        SwiftThrowHelper.ThrowIfNull(items, nameof(items));
 
         if (items is ICollection<T> collection)
         {
@@ -248,7 +248,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool InsertIfNotExists(T item)
     {
-        ThrowHelper.ThrowIfNull(item, nameof(item));
+        SwiftThrowHelper.ThrowIfNull(item, nameof(item));
 
         int hashCode = _comparer.GetHashCode(item) & 0x7FFFFFFF;
         int entryIndex = hashCode & _entryMask;
@@ -290,7 +290,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     /// </returns>
     public bool Remove(T item)
     {
-        ThrowHelper.ThrowIfNull(item, nameof(item));
+        SwiftThrowHelper.ThrowIfNull(item, nameof(item));
 
         int hashCode = _comparer.GetHashCode(item) & 0x7FFFFFFF;
         int entryIndex = hashCode & _entryMask;
@@ -522,7 +522,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     /// </summary>
     public void CopyTo(T[] array, int arrayIndex)
     {
-        ThrowHelper.ThrowIfNull(array, nameof(array));
+        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
         if (array.Length - arrayIndex < _count) throw new InvalidOperationException("The array is not large enough to hold the elements.");
 
@@ -540,7 +540,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetComparer(IEqualityComparer<T> comparer = null)
     {
-        ThrowHelper.ThrowIfNull(comparer, nameof(comparer));
+        SwiftThrowHelper.ThrowIfNull(comparer, nameof(comparer));
         if (ReferenceEquals(comparer, _comparer))
             return;
 
@@ -709,7 +709,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
 
     public void ExceptWith(IEnumerable<T> other)
     {
-        ThrowHelper.ThrowIfNull(other, nameof(other));
+        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
 
         if (ReferenceEquals(this, other))
         {
@@ -725,7 +725,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
 
     public void IntersectWith(IEnumerable<T> other)
     {
-        ThrowHelper.ThrowIfNull(other, nameof(other));
+        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
 
         if (ReferenceEquals(this, other))
             return;
@@ -745,7 +745,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
 
     public bool IsProperSubsetOf(IEnumerable<T> other)
     {
-        ThrowHelper.ThrowIfNull(other, nameof(other));
+        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
 
         var otherSet = new SwiftHashSet<T>(other, _comparer);
 
@@ -761,7 +761,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
 
     public bool IsProperSupersetOf(IEnumerable<T> other)
     {
-        ThrowHelper.ThrowIfNull(other, nameof(other));
+        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
 
         var otherSet = new SwiftHashSet<T>(other, _comparer);
 
@@ -777,7 +777,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
 
     public bool IsSubsetOf(IEnumerable<T> other)
     {
-        ThrowHelper.ThrowIfNull(other, nameof(other));
+        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
 
         var otherSet = new SwiftHashSet<T>(other, _comparer);
 
@@ -793,7 +793,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
 
     public bool IsSupersetOf(IEnumerable<T> other)
     {
-        ThrowHelper.ThrowIfNull(other, nameof(other));
+        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
 
         foreach (var item in other)
         {
@@ -806,7 +806,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
 
     public bool Overlaps(IEnumerable<T> other)
     {
-        ThrowHelper.ThrowIfNull(other, nameof(other));
+        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
 
         foreach (var item in other)
             if (Contains(item))
@@ -817,7 +817,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
 
     public bool SetEquals(IEnumerable<T> other)
     {
-        ThrowHelper.ThrowIfNull(other, nameof(other));
+        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
 
         var otherSet = new SwiftHashSet<T>(other, _comparer);
 
@@ -833,7 +833,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
 
     public void SymmetricExceptWith(IEnumerable<T> other)
     {
-        ThrowHelper.ThrowIfNull(other, nameof(other));
+        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
 
         if (ReferenceEquals(this, other))
         {
@@ -852,7 +852,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
 
     public void UnionWith(IEnumerable<T> other)
     {
-        ThrowHelper.ThrowIfNull(other, nameof(other));
+        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
 
         foreach (var item in other)
             Add(item);

@@ -129,7 +129,7 @@ namespace SwiftCollections.Query
         /// </summary>
         public bool Insert(T value, IBoundVolume bounds)
         {
-            ThrowHelper.ThrowIfNull(bounds, nameof(bounds));
+            SwiftThrowHelper.ThrowIfNull(bounds, nameof(bounds));
 
             _bvhLock.EnterWriteLock();
             try
@@ -259,7 +259,7 @@ namespace SwiftCollections.Query
         /// </summary>
         public void UpdateEntryBounds(T value, IBoundVolume newBounds)
         {
-            ThrowHelper.ThrowIfNull(value, nameof(value));
+            SwiftThrowHelper.ThrowIfNull(value, nameof(value));
 
             int index = FindEntry(value);
             if (index == -1) return;
@@ -305,7 +305,7 @@ namespace SwiftCollections.Query
         /// </summary>
         public bool Remove(T value)
         {
-            ThrowHelper.ThrowIfNull(value, nameof(value));
+            SwiftThrowHelper.ThrowIfNull(value, nameof(value));
 
             int nodeIndex = FindEntry(value);
             if (nodeIndex == -1) return false;
@@ -496,7 +496,7 @@ namespace SwiftCollections.Query
         /// </summary>
         public void Query(IBoundVolume queryBounds, ICollection<T> results)
         {
-            ThrowHelper.ThrowIfNull(queryBounds, nameof(queryBounds));
+            SwiftThrowHelper.ThrowIfNull(queryBounds, nameof(queryBounds));
 
             if (RootNodeIndex == -1) return;
 
@@ -544,7 +544,7 @@ namespace SwiftCollections.Query
         /// </summary>
         public int FindEntry(T value)
         {
-            ThrowHelper.ThrowIfNull(value, nameof(value));
+            SwiftThrowHelper.ThrowIfNull(value, nameof(value));
 
             _bvhLock.EnterReadLock();
             try

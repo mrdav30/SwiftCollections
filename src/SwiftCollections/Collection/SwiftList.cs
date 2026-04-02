@@ -94,7 +94,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     /// <exception cref="ArgumentException">Thrown if the input collection does not have a known count.</exception>
     public SwiftList(IEnumerable<T> items)
     {
-        ThrowHelper.ThrowIfNull(items, nameof(items));
+        SwiftThrowHelper.ThrowIfNull(items, nameof(items));
 
         if (items is ICollection<T> collection)
         {
@@ -266,7 +266,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     /// </summary>
     public virtual void AddRange(IEnumerable<T> items)
     {
-        ThrowHelper.ThrowIfNull(items, nameof(items));
+        SwiftThrowHelper.ThrowIfNull(items, nameof(items));
 
         if (items is ICollection<T> collection)
         {
@@ -331,7 +331,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     /// </summary>
     public virtual int RemoveAll(Predicate<T> match)
     {
-        ThrowHelper.ThrowIfNull(match, nameof(match));
+        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
 
         int i = 0;
         // Move to the first element that should be removed
@@ -563,7 +563,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
 
     public void CopyTo(T[] array, int arrayIndex)
     {
-        ThrowHelper.ThrowIfNull(array, nameof(array));
+        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
         if (array.Length - arrayIndex < _count) throw new ArgumentException("Destination array is not long enough.", nameof(array));
 
@@ -572,7 +572,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
 
     public void CopyTo(Array array, int arrayIndex)
     {
-        ThrowHelper.ThrowIfNull(array, nameof(array));
+        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         if (array.Rank != 1) throw new ArgumentException("Array must be single dimensional.", nameof(array));
         if (array.GetLowerBound(0) != 0) throw new ArgumentException("Array must have zero-based indexing.", nameof(array));
         if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));

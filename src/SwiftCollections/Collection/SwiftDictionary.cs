@@ -132,7 +132,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
     /// <inheritdoc cref="SwiftDictionary()"/>
     public SwiftDictionary(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey> comparer = null)
     {
-        ThrowHelper.ThrowIfNull(dictionary, nameof(dictionary));
+        SwiftThrowHelper.ThrowIfNull(dictionary, nameof(dictionary));
 
         Initialize(dictionary.Count, comparer);
 
@@ -143,7 +143,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
     /// <inheritdoc cref="SwiftDictionary()"/>
     public SwiftDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey> comparer = null)
     {
-        ThrowHelper.ThrowIfNull(collection, nameof(collection));
+        SwiftThrowHelper.ThrowIfNull(collection, nameof(collection));
 
         int count = (collection as ICollection<TKey>)?.Count ?? DefaultCapacity;
         // Dynamic padding based on collision estimation
@@ -186,7 +186,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
         get
         {
             int index = FindEntry(key);
-            ThrowHelper.ThrowIfKeyInvalid(index);
+            SwiftThrowHelper.ThrowIfKeyInvalid(index);
             return _entries[index].Value;
         }
         set
@@ -208,7 +208,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
     {
         get
         {
-            ThrowHelper.ThrowIfNull(obj, nameof(obj));
+            SwiftThrowHelper.ThrowIfNull(obj, nameof(obj));
 
             if (obj is TKey key)
             {
@@ -219,7 +219,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
         }
         set
         {
-            ThrowHelper.ThrowIfNullAndNullsAreIllegal(value, default(TValue));
+            SwiftThrowHelper.ThrowIfNullAndNullsAreIllegal(value, default(TValue));
             try
             {
                 TKey tempKey = (TKey)obj;
@@ -346,7 +346,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
     void IDictionary<TKey, TValue>.Add(TKey key, TValue value) => Add(key, value);
     void IDictionary.Add(object key, object value)
     {
-        ThrowHelper.ThrowIfNullAndNullsAreIllegal(value, default(TValue));
+        SwiftThrowHelper.ThrowIfNullAndNullsAreIllegal(value, default(TValue));
 
         try
         {
@@ -379,7 +379,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
     /// <exception cref="ArgumentNullException">Thrown when the key is null.</exception>
     internal virtual bool InsertIfNotExist(TKey key, TValue value)
     {
-        ThrowHelper.ThrowIfNull(key, nameof(key));
+        SwiftThrowHelper.ThrowIfNull(key, nameof(key));
 
         int hashCode = _comparer.GetHashCode(key) & 0x7FFFFFFF;
         int entryIndex = hashCode & _entryMask;
@@ -450,7 +450,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
 
     void IDictionary.Remove(object obj)
     {
-        ThrowHelper.ThrowIfNull(obj, nameof(obj));
+        SwiftThrowHelper.ThrowIfNull(obj, nameof(obj));
         if (obj is TKey key) Remove(key);
     }
 
@@ -641,7 +641,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
 
     bool IDictionary.Contains(object obj)
     {
-        ThrowHelper.ThrowIfNull(obj, nameof(obj));
+        SwiftThrowHelper.ThrowIfNull(obj, nameof(obj));
 
         if (obj is TKey key) return ContainsKey(key);
         return false;
@@ -670,7 +670,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
 
     public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
     {
-        ThrowHelper.ThrowIfNull(array, nameof(array));
+        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
         if (array.Length - arrayIndex < _count) throw new ArgumentException("Insufficient space", nameof(array));
 
@@ -685,7 +685,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
 
     void ICollection.CopyTo(Array array, int arrayIndex)
     {
-        ThrowHelper.ThrowIfNull(array, nameof(array));
+        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         if (array.Rank != 1) throw new ArgumentException("Multidimensional array not supported", nameof(array));
         if (array.GetLowerBound(0) != 0) throw new ArgumentException("Non-zero lower bound", nameof(array));
         if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
@@ -727,7 +727,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetComparer(IEqualityComparer<TKey> comparer)
     {
-        ThrowHelper.ThrowIfNull(comparer, nameof(comparer));
+        SwiftThrowHelper.ThrowIfNull(comparer, nameof(comparer));
         if (ReferenceEquals(comparer, _comparer))
             return;
 
@@ -966,7 +966,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
 
         public void CopyTo(TKey[] array, int arrayIndex)
         {
-            ThrowHelper.ThrowIfNull(array, nameof(array));
+            SwiftThrowHelper.ThrowIfNull(array, nameof(array));
             if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
             if (array.Length - arrayIndex < _dictionary._count) throw new ArgumentException("Insufficient space", nameof(array));
 
@@ -979,7 +979,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
 
         void ICollection.CopyTo(Array array, int arrayIndex)
         {
-            ThrowHelper.ThrowIfNull(array, nameof(array));
+            SwiftThrowHelper.ThrowIfNull(array, nameof(array));
             if (array.Rank != 1) throw new ArgumentException("Multidimensional array not supported");
             if (array.GetLowerBound(0) != 0) throw new ArgumentException("Non-zero lower bound");
             if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
@@ -1122,7 +1122,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
 
         public void CopyTo(TValue[] array, int arrayIndex)
         {
-            ThrowHelper.ThrowIfNull(array, nameof(array));
+            SwiftThrowHelper.ThrowIfNull(array, nameof(array));
             if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
             if (array.Length - arrayIndex < _dictionary._count) throw new ArgumentException("Insufficient space", nameof(array));
 
@@ -1136,7 +1136,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
 
         void ICollection.CopyTo(Array array, int arrayIndex)
         {
-            ThrowHelper.ThrowIfNull(array, nameof(array));
+            SwiftThrowHelper.ThrowIfNull(array, nameof(array));
             if (array.Rank != 1) throw new ArgumentException("Multidimensional array not supported", nameof(array));
             if (array.GetLowerBound(0) != 0) throw new ArgumentException("Non-zero lower bound", nameof(array));
             if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));

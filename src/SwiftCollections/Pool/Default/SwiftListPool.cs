@@ -43,7 +43,7 @@ public sealed class SwiftListPool<T> : SwiftCollectionPool<SwiftList<T>, T>, IDi
     /// <returns>A <see cref="SwiftList{T}"/> instance.</returns>
     public override SwiftList<T> Rent()
     {
-        ThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftList<T>));
+        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftList<T>));
 
         return base.Rent();
     }
@@ -57,7 +57,7 @@ public sealed class SwiftListPool<T> : SwiftCollectionPool<SwiftList<T>, T>, IDi
     /// </remarks>
     public override void Release(SwiftList<T> list)
     {
-        ThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftList<T>));
+        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftList<T>));
 
         if (list == null) return;
 

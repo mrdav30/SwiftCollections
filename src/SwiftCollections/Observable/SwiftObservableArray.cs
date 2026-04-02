@@ -67,7 +67,7 @@ public partial class SwiftObservableArray<TValue> : INotifyPropertyChanged
 
     public SwiftObservableArray(int capacity)
     {
-        ThrowHelper.ThrowIfNegativeOrZero(capacity, nameof(capacity));
+        SwiftThrowHelper.ThrowIfNegativeOrZero(capacity, nameof(capacity));
 
         _items = new SwiftObservableProperty<TValue>[capacity];
         _itemChangedHandler = (sender, e) => OnItemChanged(sender);
@@ -84,7 +84,7 @@ public partial class SwiftObservableArray<TValue> : INotifyPropertyChanged
 
     public SwiftObservableArray(SwiftObservableProperty<TValue>[] observableProperties)
     {
-        ThrowHelper.ThrowIfNull(observableProperties, nameof(observableProperties));
+        SwiftThrowHelper.ThrowIfNull(observableProperties, nameof(observableProperties));
 
         _items = observableProperties;
         _itemChangedHandler = (sender, e) => OnItemChanged(sender);

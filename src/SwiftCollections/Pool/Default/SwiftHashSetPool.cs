@@ -43,7 +43,7 @@ public sealed class SwiftHashSetPool<T> : SwiftCollectionPool<SwiftHashSet<T>, T
     /// <returns>A <see cref="SwiftHashSet{T}"/> instance.</returns>
     public override SwiftHashSet<T> Rent()
     {
-        ThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftHashSetPool<T>));
+        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftHashSetPool<T>));
 
         return base.Rent();
     }
@@ -57,7 +57,7 @@ public sealed class SwiftHashSetPool<T> : SwiftCollectionPool<SwiftHashSet<T>, T
     /// </remarks>
     public override void Release(SwiftHashSet<T> set)
     {
-        ThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftHashSetPool<T>));
+        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftHashSetPool<T>));
 
         if (set == null) return;
 

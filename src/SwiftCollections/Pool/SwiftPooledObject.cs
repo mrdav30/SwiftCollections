@@ -33,8 +33,8 @@ public readonly struct SwiftPooledObject<T> : IDisposable where T : class
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="value"/> or <paramref name="pool"/> is null.</exception>
     internal SwiftPooledObject(T value, ISwiftObjectPool<T> pool)
     {
-        ThrowHelper.ThrowIfNull(value, nameof(value));
-        ThrowHelper.ThrowIfNull(pool, nameof(pool));
+        SwiftThrowHelper.ThrowIfNull(value, nameof(value));
+        SwiftThrowHelper.ThrowIfNull(pool, nameof(pool));
 
         _value = value;
         _pool = pool;

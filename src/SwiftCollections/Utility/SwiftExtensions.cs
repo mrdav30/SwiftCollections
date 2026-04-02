@@ -96,8 +96,8 @@ namespace SwiftCollections
         /// <returns>An iterator that yields the shuffled elements.</returns>
         public static IEnumerable<T> Shuffle<T>(this IEnumerable<T> source, Random rng)
         {
-            ThrowHelper.ThrowIfNull(source, nameof(source));
-            ThrowHelper.ThrowIfNull(rng, nameof(rng));
+            SwiftThrowHelper.ThrowIfNull(source, nameof(source));
+            SwiftThrowHelper.ThrowIfNull(rng, nameof(rng));
 
             SwiftList<T> buffer = new SwiftList<T>(source);
             int n = buffer.Count;
@@ -119,8 +119,8 @@ namespace SwiftCollections
         /// <param name="rng">The random number generator to use for shuffling.</param>
         public static void ShuffleInPlace<T>(this IList<T> list, Random rng)
         {
-            ThrowHelper.ThrowIfNull(list, nameof(list));
-            ThrowHelper.ThrowIfNull(rng, nameof(rng));
+            SwiftThrowHelper.ThrowIfNull(list, nameof(list));
+            SwiftThrowHelper.ThrowIfNull(rng, nameof(rng));
 
             int n = list.Count;
             while (n > 1)
@@ -142,7 +142,7 @@ namespace SwiftCollections
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsPopulated<T>(this IEnumerable<T> source)
         {
-            ThrowHelper.ThrowIfNull(source, nameof(source));
+            SwiftThrowHelper.ThrowIfNull(source, nameof(source));
             using IEnumerator<T> enumerator = source.GetEnumerator();
             return enumerator.MoveNext();
         }

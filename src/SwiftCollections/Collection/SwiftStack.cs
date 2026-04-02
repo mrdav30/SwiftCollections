@@ -83,7 +83,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
 
     public SwiftStack(IEnumerable<T> items)
     {
-        ThrowHelper.ThrowIfNull(items, nameof(items));
+        SwiftThrowHelper.ThrowIfNull(items, nameof(items));
 
         if (items is ICollection<T> collection)
         {
@@ -160,13 +160,13 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            ThrowHelper.ThrowIfIndexInvalid(index, _count);
+            SwiftThrowHelper.ThrowIfIndexInvalid(index, _count);
             return _innerArray[index];
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set
         {
-            ThrowHelper.ThrowIfIndexInvalid(index, _count);
+            SwiftThrowHelper.ThrowIfIndexInvalid(index, _count);
             _innerArray[index] = value;
         }
     }
@@ -326,7 +326,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
 
     public void CopyTo(T[] array, int arrayIndex)
     {
-        ThrowHelper.ThrowIfNull(array, nameof(array));
+        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException();
         if ((uint)(array.Length - arrayIndex) < (uint)_count) throw new ArgumentException("Destination array is not long enough.");
 
@@ -335,7 +335,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
 
     void ICollection.CopyTo(Array array, int arrayIndex)
     {
-        ThrowHelper.ThrowIfNull(array, nameof(array));
+        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         if ((uint)array.Rank != 1) throw new ArgumentException("Array must be single dimensional.");
         if ((uint)array.GetLowerBound(0) != 0) throw new ArgumentException("Array must have zero-based indexing.");
         if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException();

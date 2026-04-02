@@ -44,8 +44,8 @@ public sealed class SwiftObjectPool<T> : IDisposable, ISwiftObjectPool<T> where 
         Action<T> actionOnDestroy = null,
         int maxSize = 100)
     {
-        ThrowHelper.ThrowIfNull(createFunc, nameof(createFunc));
-        ThrowHelper.ThrowIfNegativeOrZero(maxSize, nameof(maxSize));
+        SwiftThrowHelper.ThrowIfNull(createFunc, nameof(createFunc));
+        SwiftThrowHelper.ThrowIfNegativeOrZero(maxSize, nameof(maxSize));
 
         _pool = new ConcurrentStack<T>();
         _createFunc = createFunc;
@@ -86,7 +86,7 @@ public sealed class SwiftObjectPool<T> : IDisposable, ISwiftObjectPool<T> where 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Rent()
     {
-        ThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftObjectPool<T>));
+        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftObjectPool<T>));
 
         if (_pool.TryPop(out var obj))
         {
@@ -118,8 +118,8 @@ public sealed class SwiftObjectPool<T> : IDisposable, ISwiftObjectPool<T> where 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Release(T element)
     {
-        ThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftObjectPool<T>));
-        ThrowHelper.ThrowIfNull(element, nameof(element));
+        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftObjectPool<T>));
+        SwiftThrowHelper.ThrowIfNull(element, nameof(element));
 
         _actionOnRelease?.Invoke(element);
 
@@ -141,7 +141,7 @@ public sealed class SwiftObjectPool<T> : IDisposable, ISwiftObjectPool<T> where 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Release(IEnumerable<T> elements)
     {
-        ThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftObjectPool<T>));
+        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftObjectPool<T>));
 
         foreach (T item in elements)
             Release(item);

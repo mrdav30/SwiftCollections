@@ -282,7 +282,7 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
     /// <param name="item">The item to insert.</param>
     public void InsertAt(int index, T item)
     {
-        ThrowHelper.ThrowIfNegative(index, nameof(index));
+        SwiftThrowHelper.ThrowIfNegative(index, nameof(index));
         if ((uint)index >= (uint)_innerArray.Length)
             Resize(_innerArray.Length * 2);
         if (!_innerArray[index].IsUsed)
@@ -479,7 +479,7 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
     /// <param name="arrayIndex">The zero-based arrayIndex in array at which copying begins.</param>
     public void CopyTo(T[] array, int arrayIndex)
     {
-        ThrowHelper.ThrowIfNull(array, nameof(array));
+        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
         if (array.Length - arrayIndex < _count) throw new InvalidOperationException("The array is not large enough to hold the elements.");
 
@@ -496,7 +496,7 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
 
     void ICollection.CopyTo(Array array, int arrayIndex)
     {
-        ThrowHelper.ThrowIfNull(array, nameof(array));
+        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         if ((uint)array.Rank != 1) throw new ArgumentException("Array must be single dimensional.");
         if ((uint)array.GetLowerBound(0) != 0) throw new ArgumentException("Array must have zero-based indexing.");
         if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));

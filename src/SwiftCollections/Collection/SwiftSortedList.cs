@@ -114,7 +114,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     /// <exception cref="ArgumentException">Thrown if the input collection does not have a known count.</exception>
     public SwiftSortedList(IEnumerable<T> items, IComparer<T> comparer = null)
     {
-        ThrowHelper.ThrowIfNull(nameof(items));
+        SwiftThrowHelper.ThrowIfNull(nameof(items));
 
         _comparer = comparer ?? Comparer<T>.Default;
 
@@ -313,7 +313,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     /// </remarks>
     public void AddRange(IEnumerable<T> items)
     {
-        ThrowHelper.ThrowIfNull(items, nameof(items));
+        SwiftThrowHelper.ThrowIfNull(items, nameof(items));
 
         // Convert items to a sorted array
         T[] sortedItems;
@@ -573,7 +573,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetComparer(IComparer<T> comparer)
     {
-        ThrowHelper.ThrowIfNull(comparer, nameof(comparer));
+        SwiftThrowHelper.ThrowIfNull(comparer, nameof(comparer));
         if (ReferenceEquals(comparer, _comparer))
             return;
 
@@ -668,7 +668,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
 
     public void CopyTo(T[] array, int arrayIndex)
     {
-        ThrowHelper.ThrowIfNull(array, nameof(array));
+        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
         if (array.Length - arrayIndex < _count) throw new ArgumentException("The target array is too small.", nameof(array));
 
@@ -677,7 +677,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
 
     public void CopyTo(Array array, int arrayIndex)
     {
-        ThrowHelper.ThrowIfNull(array, nameof(array));
+        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
         if (array.Length - arrayIndex < _count) throw new ArgumentException("The target array is too small.", nameof(array));
 

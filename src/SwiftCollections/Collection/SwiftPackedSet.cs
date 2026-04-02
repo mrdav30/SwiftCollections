@@ -275,7 +275,7 @@ public sealed partial class SwiftPackedSet<T> :
 
     public void CloneTo(ICollection<T> output)
     {
-        ThrowHelper.ThrowIfNull(output, nameof(output));
+        SwiftThrowHelper.ThrowIfNull(output, nameof(output));
 
         output.Clear();
 
@@ -285,7 +285,7 @@ public sealed partial class SwiftPackedSet<T> :
 
     public void CopyTo(T[] array, int arrayIndex)
     {
-        ThrowHelper.ThrowIfNull(array, nameof(array));
+        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
         if (array.Length - arrayIndex < _count) throw new ArgumentException("Destination array is not long enough.", nameof(array));
 
@@ -298,7 +298,7 @@ public sealed partial class SwiftPackedSet<T> :
 
     public void ExceptWith(IEnumerable<T> other)
     {
-        ThrowHelper.ThrowIfNull(other, nameof(other));
+        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
 
         if (ReferenceEquals(this, other))
         {
@@ -314,7 +314,7 @@ public sealed partial class SwiftPackedSet<T> :
 
     public void IntersectWith(IEnumerable<T> other)
     {
-        ThrowHelper.ThrowIfNull(other, nameof(other));
+        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
 
         if (ReferenceEquals(this, other))
             return;
@@ -331,7 +331,7 @@ public sealed partial class SwiftPackedSet<T> :
 
     public bool IsProperSubsetOf(IEnumerable<T> other)
     {
-        ThrowHelper.ThrowIfNull(other, nameof(other));
+        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
 
         var set = new SwiftHashSet<T>(other);
 
@@ -347,7 +347,7 @@ public sealed partial class SwiftPackedSet<T> :
 
     public bool IsProperSupersetOf(IEnumerable<T> other)
     {
-        ThrowHelper.ThrowIfNull(other, nameof(other));
+        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
 
         var set = new SwiftHashSet<T>(other);
 
@@ -363,7 +363,7 @@ public sealed partial class SwiftPackedSet<T> :
 
     public bool IsSubsetOf(IEnumerable<T> other)
     {
-        ThrowHelper.ThrowIfNull(other, nameof(other));
+        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
 
         var set = new SwiftHashSet<T>(other);
 
@@ -379,7 +379,7 @@ public sealed partial class SwiftPackedSet<T> :
 
     public bool IsSupersetOf(IEnumerable<T> other)
     {
-        ThrowHelper.ThrowIfNull(other, nameof(other));
+        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
 
         foreach (var item in other)
             if (!Contains(item))
@@ -390,7 +390,7 @@ public sealed partial class SwiftPackedSet<T> :
 
     public bool Overlaps(IEnumerable<T> other)
     {
-        ThrowHelper.ThrowIfNull(other, nameof(other));
+        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
 
         foreach (var item in other)
             if (Contains(item))
@@ -401,7 +401,7 @@ public sealed partial class SwiftPackedSet<T> :
 
     public bool SetEquals(IEnumerable<T> other)
     {
-        ThrowHelper.ThrowIfNull(other, nameof(other));
+        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
 
         var set = new SwiftHashSet<T>(other);
 
@@ -417,7 +417,7 @@ public sealed partial class SwiftPackedSet<T> :
 
     public void SymmetricExceptWith(IEnumerable<T> other)
     {
-        ThrowHelper.ThrowIfNull(other, nameof(other));
+        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
 
         if (ReferenceEquals(this, other))
         {
@@ -436,7 +436,7 @@ public sealed partial class SwiftPackedSet<T> :
 
     public void UnionWith(IEnumerable<T> other)
     {
-        ThrowHelper.ThrowIfNull(other, nameof(other));
+        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
 
         foreach (var item in other)
             Add(item);

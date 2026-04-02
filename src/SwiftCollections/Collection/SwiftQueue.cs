@@ -107,7 +107,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     /// </summary>
     public SwiftQueue(IEnumerable<T> items)
     {
-        ThrowHelper.ThrowIfNull(items, nameof(items));
+        SwiftThrowHelper.ThrowIfNull(items, nameof(items));
         if (items is ICollection<T> collection)
         {
             int capacity = collection.Count < DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(collection.Count);
@@ -254,7 +254,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void EnqueueRange(IEnumerable<T> items)
     {
-        ThrowHelper.ThrowIfNull(items, nameof(items));
+        SwiftThrowHelper.ThrowIfNull(items, nameof(items));
 
         if (items is ICollection<T> collection)
             EnsureCapacity(collection.Count);
@@ -498,7 +498,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     /// <inheritdoc/>
     public void CopyTo(Array array, int arrayIndex)
     {
-        ThrowHelper.ThrowIfNull(array, nameof(array));
+        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         if ((uint)array.Rank != 1) throw new ArgumentException("Array must be single dimensional.", nameof(array));
         if ((uint)array.GetLowerBound(0) != 0) throw new ArgumentException("Array must have zero-based indexing.", nameof(array));
         if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
@@ -520,7 +520,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     /// <inheritdoc/>
     public void CopyTo(T[] array, int arrayIndex)
     {
-        ThrowHelper.ThrowIfNull(array, nameof(array));
+        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         if ((uint)array.Rank != 1) throw new ArgumentException("Array must be single dimensional.", nameof(array));
         if ((uint)array.GetLowerBound(0) != 0) throw new ArgumentException("Array must have zero-based indexing.", nameof(array));
         if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
@@ -548,7 +548,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
 
     public void CloneTo(ICollection<T> output)
     {
-        ThrowHelper.ThrowIfNull(output, nameof(output));
+        SwiftThrowHelper.ThrowIfNull(output, nameof(output));
         output.Clear();
         foreach (var item in this)
             output.Add(item);
