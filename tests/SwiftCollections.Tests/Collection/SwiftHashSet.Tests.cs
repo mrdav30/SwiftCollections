@@ -111,6 +111,34 @@ public class SwiftHashSetTests
         Assert.Contains(3, set);
     }
 
+    [Fact(Timeout = 2000)]
+    public void AddRange_FromPopulatedHashSet_AddsAllItems()
+    {
+        var destination = new SwiftHashSet<int> { 0, 1, 2, 3, 4, 5 };
+        var source = new SwiftHashSet<int> { 6, 7, 8 };
+
+        destination.AddRange(source);
+
+        Assert.Equal(9, destination.Count);
+
+        for (int i = 0; i < 9; i++)
+            Assert.Contains(i, destination);
+    }
+
+    [Fact]
+    public void AddRange_NonCollection_EnumeratesSourceOnce()
+    {
+        var set = new SwiftHashSet<int>();
+        var source = new SingleUseEnumerable<int>(new[] { 1, 2, 3 });
+
+        set.AddRange(source);
+
+        Assert.Equal(3, set.Count);
+        Assert.Contains(1, set);
+        Assert.Contains(2, set);
+        Assert.Contains(3, set);
+    }
+
     [Fact]
     public void EnsureCapacity_CapacityIsIncreased()
     {
@@ -290,6 +318,25 @@ public class SwiftHashSetTests
         // Set should only contain one item due to case-insensitive comparer, but still should recognize both as present
         Assert.Contains("hello", set);
         Assert.Contains("HELLO", set);
+    }
+
+    [Fact]
+    public void Indexer_ReturnsStoredValueMatchingComparer()
+    {
+        var set = new SwiftHashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Hello"
+        };
+
+        Assert.Equal("Hello", set["hello"]);
+    }
+
+    [Fact]
+    public void Indexer_MissingKey_Throws()
+    {
+        var set = new SwiftHashSet<int>();
+
+        Assert.Throws<KeyNotFoundException>(() => _ = set[42]);
     }
 
     [Fact]
@@ -575,5 +622,27 @@ public class SwiftHashSetTests
         set.SymmetricExceptWith(set);
 
         Assert.Empty(set);
+    }
+
+    private sealed class SingleUseEnumerable<T> : IEnumerable<T>
+    {
+        private readonly IEnumerable<T> _items;
+        private bool _enumerated;
+
+        public SingleUseEnumerable(IEnumerable<T> items)
+        {
+            _items = items;
+        }
+
+        public IEnumerator<T> GetEnumerator()
+        {
+            if (_enumerated)
+                throw new InvalidOperationException("The source was enumerated more than once.");
+
+            _enumerated = true;
+            return _items.GetEnumerator();
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }

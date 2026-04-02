@@ -171,6 +171,23 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     [MemoryPackIgnore]
     bool ICollection<T>.IsReadOnly => false;
 
+    /// <summary>
+    /// Gets the stored value that matches the specified key.
+    /// </summary>
+    /// <param name="key">The lookup value used to find an equal element in the set.</param>
+    /// <exception cref="KeyNotFoundException">No matching value exists in the set.</exception>
+    [JsonIgnore]
+    [MemoryPackIgnore]
+    public T this[T key]
+    {
+        get
+        {
+            int index = FindEntry(key);
+            SwiftThrowHelper.ThrowIfKeyInvalid(index);
+            return _entries[index].Value;
+        }
+    }
+
     [JsonInclude]
     [MemoryPackInclude]
     public SwiftArrayState<T> State
@@ -227,9 +244,12 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     {
         SwiftThrowHelper.ThrowIfNull(items, nameof(items));
 
+        if (ReferenceEquals(this, items))
+            return;
+
         if (items is ICollection<T> collection)
         {
-            EnsureCapacity(collection.Count);
+            EnsureCapacityForAddRange(collection.Count);
 
             foreach (T item in collection)
                 if (item != null) InsertIfNotExists(item);
@@ -237,7 +257,17 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
             return;
         }
 
-        // Fallback for non-ICollection, adding each item individually
+        if (items is IReadOnlyCollection<T> readOnlyCollection)
+        {
+            EnsureCapacityForAddRange(readOnlyCollection.Count);
+
+            foreach (T item in readOnlyCollection)
+                if (item != null) InsertIfNotExists(item);
+
+            return;
+        }
+
+        // Preserve single-pass enumeration for lazy or one-shot sources.
         foreach (T item in items)
             if (item != null) Add(item);
     }
@@ -356,6 +386,23 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     {
         if ((uint)_count >= _nextResizeCount)
             Resize(_entries.Length * _adaptiveResizeFactor);
+    }
+
+    /// <summary>
+    /// Ensures there is enough room to add a batch of items without repeatedly checking the load threshold.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void EnsureCapacityForAddRange(int incomingCount)
+    {
+        if (incomingCount <= 0)
+            return;
+
+        long requiredCount = (long)_count + incomingCount;
+        if (requiredCount > int.MaxValue)
+            throw new InvalidOperationException("The collection is too large.");
+
+        double minimumCapacity = Math.Ceiling(requiredCount / (double)_LoadFactorThreshold);
+        EnsureCapacity(minimumCapacity >= int.MaxValue ? int.MaxValue : (int)minimumCapacity);
     }
 
     /// <summary>
