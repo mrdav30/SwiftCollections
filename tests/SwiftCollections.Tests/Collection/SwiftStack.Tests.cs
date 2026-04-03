@@ -1,6 +1,7 @@
 ﻿using FluentAssertions;
 using MemoryPack;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -532,6 +533,83 @@ public class SwiftStackTests
         // Assert
         stack.Capacity.Should().BeGreaterThanOrEqualTo(20);
         stack.Count.Should().Be(0);
+    }
+
+    [Fact]
+    public void Constructor_WithEnumerableCollection_ShouldCopyItems()
+    {
+        var stack = new SwiftStack<int>(new[] { 1, 2, 3 });
+
+        stack.Count.Should().Be(3);
+        stack.AsReadOnlySpan().ToArray().Should().Equal(1, 2, 3);
+        stack.Peek().Should().Be(3);
+    }
+
+    [Fact]
+    public void Constructor_WithNonCollectionEnumerable_ShouldPushItemsInOrder()
+    {
+        var stack = new SwiftStack<int>(GetItems());
+
+        stack.Count.Should().Be(3);
+        stack.AsReadOnlySpan().ToArray().Should().Equal(1, 2, 3);
+        stack.Peek().Should().Be(3);
+
+        static IEnumerable<int> GetItems()
+        {
+            yield return 1;
+            yield return 2;
+            yield return 3;
+        }
+    }
+
+    [Fact]
+    public void TrimCapacity_ShouldShrinkCapacityAndPreserveValues()
+    {
+        var stack = new SwiftStack<int>(64);
+        stack.Push(1);
+        stack.Push(2);
+        stack.Push(3);
+
+        stack.TrimCapacity();
+
+        stack.Capacity.Should().BeLessThan(64);
+        stack.AsReadOnlySpan().ToArray().Should().Equal(1, 2, 3);
+    }
+
+    [Fact]
+    public void ICollectionCopyTo_ShouldCopyElementsToObjectArray()
+    {
+        ICollection stack = new SwiftStack<int>();
+        ((SwiftStack<int>)stack).Push(1);
+        ((SwiftStack<int>)stack).Push(2);
+        ((SwiftStack<int>)stack).Push(3);
+
+        var array = new object[5];
+
+        stack.CopyTo(array, 1);
+
+        array.Should().Equal(null, 1, 2, 3, null);
+    }
+
+    [Fact]
+    public void CloneTo_ICollectionMembersAndEnumeratorCurrent_Work()
+    {
+        ICollection<int> stack = new SwiftStack<int>();
+        stack.Add(1);
+        stack.Add(2);
+
+        var clone = new List<int> { 99 };
+        ((SwiftStack<int>)stack).CloneTo(clone);
+
+        Assert.False(stack.IsReadOnly);
+        Assert.False(((SwiftStack<int>)stack).IsSynchronized);
+        Assert.NotNull(((ICollection)stack).SyncRoot);
+        Assert.Throws<NotSupportedException>(() => stack.Remove(1));
+        Assert.Equal(new[] { 1, 2 }, clone);
+
+        IEnumerator enumerator = ((IEnumerable)stack).GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+        Assert.NotNull(enumerator.Current);
     }
 
     [Fact]

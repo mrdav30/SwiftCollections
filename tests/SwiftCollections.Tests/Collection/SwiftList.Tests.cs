@@ -1,5 +1,6 @@
 using MemoryPack;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -64,6 +65,23 @@ public class SwiftListTests
         Assert.Equal(3, list.Count);
         Assert.Equal(1, list[0]);
         Assert.Equal(3, list[2]);
+    }
+
+    [Fact]
+    public void AddRange_NonCollectionEnumerable_ShouldAppendElements()
+    {
+        var list = new SwiftList<int> { 1 };
+
+        list.AddRange(GetItems());
+
+        Assert.Equal(new[] { 1, 2, 3, 4 }, list.ToArray());
+
+        static IEnumerable<int> GetItems()
+        {
+            yield return 2;
+            yield return 3;
+            yield return 4;
+        }
     }
 
     [Fact]
@@ -281,21 +299,24 @@ public class SwiftListTests
     public void Contains_ShouldReturnTrueIfItemExists()
     {
         var list = new SwiftList<int> { 1, 2, 3 };
-        Assert.Contains(2, list);  // List contains 2
+        bool contains = list.Contains(2);
+        Assert.True(contains);
     }
 
     [Fact]
     public void Contains_ShouldHandleNullForReferenceTypes()
     {
         var list = new SwiftList<string> { "a", null, "b" };
-        Assert.Contains(null, list);
+        bool contains = list.Contains(null);
+        Assert.True(contains);
     }
 
     [Fact]
     public void Contains_ShouldReturnFalseIfItemDoesNotExist()
     {
         var list = new SwiftList<int> { 1, 2, 3 };
-        Assert.DoesNotContain(4, list);  // List does not contain 4
+        bool contains = list.Contains(4);
+        Assert.False(contains);
     }
 
     [Fact]
@@ -428,11 +449,115 @@ public class SwiftListTests
     }
 
     [Fact]
+    public void IList_AdapterOperations_WorkForValidValues()
+    {
+        IList list = new SwiftList<int> { 1, 3 };
+
+        int addedIndex = list.Add(4);
+        list.Insert(1, 2);
+        list[0] = 0;
+
+        Assert.Equal(1, list.IndexOf(2));
+        Assert.True(list.Contains(4));
+
+        list.Remove(3);
+
+        Assert.Equal(2, addedIndex);
+        Assert.Equal(new[] { 0, 2, 4 }, ((SwiftList<int>)list).ToArray());
+    }
+
+    [Fact]
+    public void IList_AdapterOperations_ThrowForUnsupportedValueTypes()
+    {
+        IList list = new SwiftList<int> { 1, 2, 3 };
+
+        Assert.Throws<NotSupportedException>(() => list.Add("bad"));
+        Assert.Throws<NotSupportedException>(() => list.Insert(0, "bad"));
+        Assert.Throws<NotSupportedException>(() => list[0] = "bad");
+        Assert.Throws<NotSupportedException>(() => list.IndexOf("bad"));
+        Assert.Throws<NotSupportedException>(() => list.Contains("bad"));
+        Assert.Throws<NotSupportedException>(() => list.Remove("bad"));
+    }
+
+    [Fact]
+    public void CopyTo_NonGenericArray_ShouldCopyElementsAtOffset()
+    {
+        var list = new SwiftList<int> { 1, 2, 3 };
+        Array destination = new int[5];
+
+        list.CopyTo(destination, 1);
+
+        Assert.Equal(new[] { 0, 1, 2, 3, 0 }, (int[])destination);
+    }
+
+    [Fact]
+    public void Enumerator_Reset_ShouldRestartAndIEnumeratorCurrentShouldExposeCurrentItem()
+    {
+        IEnumerable list = new SwiftList<int> { 1, 2, 3 };
+        IEnumerator enumerator = list.GetEnumerator();
+
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal(1, enumerator.Current);
+
+        enumerator.Reset();
+
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal(1, enumerator.Current);
+    }
+
+    [Fact]
     public void Sort_ShouldWorkWithCustomComparer()
     {
         var list = new SwiftList<int> { 1, 3, 2 };
         list.Sort(Comparer<int>.Create((x, y) => y - x));  // Sort in descending order
         Assert.Equal(new[] { 3, 2, 1 }, list.ToArray());
+    }
+
+    [Fact]
+    public void Sort_DefaultComparer_ShouldSortAscending()
+    {
+        var list = new SwiftList<int> { 3, 1, 2 };
+
+        list.Sort();
+
+        Assert.Equal(new[] { 1, 2, 3 }, list.ToArray());
+    }
+
+    [Fact]
+    public void TrimExcessCapacity_ShouldShrinkBackingArrayAndPreserveItems()
+    {
+        var list = new SwiftList<int>(64) { 1, 2, 3 };
+
+        list.TrimExcessCapacity();
+
+        Assert.True(list.Capacity < 64);
+        Assert.Equal(new[] { 1, 2, 3 }, list.ToArray());
+    }
+
+    [Fact]
+    public void CloneTo_ShouldReplaceTargetContents()
+    {
+        var list = new SwiftList<int> { 1, 2, 3 };
+        var target = new List<int> { 99 };
+
+        list.CloneTo(target);
+
+        Assert.Equal(new[] { 1, 2, 3 }, target);
+    }
+
+    [Fact]
+    public void IListAndICollectionProperties_ExposeCurrentState()
+    {
+        var list = new SwiftList<int> { 1, 2, 3 };
+        IList nongeneric = list;
+        ICollection collection = list;
+
+        Assert.False(list.IsReadOnly);
+        Assert.False(list.IsSynchronized);
+        Assert.False(nongeneric.IsFixedSize);
+        Assert.Equal(2, nongeneric[1]);
+        Assert.NotNull(collection.SyncRoot);
+        Assert.Contains("1, 2, 3", list.ToString());
     }
 
     [Fact]

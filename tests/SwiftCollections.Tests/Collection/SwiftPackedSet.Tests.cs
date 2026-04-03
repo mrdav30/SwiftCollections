@@ -1,5 +1,6 @@
 ﻿using MemoryPack;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -377,6 +378,77 @@ public class SwiftPackedSetTests
         set.SymmetricExceptWith(set);
 
         Assert.Empty(set);
+    }
+
+    [Fact]
+    public void PackedSet_ExceptWith_RemovesSharedItems()
+    {
+        var set = new SwiftPackedSet<int> { 1, 2, 3, 4 };
+
+        set.ExceptWith(new[] { 2, 4, 8 });
+
+        Assert.Equal(2, set.Count);
+        Assert.Contains(1, set);
+        Assert.Contains(3, set);
+        Assert.DoesNotContain(2, set);
+        Assert.DoesNotContain(4, set);
+    }
+
+    [Fact]
+    public void PackedSet_IntersectWith_RetainsOnlySharedItems()
+    {
+        var set = new SwiftPackedSet<int> { 1, 2, 3, 4 };
+
+        set.IntersectWith(new[] { 2, 4, 8 });
+
+        Assert.Equal(2, set.Count);
+        Assert.Contains(2, set);
+        Assert.Contains(4, set);
+        Assert.DoesNotContain(1, set);
+        Assert.DoesNotContain(3, set);
+    }
+
+    [Fact]
+    public void PackedSet_SetRelationships_ReportExpectedResults()
+    {
+        var set = new SwiftPackedSet<int> { 1, 2, 3 };
+
+        Assert.True(set.IsProperSubsetOf(new[] { 1, 2, 3, 4 }));
+        Assert.True(set.IsSubsetOf(new[] { 1, 2, 2, 3, 4 }));
+        Assert.True(set.IsSupersetOf(new[] { 1, 1, 2 }));
+        Assert.True(set.Overlaps(new[] { 3, 9 }));
+        Assert.False(set.Overlaps(new[] { 7, 8 }));
+        Assert.True(set.SetEquals(new[] { 3, 2, 1, 1 }));
+        Assert.False(set.SetEquals(new[] { 1, 2 }));
+    }
+
+    [Fact]
+    public void PackedSet_EnumeratorReset_RestartsEnumeration()
+    {
+        IEnumerator enumerator = ((IEnumerable)new SwiftPackedSet<int> { 1, 2, 3 }).GetEnumerator();
+
+        Assert.True(enumerator.MoveNext());
+        Assert.NotNull(enumerator.Current);
+
+        enumerator.Reset();
+
+        Assert.True(enumerator.MoveNext());
+        Assert.NotNull(enumerator.Current);
+    }
+
+    [Fact]
+    public void PackedSet_UnionWithAndCollectionMembers_Work()
+    {
+        ICollection<int> set = new SwiftPackedSet<int> { 1 };
+
+        set.Add(2);
+        ((SwiftPackedSet<int>)set).UnionWith(new[] { 3, 4 });
+
+        Assert.False(set.IsReadOnly);
+        Assert.False(((SwiftPackedSet<int>)set).IsSynchronized);
+        Assert.NotNull(((SwiftPackedSet<int>)set).SyncRoot);
+        Assert.True(((SwiftPackedSet<int>)set).Capacity >= set.Count);
+        Assert.True(((SwiftPackedSet<int>)set).SetEquals(new[] { 1, 2, 3, 4 }));
     }
 
     #endregion

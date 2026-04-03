@@ -1,5 +1,6 @@
 ﻿using MemoryPack;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text.Json;
 using Xunit;
@@ -303,6 +304,39 @@ public class SwiftGenerationalBucketTests
         var handle = new SwiftGenerationalBucket<int>.Handle(999, 0);
 
         Assert.False(bucket.TryGet(handle, out _));
+    }
+
+    [Fact]
+    public void EnsureCapacity_HandleEqualityAndEnumerationAdapters_Work()
+    {
+        var bucket = new SwiftGenerationalBucket<int>(2);
+        bucket.Add(1);
+        bucket.Add(2);
+
+        bucket.EnsureCapacity(64);
+
+        var left = new SwiftGenerationalBucket<int>.Handle(1, 2);
+        var same = new SwiftGenerationalBucket<int>.Handle(1, 2);
+        var different = new SwiftGenerationalBucket<int>.Handle(1, 3);
+
+        Assert.True(bucket.Capacity >= 64);
+        Assert.True(left.Equals(same));
+        Assert.True(left.Equals((object)same));
+        Assert.True(left == same);
+        Assert.True(left != different);
+        Assert.Equal("Handle(1:2)", left.ToString());
+        Assert.NotEqual(left.GetHashCode(), different.GetHashCode());
+
+        IEnumerator nongeneric = ((IEnumerable)bucket).GetEnumerator();
+        IEnumerator<int> generic = ((IEnumerable<int>)bucket).GetEnumerator();
+
+        Assert.True(generic.MoveNext());
+        Assert.True(nongeneric.MoveNext());
+        Assert.NotNull(nongeneric.Current);
+
+        nongeneric.Reset();
+
+        Assert.True(nongeneric.MoveNext());
     }
 
     #endregion

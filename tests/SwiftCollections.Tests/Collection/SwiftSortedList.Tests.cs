@@ -250,7 +250,8 @@ public class SwiftSortedListTests
         var sorter = new SwiftSortedList<int>();
         sorter.Add(10);
         sorter.Add(5);
-        Assert.Contains(10, sorter);
+        bool contains = sorter.Contains(10);
+        Assert.True(contains);
     }
 
     [Fact]
@@ -259,7 +260,8 @@ public class SwiftSortedListTests
         var sorter = new SwiftSortedList<int>();
         sorter.Add(10);
         sorter.Add(5);
-        Assert.DoesNotContain(15, sorter);
+        bool contains = sorter.Contains(15);
+        Assert.False(contains);
     }
 
     [Fact]
@@ -406,6 +408,91 @@ public class SwiftSortedListTests
         var sorter = new SwiftSortedList<int>();
         sorter.AddRange(new List<int> { 1, 3, 5, 7, 9 });
         Assert.Equal(4, sorter.InsertionPoint(8)); // Insertion point for 8
+    }
+
+    [Fact]
+    public void CopyTo_ArrayOverloads_CopySortedWindowAtOffset()
+    {
+        var sorter = new SwiftSortedList<int>();
+        sorter.AddRange(new[] { 5, 1, 4, 2 });
+
+        var generic = new int[6];
+        Array nonGeneric = new object[6];
+
+        sorter.CopyTo(generic, 1);
+        sorter.CopyTo(nonGeneric, 1);
+
+        Assert.Equal(new[] { 0, 1, 2, 4, 5, 0 }, generic);
+        Assert.Equal(new object[] { null, 1, 2, 4, 5, null }, (object[])nonGeneric);
+    }
+
+    [Fact]
+    public void FastClear_ShouldResetCountAndRecenterOffsetWithoutReplacingArray()
+    {
+        var sorter = new SwiftSortedList<int>();
+        sorter.AddRange(new[] { 5, 1, 4, 2 });
+
+        int[] innerArray = sorter.InnerArray;
+        int originalOffset = sorter.Offset;
+
+        sorter.FastClear();
+
+        Assert.Empty(sorter);
+        Assert.Same(innerArray, sorter.InnerArray);
+        Assert.Equal(sorter.InnerArray.Length >> 1, sorter.Offset);
+        Assert.Equal(1, innerArray[originalOffset]);
+    }
+
+    [Fact]
+    public void RemoveAt_WhenCountDropsBelowQuarter_RecenterArrayPreservesOrder()
+    {
+        var sorter = new SwiftSortedList<int>(32);
+        sorter.AddRange(new[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 });
+
+        sorter.RemoveAt(0);
+        sorter.RemoveAt(0);
+
+        sorter.RemoveAt(0);
+
+        Assert.Equal((sorter.Capacity - sorter.Count) >> 1, sorter.Offset);
+        Assert.Equal(new[] { 3, 4, 5, 6, 7, 8, 9 }, sorter.AsReadOnlySpan().ToArray());
+    }
+
+    [Fact]
+    public void Enumerator_Reset_RestartsEnumeration()
+    {
+        var sorter = new SwiftSortedList<int>();
+        sorter.AddRange(new[] { 5, 1, 4, 2 });
+
+        var enumerator = sorter.GetEnumerator();
+
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal(1, enumerator.Current);
+
+        enumerator.Reset();
+
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal(1, enumerator.Current);
+    }
+
+    [Fact]
+    public void EnsureCapacity_PropertiesAndNonGenericEnumeration_ExposeState()
+    {
+        var sorter = new SwiftSortedList<int>();
+        sorter.AddRange(new[] { 5, 1, 4, 2 });
+        System.Collections.ICollection collection = sorter;
+
+        sorter.EnsureCapacity(64);
+
+        Assert.True(sorter.Capacity >= 64);
+        Assert.False(((ICollection<int>)sorter).IsReadOnly);
+        Assert.False(sorter.IsSynchronized);
+        Assert.NotNull(collection.SyncRoot);
+        Assert.NotEqual(0u, sorter.Version);
+
+        System.Collections.IEnumerator enumerator = ((System.Collections.IEnumerable)sorter).GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal(1, enumerator.Current);
     }
 
     #endregion

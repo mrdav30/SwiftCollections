@@ -1,6 +1,8 @@
 ﻿using MemoryPack;
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Xunit;
@@ -498,6 +500,110 @@ public class SwiftHashSetTests
     }
 
     [Fact]
+    public void TrimExcess_ShrinksCapacityAndPreservesElements()
+    {
+        var set = new SwiftHashSet<int>(256);
+
+        for (int i = 0; i < 12; i++)
+            set.Add(i);
+
+        int originalCapacity = GetCapacity(set);
+
+        set.TrimExcess();
+
+        Assert.True(GetCapacity(set) < originalCapacity);
+
+        for (int i = 0; i < 12; i++)
+            Assert.Contains(i, set);
+    }
+
+    [Fact]
+    public void TryGetValue_ReturnsStoredEquivalentValue()
+    {
+        var set = new SwiftHashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Hello"
+        };
+
+        Assert.True(set.TryGetValue("hello", out string actual));
+        Assert.Equal("Hello", actual);
+        Assert.False(set.TryGetValue("missing", out string missing));
+        Assert.Null(missing);
+    }
+
+    [Fact]
+    public void ExceptWith_RemovesIntersectingItems()
+    {
+        var set = new SwiftHashSet<int> { 1, 2, 3, 4 };
+
+        set.ExceptWith(new[] { 2, 4, 8 });
+
+        Assert.Equal(2, set.Count);
+        Assert.Contains(1, set);
+        Assert.Contains(3, set);
+        Assert.DoesNotContain(2, set);
+        Assert.DoesNotContain(4, set);
+    }
+
+    [Fact]
+    public void IntersectWith_RetainsOnlySharedItems()
+    {
+        var set = new SwiftHashSet<int> { 1, 2, 3, 4 };
+
+        set.IntersectWith(new[] { 2, 4, 8 });
+
+        Assert.Equal(2, set.Count);
+        Assert.Contains(2, set);
+        Assert.Contains(4, set);
+        Assert.DoesNotContain(1, set);
+        Assert.DoesNotContain(3, set);
+    }
+
+    [Fact]
+    public void IsSupersetOf_AndOverlaps_ReportExpectedRelationships()
+    {
+        var set = new SwiftHashSet<int> { 1, 2, 3, 4 };
+
+        Assert.True(set.IsSupersetOf(new[] { 1, 1, 2 }));
+        Assert.False(set.IsSupersetOf(new[] { 1, 5 }));
+        Assert.True(set.Overlaps(new[] { 4, 10 }));
+        Assert.False(set.Overlaps(new[] { 8, 9 }));
+    }
+
+    [Fact]
+    public void SwitchToRandomizedComparer_ActivatesAfterHeavyProbeChain()
+    {
+        var set = new SwiftHashSet<string>(256);
+        string[] values = CollisionStringFactory.CreateMaskedCollisions(set.Comparer, 255, 110);
+
+        Assert.IsNotAssignableFrom<IRandomedEqualityComparer>(set.Comparer);
+
+        for (int i = 0; i < values.Length; i++)
+            set.Add(values[i]);
+
+        Assert.IsAssignableFrom<IRandomedEqualityComparer>(set.Comparer);
+
+        foreach (string value in values)
+            Assert.Contains(value, set);
+    }
+
+    [Fact]
+    public void UnionWith_ICollectionMembersAndEnumeratorCurrent_Work()
+    {
+        ICollection<int> set = new SwiftHashSet<int> { 1 };
+
+        set.Add(2);
+        ((SwiftHashSet<int>)set).UnionWith(new[] { 3, 4 });
+
+        Assert.False(set.IsReadOnly);
+        Assert.True(((SwiftHashSet<int>)set).SetEquals(new[] { 1, 2, 3, 4 }));
+
+        IEnumerator enumerator = ((IEnumerable)set).GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+        Assert.NotNull(enumerator.Current);
+    }
+
+    [Fact]
     public void Add_Remove_LargeNumberOfItems()
     {
         var set = new SwiftHashSet<int>();
@@ -690,5 +796,11 @@ public class SwiftHashSetTests
         }
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
+    private static int GetCapacity<T>(SwiftHashSet<T> set)
+    {
+        var field = typeof(SwiftHashSet<T>).GetField("_entries", BindingFlags.Instance | BindingFlags.NonPublic);
+        return ((Array)field.GetValue(set)).Length;
     }
 }

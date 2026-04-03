@@ -526,6 +526,232 @@ public class SwiftDictionaryTests
     }
 
     [Fact]
+    public void IDictionary_IndexerSet_AddsAndUpdatesEntries()
+    {
+        IDictionary dictionary = new SwiftDictionary<int, string>();
+
+        dictionary[1] = "One";
+        dictionary[1] = "Uno";
+
+        Assert.Equal("Uno", dictionary[1]);
+        Assert.True(dictionary.Contains(1));
+    }
+
+    [Fact]
+    public void IDictionary_ContainsAndRemove_UseTypedKeys()
+    {
+        IDictionary dictionary = new SwiftDictionary<int, string>
+        {
+            [1] = "One",
+            [2] = "Two"
+        };
+
+        Assert.True(dictionary.Contains(1));
+        Assert.False(dictionary.Contains("1"));
+
+        dictionary.Remove(1);
+
+        Assert.False(dictionary.Contains(1));
+        Assert.Single(dictionary);
+    }
+
+    [Fact]
+    public void TrimExcess_ShrinksCapacityAndPreservesEntries()
+    {
+        var dictionary = new SwiftDictionary<int, string>(256);
+
+        for (int i = 0; i < 12; i++)
+            dictionary.Add(i, $"Value {i}");
+
+        int originalCapacity = dictionary.Capacity;
+
+        dictionary.TrimExcess();
+
+        Assert.True(dictionary.Capacity < originalCapacity);
+
+        for (int i = 0; i < 12; i++)
+            Assert.Equal($"Value {i}", dictionary[i]);
+    }
+
+    [Fact]
+    public void ICollection_CopyTo_DictionaryEntryArray_CopiesEntries()
+    {
+        ICollection dictionary = new SwiftDictionary<int, string>
+        {
+            [1] = "One",
+            [2] = "Two"
+        };
+
+        var destination = new DictionaryEntry[3];
+
+        dictionary.CopyTo(destination, 1);
+
+        Assert.Null(destination[0].Key);
+        Assert.Contains(destination, entry => entry.Key is int key && key == 1 && (string)entry.Value == "One");
+        Assert.Contains(destination, entry => entry.Key is int key && key == 2 && (string)entry.Value == "Two");
+    }
+
+    [Fact]
+    public void ICollection_CopyTo_ObjectArray_CopiesKeyValuePairs()
+    {
+        ICollection dictionary = new SwiftDictionary<int, string>
+        {
+            [1] = "One",
+            [2] = "Two"
+        };
+
+        var destination = new object[2];
+
+        dictionary.CopyTo(destination, 0);
+
+        Assert.Contains(destination, item => item is KeyValuePair<int, string> pair && pair.Key == 1 && pair.Value == "One");
+        Assert.Contains(destination, item => item is KeyValuePair<int, string> pair && pair.Key == 2 && pair.Value == "Two");
+    }
+
+    [Fact]
+    public void KeyAndValueCollections_ICollectionCopyTo_CopyProjectedItems()
+    {
+        var dictionary = new SwiftDictionary<int, string>
+        {
+            [1] = "One",
+            [2] = "Two"
+        };
+
+        var keyObjects = new object[3];
+        var valueObjects = new object[3];
+
+        ((ICollection)dictionary.Keys).CopyTo(keyObjects, 1);
+        ((ICollection)dictionary.Values).CopyTo(valueObjects, 1);
+
+        Assert.Null(keyObjects[0]);
+        Assert.Contains(1, keyObjects);
+        Assert.Contains(2, keyObjects);
+
+        Assert.Null(valueObjects[0]);
+        Assert.Contains("One", valueObjects);
+        Assert.Contains("Two", valueObjects);
+    }
+
+    [Fact]
+    public void DictionaryEnumerator_Reset_RestartsAndIEnumeratorCurrentReturnsDictionaryEntry()
+    {
+        IDictionary dictionary = new SwiftDictionary<int, string>
+        {
+            [1] = "One",
+            [2] = "Two"
+        };
+
+        var enumerator = dictionary.GetEnumerator();
+
+        Assert.True(enumerator.MoveNext());
+        var current = (DictionaryEntry)((IEnumerator)enumerator).Current;
+
+        Assert.Equal(enumerator.Key, current.Key);
+        Assert.Equal(enumerator.Value, current.Value);
+
+        enumerator.Reset();
+
+        Assert.True(enumerator.MoveNext());
+        Assert.Contains((int)enumerator.Key, new[] { 1, 2 });
+    }
+
+    [Fact]
+    public void KeyAndValueEnumerators_Reset_RestartsEnumeration()
+    {
+        var dictionary = new SwiftDictionary<int, string>
+        {
+            [1] = "One",
+            [2] = "Two"
+        };
+
+        IEnumerator keyEnumerator = ((IEnumerable)dictionary.Keys).GetEnumerator();
+        IEnumerator valueEnumerator = ((IEnumerable)dictionary.Values).GetEnumerator();
+
+        Assert.True(keyEnumerator.MoveNext());
+        Assert.True(valueEnumerator.MoveNext());
+
+        Assert.Contains((int)keyEnumerator.Current, new[] { 1, 2 });
+        Assert.Contains((string)valueEnumerator.Current, new[] { "One", "Two" });
+
+        keyEnumerator.Reset();
+        valueEnumerator.Reset();
+
+        Assert.True(keyEnumerator.MoveNext());
+        Assert.True(valueEnumerator.MoveNext());
+    }
+
+    [Fact]
+    public void SwitchToRandomizedComparer_ActivatesAfterHeavyProbeChain()
+    {
+        var dictionary = new SwiftDictionary<string, int>(256);
+        string[] keys = CollisionStringFactory.CreateMaskedCollisions(dictionary.Comparer, dictionary.Capacity - 1, 110);
+
+        Assert.IsNotAssignableFrom<IRandomedEqualityComparer>(dictionary.Comparer);
+
+        for (int i = 0; i < keys.Length; i++)
+            dictionary.Add(keys[i], i);
+
+        Assert.IsAssignableFrom<IRandomedEqualityComparer>(dictionary.Comparer);
+
+        for (int i = 0; i < keys.Length; i++)
+            Assert.Equal(i, dictionary[keys[i]]);
+    }
+
+    [Fact]
+    public void DictionaryAndCollectionAdapterMembers_ExposeExpectedState()
+    {
+        var dictionary = new SwiftDictionary<int, string>();
+        var generic = (ICollection<KeyValuePair<int, string>>)dictionary;
+        var keyed = (IDictionary<int, string>)dictionary;
+        var nongeneric = (IDictionary)dictionary;
+
+        generic.Add(new KeyValuePair<int, string>(1, "One"));
+        keyed.Add(2, "Two");
+
+        Assert.False(generic.IsReadOnly);
+        Assert.False(nongeneric.IsReadOnly);
+        Assert.False(nongeneric.IsFixedSize);
+        Assert.False(((ICollection)dictionary).IsSynchronized);
+        Assert.NotNull(((ICollection)dictionary).SyncRoot);
+        Assert.NotNull(nongeneric.Values);
+        Assert.True(generic.Remove(new KeyValuePair<int, string>(1, "One")));
+        Assert.True(((ICollection<int>)dictionary.Keys).Contains(2));
+        Assert.True(((ICollection<string>)dictionary.Values).Contains("Two"));
+
+        IDictionaryEnumerator enumerator = nongeneric.GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal(enumerator.Key, enumerator.Entry.Key);
+    }
+
+    [Fact]
+    public void KeyAndValueCollectionAdapters_ExposeSyncRootAndUnsupportedMembers()
+    {
+        var dictionary = new SwiftDictionary<int, string>
+        {
+            [1] = "One",
+            [2] = "Two"
+        };
+
+        var keys = (ICollection<int>)dictionary.Keys;
+        var values = (ICollection<string>)dictionary.Values;
+        var keyCollection = (ICollection)dictionary.Keys;
+        var valueCollection = (ICollection)dictionary.Values;
+
+        Assert.False(keyCollection.IsSynchronized);
+        Assert.False(valueCollection.IsSynchronized);
+        Assert.NotNull(keyCollection.SyncRoot);
+        Assert.NotNull(valueCollection.SyncRoot);
+        Assert.True(keys.Contains(1));
+        Assert.True(values.Contains("Two"));
+        Assert.False(keys.Remove(1));
+        Assert.False(values.Remove("One"));
+        Assert.Throws<NotSupportedException>(() => keys.Add(3));
+        Assert.Throws<NotSupportedException>(() => keys.Clear());
+        Assert.Throws<NotSupportedException>(() => values.Add("Three"));
+        Assert.Throws<NotSupportedException>(() => values.Clear());
+    }
+
+    [Fact]
     public void ICollection_CopyTo_ArrayTooSmall_ThrowsArgumentException()
     {
         var dictionary = new SwiftDictionary<int, string>

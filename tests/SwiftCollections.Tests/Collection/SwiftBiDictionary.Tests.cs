@@ -309,4 +309,21 @@ public class SwiftBiDictionaryTests
         Assert.True(removed);
         Assert.False(reverseExists);
     }
+
+    [Fact]
+    public void BiDictionary_ConstructorsFromDictionaryAndGetKey_PreserveReverseLookup()
+    {
+        var source = new System.Collections.Generic.Dictionary<string, int>
+        {
+            ["One"] = 1,
+            ["Two"] = 2
+        };
+
+        var withDefaultComparers = new SwiftBiDictionary<string, int>(source);
+        var withCustomComparers = new SwiftBiDictionary<string, int>(source, StringComparer.OrdinalIgnoreCase, System.Collections.Generic.EqualityComparer<int>.Default);
+
+        Assert.Equal("One", withDefaultComparers.GetKey(1));
+        Assert.Equal("Two", withCustomComparers.GetKey(2));
+        Assert.True(withCustomComparers.ContainsKey("one"));
+    }
 }

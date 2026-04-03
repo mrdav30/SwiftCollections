@@ -1,5 +1,7 @@
 ﻿using MemoryPack;
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using Xunit;
@@ -215,6 +217,83 @@ public class SwiftSparseMapTests
         set.Add(3, 30);
 
         Assert.Throws<InvalidOperationException>(() => enumerator.MoveNext());
+    }
+
+    [Fact]
+    public void Enumerator_Reset_RestartsIteration()
+    {
+        var set = new SwiftSparseMap<int>();
+        set.Add(1, 10);
+        set.Add(2, 20);
+
+        var enumerator = set.GetEnumerator();
+
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal(1, enumerator.Current.Key);
+
+        enumerator.Reset();
+
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal(1, enumerator.Current.Key);
+    }
+
+    [Fact]
+    public void TrimExcess_ShrinksDenseAndSparseStorageWhilePreservingEntries()
+    {
+        var set = new SwiftSparseMap<int>();
+        set.EnsureDenseCapacity(64);
+        set.EnsureSparseCapacity(256);
+        set.Add(1, 10);
+        set.Add(64, 20);
+        set.Remove(64);
+
+        int denseCapacityBefore = set.DenseKeys.Length;
+        int sparseCapacityBefore = set.SparseCapacity;
+
+        set.TrimExcess();
+
+        Assert.True(set.DenseKeys.Length < denseCapacityBefore);
+        Assert.True(set.SparseCapacity < sparseCapacityBefore);
+        Assert.True(set.ContainsKey(1));
+        Assert.Equal(10, set[1]);
+    }
+
+    [Fact]
+    public void CloneTo_ClearsTargetAndCopiesValues()
+    {
+        var set = new SwiftSparseMap<int>();
+        set.Add(1, 10);
+        set.Add(2, 20);
+
+        var list = new List<int> { 99 };
+
+        set.CloneTo(list);
+
+        Assert.Equal(2, list.Count);
+        Assert.Contains(10, list);
+        Assert.Contains(20, list);
+    }
+
+    [Fact]
+    public void DenseViewsAndNonGenericEnumeration_ExposeCurrentState()
+    {
+        var set = new SwiftSparseMap<int>();
+        set.Add(1, 10);
+        set.Add(2, 20);
+
+        set.GetDense(out int[] keys, out int[] values, out int count);
+        IEnumerator enumerator = ((IEnumerable)set).GetEnumerator();
+
+        Assert.Equal(set.DenseCapacity, keys.Length);
+        Assert.False(set.IsSynchronized);
+        Assert.NotNull(set.SyncRoot);
+        Assert.Equal(new[] { 1, 2 }, set.Keys.ToArray());
+        Assert.Equal(new[] { 10, 20 }, set.Values.ToArray());
+        Assert.Equal(new[] { 1, 2 }, keys.AsSpan(0, count).ToArray());
+        Assert.Equal(new[] { 10, 20 }, values.AsSpan(0, count).ToArray());
+
+        Assert.True(enumerator.MoveNext());
+        Assert.NotNull(enumerator.Current);
     }
 
     #region Serialization

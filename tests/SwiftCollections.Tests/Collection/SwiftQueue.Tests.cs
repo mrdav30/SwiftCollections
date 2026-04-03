@@ -1,5 +1,7 @@
 ﻿using MemoryPack;
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Xunit;
@@ -8,6 +10,21 @@ namespace SwiftCollections.Tests;
 
 public class SwiftQueueTests
 {
+    [Fact]
+    public void Constructor_WithNonCollectionEnumerable_CopiesItemsInQueueOrder()
+    {
+        var queue = new SwiftQueue<int>(GetItems());
+
+        Assert.Equal(new[] { 1, 2, 3 }, queue.ToArray());
+
+        static IEnumerable<int> GetItems()
+        {
+            yield return 1;
+            yield return 2;
+            yield return 3;
+        }
+    }
+
     [Fact]
     public void Enqueue_AddsElementsToQueue()
     {
@@ -153,6 +170,24 @@ public class SwiftQueueTests
     }
 
     [Fact]
+    public void EnqueueRange_NonCollectionEnumerable_AppendsItems()
+    {
+        var queue = new SwiftQueue<int>();
+        queue.Enqueue(1);
+
+        queue.EnqueueRange(GetItems());
+
+        Assert.Equal(new[] { 1, 2, 3, 4 }, queue.ToArray());
+
+        static IEnumerable<int> GetItems()
+        {
+            yield return 2;
+            yield return 3;
+            yield return 4;
+        }
+    }
+
+    [Fact]
     public void ToArray_CreatesArrayWithAllElements()
     {
         var queue = new SwiftQueue<int>();
@@ -209,6 +244,112 @@ public class SwiftQueueTests
         queue.CopyTo(destination);
 
         Assert.Equal(new[] { 4, 5, 6, 7, 8 }, destination);
+    }
+
+    [Fact]
+    public void CopyTo_GenericAndNonGenericArrays_CopyWrappedQueueInOrder()
+    {
+        var queue = new SwiftQueue<int>(8);
+        queue.EnqueueRange(new[] { 0, 1, 2, 3, 4, 5 }.AsSpan());
+
+        for (int i = 0; i < 4; i++)
+            queue.Dequeue();
+
+        queue.EnqueueRange(new[] { 6, 7, 8 }.AsSpan());
+
+        var genericDestination = new int[7];
+        Array objectDestination = new object[7];
+
+        queue.CopyTo(genericDestination, 1);
+        queue.CopyTo(objectDestination, 1);
+
+        Assert.Equal(new[] { 0, 4, 5, 6, 7, 8, 0 }, genericDestination);
+        Assert.Equal(new object[] { null, 4, 5, 6, 7, 8, null }, (object[])objectDestination);
+    }
+
+    [Fact]
+    public void TryPeekAndTryDequeue_HandleEmptyAndPopulatedQueues()
+    {
+        var queue = new SwiftQueue<int>();
+
+        Assert.False(queue.TryPeek(out int emptyPeek));
+        Assert.Equal(default, emptyPeek);
+        Assert.False(queue.TryDequeue(out int emptyDequeue));
+        Assert.Equal(default, emptyDequeue);
+
+        queue.Enqueue(1);
+        queue.Enqueue(2);
+
+        Assert.True(queue.TryPeek(out int peeked));
+        Assert.Equal(1, peeked);
+        Assert.True(queue.TryDequeue(out int dequeued));
+        Assert.Equal(1, dequeued);
+        Assert.Equal(new[] { 2 }, queue.ToArray());
+    }
+
+    [Fact]
+    public void Contains_SearchesAcrossWrappedQueue()
+    {
+        var queue = new SwiftQueue<int>(8);
+        queue.EnqueueRange(new[] { 0, 1, 2, 3, 4, 5 }.AsSpan());
+
+        for (int i = 0; i < 4; i++)
+            queue.Dequeue();
+
+        queue.EnqueueRange(new[] { 6, 7, 8 }.AsSpan());
+
+        bool containsSeven = queue.Contains(7);
+        bool containsMissing = queue.Contains(42);
+
+        Assert.True(containsSeven);
+        Assert.False(containsMissing);
+    }
+
+    [Fact]
+    public void EnqueueRange_ArrayAndIndexerSet_UpdateQueueInPlace()
+    {
+        var queue = new SwiftQueue<int>();
+
+        queue.EnqueueRange(new[] { 1, 2, 3 });
+        queue[1] = 42;
+
+        Assert.Equal(new[] { 1, 42, 3 }, queue.ToArray());
+    }
+
+    [Fact]
+    public void ICollectionAdapterMembers_ExposeExpectedState()
+    {
+        ICollection<int> generic = new SwiftQueue<int>();
+        ICollection nongeneric = (ICollection)generic;
+
+        generic.Add(1);
+
+        Assert.False(generic.IsReadOnly);
+        Assert.False(((SwiftQueue<int>)generic).IsSynchronized);
+        Assert.NotNull(nongeneric.SyncRoot);
+        Assert.Throws<NotSupportedException>(() => generic.Remove(1));
+    }
+
+    [Fact]
+    public void Enumerator_IEnumeratorCurrentAndReset_WorkForWrappedQueue()
+    {
+        var queue = new SwiftQueue<int>(8);
+        queue.EnqueueRange(new[] { 0, 1, 2, 3, 4, 5 }.AsSpan());
+
+        for (int i = 0; i < 4; i++)
+            queue.Dequeue();
+
+        queue.EnqueueRange(new[] { 6, 7, 8 }.AsSpan());
+
+        IEnumerator enumerator = ((IEnumerable)queue).GetEnumerator();
+
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal(4, enumerator.Current);
+
+        enumerator.Reset();
+
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal(4, enumerator.Current);
     }
 
     [Fact]

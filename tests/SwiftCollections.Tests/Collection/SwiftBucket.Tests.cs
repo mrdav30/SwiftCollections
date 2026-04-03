@@ -1,6 +1,7 @@
 ﻿using FluentAssertions;
 using MemoryPack;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -465,5 +466,96 @@ public class SwiftBucketTests
         bucket.PeakCount.Should().Be(3);
         bucket[0].Should().Be(10);
         bucket[2].Should().Be(30);
+    }
+
+    [Fact]
+    public void EnsureCapacity_ShouldGrowWithoutChangingDenseEntries()
+    {
+        var bucket = new SwiftBucket<int>();
+        bucket.Add(10);
+        bucket.Add(20);
+
+        bucket.EnsureCapacity(64);
+
+        bucket.Capacity.Should().BeGreaterThanOrEqualTo(64);
+        bucket[0].Should().Be(10);
+        bucket[1].Should().Be(20);
+    }
+
+    [Fact]
+    public void TrimExcessCapacity_ShouldShrinkDenseBucketAndPreserveEntries()
+    {
+        var bucket = new SwiftBucket<int>(64);
+        bucket.Add(10);
+        bucket.Add(20);
+        bucket.Add(30);
+
+        bucket.TrimExcessCapacity();
+
+        bucket.Capacity.Should().BeLessThan(64);
+        bucket[0].Should().Be(10);
+        bucket[1].Should().Be(20);
+        bucket[2].Should().Be(30);
+    }
+
+    [Fact]
+    public void TryGetValue_ShouldReportPresenceAndAbsence()
+    {
+        var bucket = new SwiftBucket<string>();
+        int key = bucket.Add("value");
+
+        bucket.TryGetValue(key, out string existing).Should().BeTrue();
+        existing.Should().Be("value");
+
+        bucket.TryGetValue(key + 10, out string missing).Should().BeFalse();
+        missing.Should().BeNull();
+    }
+
+    [Fact]
+    public void ICollectionCopyTo_ShouldBoxInternalEntries()
+    {
+        ICollection bucket = new SwiftBucket<string>();
+        ((SwiftBucket<string>)bucket).Add("alpha");
+        ((SwiftBucket<string>)bucket).Add("beta");
+
+        var array = new object[2];
+
+        bucket.CopyTo(array, 0);
+
+        array[0].Should().NotBeNull();
+        array[1].Should().NotBeNull();
+        array[0].GetType().GetField("Value").GetValue(array[0]).Should().Be("alpha");
+        array[1].GetType().GetField("Value").GetValue(array[1]).Should().Be("beta");
+    }
+
+    [Fact]
+    public void CloneTo_ShouldReplaceTargetContents()
+    {
+        var bucket = new SwiftBucket<int>();
+        bucket.Add(10);
+        bucket.Add(20);
+
+        var list = new List<int> { 1, 2, 3 };
+
+        bucket.CloneTo(list);
+
+        list.Should().Equal(10, 20);
+    }
+
+    [Fact]
+    public void CollectionMembersAndNonGenericEnumerator_ExposeCurrentState()
+    {
+        ICollection<int> bucket = new SwiftBucket<int>();
+        bucket.Add(10);
+        bucket.Add(20);
+
+        Assert.False(bucket.IsReadOnly);
+        Assert.False(((SwiftBucket<int>)bucket).IsSynchronized);
+        Assert.NotNull(((SwiftBucket<int>)bucket).SyncRoot);
+        Assert.True(bucket.Remove(10));
+
+        IEnumerator enumerator = ((IEnumerable)bucket).GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+        Assert.NotNull(enumerator.Current);
     }
 }
