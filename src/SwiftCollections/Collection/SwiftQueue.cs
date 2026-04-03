@@ -261,7 +261,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
             EnsureCapacity(_count + collection.Count);
 
         foreach (T item in items)
-            if (item != null) Enqueue(item);
+            Enqueue(item);
     }
 
     /// <summary>

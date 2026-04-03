@@ -205,6 +205,24 @@ public class SwiftQueueTests
     }
 
     [Fact]
+    public void EnqueueRange_NonCollectionEnumerable_PreservesNullItems()
+    {
+        var queue = new SwiftQueue<string>();
+        queue.Enqueue("start");
+
+        queue.EnqueueRange(GetItems());
+
+        Assert.Equal(new string[] { "start", null, "middle", null }, queue.ToArray());
+
+        static IEnumerable<string> GetItems()
+        {
+            yield return null;
+            yield return "middle";
+            yield return null;
+        }
+    }
+
+    [Fact]
     public void ToArray_CreatesArrayWithAllElements()
     {
         var queue = new SwiftQueue<int>();
