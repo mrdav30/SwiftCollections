@@ -367,47 +367,54 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
     private void Resize(int newSize)
     {
         int newCapacity = newSize <= DefaultCapacity ? DefaultCapacity : newSize;
+        int copyLength = Math.Min(_peakCount, _innerArray.Length);
 
         Entry[] newArray = new Entry[newCapacity];
-        if (_count > 0)
-            Array.Copy(_innerArray, 0, newArray, 0, _count);
+        if (copyLength > 0)
+            Array.Copy(_innerArray, 0, newArray, 0, copyLength);
         _innerArray = newArray;
 
         _version++;
     }
 
     /// <summary>
-    /// Reduces the capacity of the <see cref="SwiftBucket{T}"/> by resizing the internal array to match the current count.
+    /// Reduces unused tail capacity while preserving stable handles for all currently allocated entries.
     /// </summary>
     public void TrimExcessCapacity()
     {
-        int newCapacity = _count <= DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(_count);
+        int newPeak = GetLivePeakCount();
+        int newCapacity = newPeak <= DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(newPeak);
 
         Entry[] newArray = new Entry[newCapacity];
-        int newPeak = 0;
-        if (_count > 0)
-        {
-
-            uint count = 0;
-            for (int i = 0; i < (uint)_peakCount && count < (uint)_count; i++)
-            {
-                if (_innerArray[i].IsUsed)
-                {
-                    newArray[i] = _innerArray[i];
-                    count++;
-                    if (i >= (uint)newPeak) newPeak = i + 1;
-                }
-            }
-        }
-
-        _peakCount = newPeak;
-
-        // Wipe out the free indices since we've compacted the array
-        _freeIndices.Reset();
+        if (newPeak > 0)
+            Array.Copy(_innerArray, 0, newArray, 0, newPeak);
 
         _innerArray = newArray;
+        _peakCount = newPeak;
+        RebuildFreeIndices();
 
         _version++;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private int GetLivePeakCount()
+    {
+        for (int i = _peakCount - 1; i >= 0; i--)
+            if (_innerArray[i].IsUsed)
+                return i + 1;
+
+        return 0;
+    }
+
+    private void RebuildFreeIndices()
+    {
+        _freeIndices = new SwiftIntStack(Math.Max(SwiftIntStack.DefaultCapacity, _peakCount - _count));
+
+        for (int i = 0; i < _peakCount; i++)
+        {
+            if (!_innerArray[i].IsUsed)
+                _freeIndices.Push(i);
+        }
     }
 
     #endregion

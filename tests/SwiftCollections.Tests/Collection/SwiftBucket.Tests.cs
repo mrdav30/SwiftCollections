@@ -483,6 +483,19 @@ public class SwiftBucketTests
     }
 
     [Fact]
+    public void EnsureCapacity_ShouldPreserveSparseEntriesAtHighIndices()
+    {
+        var bucket = new SwiftBucket<string>(8);
+        bucket.InsertAt(0, "near");
+        bucket.InsertAt(7, "far");
+
+        bucket.EnsureCapacity(16);
+
+        bucket[0].Should().Be("near");
+        bucket[7].Should().Be("far");
+    }
+
+    [Fact]
     public void TrimExcessCapacity_ShouldShrinkDenseBucketAndPreserveEntries()
     {
         var bucket = new SwiftBucket<int>(64);
@@ -496,6 +509,22 @@ public class SwiftBucketTests
         bucket[0].Should().Be(10);
         bucket[1].Should().Be(20);
         bucket[2].Should().Be(30);
+    }
+
+    [Fact]
+    public void TrimExcessCapacity_ShouldShrinkSparseBucketWithoutBreakingStableHandles()
+    {
+        var bucket = new SwiftBucket<string>(64);
+        bucket.InsertAt(0, "near");
+        bucket.InsertAt(31, "far");
+
+        Action trim = bucket.TrimExcessCapacity;
+
+        trim.Should().NotThrow();
+        bucket[0].Should().Be("near");
+        bucket[31].Should().Be("far");
+        bucket.Capacity.Should().BeGreaterThan(31);
+        bucket.Capacity.Should().BeLessThan(64);
     }
 
     [Fact]
