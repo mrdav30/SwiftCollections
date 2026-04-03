@@ -11,6 +11,18 @@ namespace SwiftCollections.Tests;
 public class SwiftSparseMapTests
 {
     [Fact]
+    public void Constructor_WithExplicitZeroCapacities_UsesEmptyStorage()
+    {
+        var set = new SwiftSparseMap<int>(0, 0);
+
+        Assert.Empty(set);
+        Assert.Equal(0, set.SparseCapacity);
+        Assert.Equal(0, set.DenseCapacity);
+        Assert.Empty(set.DenseKeys);
+        Assert.Empty(set.DenseValues);
+    }
+
+    [Fact]
     public void Add_InsertsItem()
     {
         var set = new SwiftSparseMap<int>();
@@ -294,6 +306,30 @@ public class SwiftSparseMapTests
 
         Assert.True(enumerator.MoveNext());
         Assert.NotNull(enumerator.Current);
+    }
+
+    [Fact]
+    public void Constructor_WithState_MismatchedDenseLengths_Throws()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            new SwiftSparseMap<int>(new SwiftSparseSetState<int>(new[] { 1 }, Array.Empty<int>())));
+    }
+
+    [Fact]
+    public void Constructor_WithState_DuplicateKeys_Throws()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            new SwiftSparseMap<int>(new SwiftSparseSetState<int>(new[] { 1, 1 }, new[] { 10, 20 })));
+    }
+
+    [Fact]
+    public void Indexer_Get_MissingKeys_ThrowForBothInRangeAndOutOfRangeLookups()
+    {
+        var set = new SwiftSparseMap<int>();
+        set.Add(2, 20);
+
+        Assert.Throws<KeyNotFoundException>(() => _ = set[1]);
+        Assert.Throws<KeyNotFoundException>(() => _ = set[10]);
     }
 
     #region Serialization

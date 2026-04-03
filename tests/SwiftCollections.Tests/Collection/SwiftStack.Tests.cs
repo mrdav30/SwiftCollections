@@ -12,6 +12,24 @@ namespace SwiftCollections.Tests;
 public class SwiftStackTests
 {
     [Fact]
+    public void Constructor_WithEmptyCollection_ShouldUseEmptyBackingArray()
+    {
+        var stack = new SwiftStack<int>(Array.Empty<int>());
+
+        stack.Should().BeEmpty();
+        stack.Capacity.Should().Be(0);
+    }
+
+    [Fact]
+    public void Constructor_WithEmptyState_ShouldInitializeEmptyStack()
+    {
+        var stack = new SwiftStack<int>(new SwiftArrayState<int>(Array.Empty<int>()));
+
+        stack.Should().BeEmpty();
+        stack.Capacity.Should().Be(0);
+    }
+
+    [Fact]
     public void Push_ShouldAddElementToStack()
     {
         // Arrange
@@ -107,6 +125,16 @@ public class SwiftStackTests
 
         stack.AsReadOnlySpan().ToArray().Should().Equal(1, 2, 3, 4);
         stack.Peek().Should().Be(4);
+    }
+
+    [Fact]
+    public void PushRange_EmptySpan_ShouldDoNothing()
+    {
+        var stack = new SwiftStack<int>();
+
+        stack.PushRange(ReadOnlySpan<int>.Empty);
+
+        stack.Should().BeEmpty();
     }
 
     [Fact]
@@ -249,6 +277,23 @@ public class SwiftStackTests
     }
 
     [Fact]
+    public void CopyTo_SpanAndICollection_ShouldThrowForInvalidDestinations()
+    {
+        var stack = new SwiftStack<int>();
+        stack.PushRange(new[] { 1, 2, 3 }.AsSpan());
+        ICollection collection = stack;
+        Array nonZeroLowerBound = Array.CreateInstance(typeof(int), new[] { 4 }, new[] { 1 });
+
+        Action spanAct = () => stack.CopyTo(new int[2].AsSpan());
+        Action rankAct = () => collection.CopyTo(new int[1, 3], 0);
+        Action lowerBoundAct = () => collection.CopyTo(nonZeroLowerBound, 0);
+
+        spanAct.Should().Throw<ArgumentException>();
+        rankAct.Should().Throw<ArgumentException>();
+        lowerBoundAct.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
     public void Indexer_Get_InvalidIndex_ShouldThrowArgumentOutOfRangeException()
     {
         // Arrange
@@ -302,6 +347,17 @@ public class SwiftStackTests
         stack.Push(3);
 
         stack.Exists(i => i == 2).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Exists_ShouldReturnFalseWhenMatchIsMissing_AndThrowForNullPredicate()
+    {
+        var stack = new SwiftStack<int>();
+        stack.PushRange(new[] { 1, 2, 3 }.AsSpan());
+
+        stack.Exists(i => i == 99).Should().BeFalse();
+        Action act = () => stack.Exists(null);
+        act.Should().Throw<ArgumentNullException>();
     }
 
     [Fact]
@@ -577,6 +633,17 @@ public class SwiftStackTests
     }
 
     [Fact]
+    public void TrimCapacity_OnEmptyStack_ShouldUseDefaultCapacity()
+    {
+        var stack = new SwiftStack<int>(64);
+
+        stack.TrimCapacity();
+
+        stack.Capacity.Should().Be(SwiftStack<int>.DefaultCapacity);
+        stack.Should().BeEmpty();
+    }
+
+    [Fact]
     public void ICollectionCopyTo_ShouldCopyElementsToObjectArray()
     {
         ICollection stack = new SwiftStack<int>();
@@ -610,6 +677,35 @@ public class SwiftStackTests
         IEnumerator enumerator = ((IEnumerable)stack).GetEnumerator();
         Assert.True(enumerator.MoveNext());
         Assert.NotNull(enumerator.Current);
+    }
+
+    [Fact]
+    public void ToString_OnEmptyStack_ShouldIndicateEmpty()
+    {
+        new SwiftStack<int>().ToString().Should().Contain("Empty");
+    }
+
+    [Fact]
+    public void Enumerator_ResetAndCurrent_AfterMutationOrCompletion_ShouldThrow()
+    {
+        var stack = new SwiftStack<int>();
+        stack.PushRange(new[] { 1, 2, 3 }.AsSpan());
+        IEnumerator enumerator = ((IEnumerable)stack).GetEnumerator();
+
+        while (enumerator.MoveNext())
+        {
+        }
+
+        Action currentAct = () => _ = enumerator.Current;
+        currentAct.Should().Throw<InvalidOperationException>();
+
+        enumerator = ((IEnumerable)stack).GetEnumerator();
+        stack.Push(4);
+
+        Action moveNextAct = () => enumerator.MoveNext();
+        Action resetAct = () => enumerator.Reset();
+        moveNextAct.Should().Throw<InvalidOperationException>();
+        resetAct.Should().Throw<InvalidOperationException>();
     }
 
     [Fact]

@@ -26,6 +26,23 @@ public class SwiftQueueTests
     }
 
     [Fact]
+    public void Constructor_WithCollectionEnumerable_CopiesItemsInQueueOrder()
+    {
+        var queue = new SwiftQueue<int>(new List<int> { 1, 2, 3 });
+
+        Assert.Equal(new[] { 1, 2, 3 }, queue.ToArray());
+    }
+
+    [Fact]
+    public void Constructor_WithEmptyState_InitializesEmptyQueue()
+    {
+        var queue = new SwiftQueue<int>(new SwiftArrayState<int>(Array.Empty<int>()));
+
+        Assert.Empty(queue);
+        Assert.Equal(0, queue.Capacity);
+    }
+
+    [Fact]
     public void Enqueue_AddsElementsToQueue()
     {
         var queue = new SwiftQueue<int>();
@@ -288,6 +305,19 @@ public class SwiftQueueTests
     }
 
     [Fact]
+    public void TryDequeue_ShouldClearReleasedReferenceSlot()
+    {
+        var queue = new SwiftQueue<string>();
+        queue.Enqueue("first");
+        queue.Enqueue("second");
+
+        Assert.True(queue.TryDequeue(out string value));
+
+        Assert.Equal("first", value);
+        Assert.Null(queue.InnerArray[0]);
+    }
+
+    [Fact]
     public void Contains_SearchesAcrossWrappedQueue()
     {
         var queue = new SwiftQueue<int>(8);
@@ -314,6 +344,17 @@ public class SwiftQueueTests
         queue[1] = 42;
 
         Assert.Equal(new[] { 1, 42, 3 }, queue.ToArray());
+    }
+
+    [Fact]
+    public void GetSegments_EmptyQueue_ReturnsEmptySpans()
+    {
+        var queue = new SwiftQueue<int>();
+
+        queue.GetSegments(out ReadOnlySpan<int> first, out ReadOnlySpan<int> second);
+
+        Assert.True(first.IsEmpty);
+        Assert.True(second.IsEmpty);
     }
 
     [Fact]
@@ -443,6 +484,21 @@ public class SwiftQueueTests
     }
 
     [Fact]
+    public void Exists_ReturnsFalseForMissingPredicateOnWrappedQueue()
+    {
+        var queue = new SwiftQueue<int>(8);
+        queue.EnqueueRange(new[] { 0, 1, 2, 3, 4, 5 }.AsSpan());
+
+        for (int i = 0; i < 4; i++)
+            queue.Dequeue();
+
+        queue.EnqueueRange(new[] { 6, 7, 8 }.AsSpan());
+
+        Assert.False(queue.Exists(i => i == 42));
+        Assert.Throws<ArgumentNullException>(() => queue.Exists(null));
+    }
+
+    [Fact]
     public void EnqueueDequeue_WrapsAroundArrayCorrectly()
     {
         var queue = new SwiftQueue<int>(4);
@@ -456,6 +512,39 @@ public class SwiftQueueTests
 
         Assert.Equal(3, queue.Peek());      // Head after wrap-around
         Assert.Equal(5, queue.PeekTail());  // Tail after wrap-around
+    }
+
+    [Fact]
+    public void Enqueue_WhenFullAndWrapped_ResizesAndPreservesQueueOrder()
+    {
+        var queue = new SwiftQueue<int>(8);
+        queue.EnqueueRange(new[] { 0, 1, 2, 3, 4, 5, 6, 7 }.AsSpan());
+
+        for (int i = 0; i < 4; i++)
+            queue.Dequeue();
+
+        queue.EnqueueRange(new[] { 8, 9, 10, 11 }.AsSpan());
+        queue.Enqueue(12);
+
+        Assert.Equal(new[] { 4, 5, 6, 7, 8, 9, 10, 11, 12 }, queue.ToArray());
+        Assert.True(queue.Capacity > 8);
+    }
+
+    [Fact]
+    public void Clear_WrappedReferenceQueue_ClearsAllStoredSlots()
+    {
+        var queue = new SwiftQueue<string>(8);
+        queue.EnqueueRange(new[] { "a", "b", "c", "d", "e", "f" });
+
+        for (int i = 0; i < 4; i++)
+            queue.Dequeue();
+
+        queue.EnqueueRange(new[] { "g", "h", "i" });
+
+        queue.Clear();
+
+        Assert.All(queue.InnerArray, item => Assert.Null(item));
+        Assert.Empty(queue);
     }
 
     [Fact]
@@ -492,6 +581,45 @@ public class SwiftQueueTests
 
         // Expect the capacity to be at or close to the default, as it should have shrunk
         Assert.True(queue.Capacity <= queue.Count || queue.Capacity <= SwiftQueue<int>.DefaultCapacity);
+    }
+
+    [Fact]
+    public void CopyTo_ArrayValidation_ThrowsForInvalidShapeOrType()
+    {
+        var queue = new SwiftQueue<int>();
+        queue.EnqueueRange(new[] { 1, 2 });
+
+        Array nonZeroLowerBound = Array.CreateInstance(typeof(int), new[] { 4 }, new[] { 1 });
+
+        Assert.Throws<ArgumentException>(() => queue.CopyTo(new int[1, 2], 0));
+        Assert.Throws<ArgumentException>(() => queue.CopyTo(nonZeroLowerBound, 0));
+        Assert.Throws<ArgumentException>(() => queue.CopyTo(new string[2], 0));
+    }
+
+    [Fact]
+    public void CopyTo_GenericArrayAndSpan_ThrowWhenDestinationIsTooSmall()
+    {
+        var queue = new SwiftQueue<int>();
+        queue.EnqueueRange(new[] { 1, 2 });
+
+        Assert.Throws<ArgumentException>(() => queue.CopyTo(new int[1], 0));
+        Assert.Throws<ArgumentException>(() => queue.CopyTo(new int[1].AsSpan()));
+    }
+
+    [Fact]
+    public void Enumerator_CurrentAfterEnumerationEnds_ThrowsInvalidOperationException()
+    {
+        var typedQueue = new SwiftQueue<int>();
+        typedQueue.EnqueueRange(new[] { 1, 2, 3 });
+
+        IEnumerable queue = typedQueue;
+        IEnumerator enumerator = queue.GetEnumerator();
+
+        while (enumerator.MoveNext())
+        {
+        }
+
+        Assert.Throws<InvalidOperationException>(() => _ = enumerator.Current);
     }
 
     [Fact]

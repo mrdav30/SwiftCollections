@@ -37,6 +37,24 @@ public class SwiftListTests
     }
 
     [Fact]
+    public void Constructor_WithEmptyCollection_ShouldUseEmptyBackingArray()
+    {
+        var list = new SwiftList<int>(Array.Empty<int>());
+
+        Assert.Empty(list);
+        Assert.Equal(0, list.Capacity);
+    }
+
+    [Fact]
+    public void Constructor_WithEmptyState_ShouldInitializeEmptyList()
+    {
+        var list = new SwiftList<int>(new SwiftArrayState<int>(Array.Empty<int>()));
+
+        Assert.Empty(list);
+        Assert.Equal(0, list.Capacity);
+    }
+
+    [Fact]
     public void Add_ShouldIncreaseCount()
     {
 #pragma warning disable IDE0028 // Simplify collection initialization
@@ -95,6 +113,39 @@ public class SwiftListTests
     }
 
     [Fact]
+    public void AddRange_ICollection_WithAvailableCapacity_AppendsWithoutResizing()
+    {
+        var list = new SwiftList<int>(8) { 1, 2 };
+        int capacityBefore = list.Capacity;
+
+        list.AddRange(new List<int> { 3, 4 });
+
+        Assert.Equal(new[] { 1, 2, 3, 4 }, list.ToArray());
+        Assert.Equal(capacityBefore, list.Capacity);
+    }
+
+    [Fact]
+    public void AddRange_ICollection_WithInsufficientCapacity_ResizesAndAppends()
+    {
+        var list = new SwiftList<int>(1) { 1, 2, 3, 4 };
+
+        list.AddRange(new List<int> { 5, 6, 7 });
+
+        Assert.Equal(new[] { 1, 2, 3, 4, 5, 6, 7 }, list.ToArray());
+        Assert.True(list.Capacity >= list.Count);
+    }
+
+    [Fact]
+    public void AddRange_EmptySpan_ShouldDoNothing()
+    {
+        var list = new SwiftList<int> { 1, 2, 3 };
+
+        list.AddRange(ReadOnlySpan<int>.Empty);
+
+        Assert.Equal(new[] { 1, 2, 3 }, list.ToArray());
+    }
+
+    [Fact]
     public void Remove_ShouldRemoveElement()
     {
         var list = new SwiftList<int> { 1, 2, 3 };
@@ -122,6 +173,15 @@ public class SwiftListTests
 
         Assert.Equal(2, list.Count);
         Assert.Null(list.InnerArray[list.Count]);
+    }
+
+    [Fact]
+    public void Remove_ShouldReturnFalseWhenItemIsMissing()
+    {
+        var list = new SwiftList<int> { 1, 2, 3 };
+
+        Assert.False(list.Remove(9));
+        Assert.Equal(new[] { 1, 2, 3 }, list.ToArray());
     }
 
     [Fact]
@@ -217,6 +277,17 @@ public class SwiftListTests
         list.Insert(list.Count, 4);  // Insert at the end
         Assert.Equal(4, list.Count);
         Assert.Equal(4, list[3]);
+    }
+
+    [Fact]
+    public void Insert_WhenBackingArrayIsFull_ResizesAndShiftsItems()
+    {
+        var list = new SwiftList<int>(1) { 1, 2, 4, 5 };
+
+        list.Insert(2, 3);
+
+        Assert.Equal(new[] { 1, 2, 3, 4, 5 }, list.ToArray());
+        Assert.True(list.Capacity > 4);
     }
 
     [Fact]
@@ -421,6 +492,18 @@ public class SwiftListTests
     }
 
     [Fact]
+    public void CopyTo_ShouldResizeTargetSwiftListWhenNeeded()
+    {
+        var list = new SwiftList<int> { 1, 2, 3 };
+        var target = new SwiftList<int>();
+
+        list.CopyTo(target);
+
+        Assert.Equal(new[] { 1, 2, 3 }, target.ToArray());
+        Assert.True(target.Capacity >= target.Count);
+    }
+
+    [Fact]
     public void CopyTo_ShouldCopyElementsToArrayAtSpecifiedIndex()
     {
         var list = new SwiftList<int> { 1, 2, 3 };
@@ -491,6 +574,17 @@ public class SwiftListTests
     }
 
     [Fact]
+    public void CopyTo_SpanAndNonGenericArray_ThrowForShortOrInvalidDestinations()
+    {
+        var list = new SwiftList<int> { 1, 2, 3 };
+        Array nonZeroLowerBound = Array.CreateInstance(typeof(int), new[] { 4 }, new[] { 1 });
+
+        Assert.Throws<ArgumentException>(() => list.CopyTo(new int[2].AsSpan()));
+        Assert.Throws<ArgumentException>(() => list.CopyTo(new int[1, 3], 0));
+        Assert.Throws<ArgumentException>(() => list.CopyTo(nonZeroLowerBound, 0));
+    }
+
+    [Fact]
     public void Enumerator_Reset_ShouldRestartAndIEnumeratorCurrentShouldExposeCurrentItem()
     {
         IEnumerable list = new SwiftList<int> { 1, 2, 3 };
@@ -503,6 +597,19 @@ public class SwiftListTests
 
         Assert.True(enumerator.MoveNext());
         Assert.Equal(1, enumerator.Current);
+    }
+
+    [Fact]
+    public void Enumerator_CurrentAfterEnumerationEnds_ShouldThrow()
+    {
+        IEnumerable list = new SwiftList<int> { 1, 2, 3 };
+        IEnumerator enumerator = list.GetEnumerator();
+
+        while (enumerator.MoveNext())
+        {
+        }
+
+        Assert.Throws<InvalidOperationException>(() => _ = enumerator.Current);
     }
 
     [Fact]
@@ -535,6 +642,18 @@ public class SwiftListTests
     }
 
     [Fact]
+    public void TrimExcessCapacity_WhenCountExceedsDefault_ShrinksToNextPowerOfTwo()
+    {
+        var list = new SwiftList<int>(64);
+        list.AddRange(new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9 });
+
+        list.TrimExcessCapacity();
+
+        Assert.Equal(16, list.Capacity);
+        Assert.Equal(new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 }, list.ToArray());
+    }
+
+    [Fact]
     public void CloneTo_ShouldReplaceTargetContents()
     {
         var list = new SwiftList<int> { 1, 2, 3 };
@@ -558,6 +677,25 @@ public class SwiftListTests
         Assert.Equal(2, nongeneric[1]);
         Assert.NotNull(collection.SyncRoot);
         Assert.Contains("1, 2, 3", list.ToString());
+    }
+
+    [Fact]
+    public void ToString_OnEmptyList_FallsBackToBaseRepresentation()
+    {
+        string value = new SwiftList<int>().ToString();
+
+        Assert.Contains(nameof(SwiftList<int>), value);
+    }
+
+    [Fact]
+    public void Enumerator_Reset_AfterMutation_ShouldThrow()
+    {
+        var list = new SwiftList<int> { 1, 2, 3 };
+        var enumerator = list.GetEnumerator();
+
+        list.Add(4);
+
+        Assert.Throws<InvalidOperationException>(() => enumerator.Reset());
     }
 
     [Fact]

@@ -538,6 +538,29 @@ public class SwiftDictionaryTests
     }
 
     [Fact]
+    public void IDictionary_IndexerGet_ReturnsExistingValueAndNullForMissingOrWronglyTypedKeys()
+    {
+        IDictionary dictionary = new SwiftDictionary<int, string>
+        {
+            [1] = "One"
+        };
+
+        Assert.Equal("One", dictionary[1]);
+        Assert.Null(dictionary[2]);
+        Assert.Null(dictionary["1"]);
+        Assert.Throws<ArgumentNullException>(() => _ = dictionary[null]);
+    }
+
+    [Fact]
+    public void IDictionary_IndexerSet_ThrowsForInvalidKeyOrValueTypes()
+    {
+        IDictionary dictionary = new SwiftDictionary<int, string>();
+
+        Assert.Throws<ArgumentException>(() => dictionary["bad"] = "Value");
+        Assert.Throws<ArgumentException>(() => dictionary[1] = 42);
+    }
+
+    [Fact]
     public void IDictionary_ContainsAndRemove_UseTypedKeys()
     {
         IDictionary dictionary = new SwiftDictionary<int, string>
@@ -556,6 +579,15 @@ public class SwiftDictionaryTests
     }
 
     [Fact]
+    public void Constructor_WithEmptyState_InitializesDefaultDictionary()
+    {
+        var dictionary = new SwiftDictionary<int, string>(new SwiftDictionaryState<int, string>(Array.Empty<KeyValuePair<int, string>>()));
+
+        Assert.Empty(dictionary);
+        Assert.True(dictionary.Capacity >= SwiftDictionary<int, string>.DefaultCapacity);
+    }
+
+    [Fact]
     public void TrimExcess_ShrinksCapacityAndPreservesEntries()
     {
         var dictionary = new SwiftDictionary<int, string>(256);
@@ -571,6 +603,36 @@ public class SwiftDictionaryTests
 
         for (int i = 0; i < 12; i++)
             Assert.Equal($"Value {i}", dictionary[i]);
+    }
+
+    [Fact]
+    public void Remove_ProbesPastDeletedEntriesInCollisionChain()
+    {
+        var comparer = new SelectiveIntHashComparer((1, 0), (9, 0), (17, 0));
+        var dictionary = new SwiftDictionary<int, string>(8, comparer)
+        {
+            [1] = "One",
+            [9] = "Nine"
+        };
+
+        Assert.True(dictionary.Remove(1));
+        Assert.False(dictionary.Remove(17));
+        Assert.True(dictionary.ContainsKey(9));
+        Assert.Equal("Nine", dictionary[9]);
+    }
+
+    [Fact]
+    public void ICollectionOfKeyValuePair_Remove_ReturnsFalseWhenValueDoesNotMatch()
+    {
+        var dictionary = new SwiftDictionary<int, string>
+        {
+            [1] = "One"
+        };
+
+        bool removed = ((ICollection<KeyValuePair<int, string>>)dictionary).Remove(new KeyValuePair<int, string>(1, "Uno"));
+
+        Assert.False(removed);
+        Assert.Equal("One", dictionary[1]);
     }
 
     [Fact]
@@ -609,6 +671,21 @@ public class SwiftDictionaryTests
     }
 
     [Fact]
+    public void ICollection_CopyTo_ThrowsForInvalidShapeOrType()
+    {
+        ICollection dictionary = new SwiftDictionary<int, string>
+        {
+            [1] = "One"
+        };
+
+        Array nonZeroLowerBound = Array.CreateInstance(typeof(KeyValuePair<int, string>), new[] { 2 }, new[] { 1 });
+
+        Assert.Throws<ArgumentException>(() => dictionary.CopyTo(new KeyValuePair<int, string>[1, 1], 0));
+        Assert.Throws<ArgumentException>(() => dictionary.CopyTo(nonZeroLowerBound, 0));
+        Assert.Throws<ArgumentException>(() => dictionary.CopyTo(new int[1], 0));
+    }
+
+    [Fact]
     public void KeyAndValueCollections_ICollectionCopyTo_CopyProjectedItems()
     {
         var dictionary = new SwiftDictionary<int, string>
@@ -630,6 +707,19 @@ public class SwiftDictionaryTests
         Assert.Null(valueObjects[0]);
         Assert.Contains("One", valueObjects);
         Assert.Contains("Two", valueObjects);
+    }
+
+    [Fact]
+    public void KeyAndValueCollections_ICollectionCopyTo_ThrowForInvalidArrayTypes()
+    {
+        var dictionary = new SwiftDictionary<int, string>
+        {
+            [1] = "One",
+            [2] = "Two"
+        };
+
+        Assert.Throws<ArgumentException>(() => ((ICollection)dictionary.Keys).CopyTo(new string[2], 0));
+        Assert.Throws<ArgumentException>(() => ((ICollection)dictionary.Values).CopyTo(new int[2], 0));
     }
 
     [Fact]
@@ -656,6 +746,21 @@ public class SwiftDictionaryTests
     }
 
     [Fact]
+    public void DictionaryEnumerator_EntryAfterEnumerationEnds_Throws()
+    {
+        IDictionary dictionary = new SwiftDictionary<int, string>
+        {
+            [1] = "One"
+        };
+
+        IDictionaryEnumerator enumerator = dictionary.GetEnumerator();
+
+        Assert.True(enumerator.MoveNext());
+        Assert.False(enumerator.MoveNext());
+        Assert.Throws<InvalidOperationException>(() => _ = enumerator.Entry);
+    }
+
+    [Fact]
     public void KeyAndValueEnumerators_Reset_RestartsEnumeration()
     {
         var dictionary = new SwiftDictionary<int, string>
@@ -678,6 +783,23 @@ public class SwiftDictionaryTests
 
         Assert.True(keyEnumerator.MoveNext());
         Assert.True(valueEnumerator.MoveNext());
+    }
+
+    [Fact]
+    public void KeyAndValueEnumerators_MoveNextThrowAfterParentMutation()
+    {
+        var dictionary = new SwiftDictionary<int, string>
+        {
+            [1] = "One"
+        };
+
+        IEnumerator keyEnumerator = ((IEnumerable)dictionary.Keys).GetEnumerator();
+        IEnumerator valueEnumerator = ((IEnumerable)dictionary.Values).GetEnumerator();
+
+        dictionary[2] = "Two";
+
+        Assert.Throws<InvalidOperationException>(() => keyEnumerator.MoveNext());
+        Assert.Throws<InvalidOperationException>(() => valueEnumerator.MoveNext());
     }
 
     [Fact]

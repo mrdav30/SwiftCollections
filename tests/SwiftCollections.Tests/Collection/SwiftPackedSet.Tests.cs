@@ -46,6 +46,15 @@ public class SwiftPackedSetTests
     }
 
     [Fact]
+    public void Constructor_WithEmptyState_InitializesEmptyPackedSet()
+    {
+        var set = new SwiftPackedSet<int>(new SwiftArrayState<int>(Array.Empty<int>()));
+
+        Assert.Empty(set);
+        Assert.True(set.Capacity >= SwiftPackedSet<int>.DefaultCapacity);
+    }
+
+    [Fact]
     public void Contains_ReturnsCorrectResult()
     {
         var set = new SwiftPackedSet<int>();
@@ -66,6 +75,18 @@ public class SwiftPackedSetTests
         set.Add(3);
 
         Assert.True(set.Exists(i => i == 2));
+    }
+
+    [Fact]
+    public void Exists_ReturnsFalseWhenMissing_AndThrowsForNullPredicate()
+    {
+        var set = new SwiftPackedSet<int>();
+
+        set.Add(1);
+        set.Add(2);
+
+        Assert.False(set.Exists(i => i == 99));
+        Assert.Throws<ArgumentNullException>(() => set.Exists(null));
     }
 
     [Fact]
@@ -116,6 +137,20 @@ public class SwiftPackedSetTests
 
         Assert.True(set.Remove("beta"));
         Assert.Null(set.Dense[set.Count]);
+    }
+
+    [Fact]
+    public void Remove_LastElement_ShouldNotPerformSwapBack()
+    {
+        var set = new SwiftPackedSet<string>();
+
+        set.Add("alpha");
+        set.Add("beta");
+
+        Assert.True(set.Remove("beta"));
+        Assert.Single(set);
+        Assert.Equal("alpha", set.Dense[0]);
+        Assert.Null(set.Dense[1]);
     }
 
     [Fact]
@@ -265,6 +300,26 @@ public class SwiftPackedSetTests
         Assert.Contains(2, list);
     }
 
+    [Fact]
+    public void EnsureCapacity_RequestWithinCurrentCapacity_IsNoOp()
+    {
+        var set = new SwiftPackedSet<int>(16);
+        int capacityBefore = set.Capacity;
+
+        set.EnsureCapacity(8);
+
+        Assert.Equal(capacityBefore, set.Capacity);
+    }
+
+    [Fact]
+    public void CopyTo_ThrowsForInvalidIndexOrInsufficientSpace()
+    {
+        var set = new SwiftPackedSet<int> { 1, 2, 3 };
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => set.CopyTo(new int[3], 4));
+        Assert.Throws<ArgumentException>(() => set.CopyTo(new int[2], 0));
+    }
+
     #region Serialization
 
     [Fact]
@@ -381,6 +436,16 @@ public class SwiftPackedSetTests
     }
 
     [Fact]
+    public void PackedSet_ExceptWith_Self_ClearsSet()
+    {
+        var set = new SwiftPackedSet<int> { 1, 2, 3 };
+
+        set.ExceptWith(set);
+
+        Assert.Empty(set);
+    }
+
+    [Fact]
     public void PackedSet_ExceptWith_RemovesSharedItems()
     {
         var set = new SwiftPackedSet<int> { 1, 2, 3, 4 };
@@ -409,6 +474,16 @@ public class SwiftPackedSetTests
     }
 
     [Fact]
+    public void PackedSet_IntersectWith_Self_LeavesSetUntouched()
+    {
+        var set = new SwiftPackedSet<int> { 1, 2, 3 };
+
+        set.IntersectWith(set);
+
+        Assert.True(set.SetEquals(new[] { 1, 2, 3 }));
+    }
+
+    [Fact]
     public void PackedSet_SetRelationships_ReportExpectedResults()
     {
         var set = new SwiftPackedSet<int> { 1, 2, 3 };
@@ -423,6 +498,37 @@ public class SwiftPackedSetTests
     }
 
     [Fact]
+    public void PackedSet_SetRelationships_ReportFalseForCountAndMembershipMismatches()
+    {
+        var set = new SwiftPackedSet<int> { 1, 2, 3 };
+
+        Assert.False(set.IsProperSubsetOf(new[] { 1, 2, 3 }));
+        Assert.False(set.IsProperSupersetOf(new[] { 1, 2, 3 }));
+        Assert.False(set.IsSubsetOf(new[] { 1, 2 }));
+        Assert.False(set.IsSupersetOf(new[] { 1, 4 }));
+    }
+
+    [Fact]
+    public void PackedSet_SetRelationships_ReportFalseForMembershipMismatchesAtEqualCounts()
+    {
+        var set = new SwiftPackedSet<int> { 1, 2, 3 };
+
+        Assert.False(set.IsProperSupersetOf(new[] { 1, 4 }));
+        Assert.False(set.IsSubsetOf(new[] { 1, 2, 4 }));
+        Assert.False(set.SetEquals(new[] { 1, 2, 4 }));
+    }
+
+    [Fact]
+    public void PackedSet_SymmetricExceptWith_MixedOverlap_RemovesSharedAndAddsMissing()
+    {
+        var set = new SwiftPackedSet<int> { 1, 2 };
+
+        set.SymmetricExceptWith(new[] { 2, 3, 3 });
+
+        Assert.True(set.SetEquals(new[] { 1, 3 }));
+    }
+
+    [Fact]
     public void PackedSet_EnumeratorReset_RestartsEnumeration()
     {
         IEnumerator enumerator = ((IEnumerable)new SwiftPackedSet<int> { 1, 2, 3 }).GetEnumerator();
@@ -434,6 +540,17 @@ public class SwiftPackedSetTests
 
         Assert.True(enumerator.MoveNext());
         Assert.NotNull(enumerator.Current);
+    }
+
+    [Fact]
+    public void PackedSet_EnumeratorReset_AfterMutation_Throws()
+    {
+        var set = new SwiftPackedSet<int> { 1, 2, 3 };
+        var enumerator = set.GetEnumerator();
+
+        set.Add(4);
+
+        Assert.Throws<InvalidOperationException>(() => enumerator.Reset());
     }
 
     [Fact]

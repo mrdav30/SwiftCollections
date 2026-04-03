@@ -94,6 +94,73 @@ public class SwiftBiDictionaryTests
         Assert.Equal("One", newKey);
     }
 
+    [Fact]
+    public void BiDictionary_IndexerSet_SameValue_IsNoOp()
+    {
+        var biDict = new SwiftBiDictionary<string, int>
+        {
+            { "One", 1 }
+        };
+
+        biDict["One"] = 1;
+
+        Assert.Single(biDict);
+        Assert.Equal(1, biDict["One"]);
+        Assert.True(biDict.TryGetKey(1, out string key));
+        Assert.Equal("One", key);
+    }
+
+    [Fact]
+    public void BiDictionary_IndexerSet_NewKey_AddsForwardAndReverseMappings()
+    {
+        var biDict = new SwiftBiDictionary<string, int>();
+
+        biDict["One"] = 1;
+
+        Assert.Single(biDict);
+        Assert.Equal(1, biDict["One"]);
+        Assert.True(biDict.ContainsValue(1));
+        Assert.True(biDict.TryGetKey(1, out string key));
+        Assert.Equal("One", key);
+    }
+
+    [Fact]
+    public void BiDictionary_IndexerSet_DuplicateValue_ThrowsAndLeavesExistingMappings()
+    {
+        var biDict = new SwiftBiDictionary<string, int>
+        {
+            { "One", 1 },
+            { "Two", 2 }
+        };
+
+        Assert.Throws<ArgumentException>(() => biDict["One"] = 2);
+
+        Assert.Equal(1, biDict["One"]);
+        Assert.Equal(2, biDict["Two"]);
+        Assert.True(biDict.TryGetKey(1, out string firstKey));
+        Assert.Equal("One", firstKey);
+        Assert.True(biDict.TryGetKey(2, out string secondKey));
+        Assert.Equal("Two", secondKey);
+    }
+
+    [Fact]
+    public void BiDictionary_Remove_KeyValuePair_RemovesBothDirections()
+    {
+        var biDict = new SwiftBiDictionary<string, int>
+        {
+            { "One", 1 },
+            { "Two", 2 }
+        };
+
+        bool removed = biDict.Remove("One", 1);
+
+        Assert.True(removed);
+        Assert.False(biDict.ContainsKey("One"));
+        Assert.False(biDict.ContainsValue(1));
+        Assert.True(biDict.ContainsKey("Two"));
+        Assert.True(biDict.ContainsValue(2));
+    }
+
     /// <summary>
     /// Tests the serialization and deserialization of the <see cref="BiDictionary{T1, T2}"/> to ensure data integrity.
     /// </summary>

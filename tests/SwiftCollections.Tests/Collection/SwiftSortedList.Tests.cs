@@ -495,6 +495,180 @@ public class SwiftSortedListTests
         Assert.Equal(1, enumerator.Current);
     }
 
+    [Fact]
+    public void Constructor_WithEmptyCollection_ShouldUseEmptyBackingArray()
+    {
+        var sorter = new SwiftSortedList<int>(Array.Empty<int>());
+
+        Assert.Empty(sorter);
+        Assert.Equal(0, sorter.Capacity);
+        Assert.Equal(0, sorter.Offset);
+    }
+
+    [Fact]
+    public void Constructor_WithNonCollectionEnumerable_ShouldSortItems()
+    {
+        var sorter = new SwiftSortedList<int>(GetItems());
+
+        Assert.Equal(new[] { 1, 3, 7, 9 }, sorter.AsReadOnlySpan().ToArray());
+
+        static IEnumerable<int> GetItems()
+        {
+            yield return 7;
+            yield return 3;
+            yield return 9;
+            yield return 1;
+        }
+    }
+
+    [Fact]
+    public void Constructor_WithLargeCollection_ShouldAllocateCenteredCapacity()
+    {
+        var sorter = new SwiftSortedList<int>(new List<int> { 9, 8, 7, 6, 5, 4, 3, 2, 1 });
+
+        Assert.Equal(16, sorter.Capacity);
+        Assert.Equal((sorter.Capacity - sorter.Count) >> 1, sorter.Offset);
+        Assert.Equal(1, sorter.PeekMin());
+        Assert.Equal(9, sorter.PeekMax());
+    }
+
+    [Fact]
+    public void Constructor_WithEmptyState_ShouldInitializeEmptySorter()
+    {
+        var sorter = new SwiftSortedList<int>(new SwiftArrayState<int>(Array.Empty<int>()));
+
+        Assert.Empty(sorter);
+        Assert.Equal(0, sorter.Capacity);
+        Assert.Equal(0, sorter.Offset);
+    }
+
+    [Fact]
+    public void AddRange_EmptyNonCollectionEnumerable_ShouldDoNothing()
+    {
+        var sorter = new SwiftSortedList<int>();
+
+        sorter.AddRange(GetItems());
+
+        Assert.Empty(sorter);
+
+        static IEnumerable<int> GetItems()
+        {
+            yield break;
+        }
+    }
+
+    [Fact]
+    public void Remove_MissingElement_ShouldReturnFalse()
+    {
+        var sorter = new SwiftSortedList<int> { 1, 3, 5 };
+
+        Assert.False(sorter.Remove(2));
+    }
+
+    [Fact]
+    public void Remove_OnEmptySorter_ShouldReturnFalse()
+    {
+        Assert.False(new SwiftSortedList<int>().Remove(1));
+    }
+
+    [Fact]
+    public void Indexer_Get_InvalidIndex_ShouldThrow()
+    {
+        var sorter = new SwiftSortedList<int> { 1, 2, 3 };
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => _ = sorter[3]);
+    }
+
+    [Fact]
+    public void SetComparer_WithSameComparer_IsNoOp()
+    {
+        var comparer = Comparer<int>.Default;
+        var sorter = new SwiftSortedList<int>(comparer) { 3, 1, 2 };
+        uint versionBefore = sorter.Version;
+
+        sorter.SetComparer(comparer);
+
+        Assert.Equal(versionBefore, sorter.Version);
+        Assert.Equal(new[] { 1, 2, 3 }, sorter.AsReadOnlySpan().ToArray());
+    }
+
+    [Fact]
+    public void PopMinAndPopMax_OnSingleItem_RecenterOffset()
+    {
+        var minSorter = new SwiftSortedList<int> { 5 };
+        int minOffsetBefore = minSorter.InnerArray.Length >> 1;
+
+        Assert.Equal(5, minSorter.PopMin());
+        Assert.Equal(minOffsetBefore, minSorter.Offset);
+
+        var maxSorter = new SwiftSortedList<int> { 9 };
+        int maxOffsetBefore = maxSorter.InnerArray.Length >> 1;
+
+        Assert.Equal(9, maxSorter.PopMax());
+        Assert.Equal(maxOffsetBefore, maxSorter.Offset);
+    }
+
+    [Fact]
+    public void FastClear_OnEmptySorter_LeavesVersionUnchanged()
+    {
+        var sorter = new SwiftSortedList<int>();
+        uint versionBefore = sorter.Version;
+
+        sorter.FastClear();
+
+        Assert.Equal(versionBefore, sorter.Version);
+        Assert.Empty(sorter);
+    }
+
+    [Fact]
+    public void CopyTo_ArrayOverloads_ThrowWhenDestinationIsTooSmall()
+    {
+        var sorter = new SwiftSortedList<int> { 1, 2, 3 };
+
+        Assert.Throws<ArgumentException>(() => sorter.CopyTo(new int[2], 0));
+        Assert.Throws<ArgumentException>(() => sorter.CopyTo(new object[2], 0));
+    }
+
+    [Fact]
+    public void Exists_WhenMatchIsMissingOrNull_ShouldReturnFalseOrThrow()
+    {
+        var sorter = new SwiftSortedList<int> { 1, 2, 3 };
+
+        Assert.False(sorter.Exists(i => i == 9));
+        Assert.Throws<ArgumentNullException>(() => sorter.Exists(null));
+    }
+
+    [Fact]
+    public void CloneTo_NullTarget_ShouldThrow()
+    {
+        var sorter = new SwiftSortedList<int> { 1, 2, 3 };
+
+        Assert.Throws<ArgumentNullException>(() => sorter.CloneTo(null));
+    }
+
+    [Fact]
+    public void Enumerator_CurrentAfterEnumerationEnds_ShouldThrow()
+    {
+        System.Collections.IEnumerator enumerator = ((System.Collections.IEnumerable)new SwiftSortedList<int> { 1, 2, 3 }).GetEnumerator();
+
+        while (enumerator.MoveNext())
+        {
+        }
+
+        Assert.Throws<InvalidOperationException>(() => _ = enumerator.Current);
+    }
+
+    [Fact]
+    public void Enumerator_Reset_AfterMutation_ShouldThrow()
+    {
+        var sorter = new SwiftSortedList<int> { 1, 2, 3 };
+        var enumerator = sorter.GetEnumerator();
+
+        sorter.Add(4);
+
+        Assert.Throws<InvalidOperationException>(() => enumerator.Reset());
+    }
+
     #endregion
 
     #region Test: Serialization

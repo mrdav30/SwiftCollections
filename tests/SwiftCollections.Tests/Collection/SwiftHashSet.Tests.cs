@@ -129,6 +129,14 @@ public class SwiftHashSetTests
     }
 
     [Fact]
+    public void Constructor_WithEmptyState_InitializesEmptySet()
+    {
+        var set = new SwiftHashSet<int>(new SwiftArrayState<int>(Array.Empty<int>()));
+
+        Assert.Empty(set);
+    }
+
+    [Fact]
     public void Enumerate_ItemsAreIteratedCorrectly()
     {
         var set = new SwiftHashSet<int> { 1, 2, 3 };
@@ -183,6 +191,17 @@ public class SwiftHashSetTests
         Assert.Contains(1, set);
         Assert.Contains(2, set);
         Assert.Contains(3, set);
+    }
+
+    [Fact]
+    public void AddRange_ReadOnlyCollection_AddsItemsWithoutReenumeration()
+    {
+        var set = new SwiftHashSet<int> { 0 };
+        var source = new ReadOnlyCollectionEnumerable<int>(1, 2, 2, 3);
+
+        set.AddRange(source);
+
+        Assert.True(set.SetEquals(new[] { 0, 1, 2, 3 }));
     }
 
     [Fact]
@@ -532,6 +551,17 @@ public class SwiftHashSetTests
     }
 
     [Fact]
+    public void Remove_ProbesPastDeletedEntriesInCollisionChain()
+    {
+        var comparer = new SelectiveIntHashComparer((1, 0), (9, 0), (17, 0));
+        var set = new SwiftHashSet<int>(8, comparer) { 1, 9 };
+
+        Assert.True(set.Remove(1));
+        Assert.False(set.Remove(17));
+        Assert.Contains(9, set);
+    }
+
+    [Fact]
     public void ExceptWith_RemovesIntersectingItems()
     {
         var set = new SwiftHashSet<int> { 1, 2, 3, 4 };
@@ -568,6 +598,15 @@ public class SwiftHashSetTests
         Assert.False(set.IsSupersetOf(new[] { 1, 5 }));
         Assert.True(set.Overlaps(new[] { 4, 10 }));
         Assert.False(set.Overlaps(new[] { 8, 9 }));
+    }
+
+    [Fact]
+    public void Exists_ReturnsFalseWhenMatchIsMissing_AndThrowsForNullPredicate()
+    {
+        var set = new SwiftHashSet<int> { 1, 2, 3 };
+
+        Assert.False(set.Exists(i => i == 4));
+        Assert.Throws<ArgumentNullException>(() => set.Exists(null));
     }
 
     [Fact]
@@ -759,6 +798,17 @@ public class SwiftHashSetTests
     }
 
     [Fact]
+    public void HashSet_SetRelationshipMethods_ReportFalseForCountAndMembershipMismatches()
+    {
+        var set = new SwiftHashSet<int> { 1, 2, 3 };
+
+        Assert.False(set.IsProperSubsetOf(new[] { 1, 2, 3 }));
+        Assert.False(set.IsProperSupersetOf(new[] { 1, 2, 3 }));
+        Assert.False(set.IsSubsetOf(new[] { 1, 2 }));
+        Assert.False(set.SetEquals(new[] { 1, 2, 4 }));
+    }
+
+    [Fact]
     public void HashSet_IsProperSupersetOf_IgnoresDuplicatesInOther()
     {
         var set = new SwiftHashSet<int> { 1, 2 };
@@ -774,6 +824,16 @@ public class SwiftHashSetTests
         set.SymmetricExceptWith(set);
 
         Assert.Empty(set);
+    }
+
+    [Fact]
+    public void HashSet_SymmetricExceptWith_MixedOverlap_RemovesSharedAndAddsMissingItems()
+    {
+        var set = new SwiftHashSet<int> { 1, 2 };
+
+        set.SymmetricExceptWith(new[] { 2, 3, 3 });
+
+        Assert.True(set.SetEquals(new[] { 1, 3 }));
     }
 
     private sealed class SingleUseEnumerable<T> : IEnumerable<T>
@@ -796,6 +856,25 @@ public class SwiftHashSetTests
         }
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
+    private sealed class ReadOnlyCollectionEnumerable<T> : IReadOnlyCollection<T>
+    {
+        private readonly T[] _items;
+
+        public ReadOnlyCollectionEnumerable(params T[] items)
+        {
+            _items = items;
+        }
+
+        public int Count => _items.Length;
+
+        public IEnumerator<T> GetEnumerator()
+        {
+            return ((IEnumerable<T>)_items).GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator() => _items.GetEnumerator();
     }
 
     private static int GetCapacity<T>(SwiftHashSet<T> set)
