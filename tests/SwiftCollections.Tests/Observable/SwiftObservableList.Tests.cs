@@ -274,6 +274,48 @@ public class SwiftObservableListTests
     }
 
     [Fact]
+    public void AddRange_Array_RaisesNotificationsForEachItem()
+    {
+        var list = new SwiftObservableList<int>();
+        var addedItems = new List<int>();
+        int countNotifications = 0;
+
+        list.CollectionChanged += (sender, e) => addedItems.Add((int)e.NewItems[0]);
+        list.PropertyChanged += (sender, e) =>
+        {
+            if (e.PropertyName == nameof(list.Count))
+                countNotifications++;
+        };
+
+        list.AddRange(new[] { 1, 2, 3 });
+
+        Assert.Equal(new[] { 1, 2, 3 }, list.ToArray());
+        Assert.Equal(new[] { 1, 2, 3 }, addedItems);
+        Assert.Equal(3, countNotifications);
+    }
+
+    [Fact]
+    public void AddRange_ReadOnlySpan_RaisesNotificationsForEachItem()
+    {
+        var list = new SwiftObservableList<int>();
+        var addedItems = new List<int>();
+        int countNotifications = 0;
+
+        list.CollectionChanged += (sender, e) => addedItems.Add((int)e.NewItems[0]);
+        list.PropertyChanged += (sender, e) =>
+        {
+            if (e.PropertyName == nameof(list.Count))
+                countNotifications++;
+        };
+
+        list.AddRange(new[] { 4, 5, 6 }.AsSpan());
+
+        Assert.Equal(new[] { 4, 5, 6 }, list.ToArray());
+        Assert.Equal(new[] { 4, 5, 6 }, addedItems);
+        Assert.Equal(3, countNotifications);
+    }
+
+    [Fact]
     public void AddRange_NullEnumerable_ThrowsArgumentNullException()
     {
         var list = new SwiftObservableList<int>();
@@ -301,6 +343,27 @@ public class SwiftObservableListTests
     }
 
     [Fact]
+    public void RemoveAll_NoMatches_DoesNotRaiseNotifications()
+    {
+        var list = new SwiftObservableList<int>(new[] { 1, 2, 3, 4 });
+        bool collectionChangedRaised = false;
+        bool countChangedRaised = false;
+
+        list.CollectionChanged += (sender, e) => collectionChangedRaised = true;
+        list.PropertyChanged += (sender, e) =>
+        {
+            if (e.PropertyName == nameof(list.Count))
+                countChangedRaised = true;
+        };
+
+        int removed = list.RemoveAll(value => value > 10);
+
+        Assert.Equal(0, removed);
+        Assert.False(collectionChangedRaised);
+        Assert.False(countChangedRaised);
+    }
+
+    [Fact]
     public void RemoveAll_RemovesMatchingValuesAndClearsTrailingReferences()
     {
         var list = new SwiftObservableList<string>(new[] { "keep-a", "drop", "keep-b", "drop", null });
@@ -323,6 +386,33 @@ public class SwiftObservableListTests
 
         Assert.Equal(4, removed);
         Assert.Empty(list);
+    }
+
+    [Fact]
+    public void RemoveAll_WithMatches_RaisesResetAndCountChanged()
+    {
+        var list = new SwiftObservableList<int>(new[] { 1, 2, 3, 4 });
+        NotifyCollectionChangedEventArgs args = null;
+        var eventOrder = new List<string>();
+
+        list.CollectionChanged += (sender, e) =>
+        {
+            args = e;
+            eventOrder.Add("CollectionChanged");
+        };
+        list.PropertyChanged += (sender, e) =>
+        {
+            if (e.PropertyName == nameof(list.Count))
+                eventOrder.Add("PropertyChanged");
+        };
+
+        int removed = list.RemoveAll(value => value % 2 == 0);
+
+        Assert.Equal(2, removed);
+        Assert.Equal(new[] { 1, 3 }, list.ToArray());
+        Assert.NotNull(args);
+        Assert.Equal(NotifyCollectionChangedAction.Reset, args.Action);
+        Assert.Equal(new[] { "CollectionChanged", "PropertyChanged" }, eventOrder);
     }
 
     [Fact]

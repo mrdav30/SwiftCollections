@@ -104,6 +104,26 @@ public partial class SwiftObservableList<T> : SwiftList<T>, INotifyPropertyChang
     }
 
     /// <summary>
+    /// Adds the elements of the specified array to the end of the list.
+    /// Raises collection and property change notifications for each added item.
+    /// </summary>
+    public override void AddRange(T[] items)
+    {
+        SwiftThrowHelper.ThrowIfNull(items, nameof(items));
+        AddRange(items.AsSpan());
+    }
+
+    /// <summary>
+    /// Adds the elements of the specified span to the end of the list.
+    /// Raises collection and property change notifications for each added item.
+    /// </summary>
+    public override void AddRange(ReadOnlySpan<T> items)
+    {
+        for (int i = 0; i < items.Length; i++)
+            Add(items[i]);
+    }
+
+    /// <summary>
     /// Removes the first occurrence of a specific object from the list.
     /// Raises collection and property change notifications.
     /// </summary>
@@ -136,31 +156,13 @@ public partial class SwiftObservableList<T> : SwiftList<T>, INotifyPropertyChang
 
     public override int RemoveAll(Predicate<T> match)
     {
-        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+        int removedCount = base.RemoveAll(match);
 
-        int i = 0;
-        // Move to the first element that should be removed
-        while (i < _count && !match(_innerArray[i])) i++;
-
-        if (i >= _count) return 0;  // No items to remove
-
-        int j = i + 1;
-        while (j < _count)
+        if (removedCount > 0)
         {
-            // Find the next element to keep
-            while (j < _count && match(_innerArray[j])) j++;
-
-            if (j < _count)
-                _innerArray[i++] = _innerArray[j++];
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+            OnPropertyChanged(nameof(Count));
         }
-
-        // Clear out the trailing elements to ensure no lingering references
-        Array.Clear(_innerArray, i, _count - i);
-
-        int removedCount = _count - i;
-        _count = i;
-
-        _version++;
 
         return removedCount;
     }

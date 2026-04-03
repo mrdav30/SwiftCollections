@@ -295,7 +295,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     /// Adds the elements of the specified array to the end of the SwiftList.
     /// </summary>
     /// <param name="items">The array whose elements should be appended.</param>
-    public void AddRange(T[] items)
+    public virtual void AddRange(T[] items)
     {
         SwiftThrowHelper.ThrowIfNull(items, nameof(items));
         AddRange(items.AsSpan());
@@ -305,7 +305,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     /// Adds the elements of the specified span to the end of the SwiftList.
     /// </summary>
     /// <param name="items">The span whose elements should be appended.</param>
-    public void AddRange(ReadOnlySpan<T> items)
+    public virtual void AddRange(ReadOnlySpan<T> items)
     {
         if (items.Length == 0)
             return;
