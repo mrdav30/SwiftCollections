@@ -124,7 +124,7 @@ namespace SwiftCollections.Query.Tests
         }
 
         [Fact]
-        public void BoundingVolume_Union_CombinesVolumesCorrectly()
+        public void BoundVolume_Union_CombinesVolumesCorrectly()
         {
             var volume1 = new FixedBoundVolume(new Vector3d(0, 0, 0), new Vector3d(1, 1, 1));
             var volume2 = new FixedBoundVolume(new Vector3d(1, 1, 1), new Vector3d(2, 2, 2));
@@ -135,7 +135,7 @@ namespace SwiftCollections.Query.Tests
         }
 
         [Fact]
-        public void BoundingVolume_Intersects_ReturnsCorrectly()
+        public void BoundVolume_Intersects_ReturnsCorrectly()
         {
             var volume1 = new FixedBoundVolume(new Vector3d(0, 0, 0), new Vector3d(1, 1, 1));
             var volume2 = new FixedBoundVolume(new Vector3d(0.5f, 0.5f, 0.5f), new Vector3d(1.5f, 1.5f, 1.5f));
@@ -146,7 +146,7 @@ namespace SwiftCollections.Query.Tests
         }
 
         [Fact]
-        public void BoundingVolume_MetadataProperties_AreCalculatedLazilyAndCorrectly()
+        public void BoundVolume_MetadataProperties_AreCalculatedLazilyAndCorrectly()
         {
             var volume = new FixedBoundVolume(new Vector3d(2, 4, 6), new Vector3d(6, 10, 14));
             var centerFirstVolume = new FixedBoundVolume(new Vector3d(2, 4, 6), new Vector3d(6, 10, 14));
@@ -162,7 +162,7 @@ namespace SwiftCollections.Query.Tests
         }
 
         [Fact]
-        public void BoundingVolume_InterfaceMethods_ThrowForMismatchedVolumeTypes()
+        public void BoundVolume_InterfaceMethods_ThrowForMismatchedVolumeTypes()
         {
             var volume = new FixedBoundVolume(new Vector3d(0, 0, 0), new Vector3d(1, 1, 1));
             IBoundVolume mismatched = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
@@ -173,7 +173,7 @@ namespace SwiftCollections.Query.Tests
         }
 
         [Fact]
-        public void BoundingVolume_ToString_IncludesBounds()
+        public void BoundVolume_ToString_IncludesBounds()
         {
             var volume = new FixedBoundVolume(new Vector3d(1, 2, 3), new Vector3d(4, 5, 6));
             string text = volume.ToString();
@@ -598,7 +598,7 @@ namespace SwiftCollections.Query.Tests
         }
 
         [Fact]
-        public void Insert_IdenticalBoundingVolumes_ReturnsAllValues()
+        public void Insert_IdenticalBoundVolumes_ReturnsAllValues()
         {
             var bvh = new SwiftBVH<int>(10);
             var volume = new FixedBoundVolume(new Vector3d(0, 0, 0), new Vector3d(1, 1, 1));

@@ -98,18 +98,18 @@ Unity support is maintained separately:
 
 ```csharp
 var bvh = new SwiftBVH<int>(100);
-var volume = new BoundingVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+var volume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
 bvh.Insert(1, volume);
 
-var results = new List<int>();
-bvh.Query(new BoundingVolume(new Vector3(0, 0, 0), new Vector3(2, 2, 2)), results);
+var results = new SwiftList<int>();
+bvh.Query(new BoundVolume(new Vector3(0, 0, 0), new Vector3(2, 2, 2)), results);
 Console.WriteLine(results.Count); // Output: 1
 ```
 
 ### SwiftArray2D
 
 ```csharp
-var array2D = new Array2D<int>(10, 10);
+var array2D = new SwiftArray2D<int>(10, 10);
 array2D[3, 4] = 42;
 Console.WriteLine(array2D[3, 4]); // Output: 42
 ```

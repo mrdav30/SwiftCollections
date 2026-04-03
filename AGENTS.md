@@ -25,7 +25,7 @@ This repository contains the `SwiftCollections` .NET library, its unit tests, an
 - `src/SwiftCollections/Dimension/`: 2D/3D array types and default typed arrays.
 - `src/SwiftCollections/Observable/`: observable collection variants and support types.
 - `src/SwiftCollections/Pool/`: object, array, and collection pooling types.
-- `src/SwiftCollections/Query/BoundingVolume/`: BVH implementation and bound volume types.
+- `src/SwiftCollections/Query/BoundVolume/`: BVH implementation and bound volume types.
 - `src/SwiftCollections/Serialization/`: JSON/state serialization helpers and compatibility shims.
 - `src/SwiftCollections/Utility/`: shared helpers and extensions.
 - `tests/SwiftCollections.Tests/`: xUnit v3 unit tests, organized to mirror library areas.
@@ -53,7 +53,7 @@ This repository contains the `SwiftCollections` .NET library, its unit tests, an
 ## Working Rules
 
 - If you change behavior in `src/SwiftCollections/Collection/`, update or add the matching tests under `tests/SwiftCollections.Tests/Collection/`.
-- If you change behavior in `Dimension`, `Observable`, `Pool`, or `Query/BoundingVolume`, keep tests in the corresponding folder aligned.
+- If you change behavior in `Dimension`, `Observable`, `Pool`, or `Query/BoundVolume`, keep tests in the corresponding folder aligned.
 - Full coverage is an explicit repo priority. When adding features or refactoring existing code, expand the affected tests so coverage stays flat or improves, and aim for full coverage of the new or rewritten behavior whenever practical.
 - If you add a public API, add XML docs unless the surrounding file clearly does not use them.
 - If you introduce target-specific behavior, guard it with the existing preprocessor pattern instead of silently breaking `netstandard2.1`.
