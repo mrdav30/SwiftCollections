@@ -541,7 +541,7 @@ public class SwiftBucketTests
     }
 
     [Fact]
-    public void ICollectionCopyTo_ShouldBoxInternalEntries()
+    public void ICollectionCopyTo_ShouldCopyBucketValues()
     {
         ICollection bucket = new SwiftBucket<string>();
         ((SwiftBucket<string>)bucket).Add("alpha");
@@ -551,10 +551,7 @@ public class SwiftBucketTests
 
         bucket.CopyTo(array, 0);
 
-        array[0].Should().NotBeNull();
-        array[1].Should().NotBeNull();
-        array[0].GetType().GetField("Value").GetValue(array[0]).Should().Be("alpha");
-        array[1].GetType().GetField("Value").GetValue(array[1]).Should().Be("beta");
+        array.Should().Equal("alpha", "beta");
     }
 
     [Fact]

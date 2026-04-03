@@ -585,7 +585,7 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
             {
                 if (_innerArray[i].IsUsed)
                 {
-                    array.SetValue(_innerArray[i], arrayIndex++);
+                    array.SetValue(_innerArray[i].Value, arrayIndex++);
                     count++;
                 }
             }
