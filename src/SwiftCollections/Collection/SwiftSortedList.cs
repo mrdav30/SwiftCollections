@@ -269,7 +269,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     /// <summary>
     /// Inserts an item into the internal array at the specified arrayIndex, shifting elements as needed.
     /// </summary>
-    public void Insert(T item, int index)
+    private void Insert(T item, int index)
     {
         if ((uint)index > (uint)_count) throw new ArgumentOutOfRangeException(nameof(index));
         if (_offset + _count + 1 > _innerArray.Length)

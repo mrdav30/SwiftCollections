@@ -1,6 +1,7 @@
 ﻿using MemoryPack;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Xunit;
@@ -163,16 +164,16 @@ public class SwiftSortedListTests
     }
 
     [Fact]
-    public void Insert_WhenIndexExceedsCountButFitsCapacity_ShouldThrow()
+    public void Insert_IsNotExposedAsAPublicInstanceMethod()
     {
-        var sorter = new SwiftSortedList<int>(8);
-        sorter.Add(1);
-        sorter.Add(3);
+        MethodInfo insert = typeof(SwiftSortedList<int>).GetMethod(
+            "Insert",
+            BindingFlags.Instance | BindingFlags.Public,
+            binder: null,
+            types: new[] { typeof(int), typeof(int) },
+            modifiers: null);
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => sorter.Insert(2, 5));
-        Assert.Equal(2, sorter.Count);
-        Assert.Equal(1, sorter[0]);
-        Assert.Equal(3, sorter[1]);
+        Assert.Null(insert);
     }
 
     #endregion
