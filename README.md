@@ -24,6 +24,7 @@
 - **Pools**: `SwiftObjectPool`, `SwiftArrayPool`, `SwiftCollectionPool`, and typed pool helpers
 - **Observable collections** for change-tracking scenarios
 - **Spatial queries** via `SwiftBVH` with both `System.Numerics` and `FixedMathSharp` bounds
+- **Lightweight diagnostics** via `SwiftCollections.Diagnostics` for opt-in low-level log/event routing
 
 ---
 
@@ -92,6 +93,13 @@ Unity support is maintained separately:
 
 - **SwiftObservableArray / SwiftObservableList / SwiftObservableDictionary**: Reactive, observable collections with property and collection change notifications.
 
+### Diagnostics
+
+- **DiagnosticChannel / DiagnosticEvent / DiagnosticLevel**: Lightweight diagnostics primitives for routing informational, warning, or error events without coupling the library to a higher-level logging framework.
+- **SwiftCollectionDiagnostics.Shared**: Ready-to-use shared channel for library-wide diagnostics.
+
+Diagnostics are opt-in and disabled by default until you configure a minimum level and sink.
+
 ## 📖 Usage Examples
 
 ### SwiftBVH for Spatial Queries
@@ -126,6 +134,23 @@ Console.WriteLine(queue.Dequeue()); // Output: 5
 
 ```csharp
 var array = new int[10].Populate(() => new Random().Next(1, 100));
+```
+
+### Diagnostics
+
+```csharp
+using System;
+using SwiftCollections.Diagnostics;
+
+DiagnosticChannel diagnostics = SwiftCollectionDiagnostics.Shared;
+diagnostics.MinimumLevel = DiagnosticLevel.Warning;
+diagnostics.Sink = static (in DiagnosticEvent diagnostic) =>
+{
+    Console.WriteLine($"[{diagnostic.Channel}] {diagnostic.Level}: {diagnostic.Message} ({diagnostic.Source})");
+};
+
+diagnostics.Write(DiagnosticLevel.Info, "Skipped because the minimum level is Warning.", "Bootstrap");
+diagnostics.Write(DiagnosticLevel.Error, "Pool allocation failed.", "Bootstrap");
 ```
 
 ## 🧪 Development
