@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FixedMathSharp;
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Threading;
@@ -142,6 +143,43 @@ namespace SwiftCollections.Query.Tests
 
             Assert.True(volume1.Intersects(volume2));
             Assert.False(volume1.Intersects(volume3));
+        }
+
+        [Fact]
+        public void BoundingVolume_MetadataProperties_AreCalculatedLazilyAndCorrectly()
+        {
+            var volume = new BoundVolume(new Vector3(2, 4, 6), new Vector3(6, 10, 14));
+            var centerFirstVolume = new BoundVolume(new Vector3(2, 4, 6), new Vector3(6, 10, 14));
+
+            Assert.Equal(new Vector3(4, 6, 8), volume.Size);
+            Assert.Equal(new Vector3(4, 7, 10), volume.Center);
+            Assert.Equal(192d, volume.Volume);
+
+            Assert.Equal(new Vector3(4, 6, 8), volume.Size);
+            Assert.Equal(new Vector3(4, 7, 10), volume.Center);
+            Assert.Equal(new Vector3(4, 7, 10), centerFirstVolume.Center);
+            Assert.Equal(new Vector3(4, 7, 10), centerFirstVolume.Center);
+        }
+
+        [Fact]
+        public void BoundingVolume_InterfaceMethods_ThrowForMismatchedVolumeTypes()
+        {
+            var volume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            IBoundVolume mismatched = new FixedBoundVolume(new Vector3d(0, 0, 0), new Vector3d(1, 1, 1));
+
+            Assert.Throws<ArgumentException>(() => volume.Union(mismatched));
+            Assert.Throws<ArgumentException>(() => volume.Intersects(mismatched));
+            Assert.Throws<ArgumentException>(() => volume.GetCost(mismatched));
+        }
+
+        [Fact]
+        public void BoundingVolume_ToString_IncludesBounds()
+        {
+            var volume = new BoundVolume(new Vector3(1, 2, 3), new Vector3(4, 5, 6));
+            string text = volume.ToString();
+
+            Assert.Contains("Min:", text);
+            Assert.Contains("Max:", text);
         }
 
         [Fact]
@@ -584,6 +622,157 @@ namespace SwiftCollections.Query.Tests
         }
 
         [Fact]
+        public void RootNode_ReturnsDefaultForEmptyOrUnallocatedRoots()
+        {
+            var bvh = new SwiftBVH<int>(4);
+
+            Assert.False(bvh.RootNode.IsAllocated);
+            Assert.Equal(-1, bvh.RootNode.ParentIndex);
+
+            var volume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            bvh.Insert(1, volume);
+
+            Assert.True(bvh.RootNode.IsAllocated);
+            Assert.Equal(bvh.RootNodeIndex, bvh.RootNode.MyIndex);
+
+            bvh.NodePool[bvh.RootNodeIndex].IsAllocated = false;
+
+            Assert.False(bvh.RootNode.IsAllocated);
+            Assert.Equal(-1, bvh.RootNode.ParentIndex);
+        }
+
+        [Fact]
+        public void RemovedLeafIndex_IsReusedByLaterInsertions()
+        {
+            var bvh = new SwiftBVH<int>(4);
+            var volume1 = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            var volume2 = new BoundVolume(new Vector3(2, 2, 2), new Vector3(3, 3, 3));
+            var volume3 = new BoundVolume(new Vector3(4, 4, 4), new Vector3(5, 5, 5));
+
+            bvh.Insert(1, volume1);
+            bvh.Insert(2, volume2);
+
+            int removedIndex = bvh.FindEntry(1);
+
+            Assert.True(bvh.Remove(1));
+
+            bvh.Insert(3, volume3);
+
+            Assert.Equal(removedIndex, bvh.FindEntry(3));
+        }
+
+        [Fact]
+        public void EnsureCapacity_GrowsOnlyWhenRequested()
+        {
+            var bvh = new SwiftBVH<int>(2);
+            int originalLength = bvh.NodePool.Length;
+
+            bvh.EnsureCapacity(1);
+            Assert.Equal(originalLength, bvh.NodePool.Length);
+
+            bvh.EnsureCapacity(8);
+            Assert.True(bvh.NodePool.Length >= 8);
+        }
+
+        [Fact]
+        public void Insert_AfterRemovingASibling_RebuildsTheTree()
+        {
+            var bvh = new SwiftBVH<int>(4);
+            var queryVolume = new BoundVolume(new Vector3(-10, -10, -10), new Vector3(10, 10, 10));
+
+            bvh.Insert(1, new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1)));
+            bvh.Insert(2, new BoundVolume(new Vector3(2, 2, 2), new Vector3(3, 3, 3)));
+            bvh.Insert(3, new BoundVolume(new Vector3(-4, -4, -4), new Vector3(-3, -3, -3)));
+
+            Assert.True(bvh.Remove(2));
+
+            bvh.Insert(4, new BoundVolume(new Vector3(4, 4, 4), new Vector3(5, 5, 5)));
+
+            var results = new List<int>();
+            bvh.Query(queryVolume, results);
+
+            Assert.Equal(3, bvh.Count);
+            Assert.DoesNotContain(2, results);
+            Assert.Contains(1, results);
+            Assert.Contains(3, results);
+            Assert.Contains(4, results);
+        }
+
+        [Fact]
+        public void FindEntry_WithCollidingKeys_ReturnsMinusOneForMissingValue()
+        {
+            var bvh = new SwiftBVH<CollidingKey>(4);
+            var volume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+
+            bvh.Insert(new CollidingKey(1), volume);
+            bvh.Insert(new CollidingKey(2), volume);
+
+            Assert.Equal(-1, bvh.FindEntry(new CollidingKey(3)));
+        }
+
+        [Fact]
+        public void FindEntry_SkipsNonLeafEntriesInCollisionChain()
+        {
+            var bvh = new SwiftBVH<CollidingKey>(4);
+            var volume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            var first = new CollidingKey(1);
+            var second = new CollidingKey(2);
+
+            bvh.Insert(first, volume);
+            bvh.Insert(second, volume);
+
+            int firstIndex = bvh.FindEntry(first);
+            bvh.NodePool[firstIndex].IsLeaf = false;
+
+            Assert.NotEqual(-1, bvh.FindEntry(second));
+        }
+
+        [Fact]
+        public void Remove_WithCollidingKeys_RemovesLaterProbeEntries()
+        {
+            var bvh = new SwiftBVH<CollidingKey>(4);
+            var volume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            var first = new CollidingKey(1);
+            var second = new CollidingKey(2);
+
+            bvh.Insert(first, volume);
+            bvh.Insert(second, volume);
+
+            Assert.True(bvh.Remove(second));
+            Assert.NotEqual(-1, bvh.FindEntry(first));
+            Assert.Equal(-1, bvh.FindEntry(second));
+        }
+
+        [Fact]
+        public void UpdateEntryBounds_DoesNothingWhenNodeHasBeenMarkedUnallocated()
+        {
+            var bvh = new SwiftBVH<int>(4);
+            var originalBounds = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            var updatedBounds = new BoundVolume(new Vector3(10, 10, 10), new Vector3(11, 11, 11));
+
+            bvh.Insert(1, originalBounds);
+
+            int nodeIndex = bvh.FindEntry(1);
+            bvh.NodePool[nodeIndex].IsAllocated = false;
+
+            bvh.UpdateEntryBounds(1, updatedBounds);
+
+            Assert.Equal(nodeIndex, bvh.FindEntry(1));
+        }
+
+        [Fact]
+        public void Query_ThrowsWhenTraversalEncountersAnUnallocatedNode()
+        {
+            var bvh = new SwiftBVH<int>(4);
+            var volume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+
+            bvh.Insert(1, volume);
+            bvh.NodePool[bvh.RootNodeIndex].IsAllocated = false;
+
+            Assert.Throws<InvalidOperationException>(() => bvh.Query(volume, new List<int>()));
+        }
+
+        [Fact]
         public void DuplicateKeyHandling_ReplacesOldEntry()
         {
             var bvh = new SwiftBVH<int>(10);
@@ -598,6 +787,22 @@ namespace SwiftCollections.Query.Tests
 
             Assert.Single(results);
             Assert.Equal(1, results[0]);
+        }
+
+        private sealed class CollidingKey : IEquatable<CollidingKey>
+        {
+            public CollidingKey(int value)
+            {
+                Value = value;
+            }
+
+            public int Value { get; }
+
+            public bool Equals(CollidingKey other) => other is not null && Value == other.Value;
+
+            public override bool Equals(object obj) => obj is CollidingKey other && Equals(other);
+
+            public override int GetHashCode() => 1;
         }
     }
 }

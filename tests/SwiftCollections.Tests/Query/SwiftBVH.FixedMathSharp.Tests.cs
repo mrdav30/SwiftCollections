@@ -1,6 +1,7 @@
 ﻿using FixedMathSharp;
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Threading;
 using Xunit;
 
@@ -142,6 +143,43 @@ namespace SwiftCollections.Query.Tests
 
             Assert.True(volume1.Intersects(volume2));
             Assert.False(volume1.Intersects(volume3));
+        }
+
+        [Fact]
+        public void BoundingVolume_MetadataProperties_AreCalculatedLazilyAndCorrectly()
+        {
+            var volume = new FixedBoundVolume(new Vector3d(2, 4, 6), new Vector3d(6, 10, 14));
+            var centerFirstVolume = new FixedBoundVolume(new Vector3d(2, 4, 6), new Vector3d(6, 10, 14));
+
+            Assert.Equal(new Vector3d(4, 6, 8), volume.Size);
+            Assert.Equal(new Vector3d(4, 7, 10), volume.Center);
+            Assert.Equal(new Fixed64(192), volume.Volume);
+
+            Assert.Equal(new Vector3d(4, 6, 8), volume.Size);
+            Assert.Equal(new Vector3d(4, 7, 10), volume.Center);
+            Assert.Equal(new Vector3d(4, 7, 10), centerFirstVolume.Center);
+            Assert.Equal(new Vector3d(4, 7, 10), centerFirstVolume.Center);
+        }
+
+        [Fact]
+        public void BoundingVolume_InterfaceMethods_ThrowForMismatchedVolumeTypes()
+        {
+            var volume = new FixedBoundVolume(new Vector3d(0, 0, 0), new Vector3d(1, 1, 1));
+            IBoundVolume mismatched = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+
+            Assert.Throws<ArgumentException>(() => volume.Union(mismatched));
+            Assert.Throws<ArgumentException>(() => volume.Intersects(mismatched));
+            Assert.Throws<ArgumentException>(() => volume.GetCost(mismatched));
+        }
+
+        [Fact]
+        public void BoundingVolume_ToString_IncludesBounds()
+        {
+            var volume = new FixedBoundVolume(new Vector3d(1, 2, 3), new Vector3d(4, 5, 6));
+            string text = volume.ToString();
+
+            Assert.Contains("Min:", text);
+            Assert.Contains("Max:", text);
         }
 
         [Fact]

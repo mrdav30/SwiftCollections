@@ -252,6 +252,80 @@ public class SwiftObservableListTests
     }
 
     [Fact]
+    public void Constructors_WithCapacityAndCollection_InitializeExpectedContents()
+    {
+        var withCapacity = new SwiftObservableList<int>(4);
+        var fromCollection = new SwiftObservableList<int>(new[] { 2, 3, 5 });
+
+        Assert.Empty(withCapacity);
+        Assert.Equal(new[] { 2, 3, 5 }, fromCollection.ToArray());
+    }
+
+    [Fact]
+    public void AddRange_AddsItemsInOrder()
+    {
+        var list = new SwiftObservableList<int>();
+        IEnumerable<int> items = new List<int> { 1, 2, 3 };
+
+        list.AddRange(items);
+
+        Assert.Equal(new[] { 1, 2, 3 }, list.ToArray());
+        Assert.Equal(3, list.Count);
+    }
+
+    [Fact]
+    public void AddRange_NullEnumerable_ThrowsArgumentNullException()
+    {
+        var list = new SwiftObservableList<int>();
+
+        Assert.Throws<ArgumentNullException>(() => list.AddRange(null));
+    }
+
+    [Fact]
+    public void RemoveAll_NullPredicate_ThrowsArgumentNullException()
+    {
+        var list = new SwiftObservableList<int>();
+
+        Assert.Throws<ArgumentNullException>(() => list.RemoveAll(null));
+    }
+
+    [Fact]
+    public void RemoveAll_NoMatches_ReturnsZeroAndLeavesListUntouched()
+    {
+        var list = new SwiftObservableList<int>(new[] { 1, 2, 3, 4 });
+
+        int removed = list.RemoveAll(value => value > 10);
+
+        Assert.Equal(0, removed);
+        Assert.Equal(new[] { 1, 2, 3, 4 }, list.ToArray());
+    }
+
+    [Fact]
+    public void RemoveAll_RemovesMatchingValuesAndClearsTrailingReferences()
+    {
+        var list = new SwiftObservableList<string>(new[] { "keep-a", "drop", "keep-b", "drop", null });
+
+        int removed = list.RemoveAll(value => value == "drop");
+
+        Assert.Equal(2, removed);
+        Assert.Equal(3, list.Count);
+        Assert.Equal(new[] { "keep-a", "keep-b", null }, list.Take(list.Count).ToArray());
+        Assert.Null(list.InnerArray[3]);
+        Assert.Null(list.InnerArray[4]);
+    }
+
+    [Fact]
+    public void RemoveAll_AllMatches_EmptiesTheList()
+    {
+        var list = new SwiftObservableList<int>(new[] { 2, 4, 6, 8 });
+
+        int removed = list.RemoveAll(value => value % 2 == 0);
+
+        Assert.Equal(4, removed);
+        Assert.Empty(list);
+    }
+
+    [Fact]
     public void StressTest_RepeatedOperations()
     {
         var list = new SwiftObservableList<int>();

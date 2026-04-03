@@ -54,6 +54,7 @@ This repository contains the `SwiftCollections` .NET library, its unit tests, an
 
 - If you change behavior in `src/SwiftCollections/Collection/`, update or add the matching tests under `tests/SwiftCollections.Tests/Collection/`.
 - If you change behavior in `Dimension`, `Observable`, `Pool`, or `Query/BoundingVolume`, keep tests in the corresponding folder aligned.
+- Full coverage is an explicit repo priority. When adding features or refactoring existing code, expand the affected tests so coverage stays flat or improves, and aim for full coverage of the new or rewritten behavior whenever practical.
 - If you add a public API, add XML docs unless the surrounding file clearly does not use them.
 - If you introduce target-specific behavior, guard it with the existing preprocessor pattern instead of silently breaking `netstandard2.1`.
 - Prefer focused changes. Do not modernize unrelated files while working on a localized fix.
@@ -67,6 +68,8 @@ Use the solution root as the working directory.
   - `dotnet build SwiftCollections.sln -c Debug`
 - Run unit tests:
   - `dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c Debug --no-build`
+- Run unit tests with coverage when the change adds features, refactors behavior, or touches a poorly covered area:
+  - `dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c Debug --no-build --collect:"XPlat Code Coverage" --settings coverlet.runsettings`
 - Run benchmarks:
   - `dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8`
   - `dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- list`
@@ -88,5 +91,6 @@ These commands were verified successfully in this repository during AGENTS creat
 - Confirm the file you are editing is part of the compiled project.
 - Preserve compatibility for both library target frameworks.
 - Add or update targeted tests for behavior changes.
+- For new features and refactors, verify coverage is maintained or improved, and prefer closing the touched area to full coverage when it is practical.
 - Build and run the relevant tests before finishing.
 - Check whether docs or packaging metadata also need updates.
