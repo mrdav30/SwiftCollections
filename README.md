@@ -27,7 +27,7 @@
 
 ---
 
-## Installation
+## 🚀 Installation
 
 ### NuGet
 
@@ -159,7 +159,7 @@ dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmar
 
 With no extra arguments, BenchmarkDotNet's default switcher behavior is used. Leading non-option arguments are treated as benchmark selection aliases, and any remaining arguments are forwarded to BenchmarkDotNet.
 
-## Compatibility
+## 🛠️ Compatibility
 
 - `netstandard2.1`
 - `net8.0`
@@ -194,7 +194,7 @@ We welcome feedback, contributors, and community discussion across all projects.
 
 ---
 
-## License
+## 📄 License
 
 This project is licensed under the MIT License.
 
