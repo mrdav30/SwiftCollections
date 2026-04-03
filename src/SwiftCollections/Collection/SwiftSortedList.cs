@@ -271,6 +271,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     /// </summary>
     public void Insert(T item, int index)
     {
+        if ((uint)index > (uint)_count) throw new ArgumentOutOfRangeException(nameof(index));
         if (_offset + _count + 1 > _innerArray.Length)
             Resize(_innerArray.Length * 2);
 

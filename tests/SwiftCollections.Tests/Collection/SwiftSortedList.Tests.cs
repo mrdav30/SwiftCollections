@@ -162,6 +162,19 @@ public class SwiftSortedListTests
         Assert.Equal(5, sorter.PeekMax());
     }
 
+    [Fact]
+    public void Insert_WhenIndexExceedsCountButFitsCapacity_ShouldThrow()
+    {
+        var sorter = new SwiftSortedList<int>(8);
+        sorter.Add(1);
+        sorter.Add(3);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => sorter.Insert(2, 5));
+        Assert.Equal(2, sorter.Count);
+        Assert.Equal(1, sorter[0]);
+        Assert.Equal(3, sorter[1]);
+    }
+
     #endregion
 
     #region Test: PopMin and PopMax 

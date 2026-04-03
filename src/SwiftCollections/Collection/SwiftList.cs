@@ -397,7 +397,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     /// </summary>
     public virtual void Insert(int index, T item)
     {
-        if ((uint)index > (uint)_innerArray.Length) throw new ArgumentOutOfRangeException(nameof(index));
+        if ((uint)index > (uint)_count) throw new ArgumentOutOfRangeException(nameof(index));
         if ((uint)_count == (uint)_innerArray.Length)
             Resize(_innerArray.Length * 2);
         if ((uint)index < (uint)_count)

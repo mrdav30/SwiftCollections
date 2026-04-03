@@ -291,6 +291,15 @@ public class SwiftListTests
     }
 
     [Fact]
+    public void Insert_WhenIndexExceedsCountButFitsCapacity_ShouldThrow()
+    {
+        var list = new SwiftList<int>(8) { 1, 2, 3 };
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => list.Insert(5, 99));
+        Assert.Equal(new[] { 1, 2, 3 }, list.ToArray());
+    }
+
+    [Fact]
     public void IndexOf_ShouldReturnCorrectIndex()
     {
         var list = new SwiftList<int> { 1, 2, 3 };
