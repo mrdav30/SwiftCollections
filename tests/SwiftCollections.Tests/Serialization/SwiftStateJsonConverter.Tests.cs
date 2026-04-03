@@ -42,6 +42,7 @@ public class SwiftStateJsonConverterTests
     [InlineData("123")]
     [InlineData("{}")]
     [InlineData("{\"Other\":42}")]
+    [InlineData("{\"State\":42,\"Other\":1}")]
     public void Read_ThrowsForInvalidPayloadShape(string json)
     {
         var converter = new SwiftStateJsonConverter<TestStateContainer, int>(

@@ -34,7 +34,8 @@ public sealed class SwiftStateJsonConverter<TCollection, TState> : JsonConverter
 
         var state = JsonSerializer.Deserialize<TState>(ref reader, options);
 
-        reader.Read(); // EndObject
+        if (!reader.Read() || reader.TokenType != JsonTokenType.EndObject)
+            throw new JsonException();
 
         return _factory(state);
     }
