@@ -106,6 +106,18 @@ public class SwiftPackedSetTests
     }
 
     [Fact]
+    public void Remove_ShouldClearReleasedReferenceSlot()
+    {
+        var set = new SwiftPackedSet<string>();
+
+        set.Add("alpha");
+        set.Add("beta");
+
+        Assert.True(set.Remove("beta"));
+        Assert.Null(set.Dense[set.Count]);
+    }
+
+    [Fact]
     public void Remove_Nonexistent_ReturnsFalse()
     {
         var set = new SwiftPackedSet<int>();
@@ -144,6 +156,20 @@ public class SwiftPackedSetTests
 
         Assert.Empty(set);
         Assert.DoesNotContain(1, set);
+    }
+
+    [Fact]
+    public void Clear_ShouldReleaseStoredReferences()
+    {
+        var set = new SwiftPackedSet<string>();
+
+        set.Add("alpha");
+        set.Add("beta");
+
+        set.Clear();
+
+        Assert.Null(set.Dense[0]);
+        Assert.Null(set.Dense[1]);
     }
 
     [Fact]

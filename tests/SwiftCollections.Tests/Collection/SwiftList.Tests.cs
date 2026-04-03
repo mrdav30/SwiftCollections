@@ -96,6 +96,17 @@ public class SwiftListTests
     }
 
     [Fact]
+    public void RemoveAt_ShouldClearReleasedReferenceSlot()
+    {
+        var list = new SwiftList<string> { "a", "b", "c" };
+
+        list.RemoveAt(1);
+
+        Assert.Equal(2, list.Count);
+        Assert.Null(list.InnerArray[list.Count]);
+    }
+
+    [Fact]
     public void RemoveAll_ShouldHandleAllElementsMatching()
     {
         var list = new SwiftList<int> { 2, 4, 6 };
@@ -109,6 +120,19 @@ public class SwiftListTests
         var list = new SwiftList<int> { 1, 3, 5 };
         list.RemoveAll(i => i % 2 == 0);  // No elements match
         Assert.Equal(3, list.Count);
+    }
+
+    [Fact]
+    public void RemoveAll_ShouldClearReleasedReferenceSlots()
+    {
+        var list = new SwiftList<string> { "keep", "drop-1", "keep-2", "drop-2" };
+
+        int removed = list.RemoveAll(value => value.StartsWith("drop", StringComparison.Ordinal));
+
+        Assert.Equal(2, removed);
+        Assert.Equal(2, list.Count);
+        Assert.Null(list.InnerArray[2]);
+        Assert.Null(list.InnerArray[3]);
     }
 
     [Fact]
@@ -126,6 +150,19 @@ public class SwiftListTests
         var list = new SwiftList<int> { 1, 2, 3 };
         list.Clear();
         Assert.Empty(list);
+    }
+
+    [Fact]
+    public void Clear_ShouldReleaseStoredReferences()
+    {
+        var list = new SwiftList<string> { "a", "b", "c" };
+
+        list.Clear();
+
+        Assert.Empty(list);
+        Assert.Null(list.InnerArray[0]);
+        Assert.Null(list.InnerArray[1]);
+        Assert.Null(list.InnerArray[2]);
     }
 
     [Fact]

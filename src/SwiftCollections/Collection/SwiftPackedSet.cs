@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 
 namespace SwiftCollections;
@@ -38,6 +39,7 @@ public sealed partial class SwiftPackedSet<T> :
     #region Constants
 
     public const int DefaultCapacity = 8;
+    private static readonly bool _clearReleasedSlots = RuntimeHelpers.IsReferenceOrContainsReferences<T>();
 
     #endregion
 
@@ -220,7 +222,8 @@ public sealed partial class SwiftPackedSet<T> :
             _lookup[moved] = index;
         }
 
-        _dense[last] = default;
+        if (_clearReleasedSlots)
+            _dense[last] = default;
         _lookup.Remove(value);
 
         _version++;
@@ -231,7 +234,8 @@ public sealed partial class SwiftPackedSet<T> :
     {
         if (_count == 0) return;
 
-        Array.Clear(_dense, 0, _count);
+        if (_clearReleasedSlots)
+            Array.Clear(_dense, 0, _count);
         _lookup.Clear();
 
         _count = 0;

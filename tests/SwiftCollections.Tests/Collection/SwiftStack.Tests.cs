@@ -42,6 +42,19 @@ public class SwiftStackTests
     }
 
     [Fact]
+    public void Pop_ShouldClearReleasedReferenceSlot()
+    {
+        var stack = new SwiftStack<string>();
+        stack.Push("first");
+        stack.Push("second");
+
+        stack.Pop();
+
+        stack.Count.Should().Be(1);
+        stack.InnerArray[stack.Count].Should().BeNull();
+    }
+
+    [Fact]
     public void Pop_OnEmptyStack_ShouldThrowInvalidOperationException()
     {
         // Arrange
@@ -109,6 +122,20 @@ public class SwiftStackTests
         // Assert
         stack.Count.Should().Be(0);
         stack.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Clear_ShouldReleaseStoredReferences()
+    {
+        var stack = new SwiftStack<string>();
+        stack.Push("first");
+        stack.Push("second");
+
+        stack.Clear();
+
+        stack.Count.Should().Be(0);
+        stack.InnerArray[0].Should().BeNull();
+        stack.InnerArray[1].Should().BeNull();
     }
 
     [Fact]

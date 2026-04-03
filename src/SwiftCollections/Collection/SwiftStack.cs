@@ -35,6 +35,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     public const int DefaultCapacity = 8;
 
     private static readonly T[] _emptyArray = Array.Empty<T>();
+    private static readonly bool _clearReleasedSlots = RuntimeHelpers.IsReferenceOrContainsReferences<T>();
 
     #endregion
 
@@ -257,7 +258,8 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     {
         if ((uint)_count == 0) throw new InvalidOperationException("Stack is empty.");
         T item = _innerArray[--_count];
-        _innerArray[_count] = default;
+        if (_clearReleasedSlots)
+            _innerArray[_count] = default;
         _version++;
         return item;
     }
@@ -268,7 +270,8 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     public void Clear()
     {
         if (_count == 0) return;
-        Array.Clear(_innerArray, 0, _count);
+        if (_clearReleasedSlots)
+            Array.Clear(_innerArray, 0, _count);
         _count = 0;
         _version++;
     }

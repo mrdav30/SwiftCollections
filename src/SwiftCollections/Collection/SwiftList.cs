@@ -38,6 +38,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     public const int DefaultCapacity = 8;
 
     private static readonly T[] _emptyArray = Array.Empty<T>();
+    private static readonly bool _clearReleasedSlots = RuntimeHelpers.IsReferenceOrContainsReferences<T>();
 
     #endregion
 
@@ -352,7 +353,8 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
         if ((uint)index >= (uint)_count) throw new ArgumentOutOfRangeException(nameof(index));
         Array.Copy(_innerArray, index + 1, _innerArray, index, _count - index - 1);
         _count--;
-        _innerArray[_count] = default;
+        if (_clearReleasedSlots)
+            _innerArray[_count] = default;
         _version++;
     }
 
@@ -379,10 +381,10 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
                 _innerArray[i++] = _innerArray[j++];
         }
 
-        // Clear out the trailing elements to ensure no lingering references
-        Array.Clear(_innerArray, i, _count - i);
-
         int removedCount = _count - i;
+        if (_clearReleasedSlots && removedCount > 0)
+            Array.Clear(_innerArray, i, removedCount);
+
         _count = i;
 
         _version++;
@@ -453,7 +455,8 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     /// </summary>
     public virtual void Clear()
     {
-        Array.Clear(_innerArray, 0, _count);
+        if (_clearReleasedSlots)
+            Array.Clear(_innerArray, 0, _count);
         _count = 0;
         _version++;
     }

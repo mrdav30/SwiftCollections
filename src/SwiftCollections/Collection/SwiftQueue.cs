@@ -31,6 +31,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     public const int DefaultCapacity = 8;
 
     private static readonly T[] _emptyArray = Array.Empty<T>();
+    private static readonly bool _clearReleasedSlots = RuntimeHelpers.IsReferenceOrContainsReferences<T>();
 
     #endregion
 
@@ -304,7 +305,8 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     {
         if ((uint)_count == 0) throw new InvalidOperationException("Queue is Empty");
         T item = _innerArray[_head];
-        _innerArray[_head] = default;
+        if (_clearReleasedSlots)
+            _innerArray[_head] = default;
         _head = (_head + 1) & _mask;
         _count--;
         _version++;
@@ -324,7 +326,8 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         }
 
         item = _innerArray[_head];
-        _innerArray[_head] = default;
+        if (_clearReleasedSlots)
+            _innerArray[_head] = default;
         _head = (_head + 1) & _mask;
         _count--;
         _version++;
@@ -441,12 +444,15 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     {
         if (_count == 0) return;
 
-        if ((uint)_head < (uint)_tail)
-            Array.Clear(_innerArray, _head, _count);
-        else
+        if (_clearReleasedSlots)
         {
-            Array.Clear(_innerArray, _head, _innerArray.Length - _head);
-            Array.Clear(_innerArray, 0, _tail);
+            if ((uint)_head < (uint)_tail)
+                Array.Clear(_innerArray, _head, _count);
+            else
+            {
+                Array.Clear(_innerArray, _head, _innerArray.Length - _head);
+                Array.Clear(_innerArray, 0, _tail);
+            }
         }
 
         _count = 0;

@@ -47,6 +47,18 @@ public class SwiftQueueTests
     }
 
     [Fact]
+    public void Dequeue_ShouldClearReleasedReferenceSlot()
+    {
+        var queue = new SwiftQueue<string>();
+        queue.Enqueue("first");
+        queue.Enqueue("second");
+
+        queue.Dequeue();
+
+        Assert.Null(queue.InnerArray[0]);
+    }
+
+    [Fact]
     public void Dequeue_ThrowsExceptionWhenEmpty()
     {
         var queue = new SwiftQueue<int>();
@@ -102,6 +114,19 @@ public class SwiftQueueTests
 
         Assert.Empty(queue);
         Assert.Throws<InvalidOperationException>(() => queue.Peek());
+    }
+
+    [Fact]
+    public void Clear_ShouldReleaseStoredReferences()
+    {
+        var queue = new SwiftQueue<string>();
+        queue.Enqueue("first");
+        queue.Enqueue("second");
+
+        queue.Clear();
+
+        Assert.Null(queue.InnerArray[0]);
+        Assert.Null(queue.InnerArray[1]);
     }
 
     [Fact]
