@@ -15,14 +15,28 @@ public class SwiftPooledObjectTests
     }
 
     [Fact]
-    public void Dispose_ReleasesWrappedValue_AndDefaultValueDoesNothing()
+    public void Dispose_ReleasesWrappedValue()
     {
         var trackingPool = new TrackingPool();
         var value = new SwiftCollections.Tests.DisposableSpy();
         var pooled = new SwiftPooledObject<SwiftCollections.Tests.DisposableSpy>(value, trackingPool);
 
         pooled.Dispose();
-        default(SwiftPooledObject<SwiftCollections.Tests.DisposableSpy>).Dispose();
+
+        Assert.Equal(1, trackingPool.ReleaseCount);
+        Assert.Same(value, trackingPool.LastReleased);
+    }
+
+    [Fact]
+    public void Dispose_IsIdempotentAcrossReferenceCopies()
+    {
+        var trackingPool = new TrackingPool();
+        var value = new SwiftCollections.Tests.DisposableSpy();
+        var pooled = new SwiftPooledObject<SwiftCollections.Tests.DisposableSpy>(value, trackingPool);
+        SwiftPooledObject<SwiftCollections.Tests.DisposableSpy> alias = pooled;
+
+        pooled.Dispose();
+        alias.Dispose();
 
         Assert.Equal(1, trackingPool.ReleaseCount);
         Assert.Same(value, trackingPool.LastReleased);

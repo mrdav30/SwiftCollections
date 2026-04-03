@@ -1,32 +1,35 @@
 ﻿using System;
+using System.Threading;
 
 namespace SwiftCollections.Pool;
 
 /// <summary>
-/// A struct that wraps an object rented from an <see cref="ISwiftObjectPool{T}"/> and ensures it is automatically
+/// A lease that wraps an object rented from an <see cref="ISwiftObjectPool{T}"/> and ensures it is automatically
 /// released back to the pool when disposed. Designed to simplify resource management and avoid manual release errors.
 /// </summary>
 /// <typeparam name="T">The type of the object being pooled. Must be a reference type.</typeparam>
-public readonly struct SwiftPooledObject<T> : IDisposable where T : class
+public sealed class SwiftPooledObject<T> : IDisposable where T : class
 {
     #region Fields
 
     /// <summary>
     /// The rented object that will be returned to the pool upon disposal.
     /// </summary>
-    private readonly T _value;
+    private T _value;
 
     /// <summary>
     /// The pool from which the object was rented.
     /// </summary>
-    private readonly ISwiftObjectPool<T> _pool;
+    private ISwiftObjectPool<T> _pool;
+
+    private int _disposed;
 
     #endregion
 
     #region Constructor
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftPooledObject{T}"/> struct.
+    /// Initializes a new instance of the <see cref="SwiftPooledObject{T}"/> class.
     /// </summary>
     /// <param name="value">The rented object.</param>
     /// <param name="pool">The pool that owns the object.</param>
@@ -53,8 +56,17 @@ public readonly struct SwiftPooledObject<T> : IDisposable where T : class
     /// </remarks>
     public void Dispose()
     {
-        if (_pool != null && _value != null)
-            _pool.Release(_value);
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+            return;
+
+        ISwiftObjectPool<T> pool = _pool;
+        T value = _value;
+
+        _pool = null;
+        _value = null;
+
+        if (pool != null && value != null)
+            pool.Release(value);
     }
 
     #endregion
