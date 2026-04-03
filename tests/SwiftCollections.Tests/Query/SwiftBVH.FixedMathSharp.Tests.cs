@@ -644,5 +644,57 @@ namespace SwiftCollections.Query.Tests
             Assert.Single(results);
             Assert.Equal(1, results[0]);
         }
+
+        [Fact]
+        public void Remove_WithCollidingKeys_RemovingFirstProbeEntry_PreservesLaterEntryLookup()
+        {
+            var bvh = new SwiftBVH<CollidingKey>(4);
+            var volume = new FixedBoundVolume(new Vector3d(0, 0, 0), new Vector3d(1, 1, 1));
+            var first = new CollidingKey(1);
+            var second = new CollidingKey(2);
+
+            bvh.Insert(first, volume);
+            bvh.Insert(second, volume);
+
+            Assert.True(bvh.Remove(first));
+            Assert.Equal(-1, bvh.FindEntry(first));
+            Assert.NotEqual(-1, bvh.FindEntry(second));
+        }
+
+        [Fact]
+        public void UpdateEntryBounds_WhenLeafMovesOutsideCurrentRoot_QueriesUseUpdatedBounds()
+        {
+            var bvh = new SwiftBVH<int>(4);
+            var originalBounds = new FixedBoundVolume(new Vector3d(0, 0, 0), new Vector3d(1, 1, 1));
+            var siblingBounds = new FixedBoundVolume(new Vector3d(2, 2, 2), new Vector3d(3, 3, 3));
+            var movedBounds = new FixedBoundVolume(new Vector3d(10, 10, 10), new Vector3d(11, 11, 11));
+
+            bvh.Insert(1, originalBounds);
+            bvh.Insert(2, siblingBounds);
+
+            bvh.UpdateEntryBounds(1, movedBounds);
+
+            var results = new List<int>();
+            bvh.Query(movedBounds, results);
+
+            Assert.Single(results);
+            Assert.Equal(1, results[0]);
+        }
+
+        private sealed class CollidingKey : IEquatable<CollidingKey>
+        {
+            public CollidingKey(int value)
+            {
+                Value = value;
+            }
+
+            public int Value { get; }
+
+            public bool Equals(CollidingKey other) => other is not null && Value == other.Value;
+
+            public override bool Equals(object obj) => obj is CollidingKey other && Equals(other);
+
+            public override int GetHashCode() => 1;
+        }
     }
 }

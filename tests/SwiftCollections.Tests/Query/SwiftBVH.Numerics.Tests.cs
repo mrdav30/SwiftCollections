@@ -744,6 +744,42 @@ namespace SwiftCollections.Query.Tests
         }
 
         [Fact]
+        public void Remove_WithCollidingKeys_RemovingFirstProbeEntry_PreservesLaterEntryLookup()
+        {
+            var bvh = new SwiftBVH<CollidingKey>(4);
+            var volume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            var first = new CollidingKey(1);
+            var second = new CollidingKey(2);
+
+            bvh.Insert(first, volume);
+            bvh.Insert(second, volume);
+
+            Assert.True(bvh.Remove(first));
+            Assert.Equal(-1, bvh.FindEntry(first));
+            Assert.NotEqual(-1, bvh.FindEntry(second));
+        }
+
+        [Fact]
+        public void UpdateEntryBounds_WhenLeafMovesOutsideCurrentRoot_QueriesUseUpdatedBounds()
+        {
+            var bvh = new SwiftBVH<int>(4);
+            var originalBounds = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            var siblingBounds = new BoundVolume(new Vector3(2, 2, 2), new Vector3(3, 3, 3));
+            var movedBounds = new BoundVolume(new Vector3(10, 10, 10), new Vector3(11, 11, 11));
+
+            bvh.Insert(1, originalBounds);
+            bvh.Insert(2, siblingBounds);
+
+            bvh.UpdateEntryBounds(1, movedBounds);
+
+            var results = new List<int>();
+            bvh.Query(movedBounds, results);
+
+            Assert.Single(results);
+            Assert.Equal(1, results[0]);
+        }
+
+        [Fact]
         public void UpdateEntryBounds_DoesNothingWhenNodeHasBeenMarkedUnallocated()
         {
             var bvh = new SwiftBVH<int>(4);

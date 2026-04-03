@@ -260,6 +260,7 @@ namespace SwiftCollections.Query
         public void UpdateEntryBounds(T value, IBoundVolume newBounds)
         {
             SwiftThrowHelper.ThrowIfNull(value, nameof(value));
+            SwiftThrowHelper.ThrowIfNull(newBounds, nameof(newBounds));
 
             int index = FindEntry(value);
             if (index == -1) return;
@@ -270,8 +271,11 @@ namespace SwiftCollections.Query
                 ref SwiftBVHNode<T> node = ref _nodePool[index];
                 if (!node.IsAllocated) return; // Skip update if node has been removed
 
+                IBoundVolume oldBounds = node.Bounds;
+                if (oldBounds != null && oldBounds.Equals(newBounds))
+                    return; // Skip unnecessary updates
+
                 node.Bounds = newBounds;
-                if (node.Bounds.Equals(newBounds)) return; // Skip unnecessary updates
 
                 // Propagate changes up the tree
                 int parentIndex = node.ParentIndex;
@@ -350,8 +354,26 @@ namespace SwiftCollections.Query
                 if (_nodePool[nodeIndex].IsLeaf && EqualityComparer<T>.Default.Equals(_nodePool[nodeIndex].Value, value))
                 {
                     _buckets[bucketIndex] = -1;
+                    RehashBucketCluster((bucketIndex + 1) & _bucketMask);
                     return;
                 }
+
+                bucketIndex = (bucketIndex + 1) & _bucketMask;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void RehashBucketCluster(int startIndex)
+        {
+            int bucketIndex = startIndex;
+
+            while (_buckets[bucketIndex] != -1)
+            {
+                int nodeIndex = _buckets[bucketIndex];
+                _buckets[bucketIndex] = -1;
+
+                if (_nodePool[nodeIndex].IsLeaf && _nodePool[nodeIndex].IsAllocated)
+                    InsertIntoBuckets(_nodePool[nodeIndex].Value, nodeIndex);
 
                 bucketIndex = (bucketIndex + 1) & _bucketMask;
             }
