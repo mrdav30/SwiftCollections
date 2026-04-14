@@ -1,4 +1,3 @@
-﻿
 using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -8,7 +7,7 @@ namespace SwiftCollections.Query;
 /// <summary>
 /// Represents an axis-aligned bounding box (AABB) in 3D space.
 /// </summary>
-public struct BoundVolume : IBoundVolume
+public struct BoundVolume : IBoundVolume<BoundVolume>, IBoundVolume, IEquatable<BoundVolume>
 {
     /// <summary>
     /// The minimum point of the bounding volume.
@@ -123,16 +122,7 @@ public struct BoundVolume : IBoundVolume
         _isDirty = false;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly IBoundVolume Union(IBoundVolume other)
-    {
-        if (other is not BoundVolume otherBV)
-            throw new ArgumentException($"Mismatched bounding volume type detected!: {nameof(other)}");
-
-        return Union(otherBV);
-    }
-
-    /// <inheritdoc cref="Union(IBoundVolume)"/>
+    /// <inheritdoc />
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly BoundVolume Union(BoundVolume other)
     {
@@ -142,27 +132,62 @@ public struct BoundVolume : IBoundVolume
         );
     }
 
-    /// <inheritdoc cref="Intersects(IBoundVolume)"/>
+    /// <inheritdoc />
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly bool Intersects(BoundVolume other)
+    {
+        return !(Min.X > other.Max.X || Max.X < other.Min.X ||
+                 Min.Y > other.Max.Y || Max.Y < other.Min.Y ||
+                 Min.Z > other.Max.Z || Max.Z < other.Min.Z);
+    }
+
+    /// <inheritdoc />
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly int GetCost(BoundVolume other)
+    {
+        BoundVolume union = Union(other);
+        return (int)Math.Floor(union.Volume - other.Volume);
+    }
+
+    /// <inheritdoc />
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly bool BoundsEquals(BoundVolume other)
+    {
+        return Min.Equals(other.Min) && Max.Equals(other.Max);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly IBoundVolume Union(IBoundVolume other)
+    {
+        if (other is not BoundVolume otherBV)
+            throw new ArgumentException($"Mismatched bounding volume type detected!: {nameof(other)}");
+
+        return Union(otherBV);
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly bool Intersects(IBoundVolume other)
     {
-        if (other is not BoundVolume otherBVH)
+        if (other is not BoundVolume otherBV)
             throw new ArgumentException($"Mismatched bounding volume type detected!: {nameof(other)}");
 
-        return !(Min.X > otherBVH.Max.X || Max.X < otherBVH.Min.X ||
-                 Min.Y > otherBVH.Max.Y || Max.Y < otherBVH.Min.Y ||
-                 Min.Z > otherBVH.Max.Z || Max.Z < otherBVH.Min.Z);
+        return Intersects(otherBV);
     }
 
-    /// <inheritdoc cref="GetCost(IBoundVolume)"/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly int GetCost(IBoundVolume other)
     {
-        if (other is not BoundVolume otherBVH)
+        if (other is not BoundVolume otherBV)
             throw new ArgumentException($"Mismatched bounding volume type detected!: {nameof(other)}");
 
-        return (int)Math.Floor(Union(otherBVH).Volume - otherBVH.Volume);
+        return GetCost(otherBV);
     }
+
+    public readonly bool Equals(BoundVolume other) => BoundsEquals(other);
+
+    public override readonly bool Equals(object obj) => obj is BoundVolume other && BoundsEquals(other);
+
+    public override readonly int GetHashCode() => HashCode.Combine(Min, Max);
 
     public override readonly string ToString() => $"Min: {Min}, Max: {Max}";
 }

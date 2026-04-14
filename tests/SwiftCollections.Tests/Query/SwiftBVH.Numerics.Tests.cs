@@ -161,14 +161,15 @@ namespace SwiftCollections.Query.Tests
         }
 
         [Fact]
-        public void BoundVolume_DefaultEquality_DiffersWhenOnlyMetadataCacheStateDiffers()
+        public void BoundVolume_DefaultEquality_UsesSemanticBoundsWhenMetadataCacheStateDiffers()
         {
             var untouched = new BoundVolume(new Vector3(2, 4, 6), new Vector3(6, 10, 14));
             var materialized = new BoundVolume(new Vector3(2, 4, 6), new Vector3(6, 10, 14));
 
             _ = materialized.Center;
 
-            Assert.False(untouched.Equals(materialized));
+            Assert.True(untouched.Equals(materialized));
+            Assert.True(untouched.BoundsEquals(materialized));
         }
 
         private sealed class MockBoundVolume : IBoundVolume

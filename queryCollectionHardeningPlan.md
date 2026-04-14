@@ -60,7 +60,7 @@ Completion Notes:
 
 ## Phase 1 - Typed Volume Contract
 
-Status: `Planned`
+Status: `Completed` (2026-04-14)
 
 Goals:
 - Remove runtime-polymorphic volume operations from hot paths.
@@ -74,6 +74,17 @@ Tasks:
 Exit Criteria:
 - `BoundVolume` tests pass on both target frameworks.
 - No runtime type mismatch checks needed for standard volume operations.
+
+Completion Notes:
+- Added typed volume contract:
+  - `src/SwiftCollections/Query/BoundingVolume/Volume/IBoundVolume.cs`
+  - New: `IBoundVolume<TVolume> where TVolume : struct, IBoundVolume<TVolume>`
+- Kept temporary legacy bridge interface (`IBoundVolume`) so current BVH engine compiles until Phase 2 migration.
+- Ported `BoundVolume` to typed contract:
+  - Implements `IBoundVolume<BoundVolume>` and `IEquatable<BoundVolume>`
+  - Added semantic bounds equality (`BoundsEquals`) using min/max only
+  - Updated equality semantics (`Equals`/`GetHashCode`) to ignore cache metadata fields
+- Updated BVH numerics tests to validate semantic equality behavior.
 
 ## Phase 2 - Generic BVH Engine Refactor
 
@@ -175,7 +186,7 @@ Exit Criteria:
 ## Progress Tracker
 
 - [x] Phase 0 complete
-- [ ] Phase 1 complete
+- [x] Phase 1 complete
 - [ ] Phase 2 complete
 - [ ] Phase 3 complete
 - [ ] Phase 4 complete
@@ -185,3 +196,4 @@ Exit Criteria:
 
 - 2026-04-14: Agreed direction is one typed BVH core engine plus default wrapper and a FixedMathSharp companion package.
 - 2026-04-14: Phase 0 completed with BVH insert/query/update benchmark baseline and focused bounds-equality tests.
+- 2026-04-14: Phase 1 completed with `IBoundVolume<TVolume>` and semantic `BoundVolume` equality.
