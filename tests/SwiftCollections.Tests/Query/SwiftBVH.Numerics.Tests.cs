@@ -160,6 +160,17 @@ namespace SwiftCollections.Query.Tests
             Assert.Equal(new Vector3(4, 7, 10), centerFirstVolume.Center);
         }
 
+        [Fact]
+        public void BoundVolume_DefaultEquality_DiffersWhenOnlyMetadataCacheStateDiffers()
+        {
+            var untouched = new BoundVolume(new Vector3(2, 4, 6), new Vector3(6, 10, 14));
+            var materialized = new BoundVolume(new Vector3(2, 4, 6), new Vector3(6, 10, 14));
+
+            _ = materialized.Center;
+
+            Assert.False(untouched.Equals(materialized));
+        }
+
         private sealed class MockBoundVolume : IBoundVolume
         {
             public IBoundVolume Union(IBoundVolume other) => this;
@@ -780,6 +791,25 @@ namespace SwiftCollections.Query.Tests
 
             var results = new List<int>();
             bvh.Query(movedBounds, results);
+
+            Assert.Single(results);
+            Assert.Equal(1, results[0]);
+        }
+
+        [Fact]
+        public void UpdateEntryBounds_WithEquivalentMinMaxAndDifferentCacheState_PreservesQueryResults()
+        {
+            var bvh = new SwiftBVH<int>(4);
+            var originalBounds = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            var equivalentBounds = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+
+            _ = equivalentBounds.Center;
+
+            bvh.Insert(1, originalBounds);
+            bvh.UpdateEntryBounds(1, equivalentBounds);
+
+            var results = new List<int>();
+            bvh.Query(originalBounds, results);
 
             Assert.Single(results);
             Assert.Equal(1, results[0]);
