@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -8,7 +8,8 @@ namespace SwiftCollections.Query;
 /// <summary>
 /// Represents a Bounding Volume Hierarchy (BVH) optimized for spatial queries.
 /// </summary>
-public class SwiftBVH<T>
+public class SwiftBVH<TKey, TVolume>
+    where TVolume : struct, IBoundVolume<TVolume>
 {
     #region Static & Constants
 
@@ -22,7 +23,7 @@ public class SwiftBVH<T>
 
     #region Fields
 
-    private SwiftBVHNode<T>[] _nodePool;
+    private SwiftBVHNode<TKey, TVolume>[] _nodePool;
     private int _peakIndex;
     private int _leafCount;
 
@@ -40,13 +41,13 @@ public class SwiftBVH<T>
     #region Constructor
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftBVH{T}"/> class with the specified capacity.
+    /// Initializes a new instance of the <see cref="SwiftBVH{TKey, TVolume}"/> class with the specified capacity.
     /// </summary>
     public SwiftBVH(int capacity)
     {
         capacity = SwiftHashTools.NextPowerOfTwo(capacity);
-        _nodePool = new SwiftBVHNode<T>[capacity].Populate(() =>
-            new SwiftBVHNode<T>() { ParentIndex = -1, LeftChildIndex = -1, RightChildIndex = -1 });
+        _nodePool = new SwiftBVHNode<TKey, TVolume>[capacity].Populate(() =>
+            new SwiftBVHNode<TKey, TVolume>() { ParentIndex = -1, LeftChildIndex = -1, RightChildIndex = -1 });
         _buckets = new int[capacity].Populate(() => -1);
 
         _bucketMask = capacity - 1;
@@ -62,14 +63,14 @@ public class SwiftBVH<T>
     /// <summary>
     /// Gets the underlying pool of nodes used in the BVH.
     /// </summary>
-    public SwiftBVHNode<T>[] NodePool => _nodePool;
+    public SwiftBVHNode<TKey, TVolume>[] NodePool => _nodePool;
 
     /// <summary>
     /// Gets the root node of the BVH.
     /// </summary>
-    public SwiftBVHNode<T> RootNode => _rootNodeIndex >= 0 && _nodePool[_rootNodeIndex].IsAllocated
+    public SwiftBVHNode<TKey, TVolume> RootNode => _rootNodeIndex >= 0 && _nodePool[_rootNodeIndex].IsAllocated
         ? _nodePool[_rootNodeIndex]
-        : SwiftBVHNode<T>.Default;
+        : SwiftBVHNode<TKey, TVolume>.Default;
 
     /// <summary>
     /// Gets the index of the root node in the BVH.
@@ -90,7 +91,7 @@ public class SwiftBVH<T>
     /// Reuses indices from the freelist when available.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private int AllocateNode(T value, IBoundVolume bounds, bool isLeaf)
+    private int AllocateNode(TKey value, TVolume bounds, bool isLeaf)
     {
         int index;
 
@@ -106,7 +107,7 @@ public class SwiftBVH<T>
             index = _peakIndex++;
         }
 
-        ref SwiftBVHNode<T> node = ref _nodePool[index];
+        ref SwiftBVHNode<TKey, TVolume> node = ref _nodePool[index];
         node.Reset(); // Explicit reset
         node.MyIndex = index;
         node.Value = value;
@@ -127,10 +128,8 @@ public class SwiftBVH<T>
     /// Inserts a bounding volume with an associated value into the BVH.
     /// Ensures tree balance and updates hash buckets.
     /// </summary>
-    public bool Insert(T value, IBoundVolume bounds)
+    public bool Insert(TKey value, TVolume bounds)
     {
-        SwiftThrowHelper.ThrowIfNull(bounds, nameof(bounds));
-
         _bvhLock.EnterWriteLock();
         try
         {
@@ -155,13 +154,13 @@ public class SwiftBVH<T>
         if (parentNodeIndex < 0 || !_nodePool[parentNodeIndex].IsAllocated)
             return newNodeIndex;
 
-        ref SwiftBVHNode<T> parentNode = ref _nodePool[parentNodeIndex];
-        ref SwiftBVHNode<T> newNode = ref _nodePool[newNodeIndex];
+        ref SwiftBVHNode<TKey, TVolume> parentNode = ref _nodePool[parentNodeIndex];
+        ref SwiftBVHNode<TKey, TVolume> newNode = ref _nodePool[newNodeIndex];
         if (parentNode.IsLeaf)
         {
             // Create a new parent node
             int newParentIndex = AllocateNode(default, parentNode.Bounds.Union(newNode.Bounds), false);
-            ref SwiftBVHNode<T> newParentNode = ref _nodePool[newParentIndex];
+            ref SwiftBVHNode<TKey, TVolume> newParentNode = ref _nodePool[newParentIndex];
             newParentNode.ParentIndex = parentNode.ParentIndex;
 
             newParentNode.LeftChildIndex = parentNodeIndex;
@@ -175,12 +174,12 @@ public class SwiftBVH<T>
         }
 
         // Determines the optimal child for insertion based on balance and cost metrics.
-        SwiftBVHNode<T> leftChild = parentNode.HasLeftChild
+        SwiftBVHNode<TKey, TVolume> leftChild = parentNode.HasLeftChild
            ? _nodePool[parentNode.LeftChildIndex]
-           : SwiftBVHNode<T>.Default;
-        SwiftBVHNode<T> rightChild = parentNode.HasRightChild
+           : SwiftBVHNode<TKey, TVolume>.Default;
+        SwiftBVHNode<TKey, TVolume> rightChild = parentNode.HasRightChild
             ? _nodePool[parentNode.RightChildIndex]
-            : SwiftBVHNode<T>.Default;
+            : SwiftBVHNode<TKey, TVolume>.Default;
 
         // Compute balance metrics
         int leftSize = leftChild.IsAllocated ? leftChild.SubtreeSize : 0;
@@ -218,14 +217,14 @@ public class SwiftBVH<T>
             parentNode.LeftChildIndex = InsertIntoTree(parentNode.LeftChildIndex, newNodeIndex);
             leftChild = parentNode.HasLeftChild
                ? _nodePool[parentNode.LeftChildIndex]
-               : SwiftBVHNode<T>.Default;
+               : SwiftBVHNode<TKey, TVolume>.Default;
         }
         else
         {
             parentNode.RightChildIndex = InsertIntoTree(parentNode.RightChildIndex, newNodeIndex);
             rightChild = parentNode.HasRightChild
                 ? _nodePool[parentNode.RightChildIndex]
-                : SwiftBVHNode<T>.Default;
+                : SwiftBVHNode<TKey, TVolume>.Default;
         }
 
         parentNode.Bounds = GetCombinedBounds(leftChild, rightChild);
@@ -241,7 +240,7 @@ public class SwiftBVH<T>
     /// Handles collisions with linear probing.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void InsertIntoBuckets(T value, int nodeIndex)
+    private void InsertIntoBuckets(TKey value, int nodeIndex)
     {
         int hash = value.GetHashCode() & 0x7FFFFFFF;
         int bucketIndex = hash & _bucketMask;
@@ -257,10 +256,9 @@ public class SwiftBVH<T>
     /// Updates the bounding volume of a node and propagates changes up the tree.
     /// Ensures consistency in parent bounds and subtree sizes.
     /// </summary>
-    public void UpdateEntryBounds(T value, IBoundVolume newBounds)
+    public void UpdateEntryBounds(TKey value, TVolume newBounds)
     {
         SwiftThrowHelper.ThrowIfNull(value, nameof(value));
-        SwiftThrowHelper.ThrowIfNull(newBounds, nameof(newBounds));
 
         int index = FindEntry(value);
         if (index == -1) return;
@@ -268,11 +266,11 @@ public class SwiftBVH<T>
         _bvhLock.EnterWriteLock();
         try
         {
-            ref SwiftBVHNode<T> node = ref _nodePool[index];
+            ref SwiftBVHNode<TKey, TVolume> node = ref _nodePool[index];
             if (!node.IsAllocated) return; // Skip update if node has been removed
 
-            IBoundVolume oldBounds = node.Bounds;
-            if (oldBounds != null && oldBounds.Equals(newBounds))
+            TVolume oldBounds = node.Bounds;
+            if (oldBounds.BoundsEquals(newBounds))
                 return; // Skip unnecessary updates
 
             node.Bounds = newBounds;
@@ -281,16 +279,16 @@ public class SwiftBVH<T>
             int parentIndex = node.ParentIndex;
             while (parentIndex != -1)
             {
-                ref SwiftBVHNode<T> parent = ref _nodePool[parentIndex];
-                SwiftBVHNode<T> leftChild = parent.HasLeftChild
+                ref SwiftBVHNode<TKey, TVolume> parent = ref _nodePool[parentIndex];
+                SwiftBVHNode<TKey, TVolume> leftChild = parent.HasLeftChild
                     ? _nodePool[parent.LeftChildIndex]
-                    : SwiftBVHNode<T>.Default;
-                SwiftBVHNode<T> rightChild = parent.HasRightChild
+                    : SwiftBVHNode<TKey, TVolume>.Default;
+                SwiftBVHNode<TKey, TVolume> rightChild = parent.HasRightChild
                     ? _nodePool[parent.RightChildIndex]
-                    : SwiftBVHNode<T>.Default;
+                    : SwiftBVHNode<TKey, TVolume>.Default;
 
-                IBoundVolume newParentBounds = GetCombinedBounds(leftChild, rightChild);
-                if (parent.Bounds.Equals(newParentBounds))
+                TVolume newParentBounds = GetCombinedBounds(leftChild, rightChild);
+                if (parent.Bounds.BoundsEquals(newParentBounds))
                     break; // No further updates needed
 
                 parent.Bounds = newParentBounds;
@@ -307,7 +305,7 @@ public class SwiftBVH<T>
     /// Removes a value and its associated bounding volume from the BVH.
     /// Updates tree structure and clears hash bucket entries.
     /// </summary>
-    public bool Remove(T value)
+    public bool Remove(TKey value)
     {
         SwiftThrowHelper.ThrowIfNull(value, nameof(value));
 
@@ -339,10 +337,9 @@ public class SwiftBVH<T>
 
     /// <summary>
     /// Removes an entry from the hash buckets, resolving collisions as necessary.
-    /// Throws an exception if the value is not found.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void RemoveFromBuckets(T value)
+    private void RemoveFromBuckets(TKey value)
     {
         int hash = value.GetHashCode() & 0x7FFFFFFF;
         int bucketIndex = hash & _bucketMask;
@@ -351,7 +348,7 @@ public class SwiftBVH<T>
         while (_buckets[bucketIndex] != -1)
         {
             int nodeIndex = _buckets[bucketIndex];
-            if (_nodePool[nodeIndex].IsLeaf && EqualityComparer<T>.Default.Equals(_nodePool[nodeIndex].Value, value))
+            if (_nodePool[nodeIndex].IsLeaf && EqualityComparer<TKey>.Default.Equals(_nodePool[nodeIndex].Value, value))
             {
                 _buckets[bucketIndex] = -1;
                 RehashBucketCluster((bucketIndex + 1) & _bucketMask);
@@ -388,7 +385,7 @@ public class SwiftBVH<T>
     {
         while (nodeIndex != -1)
         {
-            ref SwiftBVHNode<T> currentNode = ref _nodePool[nodeIndex];
+            ref SwiftBVHNode<TKey, TVolume> currentNode = ref _nodePool[nodeIndex];
 
             int parentIndex = currentNode.ParentIndex;
             if (!currentNode.HasChildren)
@@ -397,7 +394,7 @@ public class SwiftBVH<T>
                 if (currentNode.HasParent)
                 {
                     // Remove the child reference from the parent root
-                    ref SwiftBVHNode<T> parentNode = ref _nodePool[parentIndex];
+                    ref SwiftBVHNode<TKey, TVolume> parentNode = ref _nodePool[parentIndex];
                     if (parentNode.LeftChildIndex == nodeIndex)
                         parentNode.LeftChildIndex = -1;
                     else if (parentNode.RightChildIndex == nodeIndex)
@@ -419,12 +416,12 @@ public class SwiftBVH<T>
             }
 
             // Resize parent that still has children...
-            SwiftBVHNode<T> leftChild = currentNode.HasLeftChild
+            SwiftBVHNode<TKey, TVolume> leftChild = currentNode.HasLeftChild
                 ? _nodePool[currentNode.LeftChildIndex]
-                : SwiftBVHNode<T>.Default;
-            SwiftBVHNode<T> rightChild = currentNode.HasRightChild
+                : SwiftBVHNode<TKey, TVolume>.Default;
+            SwiftBVHNode<TKey, TVolume> rightChild = currentNode.HasRightChild
                 ? _nodePool[currentNode.RightChildIndex]
-                : SwiftBVHNode<T>.Default;
+                : SwiftBVHNode<TKey, TVolume>.Default;
 
             currentNode.Bounds = GetCombinedBounds(leftChild, rightChild);
             currentNode.SubtreeSize = 1
@@ -456,7 +453,7 @@ public class SwiftBVH<T>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void Resize(int newSize)
     {
-        SwiftBVHNode<T>[] newArray = new SwiftBVHNode<T>[newSize];
+        SwiftBVHNode<TKey, TVolume>[] newArray = new SwiftBVHNode<TKey, TVolume>[newSize];
         Array.Copy(_nodePool, 0, newArray, 0, _peakIndex);
 
         for (int i = _peakIndex; i < newSize; i++)
@@ -503,7 +500,7 @@ public class SwiftBVH<T>
     /// Handles cases where one or both children are missing.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private IBoundVolume GetCombinedBounds(SwiftBVHNode<T> leftChild, SwiftBVHNode<T> rightChild)
+    private TVolume GetCombinedBounds(SwiftBVHNode<TKey, TVolume> leftChild, SwiftBVHNode<TKey, TVolume> rightChild)
     {
         if (leftChild.IsAllocated && rightChild.IsAllocated)
             return leftChild.Bounds.Union(rightChild.Bounds);
@@ -516,9 +513,9 @@ public class SwiftBVH<T>
     /// Queries the BVH for values whose bounding volumes intersect with the specified volume.
     /// Uses a stack-based approach for efficient traversal.
     /// </summary>
-    public void Query(IBoundVolume queryBounds, ICollection<T> results)
+    public void Query(TVolume queryBounds, ICollection<TKey> results)
     {
-        SwiftThrowHelper.ThrowIfNull(queryBounds, nameof(queryBounds));
+        SwiftThrowHelper.ThrowIfNull(results, nameof(results));
 
         if (RootNodeIndex == -1) return;
 
@@ -534,7 +531,7 @@ public class SwiftBVH<T>
             while (nodeStack.Count > 0)
             {
                 int index = nodeStack.Pop();
-                SwiftBVHNode<T> node = _nodePool[index];
+                SwiftBVHNode<TKey, TVolume> node = _nodePool[index];
 
                 if (!node.IsAllocated)
                     throw new InvalidOperationException($"Encountered an unallocated node at index {index} during query traversal.");
@@ -564,7 +561,7 @@ public class SwiftBVH<T>
     /// Finds the index of a node by its value in the BVH using hash buckets.
     /// Returns -1 if the value is not found.
     /// </summary>
-    public int FindEntry(T value)
+    public int FindEntry(TKey value)
     {
         SwiftThrowHelper.ThrowIfNull(value, nameof(value));
 
@@ -578,7 +575,7 @@ public class SwiftBVH<T>
             while (_buckets[bucketIndex] != -1)
             {
                 int nodeIndex = _buckets[bucketIndex];
-                if (_nodePool[nodeIndex].IsLeaf && EqualityComparer<T>.Default.Equals(_nodePool[nodeIndex].Value, value))
+                if (_nodePool[nodeIndex].IsLeaf && EqualityComparer<TKey>.Default.Equals(_nodePool[nodeIndex].Value, value))
                     return nodeIndex;
 
                 bucketIndex = (bucketIndex + 1) & _bucketMask;

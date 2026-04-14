@@ -253,7 +253,7 @@ namespace SwiftCollections.Query.Tests
             // Traverse the tree to validate parent pointers
             void ValidateParents(int nodeIndex)
             {
-                SwiftBVHNode<int> node = bvh.NodePool[nodeIndex];
+                var node = bvh.NodePool[nodeIndex];
                 if (node.LeftChildIndex != -1)
                 {
                     Assert.Equal(nodeIndex, bvh.NodePool[node.LeftChildIndex].ParentIndex);

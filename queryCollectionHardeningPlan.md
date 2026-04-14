@@ -88,7 +88,7 @@ Completion Notes:
 
 ## Phase 2 - Generic BVH Engine Refactor
 
-Status: `Planned`
+Status: `Completed` (2026-04-14)
 
 Goals:
 - Make BVH internals store concrete volume types directly.
@@ -106,6 +106,19 @@ Tasks:
 Exit Criteria:
 - Full BVH unit suite passes.
 - No interface-typed bound storage remains in core node/engine path.
+
+Completion Notes:
+- Refactored node storage to typed volumes:
+  - `SwiftBVHNode<TKey, TVolume>`
+  - `Bounds` is now `TVolume`, not `IBoundVolume`
+- Refactored core tree engine:
+  - `SwiftBVH<TKey, TVolume> where TVolume : struct, IBoundVolume<TVolume>`
+  - Typed signatures for `Insert`, `UpdateEntryBounds`, and `Query`
+  - Typed combine/intersection/cost/equality paths throughout insert/update/query traversal
+- Removed interface-typed bound usage from core node and BVH engine paths.
+- Added temporary compatibility wrapper:
+  - `SwiftBVH<T> : SwiftBVH<T, BoundVolume>`
+  - Preserves current call sites while typed core migration lands.
 
 ## Phase 3 - Public API Ergonomics
 
@@ -187,7 +200,7 @@ Exit Criteria:
 
 - [x] Phase 0 complete
 - [x] Phase 1 complete
-- [ ] Phase 2 complete
+- [x] Phase 2 complete
 - [ ] Phase 3 complete
 - [ ] Phase 4 complete
 - [ ] Phase 5 complete
@@ -197,3 +210,4 @@ Exit Criteria:
 - 2026-04-14: Agreed direction is one typed BVH core engine plus default wrapper and a FixedMathSharp companion package.
 - 2026-04-14: Phase 0 completed with BVH insert/query/update benchmark baseline and focused bounds-equality tests.
 - 2026-04-14: Phase 1 completed with `IBoundVolume<TVolume>` and semantic `BoundVolume` equality.
+- 2026-04-14: Phase 2 completed with `SwiftBVH<TKey, TVolume>` typed core and typed node storage.
