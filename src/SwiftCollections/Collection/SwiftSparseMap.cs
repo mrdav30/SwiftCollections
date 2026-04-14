@@ -88,14 +88,14 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
         SwiftThrowHelper.ThrowIfNegative(denseCapacity, nameof(denseCapacity));
 
         int sparseSize = sparseCapacity == 0 ? 0 : SwiftHashTools.NextPowerOfTwo(sparseCapacity);
-        _sparse = sparseCapacity == 0 
-            ? Array.Empty<int>() 
+        _sparse = sparseCapacity == 0
+            ? Array.Empty<int>()
             : new int[sparseSize];
-        int denseSize = denseCapacity < DefaultDenseCapacity 
-            ? DefaultDenseCapacity 
+        int denseSize = denseCapacity < DefaultDenseCapacity
+            ? DefaultDenseCapacity
             : SwiftHashTools.NextPowerOfTwo(denseCapacity);
-        _denseKeys = denseCapacity == 0 
-            ? Array.Empty<int>() 
+        _denseKeys = denseCapacity == 0
+            ? Array.Empty<int>()
             : new int[denseSize];
         _denseValues = _denseKeys.Length == 0 ? Array.Empty<T>() : new T[_denseKeys.Length];
 
@@ -401,8 +401,8 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
     {
         if (capacity <= _sparse.Length) return;
 
-        int newCap = _sparse.Length == 0 
-            ? DefaultSparseCapacity 
+        int newCap = _sparse.Length == 0
+            ? DefaultSparseCapacity
             : _sparse.Length * 2;
         if (newCap < capacity) newCap = capacity;
 
@@ -540,7 +540,7 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
     private int GetDenseIndexOrThrow(int key)
     {
         if ((uint)key >= (uint)_sparse.Length)
-           throw new KeyNotFoundException($"Key not found: {key}");
+            throw new KeyNotFoundException($"Key not found: {key}");
 
         int slot = _sparse[key];
         if (slot == NotPresent)

@@ -121,8 +121,8 @@ public sealed partial class SwiftPackedSet<T> :
             var values = value.Items ?? Array.Empty<T>();
 
             int n = values.Length;
-            int newCapacity = n < DefaultCapacity 
-                ? DefaultCapacity 
+            int newCapacity = n < DefaultCapacity
+                ? DefaultCapacity
                 : SwiftHashTools.NextPowerOfTwo(n);
 
             _dense = new T[newCapacity];
