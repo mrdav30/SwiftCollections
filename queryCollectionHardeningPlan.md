@@ -122,7 +122,7 @@ Completion Notes:
 
 ## Phase 3 - Public API Ergonomics
 
-Status: `Planned`
+Status: `Completed` (2026-04-14)
 
 Goals:
 - Preserve simple default UX while exposing typed performance path.
@@ -136,6 +136,15 @@ Tasks:
 Exit Criteria:
 - Default usage remains concise for `System.Numerics`.
 - Advanced users can opt into strongly typed custom volumes without runtime mismatch checks.
+
+Completion Notes:
+- Added wrapper type in its own file for default numerics UX:
+  - `src/SwiftCollections/Query/BoundingVolume/SwiftBVH.BoundVolume.cs`
+- Kept typed core API available:
+  - `SwiftBVH<TKey, TVolume> where TVolume : struct, IBoundVolume<TVolume>`
+- Added dedicated typed-volume tests for advanced API ergonomics:
+  - `tests/SwiftCollections.Tests/Query/TestVolumes/TestBoundVolume.cs`
+  - `tests/SwiftCollections.Tests/Query/SwiftBVH.TypedVolume.Tests.cs`
 
 ## Phase 4 - FixedMathSharp Companion Package
 
@@ -201,7 +210,7 @@ Exit Criteria:
 - [x] Phase 0 complete
 - [x] Phase 1 complete
 - [x] Phase 2 complete
-- [ ] Phase 3 complete
+- [x] Phase 3 complete
 - [ ] Phase 4 complete
 - [ ] Phase 5 complete
 
@@ -211,3 +220,4 @@ Exit Criteria:
 - 2026-04-14: Phase 0 completed with BVH insert/query/update benchmark baseline and focused bounds-equality tests.
 - 2026-04-14: Phase 1 completed with `IBoundVolume<TVolume>` and semantic `BoundVolume` equality.
 - 2026-04-14: Phase 2 completed with `SwiftBVH<TKey, TVolume>` typed core and typed node storage.
+- 2026-04-14: Phase 3 completed with default wrapper file split and custom typed-volume API tests.
