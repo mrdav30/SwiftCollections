@@ -22,7 +22,6 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-	<PackageReference Include="FixedMathSharp" Version="3.0.0" />
 	<PackageReference Include="FluentAssertions" Version="8.9.0" />
 	<PackageReference Include="MemoryPack" Version="1.21.4" />
 	<PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.4.0" />

@@ -15,7 +15,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\SwiftCollections\SwiftCollections.csproj" />
     <PackageReference Include="BenchmarkDotNet" Version="0.15.8" />
-    <PackageReference Include="FixedMathSharp" Version="3.0.0" />
     <PackageReference Include="System.Text.Json" Version="10.0.6" />
     <!-- The Test SDK is required only for the VSTest Adapter to work -->
   </ItemGroup>

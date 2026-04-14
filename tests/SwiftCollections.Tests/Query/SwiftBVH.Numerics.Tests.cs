@@ -1,5 +1,4 @@
-﻿using FixedMathSharp;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Threading;
@@ -161,11 +160,18 @@ namespace SwiftCollections.Query.Tests
             Assert.Equal(new Vector3(4, 7, 10), centerFirstVolume.Center);
         }
 
+        private sealed class MockBoundVolume : IBoundVolume
+        {
+            public IBoundVolume Union(IBoundVolume other) => this;
+            public bool Intersects(IBoundVolume other) => true;
+            public int GetCost(IBoundVolume other) => 0;
+        }
+
         [Fact]
         public void BoundVolume_InterfaceMethods_ThrowForMismatchedVolumeTypes()
         {
             var volume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
-            IBoundVolume mismatched = new FixedBoundVolume(new Vector3d(0, 0, 0), new Vector3d(1, 1, 1));
+            IBoundVolume mismatched = new MockBoundVolume();
 
             Assert.Throws<ArgumentException>(() => volume.Union(mismatched));
             Assert.Throws<ArgumentException>(() => volume.Intersects(mismatched));
