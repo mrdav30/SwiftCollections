@@ -1,9 +1,6 @@
-﻿using FixedMathSharp;
+﻿namespace SwiftCollections.Query;
 
-namespace SwiftCollections.Query
+public interface IOctreeItem
 {
-    public interface IOctreeItem
-    {
-        bool EdgeIntersectsBox(Vector3d nodeCenter, Fixed64 nodeSize);
-    }
+    bool EdgeIntersectsBox(Vector3d nodeCenter, Fixed64 nodeSize);
 }

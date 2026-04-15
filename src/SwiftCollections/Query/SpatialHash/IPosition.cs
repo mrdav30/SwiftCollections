@@ -1,9 +1,6 @@
-﻿using FixedMathSharp;
+﻿namespace SwiftCollections.Query;
 
-namespace SwiftCollections.Query
+public interface IPosition
 {
-    public interface IPosition
-    {
-        Vector3d Position { get; }
-    }
+    Vector3d Position { get; }
 }
