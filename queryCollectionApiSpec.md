@@ -94,10 +94,11 @@ public class SwiftBVH<TKey> : SwiftBVH<TKey, BoundVolume>
 `SwiftSpatialHash` becomes a keyed, mutable, volume-based query collection.
 
 ```csharp
-public sealed class SwiftSpatialHash<TKey, TVolume>
+public class SwiftSpatialHash<TKey, TVolume>
     where TVolume : struct, IBoundVolume<TVolume>
 {
-    public SwiftSpatialHash(int capacity, SwiftSpatialHashOptions options);
+    public SwiftSpatialHash(int capacity, ISpatialHashCellMapper<TVolume> cellMapper);
+    public SwiftSpatialHash(int capacity, ISpatialHashCellMapper<TVolume> cellMapper, SwiftSpatialHashOptions options);
 
     public int Count { get; }
     public SwiftSpatialHashOptions Options { get; }
@@ -115,30 +116,44 @@ public sealed class SwiftSpatialHash<TKey, TVolume>
     public void Clear();
 }
 
-public sealed class SwiftSpatialHash<TKey> : SwiftSpatialHash<TKey, BoundVolume>
+public class SwiftSpatialHash<TKey> : SwiftSpatialHash<TKey, BoundVolume>
 {
-    public SwiftSpatialHash(int capacity, SwiftSpatialHashOptions options);
+    public SwiftSpatialHash(int capacity, float cellSize);
+    public SwiftSpatialHash(int capacity, float cellSize, SwiftSpatialHashOptions options);
 }
 ```
 
-Supporting options type:
+Supporting mapper and options types:
 
 ```csharp
+public interface ISpatialHashCellMapper<TVolume>
+    where TVolume : struct, IBoundVolume<TVolume>
+{
+    void GetCellRange(TVolume bounds, out SwiftSpatialHashCellIndex minCell, out SwiftSpatialHashCellIndex maxCell);
+}
+
+public readonly struct SwiftSpatialHashCellIndex
+{
+    public SwiftSpatialHashCellIndex(int x, int y, int z);
+    public int X { get; }
+    public int Y { get; }
+    public int Z { get; }
+}
+
 public readonly struct SwiftSpatialHashOptions
 {
-    public SwiftSpatialHashOptions(float cellSize);
-
-    public float CellSize { get; }
-    public bool DeduplicateResults { get; }
+    public SwiftSpatialHashOptions(int neighborhoodPadding);
+    public int NeighborhoodPadding { get; }
 }
 ```
 
 Notes:
 
+- The typed core accepts a backend-owned cell mapper so the core package never hard-codes `float`, `Fixed64`, or any other numeric flavor into its internal logic.
 - The `Query` method is the precise bounded query.
 - `QueryNeighborhood` is the cell-neighborhood query surface used for broad local lookups.
 - Duplicate suppression is part of the collection contract, not an optional caller responsibility.
-- The exact numeric representation used by the numerics wrapper is implementation-defined; the public shape is locked here, not the internal math details.
+- The exact numeric representation used by backend-specific wrappers is implementation-defined at the wrapper edge.
 
 ### SwiftOctree
 

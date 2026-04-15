@@ -12,8 +12,8 @@ internal sealed class QueryKeyIndexMap<TKey>
 
     public QueryKeyIndexMap(int capacity, IEqualityComparer<TKey> comparer = null)
     {
-        _comparer = comparer ?? EqualityComparer<TKey>.Default;
-        capacity = QueryCollectionGuards.NormalizeCapacity(capacity);
+        _comparer = comparer ?? SwiftHashTools.GetDeterministicEqualityComparer<TKey>();
+        capacity = NormalizeBucketCapacity(capacity);
         _buckets = new int[capacity].Populate(() => -1);
         _bucketMask = capacity - 1;
     }
@@ -75,7 +75,7 @@ internal sealed class QueryKeyIndexMap<TKey>
 
     public void ResizeAndRehash(int capacity, int entryCount, Func<int, bool> shouldRehash, Func<int, TKey> getKey)
     {
-        capacity = QueryCollectionGuards.NormalizeCapacity(capacity);
+        capacity = NormalizeBucketCapacity(capacity);
         _buckets = new int[capacity].Populate(() => -1);
         _bucketMask = capacity - 1;
 
@@ -99,6 +99,13 @@ internal sealed class QueryKeyIndexMap<TKey>
     {
         int hash = _comparer.GetHashCode(key) & 0x7FFFFFFF;
         return hash & _bucketMask;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int NormalizeBucketCapacity(int capacity)
+    {
+        capacity = QueryCollectionGuards.NormalizeCapacity(capacity);
+        return capacity <= 1 ? 2 : capacity * 2;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -20,8 +20,22 @@
 - Support both:
   - numerics-native usage in this repo (`System.Numerics` style consumers), and
   - fixed-math usage via the established companion-package strategy.
+- Keep query core internals backend-agnostic and deterministic:
+  - no `float`-specific internal logic in shared generic query cores,
+  - backend numeric mapping belongs in wrapper/package adapters.
 - Minimize API churn and keep each phase shippable.
 - Add tests as first-class deliverables for each phase.
+
+## Progress Notes
+
+- Phase 0 completed:
+  - public contract locked in `queryCollectionApiSpec.md`
+  - fixed-math wrappers remain in the companion package
+- Phase 1 completed:
+  - shared query helpers added under `Query/Shared`
+  - BVH moved onto shared key lookup, pooled traversal scratch, and diagnostics plumbing
+- Phase 2 in progress:
+  - SpatialHash is being promoted using a typed core plus backend-owned cell mapper pattern to preserve deterministic core behavior across numerics and fixed math backends
 
 ## Proposed Phases
 
