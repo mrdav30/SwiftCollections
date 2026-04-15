@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<LangVersion>11.0</LangVersion>
+		<TargetFrameworks>netstandard2.1;net8.0</TargetFrameworks>
+		<SemVer Condition="'$(GitVersion_FullSemVer)' != ''">$(GitVersion_FullSemVer)</SemVer>
+		<SemVer Condition="'$(SemVer)' == ''">0.0.0</SemVer>
+		<InfoVer Condition="'$(GitVersion_InformationalVersion)' != ''">$(GitVersion_InformationalVersion)</InfoVer>
+		<InfoVer Condition="'$(InfoVer)' == ''">$(SemVer)</InfoVer>
+		<AssemblySemVer Condition="'$(GitVersion_AssemblySemVer)' != ''">$(GitVersion_AssemblySemVer)</AssemblySemVer>
+		<AssemblySemVer Condition="'$(AssemblySemVer)' == ''">$(SemVer).0</AssemblySemVer>
+		<AssemblySemFileVer Condition="'$(GitVersion_AssemblySemFileVer)' != ''">$(GitVersion_AssemblySemFileVer)</AssemblySemFileVer>
+		<AssemblySemFileVer Condition="'$(AssemblySemFileVer)' == ''">$(AssemblySemVer)</AssemblySemFileVer>
+		<InformationalVersion>$(InfoVer)</InformationalVersion>
+		<Version>$(SemVer)</Version>
+		<AssemblyVersion>$(AssemblySemVer)</AssemblyVersion>
+		<FileVersion>$(AssemblySemFileVer)</FileVersion>
+		<ImplicitUsings>disable</ImplicitUsings>
+		<Nullable>disable</Nullable>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<NoWarn>1591</NoWarn>
+		<Configurations>Debug;Release</Configurations>
+		<Description>FixedMathSharp companion package for SwiftCollections query volume integrations.</Description>
+		<PackageId>SwiftCollections.FixedMathSharp</PackageId>
+		<Authors>mrdav30</Authors>
+		<PackageTags>collections;spatial-queries;fixed-point;deterministic;dotnet;physics;game-development</PackageTags>
+		<RepositoryUrl>https://github.com/mrdav30/SwiftCollections</RepositoryUrl>
+		<PackageIcon>icon.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<ProjectGuid>{CB6B93CA-2A09-4500-9E45-4AF90D42E236}</ProjectGuid>
+		<RootNamespace>SwiftCollections.FixedMathSharp</RootNamespace>
+		<AssemblyName>SwiftCollections.FixedMathSharp</AssemblyName>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\SwiftCollections\SwiftCollections.csproj" />
+		<PackageReference Include="FixedMathSharp" Version="3.0.0" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="..\..\LICENSE" Pack="true" PackagePath="\" Visible="false" />
+		<None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
+		<None Include="..\..\icon.png" Pack="true" PackagePath="\" Visible="false" />
+	</ItemGroup>
+</Project>

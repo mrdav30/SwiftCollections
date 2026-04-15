@@ -9,6 +9,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SwiftCollections.Tests", "t
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SwiftCollections.Benchmarks", "tests\SwiftCollections.Benchmarks\SwiftCollections.Benchmarks.csproj", "{6D94D3E4-448E-4377-BFFD-E7C636E19F2B}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SwiftCollections.FixedMathSharp", "src\SwiftCollections.FixedMathSharp\SwiftCollections.FixedMathSharp.csproj", "{CB6B93CA-2A09-4500-9E45-4AF90D42E236}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SwiftCollections.FixedMathSharp.Tests", "tests\SwiftCollections.FixedMathSharp.Tests\SwiftCollections.FixedMathSharp.Tests.csproj", "{E5DC9388-4709-456D-B6B9-0C57EEBC6D2A}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{BB8A826D-02E0-4283-B820-4B30ABD4A413}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
@@ -41,6 +45,14 @@ Global
 		{6D94D3E4-448E-4377-BFFD-E7C636E19F2B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6D94D3E4-448E-4377-BFFD-E7C636E19F2B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6D94D3E4-448E-4377-BFFD-E7C636E19F2B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CB6B93CA-2A09-4500-9E45-4AF90D42E236}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CB6B93CA-2A09-4500-9E45-4AF90D42E236}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CB6B93CA-2A09-4500-9E45-4AF90D42E236}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CB6B93CA-2A09-4500-9E45-4AF90D42E236}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5DC9388-4709-456D-B6B9-0C57EEBC6D2A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5DC9388-4709-456D-B6B9-0C57EEBC6D2A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5DC9388-4709-456D-B6B9-0C57EEBC6D2A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5DC9388-4709-456D-B6B9-0C57EEBC6D2A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

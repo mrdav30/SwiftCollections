@@ -1,20 +1,21 @@
-﻿namespace SwiftCollections.Query;
+namespace SwiftCollections.Query;
 
 /// <summary>
 /// Represents a node in a Bounding Volume Hierarchy (BVH).
 /// Stores spatial data and maintains hierarchical relationships.
 /// </summary>
-public struct SwiftBVHNode<T>
+public struct SwiftBVHNode<TKey, TVolume>
+    where TVolume : struct, IBoundVolume<TVolume>
 {
     /// <summary>
     /// Gets or sets the value stored in the node.
     /// </summary>
-    public T Value { get; set; }
+    public TKey Value { get; set; }
 
     /// <summary>
     /// Gets or sets the bounding volume of the node.
     /// </summary>
-    public IBoundVolume Bounds { get; set; }
+    public TVolume Bounds { get; set; }
 
     /// <summary>
     /// Gets or sets the index of the parent node.
@@ -69,9 +70,9 @@ public struct SwiftBVHNode<T>
     public bool IsAllocated { get; set; }
 
     /// <summary>
-    /// Provides a custom default instance of <see cref="SwiftBVHNode{T}"/>.
+    /// Provides a custom default instance of <see cref="SwiftBVHNode{TKey, TVolume}"/>.
     /// </summary>
-    public static SwiftBVHNode<T> Default => new SwiftBVHNode<T>
+    public static SwiftBVHNode<TKey, TVolume> Default => new SwiftBVHNode<TKey, TVolume>
     {
         Value = default,
         Bounds = default,

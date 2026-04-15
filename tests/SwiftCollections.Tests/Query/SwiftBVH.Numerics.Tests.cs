@@ -160,22 +160,16 @@ namespace SwiftCollections.Query.Tests
             Assert.Equal(new Vector3(4, 7, 10), centerFirstVolume.Center);
         }
 
-        private sealed class MockBoundVolume : IBoundVolume
-        {
-            public IBoundVolume Union(IBoundVolume other) => this;
-            public bool Intersects(IBoundVolume other) => true;
-            public int GetCost(IBoundVolume other) => 0;
-        }
-
         [Fact]
-        public void BoundVolume_InterfaceMethods_ThrowForMismatchedVolumeTypes()
+        public void BoundVolume_DefaultEquality_UsesSemanticBoundsWhenMetadataCacheStateDiffers()
         {
-            var volume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
-            IBoundVolume mismatched = new MockBoundVolume();
+            var untouched = new BoundVolume(new Vector3(2, 4, 6), new Vector3(6, 10, 14));
+            var materialized = new BoundVolume(new Vector3(2, 4, 6), new Vector3(6, 10, 14));
 
-            Assert.Throws<ArgumentException>(() => volume.Union(mismatched));
-            Assert.Throws<ArgumentException>(() => volume.Intersects(mismatched));
-            Assert.Throws<ArgumentException>(() => volume.GetCost(mismatched));
+            _ = materialized.Center;
+
+            Assert.True(untouched.Equals(materialized));
+            Assert.True(untouched.BoundsEquals(materialized));
         }
 
         [Fact]
@@ -241,7 +235,7 @@ namespace SwiftCollections.Query.Tests
             // Traverse the tree to validate parent pointers
             void ValidateParents(int nodeIndex)
             {
-                SwiftBVHNode<int> node = bvh.NodePool[nodeIndex];
+                var node = bvh.NodePool[nodeIndex];
                 if (node.LeftChildIndex != -1)
                 {
                     Assert.Equal(nodeIndex, bvh.NodePool[node.LeftChildIndex].ParentIndex);
@@ -780,6 +774,25 @@ namespace SwiftCollections.Query.Tests
 
             var results = new List<int>();
             bvh.Query(movedBounds, results);
+
+            Assert.Single(results);
+            Assert.Equal(1, results[0]);
+        }
+
+        [Fact]
+        public void UpdateEntryBounds_WithEquivalentMinMaxAndDifferentCacheState_PreservesQueryResults()
+        {
+            var bvh = new SwiftBVH<int>(4);
+            var originalBounds = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+            var equivalentBounds = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+
+            _ = equivalentBounds.Center;
+
+            bvh.Insert(1, originalBounds);
+            bvh.UpdateEntryBounds(1, equivalentBounds);
+
+            var results = new List<int>();
+            bvh.Query(originalBounds, results);
 
             Assert.Single(results);
             Assert.Equal(1, results[0]);
