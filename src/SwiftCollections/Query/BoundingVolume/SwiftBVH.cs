@@ -112,6 +112,7 @@ public class SwiftBVH<TKey, TVolume>
         if (isLeaf)
         {
             node.IsLeaf = isLeaf;
+            node.SubtreeSize = 1;
             _leafCount++;
         }
 
@@ -469,7 +470,7 @@ public class SwiftBVH<TKey, TVolume>
             while (nodeStack.Count > 0)
             {
                 int index = nodeStack.Pop();
-                SwiftBVHNode<TKey, TVolume> node = _nodePool[index];
+                ref SwiftBVHNode<TKey, TVolume> node = ref _nodePool[index];
 
                 if (!node.IsAllocated)
                 {

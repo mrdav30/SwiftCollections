@@ -575,7 +575,7 @@ namespace SwiftCollections.Query.Tests
             {
                 var node = bvh.NodePool[nodeIndex];
                 if (node.IsLeaf)
-                    Assert.Equal(0, node.SubtreeSize);
+                    Assert.Equal(1, node.SubtreeSize);
                 else
                 {
                     int leftSize = bvh.NodePool[node.LeftChildIndex].SubtreeSize;

@@ -100,6 +100,12 @@ Unity support is maintained separately:
 - **SwiftSpatialHash**: Spatial hash for mutable, neighborhood-heavy workloads.
 - **SwiftOctree**: Hierarchical octree for uneven density and region queries.
 
+Use them by workload:
+
+- **SwiftBVH** is the default choice for mixed-size objects and general broad-phase intersection queries.
+- **SwiftSpatialHash** is the best fit for high-churn scenes with mostly uniform object sizes and local lookups.
+- **SwiftOctree** is the best fit for chunked worlds, sparse-vs-dense region hierarchies, and repeated regional queries over uneven distributions.
+
 ### Observable Collections
 
 - **SwiftObservableArray / SwiftObservableList / SwiftObservableDictionary**: Reactive, observable collections with property and collection change notifications.
@@ -230,6 +236,7 @@ Useful benchmark runner commands:
 ```bash
 dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- list
 dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- dictionary
+dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- query --list flat
 dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- hashset --filter "*Contains*"
 dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- all --list flat
 ```

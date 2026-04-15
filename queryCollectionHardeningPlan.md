@@ -42,6 +42,15 @@
   - backend-specific subdivision and containment mapping lives in wrapper-owned partitioners, keeping the octree core deterministic and backend-agnostic
   - FixedMathSharp octree wrapper ships in the companion package alongside the existing fixed BVH and spatial hash wrappers
   - split thresholds, minimum-size guards, reinsertion, octant-boundary queries, and non-uniform density tests landed with the hardened implementation
+- Phase 4 completed:
+  - query benchmark coverage now includes dynamic neighbor, mixed broad-phase, static regional queries, extreme size variance, large-object churn, sparse huge-world needle queries, and clustered-overlap giant scenarios
+  - dynamic benchmark setup now clamps initial bounds so all collections, including octree, execute valid runs
+  - benchmark invocations use elevated query passes to reduce harness-dominated timings and improve release-baseline usefulness
+- Phase 5 completed:
+  - phase 5 now explicitly includes benchmark workload amplification and BVH hardening in addition to API/doc/package stabilization
+  - BVH insertion cost now measures parent-bound growth against the existing node volume instead of the candidate leaf volume
+  - BVH leaf subtree sizing now reflects actual subtree population, improving insertion-balance decisions
+  - release query benchmarks were rerun after the BVH pass to determine whether another optimization pass is still warranted
 
 ## Proposed Phases
 
@@ -138,6 +147,8 @@ Acceptance Gate:
 Deliverables:
 - API polish pass and XML docs completion for public types.
 - Performance regression baseline captured from benchmark outputs.
+- Increase benchmark workload per invocation enough to reduce BenchmarkDotNet harness noise in the query suite.
+- Harden and optimize `SwiftBVH` based on benchmark evidence while preserving the locked public API surface.
 - Final packaging validation (NuGet metadata + README alignment + target checks).
 
 Acceptance Gate:

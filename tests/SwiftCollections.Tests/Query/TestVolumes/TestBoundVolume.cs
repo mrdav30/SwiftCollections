@@ -46,13 +46,13 @@ namespace SwiftCollections.Query.Tests
             float sizeY = union.MaxY - union.MinY;
             float sizeZ = union.MaxZ - union.MinZ;
 
-            float otherSizeX = other.MaxX - other.MinX;
-            float otherSizeY = other.MaxY - other.MinY;
-            float otherSizeZ = other.MaxZ - other.MinZ;
+            float currentSizeX = MaxX - MinX;
+            float currentSizeY = MaxY - MinY;
+            float currentSizeZ = MaxZ - MinZ;
 
             float unionVolume = sizeX * sizeY * sizeZ;
-            float otherVolume = otherSizeX * otherSizeY * otherSizeZ;
-            return (int)Math.Floor(unionVolume - otherVolume);
+            float currentVolume = currentSizeX * currentSizeY * currentSizeZ;
+            return (int)Math.Floor(unionVolume - currentVolume);
         }
 
         public bool BoundsEquals(TestBoundVolume other)

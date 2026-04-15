@@ -146,7 +146,9 @@ public struct BoundVolume : IBoundVolume<BoundVolume>, IEquatable<BoundVolume>
     public readonly int GetCost(BoundVolume other)
     {
         BoundVolume union = Union(other);
-        return (int)Math.Floor(union.Volume - other.Volume);
+        Vector3 size = Max - Min;
+        double volume = size.X * size.Y * size.Z;
+        return (int)Math.Floor(union.Volume - volume);
     }
 
     /// <inheritdoc />
