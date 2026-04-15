@@ -23,7 +23,7 @@
 - **Flat 2D/3D storage**: `SwiftArray2D`, `SwiftArray3D`, `SwiftBoolArray2D`, `SwiftShortArray2D`
 - **Pools**: `SwiftObjectPool`, `SwiftArrayPool`, `SwiftCollectionPool`, and typed pool helpers
 - **Observable collections** for change-tracking scenarios
-- **Spatial queries** via `SwiftBVH` with both `System.Numerics` and `FixedMathSharp` bounds
+- **Spatial queries** via typed `SwiftBVH<TKey, TVolume>` plus a default `SwiftBVH<TKey>` numerics wrapper
 - **Lightweight diagnostics** via `SwiftCollections.Diagnostics` for opt-in low-level log/event routing
 
 ---
@@ -34,6 +34,12 @@
 
 ```bash
 dotnet add package SwiftCollections
+```
+
+### NuGet (Fixed-Point Companion)
+
+```bash
+dotnet add package SwiftCollections.FixedMathSharp
 ```
 
 ### Source
@@ -54,7 +60,8 @@ Unity support is maintained separately:
 
 ## 🧩 Dependencies
 
-- [FixedMathSharp](https://github.com/mrdav30/FixedMathSharp)
+- Core package dependency: [MemoryPack](https://github.com/Cysharp/MemoryPack)
+- Optional fixed-point companion: [FixedMathSharp](https://github.com/mrdav30/FixedMathSharp) via `SwiftCollections.FixedMathSharp`
 
 ---
 
@@ -114,6 +121,20 @@ bvh.Query(new BoundVolume(new Vector3(0, 0, 0), new Vector3(2, 2, 2)), results);
 Console.WriteLine(results.Count); // Output: 1
 ```
 
+### SwiftBVH with Custom Typed Volumes
+
+```csharp
+var typedBvh = new SwiftBVH<int, BoundVolume>(100);
+typedBvh.Insert(1, new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1)));
+```
+
+### Fixed-Point SwiftBVH (Companion Package)
+
+```csharp
+var fixedBvh = new SwiftFixedBVH<int>(100);
+fixedBvh.Insert(1, new FixedBoundVolume(new Vector3d(0, 0, 0), new Vector3d(1, 1, 1)));
+```
+
 ### SwiftArray2D
 
 ```csharp
@@ -136,7 +157,7 @@ Console.WriteLine(queue.Dequeue()); // Output: 5
 var array = new int[10].Populate(() => new Random().Next(1, 100));
 ```
 
-### Diagnostics
+### Diagnostic Example
 
 ```csharp
 using System;
@@ -190,7 +211,7 @@ With no extra arguments, BenchmarkDotNet's default switcher behavior is used. Le
 - `net8.0`
 - Windows, Linux, and macOS
 
-`FixedMathSharp` is used for the fixed-point BVH path.
+Fixed-point BVH support is provided by the separate `SwiftCollections.FixedMathSharp` companion package.
 
 ---
 

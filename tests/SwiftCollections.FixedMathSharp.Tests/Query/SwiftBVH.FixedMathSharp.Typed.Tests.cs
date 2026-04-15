@@ -7,6 +7,19 @@ namespace SwiftCollections.Query.Tests
     public class SwiftBVHFixedMathSharpTypedTests
     {
         [Fact]
+        public void SwiftFixedBVH_Wrapper_UsesFixedBoundVolumeEngine()
+        {
+            var bvh = new SwiftFixedBVH<int>(8);
+            bvh.Insert(1, new FixedBoundVolume(new Vector3d(0, 0, 0), new Vector3d(1, 1, 1)));
+
+            var results = new List<int>();
+            bvh.Query(new FixedBoundVolume(new Vector3d(-1, -1, -1), new Vector3d(2, 2, 2)), results);
+
+            Assert.Single(results);
+            Assert.Contains(1, results);
+        }
+
+        [Fact]
         public void InsertAndQuery_WithFixedBoundVolume_ReturnsExpectedMatches()
         {
             var bvh = new SwiftBVH<int, FixedBoundVolume>(8);

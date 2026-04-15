@@ -7,7 +7,7 @@ namespace SwiftCollections.Query;
 /// <summary>
 /// Represents an axis-aligned bounding box (AABB) in 3D space.
 /// </summary>
-public struct BoundVolume : IBoundVolume<BoundVolume>, IBoundVolume, IEquatable<BoundVolume>
+public struct BoundVolume : IBoundVolume<BoundVolume>, IEquatable<BoundVolume>
 {
     /// <summary>
     /// The minimum point of the bounding volume.
@@ -154,33 +154,6 @@ public struct BoundVolume : IBoundVolume<BoundVolume>, IBoundVolume, IEquatable<
     public readonly bool BoundsEquals(BoundVolume other)
     {
         return Min.Equals(other.Min) && Max.Equals(other.Max);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly IBoundVolume Union(IBoundVolume other)
-    {
-        if (other is not BoundVolume otherBV)
-            throw new ArgumentException($"Mismatched bounding volume type detected!: {nameof(other)}");
-
-        return Union(otherBV);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly bool Intersects(IBoundVolume other)
-    {
-        if (other is not BoundVolume otherBV)
-            throw new ArgumentException($"Mismatched bounding volume type detected!: {nameof(other)}");
-
-        return Intersects(otherBV);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly int GetCost(IBoundVolume other)
-    {
-        if (other is not BoundVolume otherBV)
-            throw new ArgumentException($"Mismatched bounding volume type detected!: {nameof(other)}");
-
-        return GetCost(otherBV);
     }
 
     public readonly bool Equals(BoundVolume other) => BoundsEquals(other);
