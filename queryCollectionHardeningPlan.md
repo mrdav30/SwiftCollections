@@ -2,10 +2,9 @@
 
 ## Context Snapshot
 
-- `SwiftBVH` is currently the only compiled query collection and already follows a typed core plus a numerics convenience wrapper (`SwiftBVH<TKey, TVolume>` + `SwiftBVH<TKey>`).
-- `Query/Octree/**` and `Query/SpatialHash/**` are present but explicitly removed from compilation in `SwiftCollections.csproj`.
-- Current Octree and SpatialHash prototypes are fixed-math-centric (`Fixed64`, `Vector3d`) and do not follow the same dual-backend structure as BVH.
-- Existing tests cover BVH extensively; there are no active unit tests for Octree or SpatialHash in the compiled test suite.
+- `SwiftBVH`, `SwiftSpatialHash`, and `SwiftOctree` are compiled query collections and follow the typed core plus numerics convenience wrapper pattern.
+- Fixed-math convenience wrappers remain in the companion package rather than the core library.
+- Existing tests now cover BVH, SpatialHash, and Octree in the compiled test suite.
 
 ## Recommendation
 
@@ -34,8 +33,15 @@
 - Phase 1 completed:
   - shared query helpers added under `Query/Shared`
   - BVH moved onto shared key lookup, pooled traversal scratch, and diagnostics plumbing
-- Phase 2 in progress:
-  - SpatialHash is being promoted using a typed core plus backend-owned cell mapper pattern to preserve deterministic core behavior across numerics and fixed math backends
+- Phase 2 completed:
+  - SpatialHash ships as a typed core plus backend-owned cell mapper pattern to preserve deterministic core behavior across numerics and fixed math backends
+  - collision-heavy, multi-cell, false-positive filtering, and negative-space hashing tests landed with the hardened implementation
+- Phase 3 completed:
+  - Octree ships as a typed core plus numerics/fixed wrappers with backend-neutral shared options for depth, node capacity, and merge-on-remove behavior
+  - minimum node size and other backend-specific subdivision thresholds live in wrapper-owned partitioners rather than the generic octree API
+  - backend-specific subdivision and containment mapping lives in wrapper-owned partitioners, keeping the octree core deterministic and backend-agnostic
+  - FixedMathSharp octree wrapper ships in the companion package alongside the existing fixed BVH and spatial hash wrappers
+  - split thresholds, minimum-size guards, reinsertion, octant-boundary queries, and non-uniform density tests landed with the hardened implementation
 
 ## Proposed Phases
 

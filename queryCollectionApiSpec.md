@@ -160,10 +160,10 @@ Notes:
 `SwiftOctree` becomes a keyed, mutable, volume-based hierarchical query collection.
 
 ```csharp
-public sealed class SwiftOctree<TKey, TVolume>
+public class SwiftOctree<TKey, TVolume>
     where TVolume : struct, IBoundVolume<TVolume>
 {
-    public SwiftOctree(TVolume worldBounds, SwiftOctreeOptions options);
+    public SwiftOctree(TVolume worldBounds, SwiftOctreeOptions options, IOctreeBoundsPartitioner<TVolume> boundsPartitioner);
 
     public int Count { get; }
     public TVolume WorldBounds { get; }
@@ -181,20 +181,29 @@ public sealed class SwiftOctree<TKey, TVolume>
 
 public sealed class SwiftOctree<TKey> : SwiftOctree<TKey, BoundVolume>
 {
-    public SwiftOctree(BoundVolume worldBounds, SwiftOctreeOptions options);
+    public SwiftOctree(BoundVolume worldBounds, SwiftOctreeOptions options, float minNodeSize);
 }
 ```
 
 Supporting options type:
 
 ```csharp
+public interface IOctreeBoundsPartitioner<TVolume>
+    where TVolume : struct, IBoundVolume<TVolume>
+{
+    bool ContainsBounds(TVolume outer, TVolume inner);
+    bool CanSubdivide(TVolume bounds);
+    bool TryGetContainingChildIndex(TVolume nodeBounds, TVolume entryBounds, out int childIndex);
+    TVolume CreateChildBounds(TVolume parentBounds, int childIndex);
+}
+
 public readonly struct SwiftOctreeOptions
 {
-    public SwiftOctreeOptions(int maxDepth, int nodeCapacity, float minNodeSize);
+    public SwiftOctreeOptions(int maxDepth, int nodeCapacity);
+    public SwiftOctreeOptions(int maxDepth, int nodeCapacity, bool enableMergeOnRemove);
 
     public int MaxDepth { get; }
     public int NodeCapacity { get; }
-    public float MinNodeSize { get; }
     public bool EnableMergeOnRemove { get; }
 }
 ```
@@ -202,6 +211,8 @@ public readonly struct SwiftOctreeOptions
 Notes:
 
 - World bounds are explicit and immutable after construction.
+- The typed core accepts a backend-owned octree bounds partitioner so the core package never hard-codes `float`, `Fixed64`, or any other numeric flavor into its subdivision logic.
+- Numeric subdivision thresholds such as minimum node size are backend-owned and live in wrapper/package adapters rather than the shared octree options type.
 - Split and merge policy is defined by `SwiftOctreeOptions`, not hard-coded constants.
 - Radius or point convenience overloads can be added later in backend-specific wrapper packages, but they are not required for the core package contract.
 
