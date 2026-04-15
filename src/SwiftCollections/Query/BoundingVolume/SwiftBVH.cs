@@ -13,11 +13,8 @@ public class SwiftBVH<TKey, TVolume>
 {
     #region Static & Constants
 
-    // Thread-local stack for queries
-    private static readonly ThreadLocal<SwiftIntStack> _threadLocalNodeStack =
-        new ThreadLocal<SwiftIntStack>(() => new SwiftIntStack(0));
-
     private const int _childBalanceThreshold = 2;
+    private const string _diagnosticSource = nameof(SwiftBVH<TKey, TVolume>);
 
     #endregion
 
@@ -27,8 +24,8 @@ public class SwiftBVH<TKey, TVolume>
     private int _peakIndex;
     private int _leafCount;
 
-    private int[] _buckets; // Maps hash indices to node indices
-    private int _bucketMask; // Always _nodePool.Length - 1
+    private readonly QueryKeyIndexMap<TKey> _keyToNodeIndex;
+    private readonly QueryTraversalScratch _queryScratch = new QueryTraversalScratch();
 
     private readonly SwiftIntStack _freeIndices = new SwiftIntStack();
 
@@ -45,12 +42,11 @@ public class SwiftBVH<TKey, TVolume>
     /// </summary>
     public SwiftBVH(int capacity)
     {
-        capacity = SwiftHashTools.NextPowerOfTwo(capacity);
+        capacity = QueryCollectionGuards.NormalizeCapacity(capacity);
         _nodePool = new SwiftBVHNode<TKey, TVolume>[capacity].Populate(() =>
             new SwiftBVHNode<TKey, TVolume>() { ParentIndex = -1, LeftChildIndex = -1, RightChildIndex = -1 });
-        _buckets = new int[capacity].Populate(() => -1);
+        _keyToNodeIndex = new QueryKeyIndexMap<TKey>(capacity);
 
-        _bucketMask = capacity - 1;
         _rootNodeIndex = -1;
 
         _freeIndices = new SwiftIntStack(SwiftIntStack.DefaultCapacity);
@@ -242,14 +238,7 @@ public class SwiftBVH<TKey, TVolume>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void InsertIntoBuckets(TKey value, int nodeIndex)
     {
-        int hash = value.GetHashCode() & 0x7FFFFFFF;
-        int bucketIndex = hash & _bucketMask;
-
-        // Linear probe to find an empty slot
-        while (_buckets[bucketIndex] != -1)
-            bucketIndex = (bucketIndex + 1) & _bucketMask;
-
-        _buckets[bucketIndex] = nodeIndex;
+        _keyToNodeIndex.Insert(value, nodeIndex);
     }
 
     /// <summary>
@@ -258,7 +247,7 @@ public class SwiftBVH<TKey, TVolume>
     /// </summary>
     public void UpdateEntryBounds(TKey value, TVolume newBounds)
     {
-        SwiftThrowHelper.ThrowIfNull(value, nameof(value));
+        QueryCollectionGuards.ThrowIfKeyNull(value, nameof(value));
 
         int index = FindEntry(value);
         if (index == -1) return;
@@ -307,7 +296,7 @@ public class SwiftBVH<TKey, TVolume>
     /// </summary>
     public bool Remove(TKey value)
     {
-        SwiftThrowHelper.ThrowIfNull(value, nameof(value));
+        QueryCollectionGuards.ThrowIfKeyNull(value, nameof(value));
 
         int nodeIndex = FindEntry(value);
         if (nodeIndex == -1) return false;
@@ -341,39 +330,7 @@ public class SwiftBVH<TKey, TVolume>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void RemoveFromBuckets(TKey value)
     {
-        int hash = value.GetHashCode() & 0x7FFFFFFF;
-        int bucketIndex = hash & _bucketMask;
-
-        // Linear probing to resolve collisions
-        while (_buckets[bucketIndex] != -1)
-        {
-            int nodeIndex = _buckets[bucketIndex];
-            if (_nodePool[nodeIndex].IsLeaf && EqualityComparer<TKey>.Default.Equals(_nodePool[nodeIndex].Value, value))
-            {
-                _buckets[bucketIndex] = -1;
-                RehashBucketCluster((bucketIndex + 1) & _bucketMask);
-                return;
-            }
-
-            bucketIndex = (bucketIndex + 1) & _bucketMask;
-        }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void RehashBucketCluster(int startIndex)
-    {
-        int bucketIndex = startIndex;
-
-        while (_buckets[bucketIndex] != -1)
-        {
-            int nodeIndex = _buckets[bucketIndex];
-            _buckets[bucketIndex] = -1;
-
-            if (_nodePool[nodeIndex].IsLeaf && _nodePool[nodeIndex].IsAllocated)
-                InsertIntoBuckets(_nodePool[nodeIndex].Value, nodeIndex);
-
-            bucketIndex = (bucketIndex + 1) & _bucketMask;
-        }
+        _keyToNodeIndex.Remove(value, MatchesEntryKey, IsAllocatedLeafNode, GetNodeValue);
     }
 
     /// <summary>
@@ -441,7 +398,7 @@ public class SwiftBVH<TKey, TVolume>
     /// </summary>
     public void EnsureCapacity(int capacity)
     {
-        capacity = SwiftHashTools.NextPowerOfTwo(capacity);
+        capacity = QueryCollectionGuards.NormalizeCapacity(capacity);
         if (capacity > _nodePool.Length)
             Resize(capacity);
     }
@@ -462,6 +419,7 @@ public class SwiftBVH<TKey, TVolume>
         _nodePool = newArray;
 
         ResizeBuckets(newSize);
+        QueryCollectionDiagnostics.WriteInfo(_diagnosticSource, $"Resized BVH storage to {newSize} nodes.");
     }
 
     /// <summary>
@@ -471,24 +429,7 @@ public class SwiftBVH<TKey, TVolume>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void ResizeBuckets(int newSize)
     {
-        _buckets = new int[newSize].Populate(() => -1);
-        _bucketMask = newSize - 1;
-
-        // Rehash existing leaf nodes
-        for (int i = 0; i < _peakIndex; i++)
-        {
-            if (!_nodePool[i].IsLeaf)
-                continue;
-
-            int hash = _nodePool[i].Value.GetHashCode() & 0x7FFFFFFF;
-            int bucketIndex = hash & _bucketMask;
-
-            // Linear probe to find an empty slot
-            while (_buckets[bucketIndex] != -1)
-                bucketIndex = (bucketIndex + 1) & _bucketMask;
-
-            _buckets[bucketIndex] = i;
-        }
+        _keyToNodeIndex.ResizeAndRehash(newSize, _peakIndex, IsLeafNode, GetNodeValue);
     }
 
     #endregion
@@ -515,17 +456,14 @@ public class SwiftBVH<TKey, TVolume>
     /// </summary>
     public void Query(TVolume queryBounds, ICollection<TKey> results)
     {
-        SwiftThrowHelper.ThrowIfNull(results, nameof(results));
+        QueryCollectionGuards.ThrowIfResultsCollectionNull(results, nameof(results));
 
         if (RootNodeIndex == -1) return;
 
         _bvhLock.EnterReadLock();
         try
         {
-            SwiftIntStack nodeStack = _threadLocalNodeStack.Value;
-            nodeStack.EnsureCapacity(_peakIndex + 1);
-            nodeStack.Clear();
-
+            SwiftIntStack nodeStack = _queryScratch.RentIntStack(_peakIndex + 1);
             nodeStack.Push(RootNodeIndex);
 
             while (nodeStack.Count > 0)
@@ -534,7 +472,12 @@ public class SwiftBVH<TKey, TVolume>
                 SwiftBVHNode<TKey, TVolume> node = _nodePool[index];
 
                 if (!node.IsAllocated)
+                {
+                    QueryCollectionDiagnostics.WriteError(
+                        _diagnosticSource,
+                        $"Encountered an unallocated node at index {index} during query traversal.");
                     throw new InvalidOperationException($"Encountered an unallocated node at index {index} during query traversal.");
+                }
 
                 if (!queryBounds.Intersects(node.Bounds))
                     continue;
@@ -563,25 +506,12 @@ public class SwiftBVH<TKey, TVolume>
     /// </summary>
     public int FindEntry(TKey value)
     {
-        SwiftThrowHelper.ThrowIfNull(value, nameof(value));
+        QueryCollectionGuards.ThrowIfKeyNull(value, nameof(value));
 
         _bvhLock.EnterReadLock();
         try
         {
-            int hash = value.GetHashCode() & 0x7FFFFFFF;
-            int bucketIndex = hash & _bucketMask;
-
-            // Linear probing to resolve collisions
-            while (_buckets[bucketIndex] != -1)
-            {
-                int nodeIndex = _buckets[bucketIndex];
-                if (_nodePool[nodeIndex].IsLeaf && EqualityComparer<TKey>.Default.Equals(_nodePool[nodeIndex].Value, value))
-                    return nodeIndex;
-
-                bucketIndex = (bucketIndex + 1) & _bucketMask;
-            }
-
-            return -1; // Not found
+            return _keyToNodeIndex.Find(value, MatchesEntryKey);
         }
         finally
         {
@@ -599,14 +529,28 @@ public class SwiftBVH<TKey, TVolume>
         for (int i = 0; i < _peakIndex; i++)
             _nodePool[i].Reset();
 
-        for (int i = 0; i < _buckets.Length; i++)
-            _buckets[i] = -1;
+        _keyToNodeIndex.Clear();
 
         _freeIndices.Reset();
 
         _leafCount = 0;
         _peakIndex = 0;
         _rootNodeIndex = -1;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private TKey GetNodeValue(int index) => _nodePool[index].Value;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool IsLeafNode(int index) => _nodePool[index].IsLeaf;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool IsAllocatedLeafNode(int index) => _nodePool[index].IsLeaf && _nodePool[index].IsAllocated;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool MatchesEntryKey(int index, TKey value)
+    {
+        return _nodePool[index].IsLeaf && EqualityComparer<TKey>.Default.Equals(_nodePool[index].Value, value);
     }
 
     #endregion
