@@ -148,7 +148,7 @@ Completion Notes:
 
 ## Phase 4 - FixedMathSharp Companion Package
 
-Status: `Planned`
+Status: `Completed` (2026-04-14)
 
 Goals:
 - Restore fixed-point volume support without coupling core package to external breaking changes.
@@ -162,6 +162,20 @@ Tasks:
 Exit Criteria:
 - Deterministic fixed-point users have first-class support via companion package.
 - Core `SwiftCollections` package has no `FixedMathSharp` dependency.
+
+Completion Notes:
+- Added companion package project:
+  - `src/SwiftCollections.FixedMathSharp/SwiftCollections.FixedMathSharp.csproj`
+- Implemented fixed-point bound volume for typed BVH API:
+  - `src/SwiftCollections.FixedMathSharp/Query/BoundingVolume/Volume/FixedBoundVolume.cs`
+  - `FixedBoundVolume : IBoundVolume<FixedBoundVolume>`
+- Added dedicated companion test project:
+  - `tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMathSharp.Tests.csproj`
+  - `tests/SwiftCollections.FixedMathSharp.Tests/Query/FixedBoundVolume.Tests.cs`
+  - `tests/SwiftCollections.FixedMathSharp.Tests/Query/SwiftBVH.FixedMathSharp.Typed.Tests.cs`
+- Wired both companion projects into solution:
+  - `SwiftCollections.sln`
+- Aligned companion package version metadata with GitVersion fallback pattern used by core package.
 
 ## Phase 5 - Docs, Migration, And Release Readiness
 
@@ -211,7 +225,7 @@ Exit Criteria:
 - [x] Phase 1 complete
 - [x] Phase 2 complete
 - [x] Phase 3 complete
-- [ ] Phase 4 complete
+- [x] Phase 4 complete
 - [ ] Phase 5 complete
 
 ## Notes / Decisions Log
@@ -221,3 +235,4 @@ Exit Criteria:
 - 2026-04-14: Phase 1 completed with `IBoundVolume<TVolume>` and semantic `BoundVolume` equality.
 - 2026-04-14: Phase 2 completed with `SwiftBVH<TKey, TVolume>` typed core and typed node storage.
 - 2026-04-14: Phase 3 completed with default wrapper file split and custom typed-volume API tests.
+- 2026-04-14: Phase 4 completed with `SwiftCollections.FixedMathSharp` companion package and fixed-point typed BVH tests.
