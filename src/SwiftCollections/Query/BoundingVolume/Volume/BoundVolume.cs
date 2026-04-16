@@ -143,12 +143,13 @@ public struct BoundVolume : IBoundVolume<BoundVolume>, IEquatable<BoundVolume>
 
     /// <inheritdoc />
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly int GetCost(BoundVolume other)
+    public readonly long GetCost(BoundVolume other)
     {
         BoundVolume union = Union(other);
         Vector3 size = Max - Min;
         double volume = size.X * size.Y * size.Z;
-        return (int)Math.Floor(union.Volume - volume);
+        double delta = union.Volume - volume;
+        return delta >= (double)long.MaxValue ? long.MaxValue : (long)delta;
     }
 
     /// <inheritdoc />

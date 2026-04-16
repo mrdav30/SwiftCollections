@@ -81,9 +81,9 @@ Unity support is maintained separately:
 - **SwiftSortedList**: Dynamically sorted collection with O(log n) operations.
 - **SwiftStack**: Fast array-based stack with O(1) operations.
 - **SwiftArray2D / SwiftArray3D**: Efficient, flat-mapped arrays for 2D and 3D data.
-- **SwiftBVH**: A Bounding Volume Hierarchy optimized for spatial queries.
-- **SwiftSpatialHash**: A mutable spatial hash tuned for high-churn local broad-phase lookups.
-- **SwiftOctree**: A hierarchical octree tuned for chunked regions and uneven spatial density.
+- **SwiftBVH**: Bounding Volume Hierarchy for broad-phase spatial queries.
+- **SwiftSpatialHash**: Spatial hash for high-churn, uniform-size, and sparse huge-world scenes.
+- **SwiftOctree**: Hierarchical octree for dynamic scenes with uneven density.
 
 `SwiftDictionary<TKey, TValue>` and `SwiftHashSet<T>` use deterministic default comparers for `string` keys when no comparer is supplied. `object` keys also get a SwiftCollections default comparer that hashes strings deterministically, but non-string object-key determinism still depends on the underlying key type. Custom comparers are still supported.
 
@@ -96,15 +96,15 @@ Unity support is maintained separately:
 
 ### Spatial Data Structures
 
-- **SwiftBVH**: Bounding Volume Hierarchy for efficient spatial queries.
-- **SwiftSpatialHash**: Spatial hash for mutable, neighborhood-heavy workloads.
-- **SwiftOctree**: Hierarchical octree for uneven density and region queries.
+- **SwiftBVH**: Bounding Volume Hierarchy for broad-phase queries with mixed or extreme object-size variance.
+- **SwiftSpatialHash**: Spatial hash for sparse huge-world needle queries and uniform-size high-churn workloads.
+- **SwiftOctree**: Hierarchical octree for dynamic scenes, uneven density, and repeated region queries.
 
 Use them by workload:
 
-- **SwiftBVH** is the default choice for mixed-size objects and general broad-phase intersection queries.
-- **SwiftSpatialHash** is the best fit for high-churn scenes with mostly uniform object sizes and local lookups.
-- **SwiftOctree** is the best fit for chunked worlds, sparse-vs-dense region hierarchies, and repeated regional queries over uneven distributions.
+- **SwiftBVH** is the best fit for scenes with mixed or extreme object-size variance (e.g. tiny units alongside large terrain pieces), large churning objects, and general broad-phase intersection queries over heterogeneous populations. It is not thread-safe; synchronize access externally if needed. Avoid it for dense same-size clustered scenes and for sparse huge-world needle (tiny query window) lookups.
+- **SwiftSpatialHash** is the best fit for sparse, huge-world scenes where small query windows rarely overlap many cells (O(1) bucket lookup dominates), and for high-frequency updates with mostly uniform-size objects. Performance degrades when object sizes vary widely, since a fixed cell size becomes either too coarse or too fine.
+- **SwiftOctree** is the strongest all-around performer for dynamic scenes with uniform or small objects, mixed broad-phase, and repeated regional queries over uneven distributions. Prefer it when most objects are similar in size or when queries target specific spatial sub-regions repeatedly.
 
 ### Observable Collections
 

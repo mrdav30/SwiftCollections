@@ -104,9 +104,10 @@ public struct FixedBoundVolume : IBoundVolume<FixedBoundVolume>, IEquatable<Fixe
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly int GetCost(FixedBoundVolume other)
+    public readonly long GetCost(FixedBoundVolume other)
     {
-        return (Union(other).Volume - other.Volume).FloorToInt();
+        Fixed64 delta = Union(other).Volume - Volume;
+        return delta <= Fixed64.Zero ? 0L : (long)delta.FloorToInt();
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

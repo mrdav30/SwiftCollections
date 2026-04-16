@@ -1,19 +1,23 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Threading;
 
 namespace SwiftCollections.Query;
 
 /// <summary>
 /// Represents a Bounding Volume Hierarchy (BVH) optimized for spatial queries.
 /// </summary>
+/// <remarks>
+/// <para>
+/// This class is not thread-safe. Concurrent access from multiple threads must be
+/// serialized externally (e.g., with a lock or by limiting access to a single thread).
+/// </para>
+/// </remarks>
 public class SwiftBVH<TKey, TVolume>
     where TVolume : struct, IBoundVolume<TVolume>
 {
     #region Static & Constants
 
-    private const int _childBalanceThreshold = 2;
     private const string _diagnosticSource = nameof(SwiftBVH<TKey, TVolume>);
 
     #endregion
@@ -30,8 +34,6 @@ public class SwiftBVH<TKey, TVolume>
     private readonly SwiftIntStack _freeIndices = new SwiftIntStack();
 
     private int _rootNodeIndex;
-
-    private ReaderWriterLockSlim _bvhLock = new ReaderWriterLockSlim();
 
     #endregion
 
@@ -127,18 +129,10 @@ public class SwiftBVH<TKey, TVolume>
     /// </summary>
     public bool Insert(TKey value, TVolume bounds)
     {
-        _bvhLock.EnterWriteLock();
-        try
-        {
-            int newNodeIndex = AllocateNode(value, bounds, true); // Allocate new node as a leaf
-            _rootNodeIndex = InsertIntoTree(_rootNodeIndex, newNodeIndex);
-            InsertIntoBuckets(value, newNodeIndex);
-            return true;
-        }
-        finally
-        {
-            _bvhLock.ExitWriteLock();
-        }
+        int newNodeIndex = AllocateNode(value, bounds, true); // Allocate new node as a leaf
+        _rootNodeIndex = InsertIntoTree(_rootNodeIndex, newNodeIndex);
+        InsertIntoBuckets(value, newNodeIndex);
+        return true;
     }
 
     /// <summary>
@@ -170,7 +164,10 @@ public class SwiftBVH<TKey, TVolume>
             return newParentIndex;
         }
 
-        // Determines the optimal child for insertion based on balance and cost metrics.
+        // Determines the optimal child for insertion.
+        // When one subtree is more than 2× the size of the other, force balance to bound
+        // tree depth at ~1.71×log₂(n).  Within that envelope, SAH cost guides routing
+        // for better spatial grouping and query performance.
         SwiftBVHNode<TKey, TVolume> leftChild = parentNode.HasLeftChild
            ? _nodePool[parentNode.LeftChildIndex]
            : SwiftBVHNode<TKey, TVolume>.Default;
@@ -178,35 +175,33 @@ public class SwiftBVH<TKey, TVolume>
             ? _nodePool[parentNode.RightChildIndex]
             : SwiftBVHNode<TKey, TVolume>.Default;
 
-        // Compute balance metrics
         int leftSize = leftChild.IsAllocated ? leftChild.SubtreeSize : 0;
         int rightSize = rightChild.IsAllocated ? rightChild.SubtreeSize : 0;
 
         bool isInsertingLeft;
-        if (Math.Abs(leftSize - rightSize) > _childBalanceThreshold)
+        int maxSize = leftSize > rightSize ? leftSize : rightSize;
+        int minSize = leftSize < rightSize ? leftSize : rightSize;
+
+        if (maxSize > minSize * 2)
         {
-            // Insert into the smaller subtree to maintain balance
-            if (leftSize < rightSize)
-                isInsertingLeft = true;
-            else
-                isInsertingLeft = false;
+            // One subtree is more than 2x the other — force insertion into the smaller side
+            isInsertingLeft = leftSize <= rightSize;
         }
         else
         {
-            // Compute cost metrics
-            int leftCost = parentNode.HasLeftChild
+            // Subtrees are roughly balanced — use SAH cost for better spatial quality
+            long leftCost = parentNode.HasLeftChild
                 ? leftChild.Bounds.GetCost(newNode.Bounds)
-                : 0;
+                : 0L;
 
-            int rightCost = parentNode.HasRightChild
+            long rightCost = parentNode.HasRightChild
                 ? rightChild.Bounds.GetCost(newNode.Bounds)
-                : 0;
+                : 0L;
 
-            // Insert into the child with the least volume increase
-            if (leftCost < rightCost)
-                isInsertingLeft = true;
+            if (leftCost == rightCost)
+                isInsertingLeft = leftSize <= rightSize;
             else
-                isInsertingLeft = false;
+                isInsertingLeft = leftCost < rightCost;
         }
 
         if (isInsertingLeft)
@@ -250,44 +245,36 @@ public class SwiftBVH<TKey, TVolume>
     {
         QueryCollectionGuards.ThrowIfKeyNull(value, nameof(value));
 
-        int index = FindEntry(value);
+        int index = _keyToNodeIndex.Find(value, MatchesEntryKey);
         if (index == -1) return;
 
-        _bvhLock.EnterWriteLock();
-        try
+        ref SwiftBVHNode<TKey, TVolume> node = ref _nodePool[index];
+        if (!node.IsAllocated) return; // Skip update if node has been removed
+
+        TVolume oldBounds = node.Bounds;
+        if (oldBounds.BoundsEquals(newBounds))
+            return; // Skip unnecessary updates
+
+        node.Bounds = newBounds;
+
+        // Propagate changes up the tree
+        int parentIndex = node.ParentIndex;
+        while (parentIndex != -1)
         {
-            ref SwiftBVHNode<TKey, TVolume> node = ref _nodePool[index];
-            if (!node.IsAllocated) return; // Skip update if node has been removed
+            ref SwiftBVHNode<TKey, TVolume> parent = ref _nodePool[parentIndex];
+            SwiftBVHNode<TKey, TVolume> leftChild = parent.HasLeftChild
+                ? _nodePool[parent.LeftChildIndex]
+                : SwiftBVHNode<TKey, TVolume>.Default;
+            SwiftBVHNode<TKey, TVolume> rightChild = parent.HasRightChild
+                ? _nodePool[parent.RightChildIndex]
+                : SwiftBVHNode<TKey, TVolume>.Default;
 
-            TVolume oldBounds = node.Bounds;
-            if (oldBounds.BoundsEquals(newBounds))
-                return; // Skip unnecessary updates
+            TVolume newParentBounds = GetCombinedBounds(leftChild, rightChild);
+            if (parent.Bounds.BoundsEquals(newParentBounds))
+                break; // No further updates needed
 
-            node.Bounds = newBounds;
-
-            // Propagate changes up the tree
-            int parentIndex = node.ParentIndex;
-            while (parentIndex != -1)
-            {
-                ref SwiftBVHNode<TKey, TVolume> parent = ref _nodePool[parentIndex];
-                SwiftBVHNode<TKey, TVolume> leftChild = parent.HasLeftChild
-                    ? _nodePool[parent.LeftChildIndex]
-                    : SwiftBVHNode<TKey, TVolume>.Default;
-                SwiftBVHNode<TKey, TVolume> rightChild = parent.HasRightChild
-                    ? _nodePool[parent.RightChildIndex]
-                    : SwiftBVHNode<TKey, TVolume>.Default;
-
-                TVolume newParentBounds = GetCombinedBounds(leftChild, rightChild);
-                if (parent.Bounds.BoundsEquals(newParentBounds))
-                    break; // No further updates needed
-
-                parent.Bounds = newParentBounds;
-                parentIndex = parent.ParentIndex;
-            }
-        }
-        finally
-        {
-            _bvhLock.ExitWriteLock();
+            parent.Bounds = newParentBounds;
+            parentIndex = parent.ParentIndex;
         }
     }
 
@@ -299,30 +286,22 @@ public class SwiftBVH<TKey, TVolume>
     {
         QueryCollectionGuards.ThrowIfKeyNull(value, nameof(value));
 
-        int nodeIndex = FindEntry(value);
+        int nodeIndex = _keyToNodeIndex.Find(value, MatchesEntryKey);
         if (nodeIndex == -1) return false;
 
-        _bvhLock.EnterWriteLock();
-        try
+        // If the node is the root and the only node, reset the BVH
+        if (nodeIndex == RootNodeIndex && _leafCount == 1)
         {
-            // If the node is the root and the only node, reset the BVH
-            if (nodeIndex == RootNodeIndex && _leafCount == 1)
-            {
-                Clear();
-                return true;
-            }
-
-            RemoveFromBuckets(value); // Ensure the bucket is cleared before further operations
-
-            // Remove node and update tree structure
-            RemoveFromTree(nodeIndex);
-
+            Clear();
             return true;
         }
-        finally
-        {
-            _bvhLock.ExitWriteLock();
-        }
+
+        RemoveFromBuckets(value); // Ensure the bucket is cleared before further operations
+
+        // Remove node and update tree structure
+        RemoveFromTree(nodeIndex);
+
+        return true;
     }
 
     /// <summary>
@@ -335,58 +314,75 @@ public class SwiftBVH<TKey, TVolume>
     }
 
     /// <summary>
-    /// Recursively removes a node and updates the bounds and subtree sizes of parents.
-    /// Ensures integrity of the BVH structure.
+    /// Removes a leaf node from the tree, collapses its parent, and propagates
+    /// bound and subtree-size updates upward.  Every internal node is guaranteed
+    /// to have exactly two children after this operation completes.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void RemoveFromTree(int nodeIndex)
     {
-        while (nodeIndex != -1)
+        int parentIndex = _nodePool[nodeIndex].ParentIndex;
+
+        if (parentIndex == -1)
         {
-            ref SwiftBVHNode<TKey, TVolume> currentNode = ref _nodePool[nodeIndex];
+            // Leaf was the root (single-node case already handled by Remove)
+            _leafCount--;
+            _nodePool[nodeIndex].Reset();
+            _freeIndices.Push(nodeIndex);
+            _rootNodeIndex = -1;
+            return;
+        }
 
-            int parentIndex = currentNode.ParentIndex;
-            if (!currentNode.HasChildren)
-            {
-                // Clean up leaf or empty parent
-                if (currentNode.HasParent)
-                {
-                    // Remove the child reference from the parent root
-                    ref SwiftBVHNode<TKey, TVolume> parentNode = ref _nodePool[parentIndex];
-                    if (parentNode.LeftChildIndex == nodeIndex)
-                        parentNode.LeftChildIndex = -1;
-                    else if (parentNode.RightChildIndex == nodeIndex)
-                        parentNode.RightChildIndex = -1;
-                }
-                else if (nodeIndex == RootNodeIndex)
-                {
-                    Clear();
-                    return;
-                }
+        ref SwiftBVHNode<TKey, TVolume> parent = ref _nodePool[parentIndex];
+        int siblingIndex = parent.LeftChildIndex == nodeIndex
+            ? parent.RightChildIndex
+            : parent.LeftChildIndex;
+        int grandParentIndex = parent.ParentIndex;
 
-                if (currentNode.IsLeaf)
-                    _leafCount--;
+        // Push parent before the leaf so that the leaf index sits on top of the
+        // freelist stack and is reused first by the next allocation.
+        parent.Reset();
+        _freeIndices.Push(parentIndex);
 
-                currentNode.Reset();
-                _freeIndices.Push(nodeIndex);
-                nodeIndex = parentIndex;
-                continue;
-            }
+        _leafCount--;
+        _nodePool[nodeIndex].Reset();
+        _freeIndices.Push(nodeIndex);
 
-            // Resize parent that still has children...
-            SwiftBVHNode<TKey, TVolume> leftChild = currentNode.HasLeftChild
-                ? _nodePool[currentNode.LeftChildIndex]
+        // Promote sibling to grandparent
+        if (siblingIndex != -1)
+            _nodePool[siblingIndex].ParentIndex = grandParentIndex;
+
+        if (grandParentIndex == -1)
+        {
+            _rootNodeIndex = siblingIndex;
+            return;
+        }
+
+        ref SwiftBVHNode<TKey, TVolume> grandParent = ref _nodePool[grandParentIndex];
+        if (grandParent.LeftChildIndex == parentIndex)
+            grandParent.LeftChildIndex = siblingIndex;
+        else
+            grandParent.RightChildIndex = siblingIndex;
+
+        // Propagate bounds and subtree sizes upward from grandparent
+        int current = grandParentIndex;
+        while (current != -1)
+        {
+            ref SwiftBVHNode<TKey, TVolume> node = ref _nodePool[current];
+
+            SwiftBVHNode<TKey, TVolume> leftChild = node.HasLeftChild
+                ? _nodePool[node.LeftChildIndex]
                 : SwiftBVHNode<TKey, TVolume>.Default;
-            SwiftBVHNode<TKey, TVolume> rightChild = currentNode.HasRightChild
-                ? _nodePool[currentNode.RightChildIndex]
+            SwiftBVHNode<TKey, TVolume> rightChild = node.HasRightChild
+                ? _nodePool[node.RightChildIndex]
                 : SwiftBVHNode<TKey, TVolume>.Default;
 
-            currentNode.Bounds = GetCombinedBounds(leftChild, rightChild);
-            currentNode.SubtreeSize = 1
+            node.Bounds = GetCombinedBounds(leftChild, rightChild);
+            node.SubtreeSize = 1
                 + (leftChild.IsAllocated ? leftChild.SubtreeSize : 0)
                 + (rightChild.IsAllocated ? rightChild.SubtreeSize : 0);
 
-            nodeIndex = parentIndex;
+            current = node.ParentIndex;
         }
     }
 
@@ -461,43 +457,35 @@ public class SwiftBVH<TKey, TVolume>
 
         if (RootNodeIndex == -1) return;
 
-        _bvhLock.EnterReadLock();
-        try
-        {
-            SwiftIntStack nodeStack = _queryScratch.RentIntStack(_peakIndex + 1);
-            nodeStack.Push(RootNodeIndex);
+        SwiftIntStack nodeStack = _queryScratch.RentIntStack(_peakIndex + 1);
+        nodeStack.Push(RootNodeIndex);
 
-            while (nodeStack.Count > 0)
+        while (nodeStack.Count > 0)
+        {
+            int index = nodeStack.Pop();
+            ref SwiftBVHNode<TKey, TVolume> node = ref _nodePool[index];
+
+            if (!node.IsAllocated)
             {
-                int index = nodeStack.Pop();
-                ref SwiftBVHNode<TKey, TVolume> node = ref _nodePool[index];
-
-                if (!node.IsAllocated)
-                {
-                    QueryCollectionDiagnostics.WriteError(
-                        _diagnosticSource,
-                        $"Encountered an unallocated node at index {index} during query traversal.");
-                    throw new InvalidOperationException($"Encountered an unallocated node at index {index} during query traversal.");
-                }
-
-                if (!queryBounds.Intersects(node.Bounds))
-                    continue;
-
-                if (node.IsLeaf)
-                {
-                    results.Add(node.Value);
-                    continue;
-                }
-
-                if (node.HasLeftChild)
-                    nodeStack.Push(node.LeftChildIndex);
-                if (node.HasRightChild)
-                    nodeStack.Push(node.RightChildIndex);
+                QueryCollectionDiagnostics.WriteError(
+                    _diagnosticSource,
+                    $"Encountered an unallocated node at index {index} during query traversal.");
+                throw new InvalidOperationException($"Encountered an unallocated node at index {index} during query traversal.");
             }
-        }
-        finally
-        {
-            _bvhLock.ExitReadLock();
+
+            if (!queryBounds.Intersects(node.Bounds))
+                continue;
+
+            if (node.IsLeaf)
+            {
+                results.Add(node.Value);
+                continue;
+            }
+
+            if (node.HasLeftChild)
+                nodeStack.Push(node.LeftChildIndex);
+            if (node.HasRightChild)
+                nodeStack.Push(node.RightChildIndex);
         }
     }
 
@@ -508,16 +496,7 @@ public class SwiftBVH<TKey, TVolume>
     public int FindEntry(TKey value)
     {
         QueryCollectionGuards.ThrowIfKeyNull(value, nameof(value));
-
-        _bvhLock.EnterReadLock();
-        try
-        {
-            return _keyToNodeIndex.Find(value, MatchesEntryKey);
-        }
-        finally
-        {
-            _bvhLock.ExitReadLock();
-        }
+        return _keyToNodeIndex.Find(value, MatchesEntryKey);
     }
 
     /// <summary>
