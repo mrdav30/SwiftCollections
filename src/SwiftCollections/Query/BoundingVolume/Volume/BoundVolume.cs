@@ -163,6 +163,16 @@ public struct BoundVolume : IBoundVolume<BoundVolume>, IEquatable<BoundVolume>
 
     public override readonly bool Equals(object obj) => obj is BoundVolume other && BoundsEquals(other);
 
+    public static bool operator ==(BoundVolume left, BoundVolume right)
+    {
+        return left.Equals(right);
+    }
+
+    public static bool operator !=(BoundVolume left, BoundVolume right)
+    {
+        return !(left == right);
+    }
+
     public override readonly int GetHashCode() => HashCode.Combine(Min, Max);
 
     public override readonly string ToString() => $"Min: {Min}, Max: {Max}";

@@ -104,7 +104,7 @@ public struct FixedBoundVolume : IBoundVolume<FixedBoundVolume>, IEquatable<Fixe
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly long GetCost(FixedBoundVolume other)
+    public long GetCost(FixedBoundVolume other)
     {
         Fixed64 delta = Union(other).Volume - Volume;
         return delta <= Fixed64.Zero ? 0L : (long)delta.FloorToInt();
@@ -119,6 +119,16 @@ public struct FixedBoundVolume : IBoundVolume<FixedBoundVolume>, IEquatable<Fixe
     public readonly bool Equals(FixedBoundVolume other) => BoundsEquals(other);
 
     public override readonly bool Equals(object obj) => obj is FixedBoundVolume other && BoundsEquals(other);
+
+    public static bool operator ==(FixedBoundVolume left, FixedBoundVolume right)
+    {
+        return left.Equals(right);
+    }
+
+    public static bool operator !=(FixedBoundVolume left, FixedBoundVolume right)
+    {
+        return !(left == right);
+    }
 
     public override readonly int GetHashCode() => HashCode.Combine(Min, Max);
 
