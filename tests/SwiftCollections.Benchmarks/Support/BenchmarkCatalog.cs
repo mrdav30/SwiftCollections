@@ -37,6 +37,7 @@ internal sealed class BenchmarkCatalog
         ["dense-map-workload"] = new[] { "map-workload", "sparse-map", "sparse-map-workload" },
         ["queue-parity"] = new[] { "queue", "queue-integer" },
         ["queue-workload"] = new[] { "queue-showcase" },
+        ["query-collection-comparison"] = new[] { "query", "query-workload", "spatial-query", "query-collections" },
         ["stack-parity"] = new[] { "stack", "stack-integer" },
         ["stack-workload"] = new[] { "stack-showcase" },
         ["sorted-list-workload"] = new[] { "sorted-list", "sorted-list-integer", "sorted-workload" }

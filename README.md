@@ -23,7 +23,7 @@
 - **Flat 2D/3D storage**: `SwiftArray2D`, `SwiftArray3D`, `SwiftBoolArray2D`, `SwiftShortArray2D`
 - **Pools**: `SwiftObjectPool`, `SwiftArrayPool`, `SwiftCollectionPool`, and typed pool helpers
 - **Observable collections** for change-tracking scenarios
-- **Spatial queries** via typed `SwiftBVH<TKey, TVolume>` plus a default `SwiftBVH<TKey>` numerics wrapper
+- **Spatial queries** via typed `SwiftBVH<TKey, TVolume>`, `SwiftSpatialHash<TKey, TVolume>`, and `SwiftOctree<TKey, TVolume>` plus default numerics wrappers
 - **Lightweight diagnostics** via `SwiftCollections.Diagnostics` for opt-in low-level log/event routing
 
 ---
@@ -81,7 +81,9 @@ Unity support is maintained separately:
 - **SwiftSortedList**: Dynamically sorted collection with O(log n) operations.
 - **SwiftStack**: Fast array-based stack with O(1) operations.
 - **SwiftArray2D / SwiftArray3D**: Efficient, flat-mapped arrays for 2D and 3D data.
-- **SwiftBVH**: A Bounding Volume Hierarchy optimized for spatial queries.
+- **SwiftBVH**: Bounding Volume Hierarchy for broad-phase spatial queries.
+- **SwiftSpatialHash**: Spatial hash for high-churn, uniform-size, and sparse huge-world scenes.
+- **SwiftOctree**: Hierarchical octree for dynamic scenes with uneven density.
 
 `SwiftDictionary<TKey, TValue>` and `SwiftHashSet<T>` use deterministic default comparers for `string` keys when no comparer is supplied. `object` keys also get a SwiftCollections default comparer that hashes strings deterministically, but non-string object-key determinism still depends on the underlying key type. Custom comparers are still supported.
 
@@ -94,7 +96,15 @@ Unity support is maintained separately:
 
 ### Spatial Data Structures
 
-- **SwiftBVH**: Bounding Volume Hierarchy for efficient spatial queries.
+- **SwiftBVH**: Bounding Volume Hierarchy for broad-phase queries with mixed or extreme object-size variance.
+- **SwiftSpatialHash**: Spatial hash for sparse huge-world needle queries and uniform-size high-churn workloads.
+- **SwiftOctree**: Hierarchical octree for dynamic scenes, uneven density, and repeated region queries.
+
+Use them by workload:
+
+- **SwiftBVH** is the best fit for scenes with mixed or extreme object-size variance (e.g. tiny units alongside large terrain pieces), large churning objects, and general broad-phase intersection queries over heterogeneous populations. It is not thread-safe; synchronize access externally if needed. Avoid it for dense same-size clustered scenes and for sparse huge-world needle (tiny query window) lookups.
+- **SwiftSpatialHash** is the best fit for sparse, huge-world scenes where small query windows rarely overlap many cells (O(1) bucket lookup dominates), and for high-frequency updates with mostly uniform-size objects. Performance degrades when object sizes vary widely, since a fixed cell size becomes either too coarse or too fine.
+- **SwiftOctree** is the strongest all-around performer for dynamic scenes with uniform or small objects, mixed broad-phase, and repeated regional queries over uneven distributions. Prefer it when most objects are similar in size or when queries target specific spatial sub-regions repeatedly.
 
 ### Observable Collections
 
@@ -126,6 +136,33 @@ Console.WriteLine(results.Count); // Output: 1
 ```csharp
 var typedBvh = new SwiftBVH<int, BoundVolume>(100);
 typedBvh.Insert(1, new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1)));
+```
+
+### SwiftSpatialHash for Broad-Phase Cell Queries
+
+```csharp
+var spatialHash = new SwiftSpatialHash<int>(64, 2f);
+spatialHash.Insert(1, new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1)));
+
+var nearby = new List<int>();
+spatialHash.QueryNeighborhood(
+    new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1)),
+    nearby);
+```
+
+### SwiftOctree for Hierarchical Region Queries
+
+```csharp
+var worldBounds = new BoundVolume(new Vector3(0, 0, 0), new Vector3(64, 64, 64));
+var octree = new SwiftOctree<int>(
+    worldBounds,
+    new SwiftOctreeOptions(maxDepth: 6, nodeCapacity: 8),
+    minNodeSize: 1f);
+
+octree.Insert(1, new BoundVolume(new Vector3(2, 2, 2), new Vector3(4, 4, 4)));
+
+var visible = new List<int>();
+octree.Query(new BoundVolume(new Vector3(0, 0, 0), new Vector3(8, 8, 8)), visible);
 ```
 
 ### Fixed-Point SwiftBVH (Companion Package)
@@ -199,6 +236,7 @@ Useful benchmark runner commands:
 ```bash
 dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- list
 dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- dictionary
+dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- query --list flat
 dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- hashset --filter "*Contains*"
 dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- all --list flat
 ```

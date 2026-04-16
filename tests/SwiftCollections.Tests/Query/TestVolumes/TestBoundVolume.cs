@@ -39,20 +39,21 @@ namespace SwiftCollections.Query.Tests
                      MinZ > other.MaxZ || MaxZ < other.MinZ);
         }
 
-        public int GetCost(TestBoundVolume other)
+        public long GetCost(TestBoundVolume other)
         {
             TestBoundVolume union = Union(other);
             float sizeX = union.MaxX - union.MinX;
             float sizeY = union.MaxY - union.MinY;
             float sizeZ = union.MaxZ - union.MinZ;
 
-            float otherSizeX = other.MaxX - other.MinX;
-            float otherSizeY = other.MaxY - other.MinY;
-            float otherSizeZ = other.MaxZ - other.MinZ;
+            float currentSizeX = MaxX - MinX;
+            float currentSizeY = MaxY - MinY;
+            float currentSizeZ = MaxZ - MinZ;
 
-            float unionVolume = sizeX * sizeY * sizeZ;
-            float otherVolume = otherSizeX * otherSizeY * otherSizeZ;
-            return (int)Math.Floor(unionVolume - otherVolume);
+            double unionVolume = (double)sizeX * sizeY * sizeZ;
+            double currentVolume = (double)currentSizeX * currentSizeY * currentSizeZ;
+            double delta = unionVolume - currentVolume;
+            return delta >= (double)long.MaxValue ? long.MaxValue : (long)delta;
         }
 
         public bool BoundsEquals(TestBoundVolume other)

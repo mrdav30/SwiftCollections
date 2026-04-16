@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
-using System.Threading;
 using Xunit;
 
 namespace SwiftCollections.Query.Tests
@@ -347,145 +346,91 @@ namespace SwiftCollections.Query.Tests
         }
 
 
-        [Fact]
-        public void MultiThreaded_ConcurrentOperations()
-        {
-            var bvh = new SwiftBVH<int>(200);
-            int numThreads = 4;
-            int volumesPerThread = 50;
+        // SwiftBVH is not thread-safe. Concurrent access must be synchronized externally.
+        // The three previously-present MultiThreaded_* tests relied on the internal
+        // ReaderWriterLockSlim that has been removed for performance.  Thread safety is
+        // now the caller's responsibility (e.g., wrap operations in a lock{} block).
 
-            var threads = new List<Thread>();
-            for (int t = 0; t < numThreads; t++)
+        [Fact]
+        public void LargeWorldCoordinates_InsertionRoutingIsCorrect()
+        {
+            // Regression for int overflow in GetCost when world extent is very large.
+            // With a 131072-unit world, volume differences can exceed int.MaxValue (~2.1B)
+            // and would previously overflow, producing wrong SAH routing decisions.
+            const float worldExtent = 131072f;
+            var bvh = new SwiftBVH<int>(64);
+
+            // Cluster A: near (1000, 1000, 1000)
+            for (int i = 0; i < 10; i++)
             {
-                int threadIndex = t;
-                threads.Add(new Thread(() =>
-                {
-                    for (int i = 0; i < volumesPerThread; i++)
-                    {
-                        int id = threadIndex * volumesPerThread + i;
-                        var volume = new BoundVolume(new Vector3(id, id, id), new Vector3(id + 1, id + 1, id + 1));
-                        bvh.Insert(id, volume);
-                    }
-                }));
+                float offset = i * 4f;
+                bvh.Insert(i, new BoundVolume(
+                    new Vector3(1000f + offset, 1000f, 1000f),
+                    new Vector3(1004f + offset, 1004f, 1004f)));
             }
 
-            foreach (var thread in threads) thread.Start();
-            foreach (var thread in threads) thread.Join();
+            // Cluster B: near the far corner of a huge world
+            for (int i = 10; i < 20; i++)
+            {
+                float offset = (i - 10) * 4f;
+                bvh.Insert(i, new BoundVolume(
+                    new Vector3(worldExtent - 1004f - offset, worldExtent - 1004f, worldExtent - 1004f),
+                    new Vector3(worldExtent - 1000f - offset, worldExtent - 1000f, worldExtent - 1000f)));
+            }
+
+            // A tight query around cluster A should not return any items from cluster B
+            var clusterAQuery = new BoundVolume(
+                new Vector3(990f, 990f, 990f),
+                new Vector3(1050f, 1050f, 1050f));
 
             var results = new List<int>();
-            var queryVolume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(200, 200, 200));
-            bvh.Query(queryVolume, results);
+            bvh.Query(clusterAQuery, results);
 
-            Assert.Equal(numThreads * volumesPerThread, results.Count);
+            Assert.Equal(10, results.Count);
+            for (int i = 0; i < 10; i++)
+                Assert.Contains(i, results);
         }
 
         [Fact]
-        public void MultiThreaded_ConcurrentUpdatesAndQueries()
+        public void Remove_CollapsesParent_TreeRemainsFullyTraversable()
         {
-            var bvh = new SwiftBVH<int>(200);
-            int numThreads = 4;
-            int volumesPerThread = 50;
-
-            var threads = new List<Thread>();
-            for (int t = 0; t < numThreads; t++)
+            // After removing a leaf the parent internal node must be eliminated and the
+            // sibling promoted, so every internal node always has exactly two children.
+            var bvh = new SwiftBVH<int>(16);
+            for (int i = 0; i < 8; i++)
             {
-                int threadIndex = t;
-                threads.Add(new Thread(() =>
-                {
-                    for (int i = 0; i < volumesPerThread; i++)
-                    {
-                        int id = threadIndex * volumesPerThread + i;
-                        var volume = new BoundVolume(new Vector3(id, id, id), new Vector3(id + 1, id + 1, id + 1));
-                        bvh.Insert(id, volume);
-                        bvh.UpdateEntryBounds(id, new BoundVolume(new Vector3(id - 1, id - 1, id - 1), new Vector3(id + 2, id + 2, id + 2)));
-                    }
-                }));
+                bvh.Insert(i, new BoundVolume(
+                    new Vector3(i * 2f, 0f, 0f),
+                    new Vector3(i * 2f + 1f, 1f, 1f)));
             }
 
-            foreach (var thread in threads) thread.Start();
-            foreach (var thread in threads) thread.Join();
+            // Remove half the items
+            for (int i = 0; i < 4; i++)
+                bvh.Remove(i);
 
+            Assert.Equal(4, bvh.Count);
+
+            // All remaining items must be found by a broad query
             var results = new List<int>();
-            var queryVolume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(200, 200, 200));
-            bvh.Query(queryVolume, results);
+            bvh.Query(new BoundVolume(new Vector3(-1f, -1f, -1f), new Vector3(100f, 100f, 100f)), results);
+            Assert.Equal(4, results.Count);
+            for (int i = 4; i < 8; i++)
+                Assert.Contains(i, results);
 
-            Assert.Equal(numThreads * volumesPerThread, results.Count);
-        }
-
-        [Fact]
-        public void MultiThreaded_HighConcurrency()
-        {
-            var bvh = new SwiftBVH<int>(500);
-            int numThreads = 8;
-            int volumesPerThread = 100;
-
-            var threads = new List<Thread>();
-
-            // PHASE 1: Insert all volumes
-            for (int t = 0; t < numThreads; t++)
+            // No internal node should have only one child
+            void AssertTwoChildrenOrLeaf(int nodeIndex)
             {
-                int threadIndex = t;
-                threads.Add(new Thread(() =>
+                if (nodeIndex == -1) return;
+                var node = bvh.NodePool[nodeIndex];
+                if (!node.IsLeaf)
                 {
-                    for (int i = 0; i < volumesPerThread; i++)
-                    {
-                        int id = threadIndex * volumesPerThread + i;
-                        var volume = new BoundVolume(new Vector3(id, id, id), new Vector3(id + 1, id + 1, id + 1));
-                        bvh.Insert(id, volume);
-                    }
-                }));
+                    Assert.True(node.HasLeftChild && node.HasRightChild,
+                        $"Internal node at index {nodeIndex} has fewer than two children after removal.");
+                    AssertTwoChildrenOrLeaf(node.LeftChildIndex);
+                    AssertTwoChildrenOrLeaf(node.RightChildIndex);
+                }
             }
-
-            foreach (var thread in threads) thread.Start();
-            foreach (var thread in threads) thread.Join();
-
-            threads.Clear(); // Reset thread list
-
-            // PHASE 2: Update all volumes
-            for (int t = 0; t < numThreads; t++)
-            {
-                int threadIndex = t;
-                threads.Add(new Thread(() =>
-                {
-                    for (int i = 0; i < volumesPerThread; i++)
-                    {
-                        int id = threadIndex * volumesPerThread + i;
-                        var newVolume = new BoundVolume(new Vector3(id - 1, id - 1, id - 1), new Vector3(id + 2, id + 2, id + 2));
-                        bvh.UpdateEntryBounds(id, newVolume);
-                    }
-                }));
-            }
-
-            foreach (var thread in threads) thread.Start();
-            foreach (var thread in threads) thread.Join();
-
-            threads.Clear();
-
-            // PHASE 3: Remove all volumes
-            for (int t = 0; t < numThreads; t++)
-            {
-                int threadIndex = t;
-                threads.Add(new Thread(() =>
-                {
-                    for (int i = 0; i < volumesPerThread; i++)
-                    {
-                        int id = threadIndex * volumesPerThread + i;
-                        bvh.Remove(id);
-                    }
-                }));
-            }
-
-            foreach (var thread in threads) thread.Start();
-            foreach (var thread in threads) thread.Join();
-
-            // Small delay to allow final removals to propagate
-            Thread.Sleep(5);
-
-            var results = new List<int>();
-            var queryVolume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(500, 500, 500));
-            bvh.Query(queryVolume, results);
-
-            Assert.Empty(results);
+            AssertTwoChildrenOrLeaf(bvh.RootNodeIndex);
         }
 
         [Fact]
@@ -575,7 +520,7 @@ namespace SwiftCollections.Query.Tests
             {
                 var node = bvh.NodePool[nodeIndex];
                 if (node.IsLeaf)
-                    Assert.Equal(0, node.SubtreeSize);
+                    Assert.Equal(1, node.SubtreeSize);
                 else
                 {
                     int leftSize = bvh.NodePool[node.LeftChildIndex].SubtreeSize;

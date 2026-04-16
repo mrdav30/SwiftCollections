@@ -23,10 +23,12 @@ public interface IBoundVolume<TVolume>
 
     /// <summary>
     /// Calculates the cost of combining the current bounding volume with another.
+    /// Used as the SAH insertion metric; returned as <see langword="long"/> to avoid
+    /// overflow in worlds with large coordinate ranges.
     /// </summary>
     /// <param name="other">The other bounding volume to consider.</param>
     /// <returns>The cost metric of the union operation.</returns>
-    int GetCost(TVolume other);
+    long GetCost(TVolume other);
 
     /// <summary>
     /// Determines whether the bounds represent the same spatial region.

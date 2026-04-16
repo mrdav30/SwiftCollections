@@ -65,14 +65,6 @@
 		<ProjectGuid>{009CBC1E-B915-476D-98D6-1081526F7A9E}</ProjectGuid>
 		<OutputPath>bin\$(Configuration)\</OutputPath>
 	</PropertyGroup>
-	<ItemGroup>
-		<Compile Remove="Query\Octree\**" />
-		<Compile Remove="Query\SpatialHash\**" />
-		<EmbeddedResource Remove="Query\Octree\**" />
-		<EmbeddedResource Remove="Query\SpatialHash\**" />
-		<None Remove="Query\Octree\**" />
-		<None Remove="Query\SpatialHash\**" />
-	</ItemGroup>
 	<!-- Dependencies and Package References -->
 	<ItemGroup>
 		<PackageReference Include="MemoryPack" Version="1.21.4" />
