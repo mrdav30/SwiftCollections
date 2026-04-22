@@ -1,7 +1,7 @@
 function Get-SolutionDirectory {
     param (
 		[string]$StartPath = $(Get-Location),
-		[string]$SolutionPath = "SwiftCollections.sln"
+		[string]$SolutionPath = "SwiftCollections.slnx"
 	)
 
     $currentPath = $StartPath
@@ -55,7 +55,7 @@ function Ensure-GitVersion-Environment {
 
 function Build-Project {
     param (
-        [string]$SolutionPath = "SwiftCollections.sln",
+        [string]$SolutionPath = "SwiftCollections.slnx",
         [string]$Configuration = "Release"
     )
 

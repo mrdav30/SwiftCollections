@@ -6,7 +6,7 @@ This repository contains the `SwiftCollections` .NET library, its unit tests, an
 
 ## Source Of Truth
 
-- Trust `SwiftCollections.sln` and the `*.csproj` files over `README.md` or CI snippets when they disagree.
+- Trust `SwiftCollections.slnx` and the `*.csproj` files over `README.md` or CI snippets when they disagree.
 - The current compiled projects are:
   - Library: `src/SwiftCollections/SwiftCollections.csproj`
   - Unit tests: `tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj`
@@ -19,7 +19,7 @@ This repository contains the `SwiftCollections` .NET library, its unit tests, an
 
 ## Repository Layout
 
-- `SwiftCollections.sln`: root solution containing the library, tests, and benchmarks.
+- `SwiftCollections.slnx`: root solution containing the library, tests, and benchmarks.
 - `src/SwiftCollections/`: library source and NuGet packaging metadata.
 - `src/SwiftCollections/Collection/`: core collections such as `SwiftDictionary`, `SwiftList`, `SwiftQueue`, and `SwiftHashSet`.
 - `src/SwiftCollections/Dimension/`: 2D/3D array types and default typed arrays.
@@ -65,7 +65,7 @@ This repository contains the `SwiftCollections` .NET library, its unit tests, an
 Use the solution root as the working directory.
 
 - Build everything:
-  - `dotnet build SwiftCollections.sln -c Debug`
+  - `dotnet build SwiftCollections.slnx -c Debug`
 - Run unit tests:
   - `dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c Debug --no-build`
 - Run unit tests with coverage when the change adds features, refactors behavior, or touches a poorly covered area:

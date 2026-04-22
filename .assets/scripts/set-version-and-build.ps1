@@ -1,7 +1,3 @@
-param (
-    [string]$BuildType = "Release"
-)
-
 # Import shared functions
 Set-Location (Split-Path $MyInvocation.MyCommand.Path)
 . .\utilities.ps1
@@ -13,8 +9,8 @@ Set-Location $solutionDir
 # Ensure GitVersion environment variables are set
 Ensure-GitVersion-Environment
 
-# Build the project with the version information applied
-Build-Project -Configuration $BuildType
+# Build and package for each release configuration
+$configurations = @("Release", "ReleaseLean")
 
 # Library projects to bundle — add new packages here as needed
 $libraryProjects = @(
@@ -22,34 +18,43 @@ $libraryProjects = @(
     "SwiftCollections.FixedMathSharp"
 )
 
-foreach ($projectName in $libraryProjects) {
-    $releaseDir = Join-Path $solutionDir "src\$projectName\bin\Release"
+foreach ($config in $configurations){
+    # Build the project with the version information applied
+    Build-Project -Configuration $config
 
-    if (-not (Test-Path $releaseDir)) {
-        Write-Warning "Release directory not found for $projectName`: $releaseDir"
-        continue
-    }
+    foreach ($projectName in $libraryProjects) {
+        # Output directory for this configuration and project
+        $releaseDir = Join-Path $solutionDir "src\$projectName\bin\$config"
 
-    Get-ChildItem -Path $releaseDir -Directory | ForEach-Object {
-        $targetDir = $_.FullName
-        $frameworkName = $_.Name
+        # Determine archive label suffix (lowercase, hyphen-separated)
+        $configLabel = $config.ToLower() -replace "release", "release" # keeps "release" / "releaselean"
 
-        # Construct final archive name
-        $zipFileName = "${projectName}-v$($Env:GitVersion_FullSemVer)-${frameworkName}-release.zip"
-        $zipPath = Join-Path $releaseDir $zipFileName
-
-        Write-Host "Creating archive: $zipPath"
-
-        if (Test-Path $zipPath) {
-            Remove-Item $zipPath -Force
+        if (-not (Test-Path $releaseDir)) {
+            Write-Warning "Release directory not found for configuration '$config': $releaseDir"
+            continue
         }
 
-        Compress-Archive -Path "$targetDir\*" -DestinationPath $zipPath -Force
+        Get-ChildItem -Path $releaseDir -Directory | ForEach-Object {
+            $targetDir = $_.FullName
+            $frameworkName = $_.Name
 
-        if (Test-Path $zipPath) {
-            Write-Host "Archive created for ${projectName} / $frameworkName"
-        } else {
-            Write-Warning "Failed to create archive for ${projectName} / $frameworkName"
+            # Construct final archive name
+            $zipFileName = "${projectName}-v$($Env:GitVersion_FullSemVer)-${frameworkName}-${configLabel}.zip"
+            $zipPath = Join-Path $releaseDir $zipFileName
+
+            Write-Host "Creating archive: $zipPath"
+
+            if (Test-Path $zipPath) {
+                Remove-Item $zipPath -Force
+            }
+
+            Compress-Archive -Path "$targetDir\*" -DestinationPath $zipPath -Force
+
+            if (Test-Path $zipPath) {
+                Write-Host "Archive created for ${projectName} / $frameworkName / $config"
+            } else {
+                Write-Warning "Failed to create archive for ${projectName} / $frameworkName / $config"
+            }
         }
     }
 }

@@ -216,7 +216,7 @@ diagnostics.Write(DiagnosticLevel.Error, "Pool allocation failed.", "Bootstrap")
 Build the solution:
 
 ```bash
-dotnet build SwiftCollections.sln -c Debug
+dotnet build SwiftCollections.slnx -c Debug
 ```
 
 Run the unit tests:
