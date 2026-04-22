@@ -16,19 +16,26 @@ Ensure-GitVersion-Environment
 # Build the project with the version information applied
 Build-Project -Configuration $BuildType
 
-$solutionName = Split-Path $solutionDir -Leaf
+# Library projects to bundle — add new packages here as needed
+$libraryProjects = @(
+    "SwiftCollections",
+    "SwiftCollections.FixedMathSharp"
+)
 
-# Output directory
-$releaseDir = Join-Path $solutionDir "src\$solutionName\bin\Release"
+foreach ($projectName in $libraryProjects) {
+    $releaseDir = Join-Path $solutionDir "src\$projectName\bin\Release"
 
-# Ensure release directory exists
-if (Test-Path $releaseDir) {
+    if (-not (Test-Path $releaseDir)) {
+        Write-Warning "Release directory not found for $projectName`: $releaseDir"
+        continue
+    }
+
     Get-ChildItem -Path $releaseDir -Directory | ForEach-Object {
         $targetDir = $_.FullName
         $frameworkName = $_.Name
 
         # Construct final archive name
-        $zipFileName = "${solutionName}-v$($Env:GitVersion_FullSemVer)-${frameworkName}-release.zip"
+        $zipFileName = "${projectName}-v$($Env:GitVersion_FullSemVer)-${frameworkName}-release.zip"
         $zipPath = Join-Path $releaseDir $zipFileName
 
         Write-Host "Creating archive: $zipPath"
@@ -40,11 +47,9 @@ if (Test-Path $releaseDir) {
         Compress-Archive -Path "$targetDir\*" -DestinationPath $zipPath -Force
 
         if (Test-Path $zipPath) {
-            Write-Host "Archive created for $frameworkName"
+            Write-Host "Archive created for ${projectName} / $frameworkName"
         } else {
-            Write-Warning "Failed to create archive for $frameworkName"
+            Write-Warning "Failed to create archive for ${projectName} / $frameworkName"
         }
     }
-} else {
-    Write-Warning "Release directory not found: $releaseDir"
 }
