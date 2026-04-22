@@ -48,7 +48,7 @@
 	<PropertyGroup>
 		<Authors>mrdav30</Authors>
 		<Description>FixedMathSharp companion package for SwiftCollections query volume integrations.</Description>
-		<PackageTags>collections;spatial-queries;fixed-point;deterministic;dotnet;physics;game-development</PackageTags>
+		<PackageTags>collections;spatial-queries;fixed-point;fixed-point-math;deterministic;bvh;bounding-volume-hierarchy;spatial-hash;octree;fixedmathsharp;companion;game-development;simulations;physics;dotnet;unity</PackageTags>
 		<RepositoryUrl>https://github.com/mrdav30/SwiftCollections</RepositoryUrl>
 		<PackageIcon>icon.png</PackageIcon>
 		<PackageIconUrl>https://raw.githubusercontent.com/mrdav30/fixedmathsharp/main/icon.png</PackageIconUrl>

@@ -49,7 +49,7 @@
 	<PropertyGroup>
 		<Authors>mrdav30</Authors>
 		<Description>SwiftCollections is a high-performance, memory-efficient library of collections designed for game development, simulations, and other performance-critical applications.</Description>
-		<PackageTags>collections;spatial-queries;dotnet;unity;simulations;physics-engine;game-development;high-precision;nuget</PackageTags>
+		<PackageTags>collections;dictionary;hashset;list;queue;stack;spatial-queries;bvh;bounding-volume-hierarchy;spatial-hash;octree;observable;object-pool;memory-pool;serialization;memorypack;performance;game-development;simulations;dotnet;unity</PackageTags>
 		<RepositoryUrl>https://github.com/mrdav30/SwiftCollections</RepositoryUrl>
 		<PackageIcon>icon.png</PackageIcon>
 		<PackageIconUrl>https://raw.githubusercontent.com/mrdav30/swiftcollections/main/icon.png</PackageIconUrl>
