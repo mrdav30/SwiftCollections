@@ -17,7 +17,7 @@ public sealed class SwiftListPool<T> : SwiftCollectionPool<SwiftList<T>, T>, IDi
     /// Uses <see cref="SwiftLazyDisposable{T}"/> to ensure lazy initialization and proper disposal.
     /// </summary>
     private readonly static SwiftLazyDisposable<SwiftListPool<T>> _lazyInstance =
-        new SwiftLazyDisposable<SwiftListPool<T>>(() => new SwiftListPool<T>(), LazyThreadSafetyMode.ExecutionAndPublication);
+        new(() => new SwiftListPool<T>(), LazyThreadSafetyMode.ExecutionAndPublication);
 
     /// <summary>
     /// Gets the shared instance of the pool.
@@ -98,6 +98,13 @@ public sealed class SwiftListPool<T> : SwiftCollectionPool<SwiftList<T>, T>, IDi
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>
+    /// Releases the resources used by the SwiftListPool instance.
+    /// </summary>
+    /// <remarks>
+    /// This finalizer ensures that unmanaged resources are released if Dispose was not called explicitly. 
+    /// It is recommended to call Dispose to release resources deterministically.
+    /// </remarks>
     ~SwiftListPool() => Dispose();
 
     #endregion

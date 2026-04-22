@@ -27,6 +27,7 @@ namespace SwiftCollections;
 [JsonConverter(typeof(SwiftStateJsonConverterFactory))]
 [MemoryPackable]
 public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerable<T>, IEnumerable, IReadOnlyCollection<T>
+    where T : notnull
 {
     #region Constants
 
@@ -117,14 +118,17 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     public SwiftHashSet() : this(DefaultCapacity, null) { }
 
     /// <inheritdoc cref="SwiftHashSet()"/>
-    public SwiftHashSet(IEqualityComparer<T> comparer) : this(DefaultCapacity, comparer) { }
+    public SwiftHashSet(IEqualityComparer<T>? comparer) : this(DefaultCapacity, comparer) { }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SwiftHashSet{T}"/> class that is empty and has the default initial capacity.
     /// </summary>
-    public SwiftHashSet(int capacity, IEqualityComparer<T> comparer = null)
+    public SwiftHashSet(int capacity, IEqualityComparer<T>? comparer = null)
     {
         Initialize(capacity, comparer);
+
+        SwiftThrowHelper.ThrowIfNull(_entries, nameof(_entries));
+        SwiftThrowHelper.ThrowIfNull(_comparer, nameof(_comparer));
     }
 
     /// <summary>
@@ -132,13 +136,16 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     /// </summary>
     /// <param name="collection">The collection whose elements are copied to the new set.</param>
     /// <param name="comparer">The comparer to use when comparing elements.</param>
-    public SwiftHashSet(IEnumerable<T> collection, IEqualityComparer<T> comparer = null)
+    public SwiftHashSet(IEnumerable<T> collection, IEqualityComparer<T>? comparer = null)
     {
         SwiftThrowHelper.ThrowIfNull(collection, nameof(collection));
 
         int count = (collection as ICollection<T>)?.Count ?? DefaultCapacity;
         int size = (int)(count / _LoadFactorThreshold);  // Dynamic padding based on collision estimation
         Initialize(size, comparer);
+
+        SwiftThrowHelper.ThrowIfNull(_entries, nameof(_entries));
+        SwiftThrowHelper.ThrowIfNull(_comparer, nameof(_comparer));
 
         foreach (T item in collection)
             InsertIfNotExists(item);
@@ -152,6 +159,9 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     public SwiftHashSet(SwiftArrayState<T> state)
     {
         State = state;
+
+        SwiftThrowHelper.ThrowIfNull(_entries, nameof(_entries));
+        SwiftThrowHelper.ThrowIfNull(_comparer, nameof(_comparer));
     }
 
     #endregion
@@ -193,6 +203,14 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
         }
     }
 
+    /// <summary>
+    /// Gets or sets the current state of the array, including its items and structure.
+    /// </summary>
+    /// <remarks>
+    /// Setting this property replaces the contents of the array with the items from the specified state. 
+    /// If the provided state is empty, the array is cleared. 
+    /// The setter is intended for internal use and may reset internal versioning.
+    /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
     public SwiftArrayState<T> State
@@ -209,8 +227,10 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
         }
         internal set
         {
+            SwiftThrowHelper.ThrowIfNull(value.Items, nameof(value));
+
             T[] items = value.Items;
-            int count = items?.Length ?? 0;
+            int count = items.Length;
 
             if (count == 0)
             {
@@ -235,6 +255,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
 
     #region Collection Manipulation
 
+    /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Add(T item)
     {
@@ -244,6 +265,13 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
 
     void ICollection<T>.Add(T item) => Add(item);
 
+    /// <summary>
+    /// Adds the elements of the specified collection to the set, ignoring null values and duplicates.
+    /// </summary>
+    /// <remarks>
+    /// If the source collection is the same instance as the set, the method returns without making any changes. 
+    /// The method preserves single-pass enumeration for sources that do not support multiple iterations.</remarks>
+    /// <param name="items">The collection of elements to add to the set. Elements that are null or already present in the set are ignored. Cannot be null.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void AddRange(IEnumerable<T> items)
     {
@@ -341,7 +369,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
             {
                 // Mark entry as deleted
                 entry.IsUsed = false;
-                entry.Value = default;
+                entry.Value = default!;
                 entry.HashCode = -1;
                 _count--;
                 if ((uint)_count == 0) _lastIndex = 0;
@@ -366,7 +394,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
         for (uint i = 0; i <= (uint)_lastIndex; i++)
         {
             _entries[i].HashCode = -1;
-            _entries[i].Value = default;
+            _entries[i].Value = default!;
             _entries[i].IsUsed = false;
         }
 
@@ -531,7 +559,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     /// <param name="capacity"></param>
     /// <param name="comparer"></param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void Initialize(int capacity, IEqualityComparer<T> comparer = null)
+    private void Initialize(int capacity, IEqualityComparer<T>? comparer = null)
     {
         _comparer = SwiftHashTools.GetDefaultEqualityComparer(comparer);
 
@@ -587,7 +615,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
                 return _entries[i].Value;
         }
 
-        return default;
+        return default!;
     }
 
     /// <summary>
@@ -601,7 +629,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
             actual = _entries[index].Value;
             return true;
         }
-        actual = default;
+        actual = default!;
         return false;
     }
 
@@ -626,7 +654,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     /// using the new comparer to redistribute them across <see cref="_entries"/>.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void SetComparer(IEqualityComparer<T> comparer = null)
+    public void SetComparer(IEqualityComparer<T>? comparer = null)
     {
         SwiftThrowHelper.ThrowIfNull(comparer, nameof(comparer));
         if (ReferenceEquals(comparer, _comparer))
@@ -725,7 +753,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     /// <summary>
     /// Returns an enumerator that iterates through the set.
     /// </summary>
-    public SwiftHashSetEnumerator GetEnumerator() => new SwiftHashSetEnumerator(this);
+    public SwiftHashSetEnumerator GetEnumerator() => new(this);
     IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
@@ -746,9 +774,10 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
             _version = set._version;
             _entries = set._entries; // Cache the entry array
             _index = -1;
-            _current = default;
+            _current = default!;
         }
 
+        /// <inheritdoc/>
         public readonly T Current => _current;
 
         readonly object IEnumerator.Current
@@ -760,6 +789,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
             }
         }
 
+        /// <inheritdoc/>
         public bool MoveNext()
         {
             if (_version != _set._version)
@@ -775,26 +805,29 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
                 }
             }
 
-            _current = default;
+            _current = default!;
             return false;
         }
 
+        /// <inheritdoc/>
         public void Reset()
         {
             if (_version != _set._version)
                 throw new InvalidOperationException("Collection was modified during enumeration.");
 
             _index = -1;
-            _current = default;
+            _current = default!;
         }
 
-        public readonly void Dispose() { }
+        /// <inheritdoc/>
+        public void Dispose() => _index = -1;
     }
 
     #endregion
 
     #region ISet<T> Implementations
 
+    /// <inheritdoc/>
     public void ExceptWith(IEnumerable<T> other)
     {
         SwiftThrowHelper.ThrowIfNull(other, nameof(other));
@@ -811,6 +844,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
             Remove(item);
     }
 
+    /// <inheritdoc/>
     public void IntersectWith(IEnumerable<T> other)
     {
         SwiftThrowHelper.ThrowIfNull(other, nameof(other));
@@ -831,6 +865,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
         }
     }
 
+    /// <inheritdoc/>
     public bool IsProperSubsetOf(IEnumerable<T> other)
     {
         SwiftThrowHelper.ThrowIfNull(other, nameof(other));
@@ -847,6 +882,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
         return true;
     }
 
+    /// <inheritdoc/>
     public bool IsProperSupersetOf(IEnumerable<T> other)
     {
         SwiftThrowHelper.ThrowIfNull(other, nameof(other));
@@ -863,6 +899,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
         return true;
     }
 
+    /// <inheritdoc/>
     public bool IsSubsetOf(IEnumerable<T> other)
     {
         SwiftThrowHelper.ThrowIfNull(other, nameof(other));
@@ -879,6 +916,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
         return true;
     }
 
+    /// <inheritdoc/>
     public bool IsSupersetOf(IEnumerable<T> other)
     {
         SwiftThrowHelper.ThrowIfNull(other, nameof(other));
@@ -892,6 +930,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
         return true;
     }
 
+    /// <inheritdoc/>
     public bool Overlaps(IEnumerable<T> other)
     {
         SwiftThrowHelper.ThrowIfNull(other, nameof(other));
@@ -903,6 +942,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
         return false;
     }
 
+    /// <inheritdoc/>
     public bool SetEquals(IEnumerable<T> other)
     {
         SwiftThrowHelper.ThrowIfNull(other, nameof(other));
@@ -919,6 +959,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
         return true;
     }
 
+    /// <inheritdoc/>
     public void SymmetricExceptWith(IEnumerable<T> other)
     {
         SwiftThrowHelper.ThrowIfNull(other, nameof(other));
@@ -938,6 +979,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
         }
     }
 
+    /// <inheritdoc/>
     public void UnionWith(IEnumerable<T> other)
     {
         SwiftThrowHelper.ThrowIfNull(other, nameof(other));

@@ -54,7 +54,7 @@ public class SwiftPooledObjectTests
         {
         }
 
-        public SwiftCollections.Tests.DisposableSpy Rent() => new SwiftCollections.Tests.DisposableSpy();
+        public SwiftCollections.Tests.DisposableSpy Rent() => new();
 
         public SwiftPooledObject<SwiftCollections.Tests.DisposableSpy> Rent(out SwiftCollections.Tests.DisposableSpy v)
         {

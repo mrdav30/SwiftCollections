@@ -57,7 +57,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     private uint _version;
 
     [NonSerialized]
-    private object _syncRoot;
+    private object? _syncRoot;
 
     #endregion
 
@@ -82,6 +82,14 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         }
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SwiftStack{T}"/> class that contains elements copied from the specified collection.
+    /// </summary>
+    /// <remarks>
+    /// The elements are copied onto the stack in the order they are returned by the enumerator of the collection, 
+    /// so that the last element in the collection becomes the top of the stack.
+    /// </remarks>
+    /// <param name="items">The collection whose elements are copied to the new stack. Cannot be null.</param>
     public SwiftStack(IEnumerable<T> items)
     {
         SwiftThrowHelper.ThrowIfNull(items, nameof(items));
@@ -115,6 +123,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     public SwiftStack(SwiftArrayState<T> state)
     {
         State = state;
+        _innerArray ??= _emptyArray; // Ensure _innerArray is not null after deserialization
     }
 
     #endregion
@@ -143,6 +152,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     [MemoryPackIgnore]
     bool ICollection<T>.IsReadOnly => false;
 
+    /// <inheritdoc/>
     [JsonIgnore]
     [MemoryPackIgnore]
     public bool IsSynchronized => false;
@@ -172,6 +182,13 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         }
     }
 
+    /// <summary>
+    /// Gets or sets the current state of the array, including its items and count.
+    /// </summary>
+    /// <remarks>
+    /// Setting this property replaces the entire contents of the array with the items from the specified state. 
+    /// The setter is intended for internal use and may reset the array's version and capacity.
+    /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
     public SwiftArrayState<T> State
@@ -184,7 +201,9 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         }
         internal set
         {
-            int count = value.Items?.Length ?? 0;
+            SwiftThrowHelper.ThrowIfNull(value.Items, nameof(value.Items));
+
+            int count = value.Items.Length;
 
             if (count == 0)
             {
@@ -259,7 +278,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         if ((uint)_count == 0) throw new InvalidOperationException("Stack is empty.");
         T item = _innerArray[--_count];
         if (_clearReleasedSlots)
-            _innerArray[_count] = default;
+            _innerArray[_count] = default!;
         _version++;
         return item;
     }
@@ -291,6 +310,15 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
 
     #region Capacity Management
 
+    /// <summary>
+    /// Ensures that the internal storage has at least the specified capacity, resizing if necessary.
+    /// </summary>
+    /// <remarks>
+    /// If the current capacity is less than the specified value, the internal storage is increased to 
+    /// the next power of two greater than or equal to <paramref name="capacity"/>. 
+    /// No action is taken if the current capacity is sufficient.
+    /// </remarks>
+    /// <param name="capacity">The minimum number of elements that the internal storage should be able to hold. Must be non-negative.</param>
     public void EnsureCapacity(int capacity)
     {
         capacity = SwiftHashTools.NextPowerOfTwo(capacity);
@@ -344,6 +372,13 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         return _innerArray[_count - 1];
     }
 
+    /// <summary>
+    /// Returns a string that represents the current stack, including its type and the number of elements it contains.
+    /// </summary>
+    /// <returns>
+    /// A string containing the type name and the current element count if the stack is not empty; 
+    /// otherwise, a string indicating that the stack is empty.
+    /// </returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override string ToString() => (uint)_count == 0 ? $"{typeof(SwiftStack<T>)}: Empty" : $"{typeof(SwiftStack<T>)}: Count = {_count}";
 
@@ -359,6 +394,20 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ReadOnlySpan<T> AsReadOnlySpan() => _innerArray.AsSpan(0, _count);
 
+    /// <summary>
+    /// Copies the elements of the collection to the specified array, starting at the specified array index.
+    /// </summary>
+    /// <param name="array">
+    /// The one-dimensional array that is the destination of the elements copied from the collection. 
+    /// The array must have zero-based indexing.</param>
+    /// <param name="arrayIndex">The zero-based index in the destination array at which copying begins.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="arrayIndex"/> is less than 0 or greater than the length of <paramref name="array"/>.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// Thrown when the number of elements in the source collection is greater than 
+    /// the available space from <paramref name="arrayIndex"/> to the end of <paramref name="array"/>.
+    /// </exception>
     public void CopyTo(T[] array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
@@ -380,7 +429,8 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         AsSpan().CopyTo(destination);
     }
 
-    void ICollection.CopyTo(Array array, int arrayIndex)
+    /// <inheritdoc/>
+    public void CopyTo(Array array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         if ((uint)array.Rank != 1) throw new ArgumentException("Array must be single dimensional.");
@@ -399,6 +449,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         }
     }
 
+    /// <inheritdoc/>
     public void CloneTo(ICollection<T> output)
     {
         output.Clear();
@@ -406,6 +457,7 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
             output.Add(_innerArray[i]);
     }
 
+    /// <inheritdoc/>
     public bool Contains(T item)
     {
         EqualityComparer<T> comparer = EqualityComparer<T>.Default;
@@ -450,16 +502,25 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
                 return _innerArray[i];
         }
 
-        return default;
+        return default!;
     }
 
     #endregion
 
     #region Enumerators
-    public SwiftStackEnumerator GetEnumerator() => new SwiftStackEnumerator(this);
+
+    /// <inheritdoc cref="IEnumerable.GetEnumerator()"/>
+    public SwiftStackEnumerator GetEnumerator() => new(this);
     IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
+    /// <summary>
+    /// Supports simple iteration over the elements of a <see cref="SwiftStack{T}"/> in last-in, first-out (LIFO) order.
+    /// </summary>
+    /// <remarks>
+    /// The enumerator is invalidated if the collection is modified after the enumerator is created.
+    /// This type is not thread-safe.
+    /// </remarks>
     public struct SwiftStackEnumerator : IEnumerator<T>, IEnumerator, IDisposable
     {
         private readonly SwiftStack<T> _stack;
@@ -477,9 +538,10 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
             _count = stack._count;
             _version = stack._version;
             _index = -2; // Enumerator not started
-            _current = default;
+            _current = default!;
         }
 
+        /// <inheritdoc/>
         public T Current => _current;
 
         object IEnumerator.Current
@@ -487,10 +549,11 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
             get
             {
                 if ((uint)_index > _count) throw new InvalidOperationException("Bad enumeration");
-                return _current;
+                return _current!;
             }
         }
 
+        /// <inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
@@ -513,19 +576,21 @@ public sealed partial class SwiftStack<T> : ISwiftCloneable<T>, IEnumerable<T>, 
             }
 
             _index = -1;
-            _current = default;
+            _current = default!;
             return false;
         }
 
+        /// <inheritdoc/>
         public void Reset()
         {
             if (_version != _stack._version)
                 throw new InvalidOperationException("Enumerator modified outside of enumeration!");
 
             _index = -2;
-            _current = default;
+            _current = default!;
         }
 
+        /// <inheritdoc/>
         public void Dispose() => _index = -1;
     }
 

@@ -68,8 +68,8 @@ public class SwiftDictionaryTests
     {
         var source = new List<KeyValuePair<int, string>>
         {
-            new KeyValuePair<int, string>(1, "One"),
-            new KeyValuePair<int, string>(2, "Two")
+            new(1, "One"),
+            new(2, "Two")
         };
         var dictionary = new SwiftDictionary<int, string>(source);
 

@@ -16,9 +16,9 @@ public sealed class SwiftObjectPool<T> : IDisposable, ISwiftObjectPool<T> where 
 
     private readonly ConcurrentStack<T> _pool;
     private readonly Func<T> _createFunc;
-    private readonly Action<T> _actionOnGet;
-    private readonly Action<T> _actionOnRelease;
-    private readonly Action<T> _actionOnDestroy;
+    private readonly Action<T>? _actionOnGet;
+    private readonly Action<T>? _actionOnRelease;
+    private readonly Action<T>? _actionOnDestroy;
     private readonly int _maxSize;
 
     private volatile bool _disposed;
@@ -39,9 +39,9 @@ public sealed class SwiftObjectPool<T> : IDisposable, ISwiftObjectPool<T> where 
     /// <exception cref="ArgumentException">Thrown if <paramref name="maxSize"/> is less than or equal to 0.</exception>
     public SwiftObjectPool(
         Func<T> createFunc,
-        Action<T> actionOnGet = null,
-        Action<T> actionOnRelease = null,
-        Action<T> actionOnDestroy = null,
+        Action<T>? actionOnGet = null,
+        Action<T>? actionOnRelease = null,
+        Action<T>? actionOnDestroy = null,
         int maxSize = 100)
     {
         SwiftThrowHelper.ThrowIfNull(createFunc, nameof(createFunc));
@@ -107,7 +107,7 @@ public sealed class SwiftObjectPool<T> : IDisposable, ISwiftObjectPool<T> where 
     /// <param name="value">The rented object.</param>
     /// <returns>A <see cref="SwiftPooledObject{T}"/> instance wrapping the rented object.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public SwiftPooledObject<T> Rent(out T value) => new SwiftPooledObject<T>(value = Rent(), this);
+    public SwiftPooledObject<T> Rent(out T value) => new(value = Rent(), this);
 
     /// <summary>
     /// Releases an object back to the pool for reuse. If the pool has reached its maximum size, the object
@@ -181,6 +181,13 @@ public sealed class SwiftObjectPool<T> : IDisposable, ISwiftObjectPool<T> where 
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>
+    /// Releases the resources used by the SwiftObjectPool instance.
+    /// </summary>
+    /// <remarks>
+    /// This finalizer ensures that unmanaged resources are released if Dispose was not called explicitly. 
+    /// It is recommended to call Dispose to release resources deterministically.
+    /// </remarks>
     ~SwiftObjectPool() => Dispose();
 
     #endregion

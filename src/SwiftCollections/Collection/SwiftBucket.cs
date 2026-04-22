@@ -45,6 +45,9 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
 {
     #region Constants
 
+    /// <summary>
+    /// Represents the default initial capacity used when no specific capacity is provided.
+    /// </summary>
     public const int DefaultCapacity = 8;
 
     #endregion
@@ -63,7 +66,7 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
     private uint _version;
 
     [NonSerialized]
-    private object _syncRoot;
+    private object? _syncRoot;
 
     #endregion
 
@@ -104,6 +107,9 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
     public SwiftBucket(SwiftBucketState<T> state)
     {
         State = state;
+
+        SwiftThrowHelper.ThrowIfNull(_innerArray, nameof(state.Items));
+        SwiftThrowHelper.ThrowIfNull(_freeIndices, nameof(state.FreeIndices));
     }
 
     #endregion
@@ -117,6 +123,9 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
     [MemoryPackIgnore]
     public int Count => _count;
 
+    /// <summary>
+    /// Gets the highest value recorded for the count during the lifetime of the object.
+    /// </summary>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int PeakCount => _peakCount;
@@ -152,18 +161,28 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
         }
     }
 
+    ///<inheritdoc/>
     [JsonIgnore]
     [MemoryPackIgnore]
     public bool IsReadOnly => false;
 
+    ///<inheritdoc/>
     [JsonIgnore]
     [MemoryPackIgnore]
     public bool IsSynchronized => false;
 
+    ///<inheritdoc/>
     [JsonIgnore]
     [MemoryPackIgnore]
     public object SyncRoot => _syncRoot ??= new object();
 
+    /// <summary>
+    /// Gets or sets the current state of the bucket, including all items, allocation status, and free indices.
+    /// </summary>
+    /// <remarks>
+    /// Use this property to capture or restore the complete state of the bucket, such as for serialization or checkpointing scenarios. 
+    /// Setting this property replaces the entire internal state, including items and allocation metadata.
+    /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
     public SwiftBucketState<T> State
@@ -225,7 +244,7 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
             foreach (var index in freeIndices)
             {
                 if ((uint)index >= (uint)capacity)
-                    throw new ArgumentOutOfRangeException(nameof(index), "Free index is out of range.");
+                    throw new InvalidOperationException("Free index is out of range.");
 
                 _freeIndices.Push(index);
                 if (index > maxReferencedIndex)
@@ -357,6 +376,15 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
 
     #region Capacity Management
 
+    /// <summary>
+    /// Ensures that the internal storage has at least the specified capacity, expanding it if necessary.
+    /// </summary>
+    /// <remarks>
+    /// If the current capacity is less than the specified value, the internal storage is increased to 
+    /// the next power of two greater than or equal to the requested capacity. 
+    /// No action is taken if the current capacity is sufficient.
+    /// </remarks>
+    /// <param name="capacity">The minimum number of elements that the internal storage should be able to hold. Must be a non-negative value.</param>
     public void EnsureCapacity(int capacity)
     {
         capacity = SwiftHashTools.NextPowerOfTwo(capacity);
@@ -431,7 +459,7 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
     {
         if (!IsAllocated(key))
         {
-            value = default;
+            value = default!;
             return false;
         }
 
@@ -499,9 +527,14 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
             }
         }
 
-        return default;
+        return default!;
     }
 
+    /// <summary>
+    /// Determines whether the element at the specified index is currently allocated.
+    /// </summary>
+    /// <param name="index">The zero-based index of the element to check. Must be greater than or equal to 0 and less than the length of the underlying array.</param>
+    /// <returns>true if the element at the specified index is allocated; otherwise, false.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool IsAllocated(int index) => !((uint)index >= (uint)_innerArray.Length) && _innerArray[index].IsUsed;
 
@@ -596,6 +629,7 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
         }
     }
 
+    /// <inheritdoc/>
     public void CloneTo(ICollection<T> output)
     {
         output.Clear();
@@ -618,10 +652,17 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
     /// Returns an enumerator that iterates through the <see cref="SwiftBucket{T}"/>.
     /// </summary>
     /// <returns>An enumerator for the bucket.</returns>
-    public SwiftBucketEnumerator GetEnumerator() => new SwiftBucketEnumerator(this);
+    public SwiftBucketEnumerator GetEnumerator() => new(this);
     IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
+    /// <summary>
+    /// Enumerates the elements of a <see cref="SwiftBucket{T}"/> collection.
+    /// </summary>
+    /// <remarks>
+    /// The enumerator provides read-only, forward-only iteration over the elements in the <see cref="SwiftBucket{T}"/>. 
+    /// The enumerator is invalidated if the collection is modified after the enumerator is created.
+    /// </remarks>
     public struct SwiftBucketEnumerator : IEnumerator<T>, IDisposable
     {
         private readonly SwiftBucket<T> _bucket;
@@ -636,9 +677,10 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
             _entries = bucket._innerArray;
             _version = bucket._version;
             _index = -1;
-            _current = default;
+            _current = default!;
         }
 
+        /// <inheritdoc/>
         public T Current => _current;
 
         object IEnumerator.Current
@@ -646,10 +688,11 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
             get
             {
                 if (_index > (uint)_bucket._count) throw new InvalidOperationException("Bad enumeration");
-                return _current;
+                return _current!;
             }
         }
 
+        /// <inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
@@ -668,16 +711,18 @@ public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>,
             return false;
         }
 
+        /// <inheritdoc/>
         public void Reset()
         {
             if (_version != _bucket._version)
                 throw new InvalidOperationException("Enumerator modified outside of enumeration!");
 
             _index = -1;
-            _current = default;
+            _current = default!;
         }
 
-        public void Dispose() { }
+        /// <inheritdoc/>
+        public void Dispose() => _index = -1;
     }
 
     #endregion

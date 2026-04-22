@@ -22,12 +22,12 @@ public partial class SwiftObservableList<T> : SwiftList<T>, INotifyPropertyChang
     /// <summary>
     /// Raised when a property on the list changes.
     /// </summary>
-    public event PropertyChangedEventHandler PropertyChanged;
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     /// <summary>
     /// Raised when the list's collection is modified.
     /// </summary>
-    public event NotifyCollectionChangedEventHandler CollectionChanged;
+    public event NotifyCollectionChangedEventHandler? CollectionChanged;
 
     #endregion
 
@@ -95,6 +95,10 @@ public partial class SwiftObservableList<T> : SwiftList<T>, INotifyPropertyChang
         OnPropertyChanged(nameof(Count));
     }
 
+    /// <summary>
+    /// Adds the elements of the specified collection to the end of the current collection.
+    /// </summary>
+    /// <param name="items">The collection whose elements should be added to the end of the collection. Cannot be null.</param>
     public override void AddRange(IEnumerable<T> items)
     {
         SwiftThrowHelper.ThrowIfNull(items, nameof(items));
@@ -154,6 +158,15 @@ public partial class SwiftObservableList<T> : SwiftList<T>, INotifyPropertyChang
         OnPropertyChanged(nameof(Count));
     }
 
+    /// <summary>
+    /// Removes all elements from the collection that match the conditions defined by the specified predicate.
+    /// </summary>
+    /// <remarks>
+    /// Raises a collection changed event with the Reset action and notifies property changes if any elements are removed. 
+    /// This method is useful when you need to remove multiple items based on a condition and notify observers of the change.
+    /// </remarks>
+    /// <param name="match">The delegate that defines the conditions of the elements to remove. Cannot be null.</param>
+    /// <returns>The number of elements removed from the collection.</returns>
     public override int RemoveAll(Predicate<T> match)
     {
         int removedCount = base.RemoveAll(match);

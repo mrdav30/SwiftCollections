@@ -29,7 +29,7 @@ public partial class SwiftObservableProperty<TValue> : INotifyPropertyChanged
     /// <summary>
     /// Raised whenever the property's value changes.
     /// </summary>
-    public event PropertyChangedEventHandler PropertyChanged;
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     #endregion
 
@@ -39,7 +39,7 @@ public partial class SwiftObservableProperty<TValue> : INotifyPropertyChanged
     /// Initializes a new instance of the <see cref="SwiftObservableProperty{TValue}"/> class with the default value of <typeparamref name="TValue"/>.
     /// </summary>
     [MemoryPackConstructor]
-    public SwiftObservableProperty() { }
+    public SwiftObservableProperty() : this(default!) { }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SwiftObservableProperty{TValue}"/> class with the specified initial value.
@@ -79,7 +79,7 @@ public partial class SwiftObservableProperty<TValue> : INotifyPropertyChanged
     /// <summary>
     /// Raises the <see cref="PropertyChanged"/> event with the specified property name.
     /// </summary>
-    protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+    protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = "")
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }

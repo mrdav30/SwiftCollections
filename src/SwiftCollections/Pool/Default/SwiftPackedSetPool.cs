@@ -9,6 +9,7 @@ namespace SwiftCollections.Pool;
 /// </summary>
 /// <typeparam name="T">The type of elements in the packed set.</typeparam>
 public sealed class SwiftPackedSetPool<T> : SwiftCollectionPool<SwiftPackedSet<T>, T>, IDisposable
+    where T : notnull
 {
     #region Singleton Instance
 
@@ -91,6 +92,13 @@ public sealed class SwiftPackedSetPool<T> : SwiftCollectionPool<SwiftPackedSet<T
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>
+    /// Releases the resources used by the SwiftPackedSetPool instance.
+    /// </summary>
+    /// <remarks>
+    /// This finalizer ensures that unmanaged resources are released if Dispose was not called explicitly. 
+    /// It is recommended to call Dispose to release resources deterministically.
+    /// </remarks>
     ~SwiftPackedSetPool() => Dispose();
 
     #endregion

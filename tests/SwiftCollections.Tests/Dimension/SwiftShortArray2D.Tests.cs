@@ -45,7 +45,7 @@ public class SwiftShortArray2DTests
     [Fact]
     public void Clone_CreatesExactCopy()
     {
-        SwiftShortArray2D source = new SwiftShortArray2D(new short[,] { { 1, 2 }, { 3, 4 } });
+        SwiftShortArray2D source = new(new short[,] { { 1, 2 }, { 3, 4 } });
         var clonedArray = source.Clone();
 
         Assert.Equal(2, clonedArray.Width);

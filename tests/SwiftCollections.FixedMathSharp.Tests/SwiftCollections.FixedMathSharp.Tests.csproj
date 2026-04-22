@@ -7,7 +7,7 @@
 		<IsPackable>false</IsPackable>
 		<IsTestProject>true</IsTestProject>
 		<ProjectGuid>{E5DC9388-4709-456D-B6B9-0C57EEBC6D2A}</ProjectGuid>
-		<Configurations>Debug;Release</Configurations>
+		<Configurations>Debug;Release;ReleaseLean</Configurations>
 		<OutputType>Exe</OutputType>
 	</PropertyGroup>
 	<ItemGroup>

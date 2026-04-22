@@ -12,17 +12,13 @@ public class SwiftFixedSpatialHash<T> : SwiftSpatialHash<T, FixedBoundVolume>
     /// Initializes a new instance of the <see cref="SwiftFixedSpatialHash{T}"/> class with the specified capacity and cell size.
     /// </summary>
     public SwiftFixedSpatialHash(int capacity, Fixed64 cellSize)
-        : this(capacity, cellSize, SwiftSpatialHashOptions.Default)
-    {
-    }
+        : this(capacity, cellSize, SwiftSpatialHashOptions.Default) { }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SwiftFixedSpatialHash{T}"/> class with the specified capacity, cell size, and options.
     /// </summary>
     public SwiftFixedSpatialHash(int capacity, Fixed64 cellSize, SwiftSpatialHashOptions options)
-        : base(capacity, new FixedBoundVolumeCellMapper(cellSize), options)
-    {
-    }
+        : base(capacity, new FixedBoundVolumeCellMapper(cellSize), options) { }
 
     private sealed class FixedBoundVolumeCellMapper : ISpatialHashCellMapper<FixedBoundVolume>
     {

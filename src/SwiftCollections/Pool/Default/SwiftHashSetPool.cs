@@ -9,6 +9,7 @@ namespace SwiftCollections.Pool;
 /// </summary>
 /// <typeparam name="T">The type of elements in the hash set.</typeparam>
 public sealed class SwiftHashSetPool<T> : SwiftCollectionPool<SwiftHashSet<T>, T>, IDisposable
+    where T : notnull
 {
     #region Singleton Instance
 
@@ -97,6 +98,13 @@ public sealed class SwiftHashSetPool<T> : SwiftCollectionPool<SwiftHashSet<T>, T
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>
+    /// Releases the resources used by the SwiftHashSetPool instance.
+    /// </summary>
+    /// <remarks>
+    /// This finalizer ensures that unmanaged resources are released if Dispose was not called explicitly. 
+    /// It is recommended to call Dispose to release resources deterministically.
+    /// </remarks>
     ~SwiftHashSetPool() => Dispose();
 
     #endregion

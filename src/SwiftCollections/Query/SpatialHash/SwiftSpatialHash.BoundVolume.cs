@@ -6,6 +6,7 @@ namespace SwiftCollections.Query;
 /// Represents a numerics-backed spatial hash optimized for high-churn broad-phase spatial queries.
 /// </summary>
 public class SwiftSpatialHash<TKey> : SwiftSpatialHash<TKey, BoundVolume>
+    where TKey : notnull
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="SwiftSpatialHash{TKey}"/> class with the specified capacity and cell size.

@@ -83,7 +83,8 @@ namespace SwiftCollections
                     return true;
                 }
             }
-            result = default;
+
+            result = default!;
             return false;
         }
 
@@ -99,7 +100,7 @@ namespace SwiftCollections
             SwiftThrowHelper.ThrowIfNull(source, nameof(source));
             SwiftThrowHelper.ThrowIfNull(rng, nameof(rng));
 
-            SwiftList<T> buffer = new SwiftList<T>(source);
+            SwiftList<T> buffer = new(source);
             int n = buffer.Count;
             while (n > 0)
             {
@@ -194,10 +195,8 @@ namespace SwiftCollections
         /// </summary>
         public static IEnumerable<T> SkipFromEnd<T>(this IEnumerable<T> source, int count)
         {
-            if (source == null)
-                throw new ArgumentNullException(nameof(source));
-            if (count < 0)
-                throw new ArgumentOutOfRangeException(nameof(count));
+            SwiftThrowHelper.ThrowIfNull(source, nameof(source));
+            SwiftThrowHelper.ThrowIfNegative(count, nameof(count));
 
             SwiftQueue<T> buffer = new();
 

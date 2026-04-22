@@ -15,12 +15,12 @@ public sealed class SwiftPooledObject<T> : IDisposable where T : class
     /// <summary>
     /// The rented object that will be returned to the pool upon disposal.
     /// </summary>
-    private T _value;
+    private T? _value;
 
     /// <summary>
     /// The pool from which the object was rented.
     /// </summary>
-    private ISwiftObjectPool<T> _pool;
+    private ISwiftObjectPool<T>? _pool;
 
     private int _disposed;
 
@@ -59,8 +59,8 @@ public sealed class SwiftPooledObject<T> : IDisposable where T : class
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
             return;
 
-        ISwiftObjectPool<T> pool = _pool;
-        T value = _value;
+        ISwiftObjectPool<T>? pool = _pool;
+        T? value = _value;
 
         _pool = null;
         _value = null;

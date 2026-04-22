@@ -5,6 +5,14 @@ using System.Runtime.CompilerServices;
 
 namespace SwiftCollections;
 
+/// <summary>
+/// Provides helper methods for throwing common exceptions in a consistent and efficient manner. 
+/// These methods are intended to simplify argument and state validation throughout the codebase.
+/// </summary>
+/// <remarks>
+/// This class centralizes exception throwing logic to improve code clarity and reduce repetitive validation code. 
+/// Methods are typically inlined by the compiler to minimize performance overhead.
+/// </remarks>
 public static class SwiftThrowHelper
 {
 #nullable enable
@@ -24,7 +32,7 @@ public static class SwiftThrowHelper
     /// <param name="defaultValue">A default value of type TValue used to determine if nulls are illegal.</param>
     /// <exception cref="ArgumentNullException">The value is null and TValue is a value type.</exception>
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public static void ThrowIfNullAndNullsAreIllegal<TValue>(object value, TValue? defaultValue)
+    public static void ThrowIfNullAndNullsAreIllegal<TValue>(object? value, TValue? defaultValue)
     {
         if (value == null && !(defaultValue == null))
             ThrowArgumentNullException(nameof(value));

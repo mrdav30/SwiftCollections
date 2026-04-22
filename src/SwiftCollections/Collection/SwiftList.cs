@@ -66,12 +66,15 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     /// An object that can be used to synchronize access to the SwiftList.
     /// </summary>
     [NonSerialized]
-    private object _syncRoot;
+    private object? _syncRoot;
 
     #endregion
 
     #region Constructors
 
+    /// <summary>
+    /// Initializes a new instance of the SwiftList class that is empty and has the default initial capacity.
+    /// </summary>
     public SwiftList() : this(0) { }
 
     /// <summary>
@@ -124,12 +127,18 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     public SwiftList(SwiftArrayState<T> state)
     {
         State = state;
+
+        // Validate that the internal array is not null after deserialization
+        SwiftThrowHelper.ThrowIfNull(_innerArray, nameof(_innerArray));
     }
 
     #endregion
 
     #region Properties
 
+    /// <summary>
+    /// Gets the underlying array that stores the elements of the collection.
+    /// </summary>
     [JsonIgnore]
     [MemoryPackIgnore]
     public T[] InnerArray => _innerArray;
@@ -147,32 +156,36 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     [MemoryPackIgnore]
     public int Count => _count;
 
+    /// <inheritdoc/>
     [JsonIgnore]
     [MemoryPackIgnore]
     public bool IsReadOnly => false;
 
+    /// <inheritdoc/>
     [JsonIgnore]
     [MemoryPackIgnore]
     public bool IsSynchronized => false;
 
+    /// <inheritdoc/>
     [JsonIgnore]
     [MemoryPackIgnore]
-    object ICollection.SyncRoot => _syncRoot ??= new object();
+    public object SyncRoot => _syncRoot ??= new object();
+
+    /// <inheritdoc/>
+    [JsonIgnore]
+    [MemoryPackIgnore]
+    public bool IsFixedSize => false;
 
     [JsonIgnore]
     [MemoryPackIgnore]
-    bool IList.IsFixedSize => false;
-
-    [JsonIgnore]
-    [MemoryPackIgnore]
-    object IList.this[int index]
+    object? IList.this[int index]
     {
-        get => this[index];
+        get => this[index] ?? default!;
         set
         {
             try
             {
-                this[index] = (T)value;
+                this[index] = (T)value!;
             }
             catch
             {
@@ -202,6 +215,14 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
         }
     }
 
+    /// <summary>
+    /// Gets or sets the current state of the array, including its items and count.
+    /// </summary>
+    /// <remarks>
+    /// Setting this property replaces the entire contents of the array with the items from the specified state. 
+    /// The previous contents are discarded. 
+    /// The version is reset when the state is set.
+    /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
     public SwiftArrayState<T> State
@@ -214,7 +235,9 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
         }
         internal set
         {
-            int count = value.Items?.Length ?? 0;
+            SwiftThrowHelper.ThrowIfNull(value.Items, nameof(value.Items));
+
+            int count = value.Items.Length;
 
             if (count == 0)
             {
@@ -248,11 +271,11 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
         _version++;
     }
 
-    int IList.Add(object value)
+    int IList.Add(object? value)
     {
         try
         {
-            Add((T)value);
+            Add((T)value!);
         }
         catch (InvalidCastException)
         {
@@ -333,11 +356,11 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
         return true;
     }
 
-    void IList.Remove(object value)
+    void IList.Remove(object? value)
     {
         try
         {
-            Remove((T)value);
+            Remove((T)value!);
         }
         catch (InvalidCastException)
         {
@@ -354,7 +377,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
         Array.Copy(_innerArray, index + 1, _innerArray, index, _count - index - 1);
         _count--;
         if (_clearReleasedSlots)
-            _innerArray[_count] = default;
+            _innerArray[_count] = default!;
         _version++;
     }
 
@@ -407,11 +430,11 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
         _version++;
     }
 
-    void IList.Insert(int index, object value)
+    void IList.Insert(int index, object? value)
     {
         try
         {
-            Insert(index, (T)value);
+            Insert(index, (T)value!);
         }
         catch (InvalidCastException)
         {
@@ -488,6 +511,15 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
             Resize(capacity);
     }
 
+    /// <summary>
+    /// Resizes the internal array to accommodate the specified number of elements.
+    /// </summary>
+    /// <remarks>
+    /// If the specified size is less than or equal to the default capacity, the internal array is
+    /// set to the default capacity. 
+    /// Existing elements are preserved up to the current count.
+    /// </remarks>
+    /// <param name="newSize">The desired new size of the internal array. Must be greater than or equal to zero.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected void Resize(int newSize)
     {
@@ -521,12 +553,12 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int IndexOf(T item) => Array.IndexOf(_innerArray, item, 0, _count);
 
-    int IList.IndexOf(object value)
+    int IList.IndexOf(object? value)
     {
-        int index = -1;
+        int index;
         try
         {
-            index = Array.IndexOf(_innerArray, (T)value, 0, _count);
+            index = Array.IndexOf(_innerArray, (T)value!, 0, _count);
         }
         catch
         {
@@ -558,10 +590,17 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     public ReadOnlySpan<T> AsReadOnlySpan() => _innerArray.AsSpan(0, _count);
 
     /// <summary>
-    /// Returns a string that represents the current object.
+    /// Returns a string that represents the current collection.
     /// </summary>
+    /// <remarks>
+    /// This method provides a human-readable representation of the collection's contents, 
+    /// which can be useful for debugging or logging purposes.
+    /// </remarks>
+    /// <returns>A comma-separated list of the collection's elements, or the default string representation if the collection is empty.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public override string ToString() => _count == 0 ? base.ToString() : string.Join(", ", this);
+    public override string ToString() => _count == 0
+        ? base.ToString() ?? string.Empty
+        : string.Join(", ", this);
 
     /// <summary>
     /// Determines whether an element is in the SwiftList.
@@ -602,15 +641,15 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
                 return _innerArray[i];
         }
 
-        return default;
+        return default!;
     }
 
-    bool IList.Contains(object value)
+    bool IList.Contains(object? value)
     {
-        int index = -1;
+        int index;
         try
         {
-            index = IndexOf((T)value);
+            index = IndexOf((T)value!);
         }
         catch
         {
@@ -642,6 +681,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
         target._version++;
     }
 
+    /// <inheritdoc/>
     public void CopyTo(T[] array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
@@ -663,6 +703,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
         AsSpan().CopyTo(destination);
     }
 
+    /// <inheritdoc/>
     public void CopyTo(Array array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
@@ -674,6 +715,7 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
         Array.Copy(_innerArray, 0, array, arrayIndex, _count);
     }
 
+    /// <inheritdoc/>
     public void CloneTo(ICollection<T> output)
     {
         output.Clear();
@@ -688,10 +730,18 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
     /// <summary>
     /// Returns an enumerator that iterates through the <see cref="SwiftList{T}"/>.
     /// </summary>
-    public SwiftListEnumerator GetEnumerator() => new SwiftListEnumerator(this);
+    public SwiftListEnumerator GetEnumerator() => new(this);
     IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
+    /// <summary>
+    /// Enumerates the elements of a <see cref="SwiftList{T}"/> collection.
+    /// </summary>
+    /// <remarks>
+    /// The enumerator provides read-only, forward-only iteration over the collection. 
+    /// The enumerator is invalidated if the collection is modified after the enumerator is created. 
+    /// In such cases, calling MoveNext or Reset will throw an InvalidOperationException.
+    /// </remarks>
     public struct SwiftListEnumerator : IEnumerator<T>, IEnumerator, IDisposable
     {
         private readonly SwiftList<T> _list;
@@ -702,16 +752,17 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
 
         private T _current;
 
-        public SwiftListEnumerator(SwiftList<T> list)
+        internal SwiftListEnumerator(SwiftList<T> list)
         {
             _list = list;
             _array = list._innerArray;
             _count = (uint)list._count;
             _version = list._version;
             _index = 0;
-            _current = default;
+            _current = default!;
         }
 
+        /// <inheritdoc/>
         public T Current => _current;
 
         object IEnumerator.Current
@@ -720,10 +771,11 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
             get
             {
                 if (_index >= _count) throw new InvalidOperationException("Bad enumeration");
-                return _current;
+                return _current!;
             }
         }
 
+        /// <inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
@@ -735,16 +787,18 @@ public partial class SwiftList<T> : ISwiftCloneable<T>, IEnumerable<T>, IEnumera
             return true;
         }
 
+        /// <inheritdoc/>
         public void Reset()
         {
             if (_version != _list._version)
                 throw new InvalidOperationException("Collection was modified during enumeration.");
 
             _index = 0;
-            _current = default;
+            _current = default!;
         }
 
-        public void Dispose() { }
+        /// <inheritdoc/>
+        public void Dispose() => _index = 0;
     }
 
     #endregion

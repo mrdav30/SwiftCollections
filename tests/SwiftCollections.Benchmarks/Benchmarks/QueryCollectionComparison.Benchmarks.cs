@@ -1,9 +1,9 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
+using SwiftCollections.Query;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using SwiftCollections.Query;
 
 namespace SwiftCollections.Benchmarks;
 
@@ -110,11 +110,11 @@ public class QueryCollectionComparisonBenchmarks
         var random = new Random(20191);
         for (int i = 0; i < N; i++)
         {
-            Vector3 size = new Vector3(1.5f, 1.5f, 1.5f);
+            Vector3 size = new(1.5f, 1.5f, 1.5f);
             Vector3 min = ClampMin(RandomVector3(random, DynamicWorldExtent), DynamicWorldExtent, size);
             _dynamicInitialBounds[i] = new BoundVolume(min, min + size);
 
-            Vector3 delta = new Vector3(2.5f, -1.5f, 2.0f);
+            Vector3 delta = new(2.5f, -1.5f, 2.0f);
             Vector3 movedMin = ClampMin(min + delta, DynamicWorldExtent, size);
             _dynamicUpdatedBounds[i] = new BoundVolume(movedMin, movedMin + size);
         }
@@ -127,7 +127,7 @@ public class QueryCollectionComparisonBenchmarks
         for (int i = 0; i < _dynamicQueryBounds.Length; i++)
         {
             Vector3 center = RandomVector3(random, DynamicWorldExtent);
-            Vector3 halfExtents = new Vector3(12f, 12f, 12f);
+            Vector3 halfExtents = new(12f, 12f, 12f);
             _dynamicQueryBounds[i] = new BoundVolume(center - halfExtents, center + halfExtents);
         }
     }
@@ -143,7 +143,7 @@ public class QueryCollectionComparisonBenchmarks
         {
             Vector3 min = RandomVector3(random, MixedWorldExtent);
             float sizeScalar = i % 3 == 0 ? 2f : i % 3 == 1 ? 14f : 72f;
-            Vector3 size = new Vector3(sizeScalar, sizeScalar * 0.75f, sizeScalar * 1.25f);
+            Vector3 size = new(sizeScalar, sizeScalar * 0.75f, sizeScalar * 1.25f);
             Vector3 clampedMin = ClampMin(min, MixedWorldExtent, size);
             _mixedBounds[i] = new BoundVolume(clampedMin, clampedMin + size);
         }
@@ -151,7 +151,7 @@ public class QueryCollectionComparisonBenchmarks
         for (int i = 0; i < _mixedQueryBounds.Length; i++)
         {
             Vector3 center = RandomVector3(random, MixedWorldExtent);
-            Vector3 halfExtents = new Vector3(48f, 48f, 48f);
+            Vector3 halfExtents = new(48f, 48f, 48f);
             _mixedQueryBounds[i] = new BoundVolume(center - halfExtents, center + halfExtents);
         }
     }
@@ -165,16 +165,16 @@ public class QueryCollectionComparisonBenchmarks
         var random = new Random(41041);
         Vector3[] clusterCenters =
         {
-            new Vector3(512f, 512f, 512f),
-            new Vector3(1536f, 1536f, 2048f),
-            new Vector3(4096f, 1024f, 1024f),
-            new Vector3(6144f, 6144f, 4096f)
+            new(512f, 512f, 512f),
+            new(1536f, 1536f, 2048f),
+            new(4096f, 1024f, 1024f),
+            new(6144f, 6144f, 4096f)
         };
 
         for (int i = 0; i < N; i++)
         {
             Vector3 cluster = clusterCenters[i % clusterCenters.Length];
-            Vector3 offset = new Vector3(
+            Vector3 offset = new(
                 NextCentered(random, 160f),
                 NextCentered(random, 160f),
                 NextCentered(random, 160f));
@@ -186,7 +186,7 @@ public class QueryCollectionComparisonBenchmarks
         for (int i = 0; i < _regionalQueryBounds.Length; i++)
         {
             Vector3 cluster = clusterCenters[i % clusterCenters.Length];
-            Vector3 halfExtents = new Vector3(128f, 128f, 128f);
+            Vector3 halfExtents = new(128f, 128f, 128f);
             _regionalQueryBounds[i] = new BoundVolume(cluster - halfExtents, cluster + halfExtents);
         }
     }
@@ -201,7 +201,7 @@ public class QueryCollectionComparisonBenchmarks
         for (int i = 0; i < N; i++)
         {
             float sizeScalar = i % 40 == 0 ? 1024f : i % 8 == 0 ? 96f : 2f;
-            Vector3 size = new Vector3(sizeScalar, sizeScalar * 0.65f, sizeScalar * 1.15f);
+            Vector3 size = new(sizeScalar, sizeScalar * 0.65f, sizeScalar * 1.15f);
             Vector3 min = ClampMin(RandomVector3(random, ExtremeVarianceWorldExtent), ExtremeVarianceWorldExtent, size);
             _extremeVarianceBounds[i] = new BoundVolume(min, min + size);
         }
@@ -226,11 +226,11 @@ public class QueryCollectionComparisonBenchmarks
         for (int i = 0; i < N; i++)
         {
             float sizeScalar = i % 3 == 0 ? 256f : i % 3 == 1 ? 384f : 640f;
-            Vector3 size = new Vector3(sizeScalar, sizeScalar * 0.8f, sizeScalar * 0.9f);
+            Vector3 size = new(sizeScalar, sizeScalar * 0.8f, sizeScalar * 0.9f);
             Vector3 min = ClampMin(RandomVector3(random, LargeObjectChurnWorldExtent), LargeObjectChurnWorldExtent, size);
             _largeChurnInitialBounds[i] = new BoundVolume(min, min + size);
 
-            Vector3 delta = new Vector3(
+            Vector3 delta = new(
                 (i % 5 - 2) * 48f,
                 (i % 7 - 3) * 32f,
                 (i % 3 - 1) * 64f);
@@ -246,7 +246,7 @@ public class QueryCollectionComparisonBenchmarks
         for (int i = 0; i < _largeChurnQueryBounds.Length; i++)
         {
             Vector3 center = RandomVector3(random, LargeObjectChurnWorldExtent);
-            Vector3 halfExtents = new Vector3(320f, 256f, 320f);
+            Vector3 halfExtents = new(320f, 256f, 320f);
             _largeChurnQueryBounds[i] = new BoundVolume(center - halfExtents, center + halfExtents);
         }
     }
@@ -261,7 +261,7 @@ public class QueryCollectionComparisonBenchmarks
         for (int i = 0; i < N; i++)
         {
             float sizeScalar = i % 16 == 0 ? 192f : i % 4 == 0 ? 24f : 4f;
-            Vector3 size = new Vector3(sizeScalar, sizeScalar * 0.7f, sizeScalar * 1.1f);
+            Vector3 size = new(sizeScalar, sizeScalar * 0.7f, sizeScalar * 1.1f);
             Vector3 min = ClampMin(RandomVector3(random, SparseHugeWorldExtent), SparseHugeWorldExtent, size);
             _sparseHugeBounds[i] = new BoundVolume(min, min + size);
         }
@@ -269,7 +269,7 @@ public class QueryCollectionComparisonBenchmarks
         for (int i = 0; i < _sparseHugeQueryBounds.Length; i++)
         {
             Vector3 center = RandomVector3(random, SparseHugeWorldExtent);
-            Vector3 halfExtents = new Vector3(12f, 12f, 12f);
+            Vector3 halfExtents = new(12f, 12f, 12f);
             _sparseHugeQueryBounds[i] = new BoundVolume(center - halfExtents, center + halfExtents);
         }
     }
@@ -283,10 +283,10 @@ public class QueryCollectionComparisonBenchmarks
         var random = new Random(85213);
         Vector3[] clusterCenters =
         {
-            new Vector3(2048f, 2048f, 2048f),
-            new Vector3(4096f, 6144f, 3072f),
-            new Vector3(8192f, 4096f, 8192f),
-            new Vector3(12288f, 11264f, 6144f)
+            new(2048f, 2048f, 2048f),
+            new(4096f, 6144f, 3072f),
+            new(8192f, 4096f, 8192f),
+            new(12288f, 11264f, 6144f)
         };
 
         for (int i = 0; i < N; i++)
@@ -295,18 +295,18 @@ public class QueryCollectionComparisonBenchmarks
             {
                 Vector3 giantCenter = clusterCenters[(i / 48) % clusterCenters.Length] +
                     new Vector3(1024f, 0f, 1024f);
-                Vector3 halfExtents = new Vector3(1792f, 1280f, 1536f);
+                Vector3 halfExtents = new(1792f, 1280f, 1536f);
                 Vector3 min = ClampMin(giantCenter - halfExtents, ClusteredGiantsWorldExtent, halfExtents * 2f);
                 _clusteredGiantsBounds[i] = new BoundVolume(min, min + (halfExtents * 2f));
                 continue;
             }
 
             Vector3 cluster = clusterCenters[i % clusterCenters.Length];
-            Vector3 offset = new Vector3(
+            Vector3 offset = new(
                 NextCentered(random, 140f),
                 NextCentered(random, 140f),
                 NextCentered(random, 140f));
-            Vector3 size = new Vector3(5f, 5f, 5f);
+            Vector3 size = new(5f, 5f, 5f);
             Vector3 minSmall = ClampMin(cluster + offset, ClusteredGiantsWorldExtent, size);
             _clusteredGiantsBounds[i] = new BoundVolume(minSmall, minSmall + size);
         }

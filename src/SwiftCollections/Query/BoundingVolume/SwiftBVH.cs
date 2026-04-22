@@ -14,6 +14,7 @@ namespace SwiftCollections.Query;
 /// </para>
 /// </remarks>
 public class SwiftBVH<TKey, TVolume>
+    where TKey : notnull
     where TVolume : struct, IBoundVolume<TVolume>
 {
     #region Static & Constants
@@ -29,9 +30,9 @@ public class SwiftBVH<TKey, TVolume>
     private int _leafCount;
 
     private readonly QueryKeyIndexMap<TKey> _keyToNodeIndex;
-    private readonly QueryTraversalScratch _queryScratch = new QueryTraversalScratch();
+    private readonly QueryTraversalScratch _queryScratch = new();
 
-    private readonly SwiftIntStack _freeIndices = new SwiftIntStack();
+    private readonly SwiftIntStack _freeIndices = new();
 
     private int _rootNodeIndex;
 
@@ -150,7 +151,7 @@ public class SwiftBVH<TKey, TVolume>
         if (parentNode.IsLeaf)
         {
             // Create a new parent node
-            int newParentIndex = AllocateNode(default, parentNode.Bounds.Union(newNode.Bounds), false);
+            int newParentIndex = AllocateNode(default!, parentNode.Bounds.Union(newNode.Bounds), false);
             ref SwiftBVHNode<TKey, TVolume> newParentNode = ref _nodePool[newParentIndex];
             newParentNode.ParentIndex = parentNode.ParentIndex;
 
@@ -438,7 +439,7 @@ public class SwiftBVH<TKey, TVolume>
     /// Handles cases where one or both children are missing.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private TVolume GetCombinedBounds(SwiftBVHNode<TKey, TVolume> leftChild, SwiftBVHNode<TKey, TVolume> rightChild)
+    private static TVolume GetCombinedBounds(SwiftBVHNode<TKey, TVolume> leftChild, SwiftBVHNode<TKey, TVolume> rightChild)
     {
         if (leftChild.IsAllocated && rightChild.IsAllocated)
             return leftChild.Bounds.Union(rightChild.Bounds);

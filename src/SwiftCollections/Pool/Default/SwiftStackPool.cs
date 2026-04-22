@@ -91,6 +91,13 @@ public sealed class SwiftStackPool<T> : SwiftCollectionPool<SwiftStack<T>, T>, I
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>
+    /// Releases the resources used by the SwiftStackPool instance.
+    /// </summary>
+    /// <remarks>
+    /// This finalizer ensures that unmanaged resources are released if Dispose was not called explicitly. 
+    /// It is recommended to call Dispose to release resources deterministically.
+    /// </remarks>
     ~SwiftStackPool() => Dispose();
 
     #endregion

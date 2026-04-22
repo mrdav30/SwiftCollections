@@ -39,24 +39,28 @@ public readonly struct SwiftSpatialHashCellIndex : IEquatable<SwiftSpatialHashCe
     }
 
     /// <inheritdoc />
-    public override bool Equals(object obj)
-    {
-        return obj is SwiftSpatialHashCellIndex other && Equals(other);
-    }
+    public override bool Equals(object? obj) => obj is SwiftSpatialHashCellIndex other && Equals(other);
+
+    /// <summary>
+    /// Determines whether two SwiftSpatialHashCellIndex instances are equal.
+    /// </summary>
+    public static bool operator ==(SwiftSpatialHashCellIndex left, SwiftSpatialHashCellIndex right) => left.Equals(right);
+
+    /// <summary>
+    /// Determines whether two SwiftSpatialHashCellIndex instances are not equal.
+    /// </summary>
+    public static bool operator !=(SwiftSpatialHashCellIndex left, SwiftSpatialHashCellIndex right) => !left.Equals(right);
 
     /// <inheritdoc />
-    public override int GetHashCode()
-    {
-        unchecked
-        {
-            int hash = 17;
-            hash = (hash * 31) + X;
-            hash = (hash * 31) + Y;
-            hash = (hash * 31) + Z;
-            return hash;
-        }
-    }
+    public override int GetHashCode() => HashCode.Combine(X, Y, Z);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Returns a string that represents the current object in the format "(X, Y, Z)".
+    /// </summary>
+    /// <remarks>
+    /// This method is useful for debugging or logging purposes to quickly view the values of the
+    /// object's coordinates.
+    /// </remarks>
+    /// <returns>A string representation of the object, showing the values of X, Y, and Z in parentheses and separated by commas.</returns>
     public override string ToString() => $"({X}, {Y}, {Z})";
 }

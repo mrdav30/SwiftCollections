@@ -7,6 +7,31 @@ using System.Text.Json.Serialization;
 
 namespace SwiftCollections;
 
+/// <summary>Specifies that the method or property will ensure that the listed field and property members have not-null values.</summary>
+[AttributeUsage(AttributeTargets.Method | AttributeTargets.Property, Inherited = false, AllowMultiple = true)]
+#if SYSTEM_PRIVATE_CORELIB
+    public
+#else
+internal
+#endif
+    sealed class MemberNotNullAttribute : Attribute
+{
+    /// <summary>Initializes the attribute with a field or property member.</summary>
+    /// <param name="member">
+    /// The field or property member that is promised to be not-null.
+    /// </param>
+    public MemberNotNullAttribute(string member) => Members = new[] { member };
+
+    /// <summary>Initializes the attribute with the list of field and property members.</summary>
+    /// <param name="members">
+    /// The list of field and property members that are promised to be not-null.
+    /// </param>
+    public MemberNotNullAttribute(params string[] members) => Members = members;
+
+    /// <summary>Gets field or property member names.</summary>
+    public string[] Members { get; }
+}
+
 /// <summary>
 /// A high-performance, memory-efficient dictionary providing lightning-fast O(1) operations for addition, retrieval, and removal, optimized to outperform standard dictionaries.
 /// </summary>
@@ -28,6 +53,7 @@ namespace SwiftCollections;
 [JsonConverter(typeof(SwiftStateJsonConverterFactory))]
 [MemoryPackable]
 public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IDictionary
+    where TKey : notnull
 {
     #region Constants
 
@@ -102,7 +128,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
     /// An object that can be used to synchronize access to the SwiftDictionary.
     /// </summary>
     [NonSerialized]
-    private object _syncRoot;
+    private object? _syncRoot;
 
     #endregion
 
@@ -113,9 +139,27 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
     /// </summary>
     protected struct Entry
     {
+        /// <summary>
+        /// Gets or sets the key associated with this instance.
+        /// </summary>
         public TKey Key;
+
+        /// <summary>
+        /// Gets or sets the value associated with this instance.
+        /// </summary>
         public TValue Value;
-        public int HashCode;    // Lower 31 bits of hash code, -1 if unused
+
+        /// <summary>
+        /// Gets or sets the lower 31 bits of the hash code associated with this entry.
+        /// </summary>
+        /// <remarks>
+        /// A value of -1 indicates that the entry is unused. 
+        /// Only the lower 31 bits are used; the highest bit is reserved.</remarks>
+        public int HashCode;
+
+        /// <summary>
+        /// Indicates whether the item is currently in use.
+        /// </summary>
         public bool IsUsed;
     }
 
@@ -129,24 +173,30 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
     public SwiftDictionary() : this(DefaultCapacity, null) { }
 
     /// <inheritdoc cref="SwiftDictionary()"/>
-    public SwiftDictionary(int capacity, IEqualityComparer<TKey> comparer = null)
+    public SwiftDictionary(int capacity, IEqualityComparer<TKey>? comparer = null)
     {
         Initialize(capacity, comparer);
+
+        SwiftThrowHelper.ThrowIfNull(_entries, nameof(_entries));
+        SwiftThrowHelper.ThrowIfNull(_comparer, nameof(_comparer));
     }
 
     /// <inheritdoc cref="SwiftDictionary()"/>
-    public SwiftDictionary(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey> comparer = null)
+    public SwiftDictionary(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey>? comparer = null)
     {
         SwiftThrowHelper.ThrowIfNull(dictionary, nameof(dictionary));
 
         Initialize(dictionary.Count, comparer);
+
+        SwiftThrowHelper.ThrowIfNull(_entries, nameof(_entries));
+        SwiftThrowHelper.ThrowIfNull(_comparer, nameof(_comparer));
 
         foreach (KeyValuePair<TKey, TValue> kvp in dictionary)
             InsertIfNotExist(kvp.Key, kvp.Value);
     }
 
     /// <inheritdoc cref="SwiftDictionary()"/>
-    public SwiftDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey> comparer = null)
+    public SwiftDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey>? comparer = null)
     {
         SwiftThrowHelper.ThrowIfNull(collection, nameof(collection));
 
@@ -154,6 +204,9 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
         // Dynamic padding based on collision estimation
         int size = (int)(count / _LoadFactorThreshold);
         Initialize(size, comparer);
+
+        SwiftThrowHelper.ThrowIfNull(_entries, nameof(_entries));
+        SwiftThrowHelper.ThrowIfNull(_comparer, nameof(_comparer));
 
         foreach (KeyValuePair<TKey, TValue> kvp in collection)
             InsertIfNotExist(kvp.Key, kvp.Value);
@@ -167,6 +220,9 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
     public SwiftDictionary(SwiftDictionaryState<TKey, TValue> state)
     {
         State = state;
+
+        SwiftThrowHelper.ThrowIfNull(_entries, nameof(_entries));
+        SwiftThrowHelper.ThrowIfNull(_comparer, nameof(_comparer));
     }
 
     #endregion
@@ -180,14 +236,28 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
     [MemoryPackIgnore]
     public int Count => _count;
 
+    /// <summary>
+    /// Gets the total number of elements that the collection can hold without resizing.
+    /// </summary>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Capacity => _entries.Length;
 
+    /// <summary>
+    /// Gets the equality comparer used to determine equality of keys in the collection.
+    /// </summary>
     [JsonIgnore]
     [MemoryPackIgnore]
     public IEqualityComparer<TKey> Comparer => _comparer;
 
+    /// <summary>
+    /// Gets or sets the value associated with the specified key.
+    /// </summary>
+    /// <remarks>
+    /// Getting a value with a key that does not exist will throw an exception. 
+    /// Setting a value for a key that does not exist will add a new entry with the specified key and value.
+    /// </remarks>
+    /// <param name="key">The key whose value to get or set.</param>
     [JsonIgnore]
     [MemoryPackIgnore]
     public TValue this[TKey key]
@@ -211,9 +281,10 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
         }
     }
 
+    /// <inheritdoc/>
     [JsonIgnore]
     [MemoryPackIgnore]
-    object IDictionary.this[object obj]
+    object? IDictionary.this[object obj]
     {
         get
         {
@@ -234,7 +305,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
                 TKey tempKey = (TKey)obj;
                 try
                 {
-                    this[tempKey] = (TValue)value;
+                    this[tempKey] = (TValue)value!;
                 }
                 catch (InvalidCastException)
                 {
@@ -253,8 +324,9 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
     /// </summary>
     [JsonIgnore]
     [MemoryPackIgnore]
-    private KeyCollection _keyCollection;
+    private KeyCollection? _keyCollection;
 
+    /// <inheritdoc/>
     [JsonIgnore]
     [MemoryPackIgnore]
     public ICollection<TKey> Keys => _keyCollection ??= new KeyCollection(this);
@@ -268,8 +340,9 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
     /// </summary>
     [JsonIgnore]
     [MemoryPackIgnore]
-    private ValueCollection _valueCollection;
+    private ValueCollection? _valueCollection;
 
+    /// <inheritdoc/>
     [JsonIgnore]
     [MemoryPackIgnore]
     public ICollection<TValue> Values => _valueCollection ??= new ValueCollection(this);
@@ -290,10 +363,19 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
     [MemoryPackIgnore]
     bool ICollection.IsSynchronized => false;
 
+    /// <inheritdoc/>
     [JsonIgnore]
     [MemoryPackIgnore]
     public object SyncRoot => _syncRoot ??= new object();
 
+    /// <summary>
+    /// Gets or sets the current state of the dictionary, including all key-value pairs.
+    /// </summary>
+    /// <remarks>
+    /// The state can be used to serialize or restore the contents of the dictionary. 
+    /// Setting this property replaces the entire contents of the dictionary with the provided state. 
+    /// The setter is intended for internal use and is not accessible to external callers.
+    /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
     public SwiftDictionaryState<TKey, TValue> State
@@ -310,8 +392,10 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
         }
         internal set
         {
+            SwiftThrowHelper.ThrowIfNull(value.Items, nameof(value.Items));
+
             var items = value.Items;
-            int count = items?.Length ?? 0;
+            int count = items.Length;
 
             if (count == 0)
             {
@@ -351,9 +435,13 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
         return InsertIfNotExist(key, value);
     }
 
-    void ICollection<KeyValuePair<TKey, TValue>>.Add(KeyValuePair<TKey, TValue> item) => Add(item.Key, item.Value);
+    /// <inheritdoc/>
+    public void Add(KeyValuePair<TKey, TValue> item) => Add(item.Key, item.Value);
+
     void IDictionary<TKey, TValue>.Add(TKey key, TValue value) => Add(key, value);
-    void IDictionary.Add(object key, object value)
+
+    /// <inheritdoc/>
+    public void Add(object key, object? value)
     {
         SwiftThrowHelper.ThrowIfNullAndNullsAreIllegal(value, default(TValue));
 
@@ -362,7 +450,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
             TKey tempKey = (TKey)key;
             try
             {
-                Add(tempKey, (TValue)value);
+                Add(tempKey, (TValue)value!);
             }
             catch (InvalidCastException)
             {
@@ -423,6 +511,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
         return true;
     }
 
+    /// <inheritdoc/>
     public virtual bool Remove(TKey key)
     {
         if (key == null) return false;
@@ -441,8 +530,8 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
             {
                 // Mark entry as deleted
                 entry.IsUsed = false;
-                entry.Key = default;
-                entry.Value = default;
+                entry.Key = default!;
+                entry.Value = default!;
                 entry.HashCode = -1;
                 _count--;
                 if ((uint)_count == 0) _lastIndex = 0;
@@ -463,7 +552,8 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
         if (obj is TKey key) Remove(key);
     }
 
-    bool ICollection<KeyValuePair<TKey, TValue>>.Remove(KeyValuePair<TKey, TValue> item)
+    /// <inheritdoc/>
+    public bool Remove(KeyValuePair<TKey, TValue> item)
     {
         int index = FindEntry(item.Key);
         if (index >= 0 && EqualityComparer<TValue>.Default.Equals(_entries[index].Value, item.Value))
@@ -474,6 +564,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
         return false;
     }
 
+    /// <inheritdoc/>
     public virtual void Clear()
     {
         if ((uint)_count == 0) return;
@@ -481,8 +572,8 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
         for (uint i = 0; i <= (uint)_lastIndex; i++)
         {
             _entries[i].HashCode = -1;
-            _entries[i].Key = default;
-            _entries[i].Value = default;
+            _entries[i].Key = default!;
+            _entries[i].Value = default!;
             _entries[i].IsUsed = false;
         }
 
@@ -632,7 +723,8 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
     /// <param name="capacity">The initial number of elements that the dictionary can contain.</param>
     /// <param name="comparer">The comparer to use for the dictionary.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void Initialize(int capacity, IEqualityComparer<TKey> comparer = null)
+    [MemberNotNull(nameof(_comparer))]
+    private void Initialize(int capacity, IEqualityComparer<TKey>? comparer = null)
     {
         _comparer = SwiftHashTools.GetDefaultEqualityComparer(comparer);
 
@@ -645,6 +737,11 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
         _movingFillRate = 0.0;
     }
 
+    /// <summary>
+    /// Determines whether the dictionary contains an element with the specified key.
+    /// </summary>
+    /// <param name="key">The key to locate in the dictionary.</param>
+    /// <returns>true if the dictionary contains an element with the specified key; otherwise, false.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ContainsKey(TKey key) => FindEntry(key) >= 0;
 
@@ -656,7 +753,8 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
         return false;
     }
 
-    bool ICollection<KeyValuePair<TKey, TValue>>.Contains(KeyValuePair<TKey, TValue> item)
+    /// <inheritdoc/>
+    public bool Contains(KeyValuePair<TKey, TValue> item)
     {
         int index = FindEntry(item.Key);
         if (index >= 0 && EqualityComparer<TValue>.Default.Equals(_entries[index].Value, item.Value))
@@ -664,6 +762,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
         return false;
     }
 
+    /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(TKey key, out TValue value)
     {
@@ -673,10 +772,23 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
             value = _entries[index].Value;
             return true;
         }
-        value = default;
+        value = default!;
         return false;
     }
 
+    /// <summary>
+    /// Copies the elements of the collection to the specified array, starting at the given array index.
+    /// </summary>
+    /// <param name="array">
+    /// The one-dimensional array of key/value pairs that is the destination of the elements copied from the collection.
+    /// The array must have zero-based indexing.
+    /// </param>
+    /// <param name="arrayIndex">The zero-based index in the destination array at which copying begins.</param>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown if arrayIndex is less than 0 or greater than the length of array.</exception>
+    /// <exception cref="ArgumentException">
+    /// Thrown if the number of elements in the source collection is greater than the available space from arrayIndex to
+    /// the end of the destination array.
+    /// </exception>
     public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
@@ -690,9 +802,8 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
         }
     }
 
-    void ICollection<KeyValuePair<TKey, TValue>>.CopyTo(KeyValuePair<TKey, TValue>[] array, int index) => CopyTo(array, index);
-
-    void ICollection.CopyTo(Array array, int arrayIndex)
+    /// <inheritdoc/>
+    public void CopyTo(Array array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         if (array.Rank != 1) throw new ArgumentException("Multidimensional array not supported", nameof(array));
@@ -833,7 +944,8 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
 
     #region IEnumerable Implementation
 
-    public SwiftDictionaryEnumerator GetEnumerator() => new SwiftDictionaryEnumerator(this);
+    /// <inheritdoc cref="IEnumerable.GetEnumerator()"/>
+    public SwiftDictionaryEnumerator GetEnumerator() => new(this);
     IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator() => GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     IDictionaryEnumerator IDictionary.GetEnumerator() => new SwiftDictionaryEnumerator(this, true);
@@ -875,7 +987,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
             get
             {
                 if (_index > (uint)_dictionary._lastIndex) throw new InvalidOperationException("Bad enumeration");
-                return _current.Value;
+                return _current.Value!;
             }
         }
 
@@ -888,6 +1000,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
             }
         }
 
+        /// <inheritdoc/>
         public KeyValuePair<TKey, TValue> Current => _current;
 
         object IEnumerator.Current
@@ -901,6 +1014,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
             }
         }
 
+        /// <inheritdoc/>
         public bool MoveNext()
         {
             if (_version != _dictionary._version)
@@ -919,6 +1033,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
             return false;
         }
 
+        /// <inheritdoc/>
         public void Reset()
         {
             if (_version != _dictionary._version)
@@ -928,9 +1043,8 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
             _current = default;
         }
 
-        public void Dispose()
-        {
-        }
+        /// <inheritdoc/>
+        public void Dispose() => _index = -1;
     }
 
     #endregion
@@ -957,6 +1071,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
             _entries = dictionary._entries;
         }
 
+        /// <inheritdoc/>
         public int Count => _dictionary._count;
 
         bool ICollection.IsSynchronized => false;
@@ -973,6 +1088,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
 
         bool ICollection<TKey>.Remove(TKey item) => false;
 
+        /// <inheritdoc/>
         public void CopyTo(TKey[] array, int arrayIndex)
         {
             SwiftThrowHelper.ThrowIfNull(array, nameof(array));
@@ -1021,10 +1137,18 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
         /// Returns an enumerator that iterates through the keys in the collection.
         /// </summary>
         /// <returns>An enumerator for the keys in the collection.</returns>
-        public KeyCollectionEnumerator GetEnumerator() => new KeyCollectionEnumerator(_dictionary);
+        public KeyCollectionEnumerator GetEnumerator() => new(_dictionary);
         IEnumerator<TKey> IEnumerable<TKey>.GetEnumerator() => GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
+        /// <summary>
+        /// Enumerates the keys of a <see cref="SwiftDictionary{TKey, TValue}"/> collection.
+        /// </summary>
+        /// <remarks>
+        /// The enumerator provides read-only, forward-only iteration over the keys in the dictionary. 
+        /// The enumerator is invalidated if the dictionary is modified after the enumerator is created. 
+        /// In such cases, calling MoveNext or Reset will throw an InvalidOperationException.
+        /// </remarks>
         [Serializable]
         public struct KeyCollectionEnumerator : IEnumerator<TKey>, IEnumerator, IDisposable
         {
@@ -1040,9 +1164,10 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
                 _entries = dictionary._entries;
                 _version = dictionary._version;
                 _index = -1;
-                _currentKey = default;
+                _currentKey = default!;
             }
 
+            /// <inheritdoc/>
             public TKey Current => _currentKey;
 
             object IEnumerator.Current
@@ -1054,6 +1179,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
                 }
             }
 
+            /// <inheritdoc/>
             public bool MoveNext()
             {
                 if (_version != _dictionary._version)
@@ -1068,20 +1194,22 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
                     }
                 }
 
-                _currentKey = default;
+                _currentKey = default!;
                 return false;
             }
 
+            /// <inheritdoc/>
             public void Reset()
             {
                 if (_version != _dictionary._version)
                     throw new InvalidOperationException("Enumerator modified outside of enumeration!");
 
                 _index = -1;
-                _currentKey = default;
+                _currentKey = default!;
             }
 
-            public void Dispose() { }
+            /// <inheritdoc/>
+            public void Dispose() => _index = -1;
         }
     }
 
@@ -1105,6 +1233,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
             _entries = dictionary._entries;
         }
 
+        /// <inheritdoc/>
         public int Count => _dictionary._count;
 
         bool ICollection<TValue>.IsReadOnly => true;
@@ -1129,6 +1258,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
 
         bool ICollection<TValue>.Remove(TValue item) => false;
 
+        /// <inheritdoc/>
         public void CopyTo(TValue[] array, int arrayIndex)
         {
             SwiftThrowHelper.ThrowIfNull(array, nameof(array));
@@ -1159,7 +1289,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
                 {
                     for (int i = 0, j = arrayIndex; i <= _dictionary._lastIndex; i++)
                         if (_entries[i].IsUsed)
-                            objects[j++] = _entries[i].Value;
+                            objects[j++] = _entries[i].Value!;
                 }
                 catch (ArrayTypeMismatchException)
                 {
@@ -1173,10 +1303,17 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
         /// Returns an enumerator that iterates through the values in the collection.
         /// </summary>
         /// <returns>An enumerator for the values in the collection.</returns>
-        public ValueCollectionEnumerator GetEnumerator() => new ValueCollectionEnumerator(_dictionary);
+        public ValueCollectionEnumerator GetEnumerator() => new(_dictionary);
         IEnumerator<TValue> IEnumerable<TValue>.GetEnumerator() => GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
+        /// <summary>
+        /// Enumerates the values in a SwiftDictionary collection.
+        /// </summary>
+        /// <remarks>
+        /// The enumerator is invalidated if the collection is modified after the enumerator is created. 
+        /// Enumerators are typically used in a foreach statement to iterate through the collection values.
+        /// </remarks>
         [Serializable]
         public struct ValueCollectionEnumerator : IEnumerator<TValue>, IEnumerator, IDisposable
         {
@@ -1192,9 +1329,10 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
                 _entries = dictionary._entries;
                 _version = dictionary._version;
                 _index = -1;
-                _currentValue = default;
+                _currentValue = default!;
             }
 
+            /// <inheritdoc/>
             public TValue Current => _currentValue;
 
             object IEnumerator.Current
@@ -1202,10 +1340,11 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
                 get
                 {
                     if (_index > (uint)_dictionary._lastIndex) throw new InvalidOperationException("Bad enumeration");
-                    return _currentValue;
+                    return _currentValue!;
                 }
             }
 
+            /// <inheritdoc/>
             public bool MoveNext()
             {
                 if (_version != _dictionary._version)
@@ -1220,20 +1359,22 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
                     }
                 }
 
-                _currentValue = default;
+                _currentValue = default!;
                 return false;
             }
 
+            /// <inheritdoc/>
             public void Reset()
             {
                 if (_version != _dictionary._version)
                     throw new InvalidOperationException("Enumerator modified outside of enumeration!");
 
                 _index = -1;
-                _currentValue = default;
+                _currentValue = default!;
             }
 
-            public void Dispose() { }
+            /// <inheritdoc/>
+            public void Dispose() => _index = -1;
         }
     }
 

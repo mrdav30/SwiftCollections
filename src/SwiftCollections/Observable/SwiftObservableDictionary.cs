@@ -16,23 +16,27 @@ namespace SwiftCollections.Observable;
 [JsonConverter(typeof(SwiftStateJsonConverterFactory))]
 [MemoryPackable]
 public partial class SwiftObservableDictionary<TKey, TValue> : SwiftDictionary<TKey, TValue>, INotifyPropertyChanged, INotifyCollectionChanged
+    where TKey : notnull
 {
     #region Events
 
     /// <summary>
     /// Raised when a property on the dictionary changes.
     /// </summary>
-    public event PropertyChangedEventHandler PropertyChanged;
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     /// <summary>
     /// Raised when the dictionary's collection is modified.
     /// </summary>
-    public event NotifyCollectionChangedEventHandler CollectionChanged;
+    public event NotifyCollectionChangedEventHandler? CollectionChanged;
 
     #endregion
 
     #region Constructor
 
+    /// <summary>
+    /// Initializes a new instance of the SwiftObservableDictionary class.
+    /// </summary>
     public SwiftObservableDictionary() : base() { }
 
     ///  <summary>

@@ -4,7 +4,7 @@ namespace SwiftCollections.Tests
 {
     public static class TestHelper
     {
-        private static readonly Random Random = new Random();
+        private static readonly Random Random = new();
 
         /// <summary>
         /// Generates a random string of the specified length.

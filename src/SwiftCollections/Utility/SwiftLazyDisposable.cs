@@ -88,7 +88,18 @@ public class SwiftLazyDisposable<T> : Lazy<T>, IDisposable where T : IDisposable
 
     #region Utility
 
-    public override string ToString() => IsValueCreated ? Value.ToString() : "LazyDisposable (Not Created)";
+    /// <summary>
+    /// Returns a string that represents the current state of the object.
+    /// </summary>
+    /// <remarks>
+    /// This method provides a user-friendly description of the object's state, 
+    /// which can be useful for debugging or logging purposes.
+    /// </remarks>
+    /// <returns>
+    /// A string representation of the value if it has been created; otherwise, 
+    /// a string indicating that the value has not been created.
+    /// </returns>
+    public override string ToString() => IsValueCreated ? Value.ToString() ?? string.Empty : "LazyDisposable (Not Created)";
 
     #endregion
 

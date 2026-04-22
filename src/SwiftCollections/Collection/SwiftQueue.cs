@@ -74,7 +74,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     /// An object used to synchronize access to the SwiftQueue, ensuring thread safety.
     /// </summary>
     [NonSerialized]
-    private object _syncRoot;
+    private object? _syncRoot;
 
     #endregion
 
@@ -130,6 +130,8 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     public SwiftQueue(SwiftArrayState<T> state)
     {
         State = state;
+
+        SwiftThrowHelper.ThrowIfNull(_innerArray, nameof(_innerArray));
     }
 
     #endregion
@@ -154,13 +156,15 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     [MemoryPackIgnore]
     public int Capacity => _innerArray.Length;
 
+    /// <inheritdoc/>
     [JsonIgnore]
     [MemoryPackIgnore]
     public bool IsSynchronized => false;
 
+    /// <inheritdoc/>
     [JsonIgnore]
     [MemoryPackIgnore]
-    object ICollection.SyncRoot => _syncRoot ??= new object();
+    public object SyncRoot => _syncRoot ??= new object();
 
     /// <inheritdoc/>
     [JsonIgnore]
@@ -188,6 +192,14 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         }
     }
 
+    /// <summary>
+    /// Gets or sets the current state of the collection, including its items and order.
+    /// </summary>
+    /// <remarks>
+    /// Setting this property replaces the entire contents of the collection with the items from the specified state. 
+    /// Getting this property returns a snapshot of the collection's current items and their order.
+    /// This property is intended for serialization and deserialization scenarios.
+    /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
     public SwiftArrayState<T> State
@@ -203,7 +215,9 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         }
         internal set
         {
-            int count = value.Items?.Length ?? 0;
+            SwiftThrowHelper.ThrowIfNull(value.Items, nameof(value.Items));
+
+            int count = value.Items.Length;
 
             if (count == 0)
             {
@@ -252,6 +266,14 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         _version++;
     }
 
+    /// <summary>
+    /// Adds the elements of the specified collection to the end of the queue.
+    /// </summary>
+    /// <remarks>
+    /// If the specified collection implements <see cref="ICollection{T}"/>, the queue's capacity is increased once to accommodate the new elements, 
+    /// improving performance for large collections.
+    /// </remarks>
+    /// <param name="items">The collection of elements to add to the queue. Cannot be null.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void EnqueueRange(IEnumerable<T> items)
     {
@@ -306,7 +328,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         if ((uint)_count == 0) throw new InvalidOperationException("Queue is Empty");
         T item = _innerArray[_head];
         if (_clearReleasedSlots)
-            _innerArray[_head] = default;
+            _innerArray[_head] = default!;
         _head = (_head + 1) & _mask;
         _count--;
         _version++;
@@ -321,13 +343,13 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     {
         if ((uint)_count == 0)
         {
-            item = default;
+            item = default!;
             return false;
         }
 
         item = _innerArray[_head];
         if (_clearReleasedSlots)
-            _innerArray[_head] = default;
+            _innerArray[_head] = default!;
         _head = (_head + 1) & _mask;
         _count--;
         _version++;
@@ -356,7 +378,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     {
         if ((uint)_count == 0)
         {
-            item = default;
+            item = default!;
             return false;
         }
 
@@ -434,7 +456,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
             index = (index + 1) & _mask;
         }
 
-        return default;
+        return default!;
     }
 
     /// <summary>
@@ -478,6 +500,13 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
 
     #region Capacity Management
 
+    /// <summary>
+    /// Ensures that the internal storage has at least the specified capacity, resizing if necessary.
+    /// </summary>
+    /// <remarks>
+    /// If the specified capacity is not a power of two, it is rounded up to the next power of two to optimize internal operations.
+    /// </remarks>
+    /// <param name="capacity">The minimum number of elements that the internal storage should be able to hold. Must be a non-negative integer.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void EnsureCapacity(int capacity)
     {
@@ -650,7 +679,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         first.CopyTo(destination);
 
         if (second.Length > 0)
-            second.CopyTo(destination.Slice(first.Length));
+            second.CopyTo(destination[first.Length..]);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -668,6 +697,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
         }
     }
 
+    /// <inheritdoc/>
     public void CloneTo(ICollection<T> output)
     {
         SwiftThrowHelper.ThrowIfNull(output, nameof(output));
@@ -683,10 +713,13 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
     /// <summary>
     /// Returns an enumerator that iterates through the SwiftList.
     /// </summary>
-    public SwiftQueueEnumerator GetEnumerator() => new SwiftQueueEnumerator(this);
+    public SwiftQueueEnumerator GetEnumerator() => new(this);
     IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
+    /// <summary>
+    /// Enumerates the elements of a <see cref="SwiftQueue{T}"/> in the order they would be dequeued.
+    /// </summary>
     public struct SwiftQueueEnumerator : IEnumerator<T>, IEnumerator, IDisposable
     {
         private readonly SwiftQueue<T> _queue;
@@ -697,16 +730,17 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
 
         private T _current;
 
-        public SwiftQueueEnumerator(SwiftQueue<T> queue)
+        internal SwiftQueueEnumerator(SwiftQueue<T> queue)
         {
             _queue = queue;
             _array = queue._innerArray;
             _version = queue._version;
             _index = 0;
             _currentIndex = (uint)queue._head - 1;
-            _current = default;
+            _current = default!;
         }
 
+        /// <inheritdoc/>
         public readonly T Current => _current;
 
         readonly object IEnumerator.Current
@@ -715,10 +749,11 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
             get
             {
                 if (_index >= (uint)_queue._count) throw new InvalidOperationException("Bad enumeration");
-                return _current;
+                return _current!;
             }
         }
 
+        /// <inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
@@ -732,6 +767,7 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
             return true;
         }
 
+        /// <inheritdoc/>
         public void Reset()
         {
             if (_version != _queue._version)
@@ -739,10 +775,11 @@ public sealed partial class SwiftQueue<T> : ISwiftCloneable<T>, IEnumerable<T>, 
 
             _index = 0;
             _currentIndex = (uint)_queue._head - 1;
-            _current = default;
+            _current = default!;
         }
 
-        public void Dispose() { }
+        /// <inheritdoc/>
+        public void Dispose() => _index = 0;
     }
 
     #endregion

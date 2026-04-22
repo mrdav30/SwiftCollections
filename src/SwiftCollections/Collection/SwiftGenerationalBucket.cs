@@ -16,7 +16,7 @@ namespace SwiftCollections;
 /// </para>
 ///
 /// <para>
-/// When an item is added, a <see cref="Handle"/> containing both an index and generation
+/// When an item is added, a <see cref="SwiftHandle"/> containing both an index and generation
 /// is returned. If the item is removed and the slot reused later, the generation value
 /// changes, causing older handles to automatically become invalid.
 /// </para>
@@ -49,40 +49,6 @@ public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEn
 {
     #region Nested Types
 
-    public readonly struct Handle : IEquatable<Handle>
-    {
-        public readonly int Index;
-        public readonly uint Generation;
-
-        public Handle(int index, uint generation)
-        {
-            Index = index;
-            Generation = generation;
-        }
-
-        public bool Equals(Handle other)
-            => Index == other.Index && Generation == other.Generation;
-
-        public override bool Equals(object obj)
-            => obj is Handle h && Equals(h);
-
-        public override int GetHashCode()
-            => HashCode.Combine(Index, Generation);
-
-        public override string ToString()
-            => $"Handle({Index}:{Generation})";
-
-        public static bool operator ==(Handle left, Handle right)
-        {
-            return left.Equals(right);
-        }
-
-        public static bool operator !=(Handle left, Handle right)
-        {
-            return !(left == right);
-        }
-    }
-
     private struct Entry
     {
         public uint Generation;
@@ -94,6 +60,13 @@ public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEn
 
     #region Constants
 
+    /// <summary>
+    /// Represents the default initial capacity for the collection.
+    /// </summary>
+    /// <remarks>
+    /// Use this constant when initializing the collection to its default size. 
+    /// The value is typically used to optimize memory allocation for small collections.
+    /// </remarks>
     public const int DefaultCapacity = 8;
 
     #endregion
@@ -112,8 +85,24 @@ public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEn
 
     #region Constructors
 
+    /// <summary>
+    /// Initializes a new instance of the SwiftGenerationalBucket class with the default capacity.
+    /// </summary>
     public SwiftGenerationalBucket() : this(DefaultCapacity) { }
 
+    /// <summary>
+    /// Initializes a new instance of the SwiftGenerationalBucket class with the specified initial capacity.
+    /// </summary>
+    /// <remarks>
+    /// The actual capacity will be set to the next power of two greater than or equal to the specified capacity, 
+    /// or to the default capacity if the specified value is too small. 
+    /// This ensures efficient internal storage and lookup performance.
+    /// </remarks>
+    /// <param name="capacity">
+    /// The initial number of elements that the bucket can contain. 
+    /// If less than or equal to the default capacity, the default capacity is used. 
+    /// Must be a non-negative integer.
+    /// </param>
     public SwiftGenerationalBucket(int capacity)
     {
         capacity = capacity <= DefaultCapacity
@@ -132,20 +121,41 @@ public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEn
     public SwiftGenerationalBucket(SwiftGenerationalBucketState<T> state)
     {
         State = state;
+        // Ensure that the internal structures are initialized even if the state is null or incomplete.
+        _entries ??= new Entry[DefaultCapacity];
+        _freeIndices ??= new SwiftIntStack(DefaultCapacity);
     }
 
     #endregion
 
     #region Properties
 
+    /// <summary>
+    /// Gets the number of elements contained in the collection.
+    /// </summary>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Count => _count;
 
+    /// <summary>
+    /// Gets the total number of elements that the internal data structure can hold without resizing.
+    /// </summary>
+    /// <remarks>
+    /// This value represents the allocated size of the underlying storage, which may be greater than the actual number of elements contained. 
+    /// Capacity is always greater than or equal to the current count of elements.
+    /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Capacity => _entries.Length;
 
+    /// <summary>
+    /// Gets or sets the current state of the generational bucket.
+    /// </summary>
+    /// <remarks>
+    /// This property provides a snapshot of the bucket's internal state, which can be used for serialization, diagnostics, 
+    /// or restoring the bucket to a previous state. 
+    /// Setting this property replaces the entire state of the bucket, including its contents and allocation metadata.
+    /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
     public SwiftGenerationalBucketState<T> State
@@ -243,7 +253,16 @@ public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEn
 
     #region Core Operations
 
-    public Handle Add(T value)
+    /// <summary>
+    /// Adds the specified value to the collection and returns a handle that can be used to reference it.
+    /// </summary>
+    /// <remarks>
+    /// The returned handle can be used to access or remove the value later. 
+    /// Handles are only valid as long as the value remains in the collection.
+    /// </remarks>
+    /// <param name="value">The value to add to the collection.</param>
+    /// <returns>A <see cref="SwiftHandle"/> that uniquely identifies the added value within the collection.</returns>
+    public SwiftHandle Add(T value)
     {
         int index;
 
@@ -267,14 +286,27 @@ public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEn
         _count++;
         _version++;
 
-        return new Handle(index, entry.Generation);
+        return new SwiftHandle(index, entry.Generation);
     }
 
-    public bool TryGet(Handle handle, out T value)
+    /// <summary>
+    /// Attempts to retrieve the value associated with the specified handle.
+    /// </summary>
+    /// <remarks>
+    /// Use this method to safely attempt retrieval without throwing an exception if the handle is invalid or the entry is not in use.
+    /// </remarks>
+    /// <param name="handle">The handle used to identify the entry to retrieve.</param>
+    /// <param name="value">
+    /// When this method returns, contains the value associated with the specified handle if the handle is valid 
+    /// and the entry is in use; otherwise, the default value for the type of the value parameter. 
+    /// This parameter is passed uninitialized.
+    /// </param>
+    /// <returns>true if the value was found and retrieved successfully; otherwise, false.</returns>
+    public bool TryGet(SwiftHandle handle, out T value)
     {
         if ((uint)handle.Index >= (uint)_entries.Length)
         {
-            value = default;
+            value = default!;
             return false;
         }
 
@@ -282,7 +314,7 @@ public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEn
 
         if (!entry.IsUsed || entry.Generation != handle.Generation)
         {
-            value = default;
+            value = default!;
             return false;
         }
 
@@ -290,7 +322,16 @@ public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEn
         return true;
     }
 
-    public ref T GetRef(Handle handle)
+    /// <summary>
+    /// Returns a reference to the value associated with the specified handle.
+    /// </summary>
+    /// <param name="handle">
+    /// A handle that identifies the entry whose value is to be accessed. 
+    /// The handle must be valid and refer to an existing entry.
+    /// </param>
+    /// <returns>A reference to the value of type T associated with the specified handle.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the handle does not refer to a valid or currently used entry.</exception>
+    public ref T GetRef(SwiftHandle handle)
     {
         ref Entry entry = ref _entries[handle.Index];
 
@@ -300,7 +341,16 @@ public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEn
         return ref entry.Value;
     }
 
-    public bool Remove(Handle handle)
+    /// <summary>
+    /// Removes the entry associated with the specified handle from the collection.
+    /// </summary>
+    /// <remarks>
+    /// If the handle does not refer to a valid or currently used entry, the method returns false and no action is taken. 
+    /// Removing an entry invalidates the handle for future operations.
+    /// </remarks>
+    /// <param name="handle">The handle identifying the entry to remove. The handle must refer to a valid, currently used entry.</param>
+    /// <returns>true if the entry was successfully removed; otherwise, false.</returns>
+    public bool Remove(SwiftHandle handle)
     {
         if ((uint)handle.Index >= (uint)_entries.Length)
             return false;
@@ -310,7 +360,7 @@ public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEn
         if (!entry.IsUsed || entry.Generation != handle.Generation)
             return false;
 
-        entry.Value = default;
+        entry.Value = default!;
         entry.IsUsed = false;
 
         entry.Generation++;
@@ -323,7 +373,16 @@ public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEn
         return true;
     }
 
-    public bool IsValid(Handle handle)
+    /// <summary>
+    /// Determines whether the specified handle refers to a valid and currently used entry.
+    /// </summary>
+    /// <remarks>
+    /// A handle may become invalid if the referenced entry has been removed or replaced. 
+    /// Use this method to check handle validity before accessing the associated entry.
+    /// </remarks>
+    /// <param name="handle">The handle to validate. The handle must have been obtained from this collection; otherwise, the result is undefined.</param>
+    /// <returns>true if the handle is valid and refers to an active entry; otherwise, false.</returns>
+    public bool IsValid(SwiftHandle handle)
     {
         if ((uint)handle.Index >= (uint)_entries.Length)
             return false;
@@ -337,6 +396,14 @@ public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEn
 
     #region Capacity
 
+    /// <summary>
+    /// Ensures that the underlying storage has at least the specified capacity, expanding it if necessary.
+    /// </summary>
+    /// <remarks>
+    /// If the current capacity is less than the specified value, the storage is resized to accommodate at least that many elements. 
+    /// The actual capacity may be rounded up to the next power of two for performance reasons.
+    /// </remarks>
+    /// <param name="capacity">The minimum number of elements that the storage should be able to hold. Must be a non-negative integer.</param>
     public void EnsureCapacity(int capacity)
     {
         capacity = SwiftHashTools.NextPowerOfTwo(capacity);
@@ -357,6 +424,7 @@ public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEn
 
     #region Utility
 
+    /// <inheritdoc/>
     public void CloneTo(ICollection<T> output)
     {
         SwiftThrowHelper.ThrowIfNull(output, nameof(output));
@@ -426,37 +494,47 @@ public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEn
             }
         }
 
-        return default;
+        return default!;
     }
 
     #endregion
 
     #region Enumeration
 
-    public Enumerator GetEnumerator() => new(this);
-
+    /// <inheritdoc cref="IEnumerable.GetEnumerator()"/>
+    public SwiftGenerationalBucketEnumerator GetEnumerator() => new(this);
     IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    public struct Enumerator : IEnumerator<T>
+    /// <summary>
+    /// Enumerates the elements of a <see cref="SwiftGenerationalBucket{T}"/> collection in a forward-only, read-only manner.
+    /// </summary>
+    /// <remarks>
+    /// The enumerator is invalidated if the underlying collection is modified during enumeration. 
+    /// In such cases, subsequent calls to MoveNext will throw an InvalidOperationException. 
+    /// This enumerator is typically obtained by calling GetEnumerator on a <see cref="SwiftGenerationalBucket{T}"/> instance.
+    /// </remarks>
+    public struct SwiftGenerationalBucketEnumerator : IEnumerator<T>
     {
         private readonly SwiftGenerationalBucket<T> _bucket;
         private readonly uint _version;
         private int _index;
         private T _current;
 
-        internal Enumerator(SwiftGenerationalBucket<T> bucket)
+        internal SwiftGenerationalBucketEnumerator(SwiftGenerationalBucket<T> bucket)
         {
             _bucket = bucket;
             _version = bucket._version;
             _index = -1;
-            _current = default;
+            _current = default!;
         }
 
+        /// <inheritdoc/>
         public readonly T Current => _current;
 
-        readonly object IEnumerator.Current => _current;
+        readonly object IEnumerator.Current => _current ?? throw new InvalidOperationException();
 
+        /// <inheritdoc/>
         public bool MoveNext()
         {
             if (_version != _bucket._version)
@@ -475,13 +553,15 @@ public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEn
             return false;
         }
 
+        /// <inheritdoc/>
         public void Reset()
         {
             _index = -1;
-            _current = default;
+            _current = default!;
         }
 
-        public readonly void Dispose() { }
+        /// <inheritdoc/>
+        public void Dispose() => _index = -1;
     }
 
     #endregion

@@ -20,16 +20,16 @@ internal sealed class SwiftDeterministicStringEqualityComparer : IEqualityCompar
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool Equals(string x, string y) => x == y || (x != null && y != null && x.Equals(y));
+    public bool Equals(string? x, string? y) => x == y || (x != null && y != null && x.Equals(y));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public new bool Equals(object x, object y)
+    public new bool Equals(object? x, object? y)
     {
         return x == y || (x != null && y != null && (x is string a && y is string b ? a.Equals(b) : x.Equals(y)));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public override bool Equals(object obj) => obj is SwiftDeterministicStringEqualityComparer other && _seed == other._seed;
+    public override bool Equals(object? obj) => obj is SwiftDeterministicStringEqualityComparer other && _seed == other._seed;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int GetHashCode(string obj)

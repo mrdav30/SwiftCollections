@@ -10,7 +10,7 @@
     <NoWarn>$(NoWarn);CA1018;CA5351;CA1825</NoWarn>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <Configurations>Debug;Release</Configurations>
+    <Configurations>Debug;Release;ReleaseLean</Configurations>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\SwiftCollections\SwiftCollections.csproj" />

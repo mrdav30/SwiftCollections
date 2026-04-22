@@ -30,6 +30,8 @@ namespace SwiftCollections;
 [JsonConverter(typeof(SwiftStateJsonConverterFactory))]
 [MemoryPackable]
 public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>
+    where T1 : notnull
+    where T2 : notnull
 {
     #region Fields
 
@@ -48,7 +50,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>
     /// An object used to synchronize access to the reverse map during serialization and deserialization.
     /// </summary>
     [NonSerialized]
-    private object _reverseSyncRoot;
+    private object? _reverseSyncRoot;
 
     #endregion
 
@@ -64,7 +66,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>
     /// </summary>
     /// <param name="comparer1">The comparer to use for the keys.</param>
     /// <param name="comparer2">The comparer to use for the values.</param>
-    public SwiftBiDictionary(IEqualityComparer<T1> comparer1, IEqualityComparer<T2> comparer2) : base(DefaultCapacity, comparer1)
+    public SwiftBiDictionary(IEqualityComparer<T1>? comparer1, IEqualityComparer<T2>? comparer2) : base(DefaultCapacity, comparer1)
     {
         _reverseComparer = SwiftHashTools.GetDefaultEqualityComparer(comparer2);
         _reverseMap = new SwiftDictionary<T2, T1>(DefaultCapacity, _reverseComparer);
@@ -82,7 +84,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>
     /// <param name="dictionary">The dictionary whose elements are copied to the new <see cref="SwiftBiDictionary{T1, T2}"/>.</param>
     /// <param name="comparer1">The comparer to use for the keys.</param>
     /// <param name="comparer2">The comparer to use for the values.</param>
-    public SwiftBiDictionary(IDictionary<T1, T2> dictionary, IEqualityComparer<T1> comparer1, IEqualityComparer<T2> comparer2)
+    public SwiftBiDictionary(IDictionary<T1, T2> dictionary, IEqualityComparer<T1>? comparer1, IEqualityComparer<T2>? comparer2)
         : this(comparer1, comparer2)
     {
         SwiftThrowHelper.ThrowIfNull(dictionary, nameof(dictionary));
@@ -99,22 +101,42 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>
     public SwiftBiDictionary(SwiftDictionaryState<T1, T2> state)
     {
         State = state;
+
+        SwiftThrowHelper.ThrowIfNull(_reverseMap, nameof(_reverseMap));
+        SwiftThrowHelper.ThrowIfNull(_reverseComparer, nameof(_reverseComparer));
     }
 
     #endregion
 
     #region Properties
 
+    /// <summary>
+    /// Gets an object that can be used to synchronize access to the reverse collection.
+    /// </summary>
+    /// <remarks>
+    /// Use this object to lock the reverse collection during multithreaded operations to ensure thread safety. 
+    /// This property is intended for advanced scenarios where manual synchronization is required.
+    /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     public object ReverseSyncRoot => _reverseSyncRoot ??= new object();
 
+    /// <summary>
+    /// Gets or sets the value associated with the specified key. Ensures that each value is unique within the collection.
+    /// </summary>
+    /// <remarks>
+    /// Setting a value that already exists in the collection will result in an exception, as each value must be unique. 
+    /// If the key does not exist, a new key-value pair is added. 
+    /// If the key exists and the value is unchanged, no operation is performed.
+    /// </remarks>
+    /// <param name="key">The key whose value to get or set. Cannot be null.</param>
+    /// <returns>The value associated with the specified key.</returns>
+    /// <exception cref="ArgumentException">Thrown when the specified value already exists in the collection.</exception>
     [JsonIgnore]
     [MemoryPackIgnore]
     public new T2 this[T1 key]
     {
         get => base[key];
-
         set
         {
             SwiftThrowHelper.ThrowIfNull(key, nameof(key));
@@ -160,12 +182,19 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>
         }
     }
 
+    /// <summary>
+    /// Gets or sets the current state of the dictionary, including its items and configuration.
+    /// </summary>
+    /// <remarks>
+    /// Setting this property updates the internal reverse mapping and comparer to reflect the new state. 
+    /// The reverse mapping is rebuilt to ensure consistency with the updated state.
+    /// This property is intended for serialization and deserialization scenarios.
+    /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
     public new SwiftDictionaryState<T1, T2> State
     {
         get => base.State;
-
         internal set
         {
             _reverseComparer = SwiftHashTools.GetDefaultEqualityComparer<T2>();

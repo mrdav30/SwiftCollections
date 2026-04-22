@@ -159,21 +159,28 @@ public struct BoundVolume : IBoundVolume<BoundVolume>, IEquatable<BoundVolume>
         return Min.Equals(other.Min) && Max.Equals(other.Max);
     }
 
+    /// <inheritdoc />
     public readonly bool Equals(BoundVolume other) => BoundsEquals(other);
 
-    public override readonly bool Equals(object obj) => obj is BoundVolume other && BoundsEquals(other);
+    /// <inheritdoc />
+    public override readonly bool Equals(object? obj) => obj is BoundVolume other && BoundsEquals(other);
 
-    public static bool operator ==(BoundVolume left, BoundVolume right)
-    {
-        return left.Equals(right);
-    }
+    /// <summary>
+    /// Determines whether two BoundVolume instances are equal.
+    /// </summary>
+    public static bool operator ==(BoundVolume left, BoundVolume right) => left.Equals(right);
 
-    public static bool operator !=(BoundVolume left, BoundVolume right)
-    {
-        return !(left == right);
-    }
+    /// <summary>
+    /// Determines whether two BoundVolume instances are not equal.
+    /// </summary>
+    public static bool operator !=(BoundVolume left, BoundVolume right) => !(left == right);
 
+    /// <inheritdoc />
     public override readonly int GetHashCode() => HashCode.Combine(Min, Max);
 
+    /// <summary>
+    /// Returns a string that represents the current object, including the minimum and maximum values.
+    /// </summary>
+    /// <returns>A string in the format "Min: {Min}, Max: {Max}" that displays the minimum and maximum values of the object.</returns>
     public override readonly string ToString() => $"Min: {Min}, Max: {Max}";
 }

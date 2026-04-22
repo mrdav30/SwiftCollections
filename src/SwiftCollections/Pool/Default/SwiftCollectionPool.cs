@@ -19,7 +19,7 @@ public abstract class SwiftCollectionPool<TCollection, TItem> where TCollection 
     /// Uses <see cref="Lazy{T}"/> to ensure lazy initialization.
     /// </summary>
     private SwiftLazyDisposable<SwiftObjectPool<TCollection>> _lazyCollectionPool =
-        new SwiftLazyDisposable<SwiftObjectPool<TCollection>>(() =>
+        new(() =>
         {
             return new SwiftObjectPool<TCollection>(
                     createFunc: () => new TCollection(),

@@ -1,9 +1,9 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
+using SwiftCollections.Query;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using SwiftCollections.Query;
 
 namespace SwiftCollections.Benchmarks;
 

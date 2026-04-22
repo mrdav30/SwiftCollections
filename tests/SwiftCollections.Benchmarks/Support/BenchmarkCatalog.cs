@@ -11,7 +11,7 @@ namespace SwiftCollections.Benchmarks;
 internal sealed class BenchmarkCatalog
 {
     private static readonly string[] _benchmarkSuffixes = new[] { "Benchmarks", "Benchmark" };
-    private static readonly HashSet<string> _selectionQualifiers = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> _selectionQualifiers = new(StringComparer.OrdinalIgnoreCase)
     {
         "bool",
         "boolean",
@@ -28,7 +28,7 @@ internal sealed class BenchmarkCatalog
         "short",
         "string"
     };
-    private static readonly Dictionary<string, string[]> _aliasSynonyms = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, string[]> _aliasSynonyms = new(StringComparer.OrdinalIgnoreCase)
     {
         ["list-parity"] = new[] { "list", "list-integer" },
         ["dictionary-parity"] = new[] { "dict", "dictionary", "dict-parity" },

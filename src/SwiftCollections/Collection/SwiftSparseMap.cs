@@ -47,10 +47,23 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
 {
     #region Constants
 
+    /// <summary>
+    /// Represents the default initial capacity for dense collections.
+    /// </summary>
     public const int DefaultDenseCapacity = 8;
+
+    /// <summary>
+    /// Represents the default initial capacity for sparse collections.
+    /// </summary>
     public const int DefaultSparseCapacity = 8;
 
-    // sparse[key] stores (denseIndex + 1). 0 means "not present".
+    /// <summary>
+    /// Represents the value used to indicate that a key is not present in the sparse array.
+    /// </summary>
+    /// <remarks>
+    /// A value of 0 signifies that the key is absent. 
+    /// When a key is present, the stored value is the dense index plus one.
+    /// </remarks>
     private const int NotPresent = 0;
 
     #endregion
@@ -66,12 +79,15 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
     private uint _version;
 
     [NonSerialized]
-    private object _syncRoot;
+    private object? _syncRoot;
 
     #endregion
 
     #region Constructors
 
+    /// <summary>
+    /// Initializes a new instance of the SwiftSparseMap class with default sparse and dense capacities.
+    /// </summary>
     public SwiftSparseMap() : this(DefaultSparseCapacity, DefaultDenseCapacity) { }
 
     /// <summary>
@@ -102,16 +118,27 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
         _count = 0;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the SwiftSparseMap class using the specified state.
+    /// </summary>
+    /// <param name="state">The state object that provides the initial configuration and data for the map. Cannot be null.</param>
     [MemoryPackConstructor]
     public SwiftSparseMap(SwiftSparseSetState<T> state)
     {
         State = state;
+
+        _sparse ??= new int[DefaultSparseCapacity];
+        _denseKeys ??= new int[DefaultDenseCapacity];
+        _denseValues ??= new T[DefaultDenseCapacity];
     }
 
     #endregion
 
     #region Properties
 
+    /// <summary>
+    /// Gets the number of elements contained in the collection.
+    /// </summary>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Count => _count;
@@ -131,10 +158,20 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
     [MemoryPackIgnore]
     public int SparseCapacity => _sparse.Length;
 
+    /// <summary>
+    /// Gets a value indicating whether access to the collection is synchronized (thread safe).
+    /// </summary>
     [JsonIgnore]
     [MemoryPackIgnore]
     public bool IsSynchronized => false;
 
+    /// <summary>
+    /// Gets an object that can be used to synchronize access to the collection.
+    /// </summary>
+    /// <remarks>
+    /// Use this object to lock the collection during multithreaded operations to ensure thread safety. 
+    /// The returned object is unique to this collection instance.
+    /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     public object SyncRoot => _syncRoot ??= new object();
@@ -146,6 +183,14 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
     [MemoryPackIgnore]
     public int[] DenseKeys => _denseKeys;
 
+    /// <summary>
+    /// Gets a span containing the keys currently stored in the collection.
+    /// </summary>
+    /// <remarks>
+    /// The returned span provides a view of the underlying key data and reflects the current state of the collection. 
+    /// Modifying the span will affect the collection's contents. 
+    /// The span is only valid as long as the underlying collection is not modified.
+    /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     public Span<int> Keys => _denseKeys.AsSpan(0, _count);
@@ -157,6 +202,14 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
     [MemoryPackIgnore]
     public T[] DenseValues => _denseValues;
 
+    /// <summary>
+    /// Gets a span containing the current values in the collection.
+    /// </summary>
+    /// <remarks>
+    /// The returned span reflects the live contents of the collection up to the current count.
+    /// Modifying the span will update the underlying collection data. 
+    /// The span length is equal to the number of elements currently stored.
+    /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     public Span<T> Values => _denseValues.AsSpan(0, _count);
@@ -201,6 +254,14 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
         }
     }
 
+    /// <summary>
+    /// Gets or sets the current state of the sparse set, including the used dense keys and values.
+    /// </summary>
+    /// <remarks>
+    /// The state includes only the active elements in the set. 
+    /// Setting this property replaces the current contents with the provided state. 
+    /// The setter is intended for internal use, such as serialization or deserialization scenarios.
+    /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
     public SwiftSparseSetState<T> State
@@ -218,9 +279,12 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
         }
         internal set
         {
-            int n = value.DenseKeys?.Length ?? 0;
+            SwiftThrowHelper.ThrowIfNull(value.DenseKeys);
+            SwiftThrowHelper.ThrowIfNull(value.DenseValues);
 
-            if (n != (value.DenseValues?.Length ?? 0))
+            int n = value.DenseKeys.Length;
+
+            if (n != value.DenseValues.Length)
                 throw new ArgumentException("DenseKeys and DenseValues length mismatch.");
 
             // Allocate dense storage
@@ -272,6 +336,11 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
 
     #region Core Operations
 
+    /// <summary>
+    /// Determines whether the collection contains the specified key.
+    /// </summary>
+    /// <param name="key">The key to locate in the collection.</param>
+    /// <returns>true if the collection contains an element with the specified key; otherwise, false.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ContainsKey(int key)
     {
@@ -305,6 +374,16 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
     /// </summary>
     public void Add(int key, T value) => this[key] = value;
 
+    /// <summary>
+    /// Attempts to retrieve the value associated with the specified key.
+    /// </summary>
+    /// <param name="key">The key whose associated value is to be retrieved.</param>
+    /// <param name="value">
+    /// When this method returns, contains the value associated with the specified key, if the key is found; 
+    /// otherwise, the default value for the type parameter <typeparamref name="T"/>. 
+    /// This parameter is passed uninitialized.
+    /// </param>
+    /// <returns>true if the key was found and its value was retrieved; otherwise, false.</returns>
     public bool TryGetValue(int key, out T value)
     {
         if ((uint)key < (uint)_sparse.Length)
@@ -317,10 +396,15 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
             }
         }
 
-        value = default;
+        value = default!;
         return false;
     }
 
+    /// <summary>
+    /// Removes the element with the specified key from the collection, if it exists.
+    /// </summary>
+    /// <param name="key">The key of the element to remove. Must be a non-negative integer within the valid range of keys.</param>
+    /// <returns>true if the element is successfully found and removed; otherwise, false.</returns>
     public bool Remove(int key)
     {
         if ((uint)key >= (uint)_sparse.Length) return false;
@@ -344,12 +428,19 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
         }
 
         _denseKeys[last] = default;
-        _denseValues[last] = default;
+        _denseValues[last] = default!;
 
         _version++;
         return true;
     }
 
+    /// <summary>
+    /// Removes all keys and values from the collection.
+    /// </summary>
+    /// <remarks>
+    /// After calling this method, the collection will be empty and its Count property will be zero.
+    /// This method does not reduce the capacity of the underlying storage.
+    /// </remarks>
     public void Clear()
     {
         if (_count == 0) return;
@@ -373,6 +464,15 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
 
     #region Capacity Management
 
+    /// <summary>
+    /// Ensures that the internal dense storage has at least the specified capacity, expanding it if necessary.
+    /// </summary>
+    /// <remarks>
+    /// If the current capacity is less than the specified value, the internal storage is resized to accommodate at least that many elements. 
+    /// Existing elements are preserved. 
+    /// The capacity is increased to the next power of two greater than or equal to the requested capacity for performance reasons.
+    /// </remarks>
+    /// <param name="capacity">The minimum number of elements that the dense storage must be able to hold. Must be non-negative.</param>
     public void EnsureDenseCapacity(int capacity)
     {
         if (capacity <= _denseKeys.Length) return;
@@ -397,6 +497,15 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
         _version++;
     }
 
+    /// <summary>
+    /// Ensures that the internal sparse array has a capacity at least as large as the specified value.
+    /// </summary>
+    /// <remarks>
+    /// If the current capacity is less than the specified value, the internal storage is resized to accommodate at least that many elements. 
+    /// Existing elements are preserved. 
+    /// The capacity is increased to the next power of two greater than or equal to the requested capacity for performance reasons.
+    /// </remarks>
+    /// <param name="capacity">The minimum required capacity for the internal sparse array. Must be non-negative.</param>
     public void EnsureSparseCapacity(int capacity)
     {
         if (capacity <= _sparse.Length) return;
@@ -416,6 +525,14 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
         _version++;
     }
 
+    /// <summary>
+    /// Reduces the memory usage of the collection by resizing internal storage to fit the current number of elements as closely as possible.
+    /// </summary>
+    /// <remarks>
+    /// Call this method to minimize the collection's memory footprint after removing a significant number of elements. 
+    /// This operation may improve memory efficiency but can be an expensive operation if the collection is large. 
+    /// The method does not affect the logical contents of the collection.
+    /// </remarks>
     public void TrimExcess()
     {
         // Dense: shrink to Count (with a minimum)
@@ -457,11 +574,20 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
 
     #region Enumeration
 
-    public Enumerator GetEnumerator() => new Enumerator(this);
+    /// <inheritdoc cref="IEnumerable.GetEnumerator()"/>
+    public SwiftSparseMapEnumerator GetEnumerator() => new(this);
     IEnumerator<KeyValuePair<int, T>> IEnumerable<KeyValuePair<int, T>>.GetEnumerator() => GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    public struct Enumerator : IEnumerator<KeyValuePair<int, T>>
+    /// <summary>
+    /// Supports iteration over the key/value pairs in a <see cref="SwiftSparseMap{T}"/> collection.
+    /// </summary>
+    /// <remarks>
+    /// The enumerator provides a forward-only, read-only traversal of the collection. 
+    /// It is invalidated if the underlying collection is modified during enumeration, and any such modification will cause
+    /// subsequent operations to throw an InvalidOperationException.
+    /// </remarks>
+    public struct SwiftSparseMapEnumerator : IEnumerator<KeyValuePair<int, T>>
     {
         private readonly SwiftSparseMap<T> _set;
         private readonly int[] _keys;
@@ -470,7 +596,7 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
         private readonly uint _version;
         private int _index;
 
-        internal Enumerator(SwiftSparseMap<T> set)
+        internal SwiftSparseMapEnumerator(SwiftSparseMap<T> set)
         {
             _set = set;
             _keys = set._denseKeys;
@@ -481,9 +607,11 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
             Current = default;
         }
 
+        /// <inheritdoc/>
         public KeyValuePair<int, T> Current { get; private set; }
         object IEnumerator.Current => Current;
 
+        /// <inheritdoc/>
         public bool MoveNext()
         {
             if (_version != _set._version)
@@ -501,6 +629,7 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
             return true;
         }
 
+        /// <inheritdoc/>
         public void Reset()
         {
             if (_version != _set._version)
@@ -509,13 +638,30 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
             Current = default;
         }
 
-        public void Dispose() { }
+        /// <inheritdoc/>
+        public void Dispose() => _index = -1;
     }
 
     #endregion
 
     #region Helpers
 
+    /// <summary>
+    /// Retrieves the dense representation of the collection as parallel arrays of keys and values, along with the number of elements contained.
+    /// </summary>
+    /// <remarks>
+    /// The arrays returned may be larger than the actual number of elements. 
+    /// Only the first <paramref name="count"/> entries in each array are valid and should be used.
+    /// </remarks>
+    /// <param name="keys">
+    /// When this method returns, contains an array of keys representing the dense mapping. 
+    /// The array length is at least as large as the number of elements returned in <paramref name="count"/>.
+    /// </param>
+    /// <param name="values">
+    /// When this method returns, contains an array of values corresponding to the keys in <paramref name="keys"/>. 
+    /// The array length is at least as large as the number of elements returned in <paramref name="count"/>.
+    /// </param>
+    /// <param name="count">When this method returns, contains the number of valid key-value pairs in the dense arrays.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void GetDense(out int[] keys, out T[] values, out int count)
     {
@@ -549,6 +695,7 @@ public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<
         return slot - 1;
     }
 
+    /// <inheritdoc/>
     public void CloneTo(ICollection<T> output)
     {
         SwiftThrowHelper.ThrowIfNull(output, nameof(output));

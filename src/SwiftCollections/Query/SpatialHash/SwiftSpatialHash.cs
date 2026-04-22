@@ -10,6 +10,7 @@ namespace SwiftCollections.Query;
 /// <typeparam name="TKey">The key used to identify each stored entry.</typeparam>
 /// <typeparam name="TVolume">The volume type used for broad-phase registration and queries.</typeparam>
 public class SwiftSpatialHash<TKey, TVolume>
+    where TKey : notnull
     where TVolume : struct, IBoundVolume<TVolume>
 {
     private const string _diagnosticSource = nameof(SwiftSpatialHash<TKey, TVolume>);
@@ -376,7 +377,7 @@ public class SwiftSpatialHash<TKey, TVolume>
 
         public void Reset()
         {
-            Key = default;
+            Key = default!;
             Bounds = default;
             QueryStamp = 0;
             IsAllocated = false;

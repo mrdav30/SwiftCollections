@@ -27,7 +27,7 @@ public class SwiftGenerationalBucketTests
     {
         var bucket = new SwiftGenerationalBucket<int>();
 
-        var handles = new List<SwiftGenerationalBucket<int>.Handle>();
+        var handles = new List<SwiftHandle>();
 
         for (int i = 0; i < 100; i++)
             handles.Add(bucket.Add(i));
@@ -137,7 +137,7 @@ public class SwiftGenerationalBucketTests
     {
         var bucket = new SwiftGenerationalBucket<int>(2);
 
-        var handles = new List<SwiftGenerationalBucket<int>.Handle>();
+        var handles = new List<SwiftHandle>();
 
         for (int i = 0; i < 100; i++)
             handles.Add(bucket.Add(i));
@@ -276,9 +276,9 @@ public class SwiftGenerationalBucketTests
         var bucket = new SwiftGenerationalBucket<int>(state);
 
         Assert.Equal(2, bucket.Count);
-        Assert.True(bucket.TryGet(new SwiftGenerationalBucket<int>.Handle(0, 1), out var first));
+        Assert.True(bucket.TryGet(new SwiftHandle(0, 1), out var first));
         Assert.Equal(10, first);
-        Assert.True(bucket.TryGet(new SwiftGenerationalBucket<int>.Handle(2, 3), out var third));
+        Assert.True(bucket.TryGet(new SwiftHandle(2, 3), out var third));
         Assert.Equal(30, third);
     }
 
@@ -291,7 +291,7 @@ public class SwiftGenerationalBucketTests
     {
         var bucket = new SwiftGenerationalBucket<int>();
 
-        var handle = new SwiftGenerationalBucket<int>.Handle(999, 0);
+        var handle = new SwiftHandle(999, 0);
 
         Assert.False(bucket.Remove(handle));
     }
@@ -301,7 +301,7 @@ public class SwiftGenerationalBucketTests
     {
         var bucket = new SwiftGenerationalBucket<int>();
 
-        var handle = new SwiftGenerationalBucket<int>.Handle(999, 0);
+        var handle = new SwiftHandle(999, 0);
 
         Assert.False(bucket.TryGet(handle, out _));
     }
@@ -315,9 +315,9 @@ public class SwiftGenerationalBucketTests
 
         bucket.EnsureCapacity(64);
 
-        var left = new SwiftGenerationalBucket<int>.Handle(1, 2);
-        var same = new SwiftGenerationalBucket<int>.Handle(1, 2);
-        var different = new SwiftGenerationalBucket<int>.Handle(1, 3);
+        var left = new SwiftHandle(1, 2);
+        var same = new SwiftHandle(1, 2);
+        var different = new SwiftHandle(1, 3);
 
         Assert.True(bucket.Capacity >= 64);
         Assert.True(left.Equals(same));

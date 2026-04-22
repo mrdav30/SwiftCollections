@@ -38,6 +38,9 @@ public partial class SwiftArray2D<T> : IEnumerable<T>, IEnumerable
     public SwiftArray2D(int width, int height)
     {
         Initialize(width, height);
+
+        // Ensure that the inner array is not null after initialization
+        SwiftThrowHelper.ThrowIfNull(_innerArray, nameof(_innerArray));
     }
 
     /// <summary>
@@ -48,6 +51,14 @@ public partial class SwiftArray2D<T> : IEnumerable<T>, IEnumerable
         Fill(defaultValue);
     }
 
+    /// <summary>
+    /// Initializes a new instance of the SwiftArray2D class by copying the contents of the specified two-dimensional array.
+    /// </summary>
+    /// <remarks>
+    /// The dimensions of the new SwiftArray2D instance match those of the source array. 
+    /// Changes to the source array after construction do not affect the SwiftArray2D instance.
+    /// </remarks>
+    /// <param name="source">The two-dimensional array whose elements are copied to the new SwiftArray2D instance. Cannot be null.</param>
     public SwiftArray2D(T[,] source)
     {
         int width = source.GetLength(0);
@@ -55,15 +66,23 @@ public partial class SwiftArray2D<T> : IEnumerable<T>, IEnumerable
 
         Initialize(width, height);
 
+        SwiftThrowHelper.ThrowIfNull(_innerArray, nameof(_innerArray));
+
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)
                 this[x, y] = source[x, y];
     }
 
+    /// <summary>
+    /// Initializes a new instance of the SwiftArray2D class with the specified array state.
+    /// </summary>
+    /// <param name="state">The state object that encapsulates the underlying data and configuration for the two-dimensional array. Cannot be null.</param>
     [MemoryPackConstructor]
     public SwiftArray2D(Array2DState<T> state)
     {
         State = state;
+
+        SwiftThrowHelper.ThrowIfNull(_innerArray, nameof(_innerArray));
     }
 
     #endregion
@@ -124,6 +143,14 @@ public partial class SwiftArray2D<T> : IEnumerable<T>, IEnumerable
         }
     }
 
+    /// <summary>
+    /// Gets or sets the current state of the two-dimensional array, including its dimensions and data.
+    /// </summary>
+    /// <remarks>
+    /// The returned state is a snapshot and is independent of future changes to the array. 
+    /// Setting this property replaces the entire contents and dimensions of the array with those from the provided state.
+    /// This property is intended for serialization and deserialization scenarios.
+    /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
     public Array2DState<T> State
@@ -142,11 +169,15 @@ public partial class SwiftArray2D<T> : IEnumerable<T>, IEnumerable
 
         internal set
         {
+            SwiftThrowHelper.ThrowIfNull(value.Data, nameof(value.Data));
+
             _width = value.Width;
             _height = value.Height;
 
-            _innerArray = new T[value.Data.Length];
-            Array.Copy(value.Data, _innerArray, value.Data.Length);
+            int capacity = value.Data.Length;
+
+            _innerArray = new T[capacity];
+            Array.Copy(value.Data, _innerArray, capacity);
         }
     }
 

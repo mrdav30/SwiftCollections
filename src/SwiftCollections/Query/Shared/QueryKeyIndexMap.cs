@@ -4,13 +4,13 @@ using System.Runtime.CompilerServices;
 
 namespace SwiftCollections.Query;
 
-internal sealed class QueryKeyIndexMap<TKey>
+internal sealed class QueryKeyIndexMap<TKey> where TKey : notnull
 {
     private readonly IEqualityComparer<TKey> _comparer;
     private int[] _buckets;
     private int _bucketMask;
 
-    public QueryKeyIndexMap(int capacity, IEqualityComparer<TKey> comparer = null)
+    public QueryKeyIndexMap(int capacity, IEqualityComparer<TKey>? comparer = null)
     {
         _comparer = comparer ?? SwiftHashTools.GetDeterministicEqualityComparer<TKey>();
         capacity = NormalizeBucketCapacity(capacity);

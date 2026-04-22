@@ -30,7 +30,7 @@ internal sealed class SwiftObjectEqualityComparer : IEqualityComparer<object>, I
     /// <param name="y">The second object to compare.</param>
     /// <returns><c>true</c> if the specified objects are equal; otherwise, <c>false</c>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public new bool Equals(object x, object y)
+    public new bool Equals(object? x, object? y)
     {
         // Use a single null check for both objects to minimize branching
         return x == y || (x != null && y != null && x.Equals(y));
@@ -42,7 +42,7 @@ internal sealed class SwiftObjectEqualityComparer : IEqualityComparer<object>, I
     /// <param name="obj">The object to compare with the current comparer.</param>
     /// <returns><c>true</c> if the specified object is equal to the current comparer; otherwise, <c>false</c>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public override bool Equals(object obj) => obj is SwiftObjectEqualityComparer other && _entropy == other._entropy;
+    public override bool Equals(object? obj) => obj is SwiftObjectEqualityComparer other && _entropy == other._entropy;
 
     /// <summary>
     /// Returns a hash code for the specified object, incorporating entropy for better distribution.

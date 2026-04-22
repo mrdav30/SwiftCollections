@@ -23,11 +23,9 @@ internal sealed class SwiftStringEqualityComparer : IEqualityComparer<string>, I
         _entropy = SwiftHashTools.GetEntropy();
     }
 
+    /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool Equals(string x, string y)
-    {
-        return x == y || (x != null && y != null && x.Equals(y));
-    }
+    public bool Equals(string? x, string? y) => x == y || (x != null && y != null && x.Equals(y));
 
     /// <summary>
     /// Determines whether the specified objects are equal.
@@ -36,7 +34,7 @@ internal sealed class SwiftStringEqualityComparer : IEqualityComparer<string>, I
     /// <param name="y">The second object to compare.</param>
     /// <returns><c>true</c> if the specified objects are equal; otherwise, <c>false</c>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public new bool Equals(object x, object y)
+    public new bool Equals(object? x, object? y)
     {
         // Use a single null check for both objects to minimize branching
         return x == y || (x != null && y != null && (x is string a && y is string b ? a.Equals(b) : x.Equals(y)));
@@ -48,8 +46,9 @@ internal sealed class SwiftStringEqualityComparer : IEqualityComparer<string>, I
     /// <param name="obj">The object to compare with the current comparer.</param>
     /// <returns><c>true</c> if the specified object is equal to the current comparer; otherwise, <c>false</c>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public override bool Equals(object obj) => obj is SwiftStringEqualityComparer other && _entropy == other._entropy;
+    public override bool Equals(object? obj) => obj is SwiftStringEqualityComparer other && _entropy == other._entropy;
 
+    /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int GetHashCode(string obj)
     {

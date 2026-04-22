@@ -89,12 +89,28 @@ public struct FixedBoundVolume : IBoundVolume<FixedBoundVolume>, IEquatable<Fixe
         _isDirty = false;
     }
 
+    /// <summary>
+    /// Creates a new volume that represents the union of this volume and the specified volume.
+    /// </summary>
+    /// <remarks>
+    /// The resulting volume is the smallest axis-aligned bounding box that fully contains both input volumes.
+    /// </remarks>
+    /// <param name="other">
+    /// The volume to combine with this volume. 
+    /// The resulting volume will encompass both this volume and the specified volume.
+    /// </param>
+    /// <returns>A new FixedBoundVolume that contains both this volume and the specified volume.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly FixedBoundVolume Union(FixedBoundVolume other)
     {
         return new FixedBoundVolume(Vector3d.Min(Min, other.Min), Vector3d.Max(Max, other.Max));
     }
 
+    /// <summary>
+    /// Determines whether this volume intersects with the specified volume.
+    /// </summary>
+    /// <param name="other">The volume to test for intersection with this volume.</param>
+    /// <returns>true if the volumes intersect; otherwise, false.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly bool Intersects(FixedBoundVolume other)
     {
@@ -103,6 +119,14 @@ public struct FixedBoundVolume : IBoundVolume<FixedBoundVolume>, IEquatable<Fixe
                  Min.z > other.Max.z || Max.z < other.Min.z);
     }
 
+    /// <summary>
+    /// Calculates the additional volume required to expand the current volume to fully contain the specified volume.
+    /// </summary>
+    /// <param name="other">The volume to be encompassed by the current volume.</param>
+    /// <returns>
+    /// The minimum additional volume needed to contain the specified volume. 
+    /// Returns 0 if the current volume already contains the specified volume.
+    /// </returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public long GetCost(FixedBoundVolume other)
     {
@@ -110,27 +134,39 @@ public struct FixedBoundVolume : IBoundVolume<FixedBoundVolume>, IEquatable<Fixe
         return delta <= Fixed64.Zero ? 0L : (long)delta.FloorToInt();
     }
 
+    /// <summary>
+    /// Determines whether the bounds of this volume are equal to those of the specified volume.
+    /// </summary>
+    /// <param name="other">A <see cref="FixedBoundVolume"/> to compare with the current volume.</param>
+    /// <returns>true if both the minimum and maximum bounds of the volumes are equal; otherwise, false.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly bool BoundsEquals(FixedBoundVolume other)
     {
         return Min == other.Min && Max == other.Max;
     }
 
+    /// <inheritdoc/>
     public readonly bool Equals(FixedBoundVolume other) => BoundsEquals(other);
 
+    /// <inheritdoc/>
     public override readonly bool Equals(object obj) => obj is FixedBoundVolume other && BoundsEquals(other);
 
-    public static bool operator ==(FixedBoundVolume left, FixedBoundVolume right)
-    {
-        return left.Equals(right);
-    }
+    /// <summary>
+    /// Determines whether two BoundVolume instances are equal.
+    /// </summary>
+    public static bool operator ==(FixedBoundVolume left, FixedBoundVolume right) => left.Equals(right);
 
-    public static bool operator !=(FixedBoundVolume left, FixedBoundVolume right)
-    {
-        return !(left == right);
-    }
+    /// <summary>
+    /// Determines whether two BoundVolume instances are not equal.
+    /// </summary>
+    public static bool operator !=(FixedBoundVolume left, FixedBoundVolume right) => !(left == right);
 
+    /// <inheritdoc/>
     public override readonly int GetHashCode() => HashCode.Combine(Min, Max);
 
+    /// <summary>
+    /// Returns a string that represents the current object, including the minimum and maximum values.
+    /// </summary>
+    /// <returns>A string in the format "Min: {Min}, Max: {Max}" that displays the minimum and maximum values of the object.</returns>
     public override readonly string ToString() => $"Min: {Min}, Max: {Max}";
 }

@@ -72,12 +72,19 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     /// An object that can be used to synchronize access to the SwiftList.
     /// </summary>
     [NonSerialized]
-    private object _syncRoot;
+    private object? _syncRoot;
 
     #endregion
 
     #region Constructors
 
+    /// <summary>
+    /// Initializes a new instance of the SwiftSortedList class with the default capacity.
+    /// </summary>
+    /// <remarks>
+    /// This constructor creates an empty sorted list. 
+    /// Items added to the list will be automatically ordered according to the default comparer for the item type.
+    /// </remarks>
     public SwiftSortedList() : this(0) { }
 
     /// <summary>
@@ -90,7 +97,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     /// </summary>
     /// <param name="capacity">The starting initial capacity.</param>
     /// <param name="comparer">The comparer to use. If null, the default comparer is used.</param>
-    public SwiftSortedList(int capacity, IComparer<T> comparer = null)
+    public SwiftSortedList(int capacity, IComparer<T>? comparer = null)
     {
         _comparer = comparer ?? Comparer<T>.Default;
 
@@ -112,7 +119,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     /// The collection must have a known count for optimized memory allocation.
     /// </summary>
     /// <exception cref="ArgumentException">Thrown if the input collection does not have a known count.</exception>
-    public SwiftSortedList(IEnumerable<T> items, IComparer<T> comparer = null)
+    public SwiftSortedList(IEnumerable<T> items, IComparer<T>? comparer = null)
     {
         SwiftThrowHelper.ThrowIfNull(items, nameof(items));
 
@@ -152,12 +159,22 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     public SwiftSortedList(SwiftArrayState<T> state)
     {
         State = state;
+
+        // Validate that the internal array and comparer are not null after deserialization
+        SwiftThrowHelper.ThrowIfNull(_innerArray, nameof(_innerArray));
+        SwiftThrowHelper.ThrowIfNull(_comparer, nameof(_comparer));
     }
 
     #endregion
 
     #region Properties
 
+    /// <summary>
+    /// Gets the underlying array that stores the elements of the collection.
+    /// </summary>
+    /// <remarks>
+    /// The returned array may contain unused elements beyond the logical contents of the collection.
+    ///</remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     public T[] InnerArray => _innerArray;
@@ -189,17 +206,20 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     [MemoryPackIgnore]
     public IComparer<T> Comparer => _comparer;
 
+    /// <inheritdoc/>
     [JsonIgnore]
     [MemoryPackIgnore]
-    bool ICollection<T>.IsReadOnly => false;
+    public bool IsReadOnly => false;
 
+    /// <inheritdoc/>
     [JsonIgnore]
     [MemoryPackIgnore]
     public bool IsSynchronized => false;
 
+    /// <inheritdoc/>
     [JsonIgnore]
     [MemoryPackIgnore]
-    object ICollection.SyncRoot => _syncRoot ??= new object();
+    public object SyncRoot => _syncRoot ??= new object();
 
     /// <summary>
     /// Gets the element at the specified arrayIndex.
@@ -216,6 +236,14 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
         }
     }
 
+    /// <summary>
+    /// Gets or sets the current state of the array, including its items and structure.
+    /// </summary>
+    /// <remarks>
+    /// Setting this property replaces the entire contents of the array with the specified state. 
+    /// The setter is intended for internal use and may reset internal metadata such as version and comparer.
+    /// This property is intended for serialization and deserialization scenarios.
+    /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
     public SwiftArrayState<T> State
@@ -228,7 +256,9 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
         }
         internal set
         {
-            int count = value.Items?.Length ?? 0;
+            SwiftThrowHelper.ThrowIfNull(value.Items, nameof(value.Items));
+
+            int count = value.Items.Length;
 
             if (count == 0)
             {
@@ -258,6 +288,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
 
     #region Collection Manipulation
 
+    /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Add(T item)
     {
@@ -407,7 +438,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
 
         int index = GetPhysicalIndex(0);
         T ret = _innerArray[index];
-        _innerArray[index] = default;
+        _innerArray[index] = default!;
         _count--;
         // Increment _offset as we remove from the front
         _offset = _count == 0 ? _innerArray.Length >> 1 : _offset + 1;
@@ -427,7 +458,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
 
         int index = GetPhysicalIndex(--_count);
         T ret = _innerArray[index];
-        _innerArray[index] = default;
+        _innerArray[index] = default!;
         if ((uint)_count == 0) _offset = _innerArray.Length >> 1;
 
         _version++;
@@ -435,6 +466,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
         return ret;
     }
 
+    /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Remove(T item)
     {
@@ -474,11 +506,11 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
             {
                 // Shift elements towards the head (left) to fill the gap
                 Array.Copy(_innerArray, physicalIndex + 1, _innerArray, physicalIndex, distanceToTail);
-                _innerArray[GetPhysicalIndex(_count)] = default; // Clear the last element
+                _innerArray[GetPhysicalIndex(_count)] = default!; // Clear the last element
             }
         }
         else  // Removing the last element; simply clear it
-            _innerArray[GetPhysicalIndex(_count)] = default;
+            _innerArray[GetPhysicalIndex(_count)] = default!;
 
         // Only recenter if offset is non-zero and count is less than 25% of capacity
         if (_offset != 0 && (uint)_count < _innerArray.Length * 0.25)
@@ -492,6 +524,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
         _version++;
     }
 
+    /// <inheritdoc/>
     public void Clear()
     {
         if ((uint)_count == 0) return;
@@ -619,6 +652,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
         return _innerArray[GetPhysicalIndex(_count - 1)];
     }
 
+    /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Contains(T item) => Search(item) >= 0;
 
@@ -656,7 +690,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
                 return item;
         }
 
-        return default;
+        return default!;
     }
 
     /// <summary>
@@ -711,6 +745,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
         return ~low; // Item not found, should be inserted at arrayIndex low
     }
 
+    /// <inheritdoc/>
     public void CopyTo(T[] array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
@@ -720,6 +755,7 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
         Array.Copy(_innerArray, _offset, array, arrayIndex, _count);
     }
 
+    /// <inheritdoc/>
     public void CopyTo(Array array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
@@ -729,9 +765,11 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
         Array.Copy(_innerArray, _offset, array, arrayIndex, _count);
     }
 
+    /// <inheritdoc/>
     public void CloneTo(ICollection<T> output)
     {
-        if (output == null) throw new ArgumentNullException(nameof(output));
+        SwiftThrowHelper.ThrowIfNull(output, nameof(output));
+
         output.Clear();
 
         foreach (var item in this)
@@ -745,10 +783,18 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
     /// <summary>
     /// Returns an enumerator that iterates through <see cref="SwiftSortedList{T}"/>.
     /// </summary>
-    public SwiftSorterEnumerator GetEnumerator() => new SwiftSorterEnumerator(this);
+    public SwiftSorterEnumerator GetEnumerator() => new(this);
     IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
+    /// <summary>
+    /// Supports simple iteration over the elements of a <see cref="SwiftSortedList{T}"/> in sorted order.
+    /// </summary>
+    /// <remarks>
+    /// The enumerator is invalidated if the underlying collection is modified after the enumerator created. 
+    /// In this case, calling MoveNext or Reset will throw an InvalidOperationException. 
+    /// The enumerator does not support writing to the collection.
+    /// </remarks>
     public struct SwiftSorterEnumerator : IEnumerator<T>, IEnumerator, IDisposable
     {
         private readonly SwiftSortedList<T> _list;
@@ -758,15 +804,16 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
 
         private T _current;
 
-        public SwiftSorterEnumerator(SwiftSortedList<T> sortedList)
+        internal SwiftSorterEnumerator(SwiftSortedList<T> sortedList)
         {
             _list = sortedList;
             _count = (uint)sortedList._count;
             _version = sortedList._version;
             _index = 0;
-            _current = default;
+            _current = default!;
         }
 
+        /// <inheritdoc/>
         public T Current => _current;
 
         object IEnumerator.Current
@@ -775,11 +822,12 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
             get
             {
                 if ((uint)_index > _count) throw new InvalidOperationException("Bad enumeration");
-                return _current;
+                return _current!;
             }
 
         }
 
+        /// <inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
@@ -794,20 +842,22 @@ public partial class SwiftSortedList<T> : ISwiftCloneable<T>, IEnumerable<T>, IE
             }
 
             _index = _list._count + 1;
-            _current = default;
+            _current = default!;
             return false;
         }
 
+        /// <inheritdoc/>
         public void Reset()
         {
             if (_version != _list._version)
                 throw new InvalidOperationException("Enumerator modified outside of enumeration!");
 
             _index = 0;
-            _current = default;
+            _current = default!;
         }
 
-        public void Dispose() { }
+        /// <inheritdoc/>
+        public void Dispose() => _index = 0;
     }
 
     #endregion

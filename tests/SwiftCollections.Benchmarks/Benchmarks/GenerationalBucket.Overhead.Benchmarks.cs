@@ -13,7 +13,7 @@ public class GenerationalBucketOverheadBenchmarks
 
     private int[] _data;
     private int[] _bucketIndices;
-    private SwiftGenerationalBucket<int>.Handle[] _handles;
+    private SwiftHandle[] _handles;
 
     private SwiftBucket<int> _bucket;
     private SwiftGenerationalBucket<int> _generationalBucket;
@@ -68,7 +68,7 @@ public class GenerationalBucketOverheadBenchmarks
     public void IterationSetup_GenerationalBucket()
     {
         _generationalBucket = new SwiftGenerationalBucket<int>(N);
-        _handles = new SwiftGenerationalBucket<int>.Handle[N];
+        _handles = new SwiftHandle[N];
 
         for (int i = 0; i < N; i++)
             _handles[i] = _generationalBucket.Add(_data[i]);

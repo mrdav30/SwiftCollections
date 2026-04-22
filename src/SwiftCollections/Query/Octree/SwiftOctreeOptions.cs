@@ -13,9 +13,7 @@ public readonly struct SwiftOctreeOptions : IEquatable<SwiftOctreeOptions>
     /// <param name="maxDepth">The maximum child depth allowed below the root node.</param>
     /// <param name="nodeCapacity">The maximum number of entries a node should hold before attempting to split.</param>
     public SwiftOctreeOptions(int maxDepth, int nodeCapacity)
-        : this(maxDepth, nodeCapacity, true)
-    {
-    }
+        : this(maxDepth, nodeCapacity, true) { }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SwiftOctreeOptions"/> struct.
@@ -60,7 +58,17 @@ public readonly struct SwiftOctreeOptions : IEquatable<SwiftOctreeOptions>
     }
 
     /// <inheritdoc />
-    public override bool Equals(object obj) => obj is SwiftOctreeOptions other && Equals(other);
+    public override bool Equals(object? obj) => obj is SwiftOctreeOptions other && Equals(other);
+
+    /// <summary>
+    /// Determines whether two SwiftOctreeOptions instances are equal.
+    /// </summary>
+    public static bool operator ==(SwiftOctreeOptions left, SwiftOctreeOptions right) => left.Equals(right);
+
+    /// <summary>
+    /// Determines whether two SwiftOctreeOptions instances are not equal.
+    /// </summary>
+    public static bool operator !=(SwiftOctreeOptions left, SwiftOctreeOptions right) => !(left == right);
 
     /// <inheritdoc />
     public override int GetHashCode() => HashCode.Combine(MaxDepth, NodeCapacity, EnableMergeOnRemove);

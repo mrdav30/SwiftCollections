@@ -30,15 +30,16 @@ namespace SwiftCollections;
 [Serializable]
 [JsonConverter(typeof(SwiftStateJsonConverterFactory))]
 [MemoryPackable]
-public sealed partial class SwiftPackedSet<T> :
-    ISwiftCloneable<T>,
-    ISet<T>,
-    IEnumerable<T>,
-    IEnumerable
+public sealed partial class SwiftPackedSet<T> : ISwiftCloneable<T>, ISet<T>, IEnumerable<T>, IEnumerable
+    where T : notnull
 {
     #region Constants
 
+    /// <summary>
+    /// Represents the default initial capacity value used when no specific capacity is provided.
+    /// </summary>
     public const int DefaultCapacity = 8;
+
     private static readonly bool _clearReleasedSlots = RuntimeHelpers.IsReferenceOrContainsReferences<T>();
 
     #endregion
@@ -53,14 +54,29 @@ public sealed partial class SwiftPackedSet<T> :
     private uint _version;
 
     [NonSerialized]
-    private object _syncRoot;
+    private object? _syncRoot;
 
     #endregion
 
     #region Constructors
 
+    /// <summary>
+    /// Initializes a new instance of the SwiftPackedSet class with the default capacity.
+    /// </summary>
     public SwiftPackedSet() : this(DefaultCapacity) { }
 
+    /// <summary>
+    /// Initializes a new instance of the SwiftPackedSet class with the specified initial capacity.
+    /// </summary>
+    /// <remarks>
+    /// The actual capacity is rounded up to the next power of two greater than or equal to the specified value, 
+    /// unless the specified value is less than or equal to the default capacity.
+    /// </remarks>
+    /// <param name="capacity">
+    /// The initial number of elements that the set can contain before resizing. 
+    /// If less than or equal to the default capacity, the default capacity is used. 
+    /// Must be non-negative.
+    /// </param>
     public SwiftPackedSet(int capacity)
     {
         capacity = capacity <= DefaultCapacity
@@ -71,40 +87,68 @@ public sealed partial class SwiftPackedSet<T> :
         _lookup = new SwiftDictionary<T, int>(capacity);
     }
 
+    /// <summary>
+    /// Initializes a new instance of the SwiftPackedSet class with the specified array state.
+    /// </summary>
+    /// <param name="state">The state object that provides the initial data and configuration for the set. Cannot be null.</param>
     [MemoryPackConstructor]
     public SwiftPackedSet(SwiftArrayState<T> state)
     {
         State = state;
+
+        SwiftThrowHelper.ThrowIfNull(_dense, nameof(_dense));
+        SwiftThrowHelper.ThrowIfNull(_lookup, nameof(_lookup));
     }
 
     #endregion
 
     #region Properties
 
+    /// <summary>
+    /// Gets the number of elements contained in the collection.
+    /// </summary>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Count => _count;
 
+    /// <summary>
+    /// Gets the total number of elements that the collection can hold without resizing.
+    /// </summary>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Capacity => _dense.Length;
 
+    /// <summary>
+    /// Gets a value indicating whether access to the collection is synchronized (thread safe).
+    /// </summary>
     [JsonIgnore]
     [MemoryPackIgnore]
     public bool IsSynchronized => false;
 
+    /// <inheritdoc/>
     [JsonIgnore]
     [MemoryPackIgnore]
     public object SyncRoot => _syncRoot ??= new object();
 
+    /// <summary>
+    /// Gets the underlying dense array of elements.
+    /// </summary>
     [JsonIgnore]
     [MemoryPackIgnore]
     public T[] Dense => _dense;
 
+    /// <inheritdoc/>
     [JsonIgnore]
     [MemoryPackIgnore]
     public bool IsReadOnly => false;
 
+    /// <summary>
+    /// Gets or sets the current state of the array, including its items and order.
+    /// </summary>
+    /// <remarks>
+    /// Use this property to capture or restore the array's contents and structure. 
+    /// Setting this property replaces the entire array with the provided state.
+    /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
     public SwiftArrayState<T> State
@@ -118,7 +162,9 @@ public sealed partial class SwiftPackedSet<T> :
         }
         internal set
         {
-            var values = value.Items ?? Array.Empty<T>();
+            SwiftThrowHelper.ThrowIfNull(value.Items, nameof(value.Items));
+
+            var values = value.Items;
 
             int n = values.Length;
             int newCapacity = n < DefaultCapacity
@@ -145,6 +191,7 @@ public sealed partial class SwiftPackedSet<T> :
 
     #region Core Operations
 
+    /// <inheritdoc/>
     public bool Contains(T value)
         => _lookup.ContainsKey(value);
 
@@ -186,9 +233,10 @@ public sealed partial class SwiftPackedSet<T> :
                 return _dense[i];
         }
 
-        return default;
+        return default!;
     }
 
+    /// <inheritdoc/>
     public bool Add(T value)
     {
         if (_lookup.ContainsKey(value))
@@ -207,6 +255,7 @@ public sealed partial class SwiftPackedSet<T> :
 
     void ICollection<T>.Add(T item) => Add(item);
 
+    /// <inheritdoc/>
     public bool Remove(T value)
     {
         if (!_lookup.TryGetValue(value, out int index))
@@ -223,13 +272,14 @@ public sealed partial class SwiftPackedSet<T> :
         }
 
         if (_clearReleasedSlots)
-            _dense[last] = default;
+            _dense[last] = default!;
         _lookup.Remove(value);
 
         _version++;
         return true;
     }
 
+    /// <inheritdoc/>
     public void Clear()
     {
         if (_count == 0) return;
@@ -246,6 +296,15 @@ public sealed partial class SwiftPackedSet<T> :
 
     #region Capacity
 
+    /// <summary>
+    /// Ensures that the internal storage has at least the specified capacity, expanding it if necessary.
+    /// </summary>
+    /// <remarks>
+    /// If the current capacity is less than the specified value, the internal storage is resized to
+    /// the next power of two greater than or equal to the specified capacity. 
+    /// Existing elements are preserved.
+    /// </remarks>
+    /// <param name="capacity">The minimum number of elements that the internal storage should be able to hold. Must be non-negative.</param>
     public void EnsureCapacity(int capacity)
     {
         int newCapacity = SwiftHashTools.NextPowerOfTwo(capacity);
@@ -262,29 +321,38 @@ public sealed partial class SwiftPackedSet<T> :
 
     #region Enumeration
 
-    public Enumerator GetEnumerator() => new Enumerator(this);
-
+    /// <inheritdoc cref="IEnumerable.GetEnumerator()"/>
+    public SwiftPackedSetEnumerator GetEnumerator() => new(this);
     IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    public struct Enumerator : IEnumerator<T>
+    /// <summary>
+    /// Enumerates the elements of a <see cref="SwiftPackedSet{T}"/> collection.
+    /// </summary>
+    /// <remarks>
+    /// The enumerator is invalidated if the collection is modified after the enumerator is created.
+    /// In such cases, calling MoveNext or Reset will throw an InvalidOperationException. 
+    /// </remarks>
+    public struct SwiftPackedSetEnumerator : IEnumerator<T>
     {
         private readonly SwiftPackedSet<T> _set;
         private readonly uint _version;
         private int _index;
 
-        internal Enumerator(SwiftPackedSet<T> set)
+        internal SwiftPackedSetEnumerator(SwiftPackedSet<T> set)
         {
             _set = set;
             _version = set._version;
             _index = -1;
-            Current = default;
+            Current = default!;
         }
 
+        /// <inheritdoc/>
         public T Current { get; private set; }
 
         object IEnumerator.Current => Current;
 
+        /// <inheritdoc/>
         public bool MoveNext()
         {
             if (_version != _set._version)
@@ -293,7 +361,7 @@ public sealed partial class SwiftPackedSet<T> :
             int next = _index + 1;
             if (next >= _set._count)
             {
-                Current = default;
+                Current = default!;
                 return false;
             }
 
@@ -302,22 +370,25 @@ public sealed partial class SwiftPackedSet<T> :
             return true;
         }
 
+        /// <inheritdoc/>
         public void Reset()
         {
             if (_version != _set._version)
                 throw new InvalidOperationException("Collection modified during enumeration");
 
             _index = -1;
-            Current = default;
+            Current = default!;
         }
 
-        public void Dispose() { }
+        /// <inheritdoc/>
+        public void Dispose() => _index = -1;
     }
 
     #endregion
 
     #region Clone
 
+    /// <inheritdoc/>
     public void CloneTo(ICollection<T> output)
     {
         SwiftThrowHelper.ThrowIfNull(output, nameof(output));
@@ -328,6 +399,7 @@ public sealed partial class SwiftPackedSet<T> :
             output.Add(_dense[i]);
     }
 
+    /// <inheritdoc/>
     public void CopyTo(T[] array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
@@ -341,6 +413,7 @@ public sealed partial class SwiftPackedSet<T> :
 
     #region ISet<T> Implementations
 
+    /// <inheritdoc/>
     public void ExceptWith(IEnumerable<T> other)
     {
         SwiftThrowHelper.ThrowIfNull(other, nameof(other));
@@ -357,6 +430,7 @@ public sealed partial class SwiftPackedSet<T> :
             Remove(item);
     }
 
+    /// <inheritdoc/>
     public void IntersectWith(IEnumerable<T> other)
     {
         SwiftThrowHelper.ThrowIfNull(other, nameof(other));
@@ -374,6 +448,7 @@ public sealed partial class SwiftPackedSet<T> :
         }
     }
 
+    /// <inheritdoc/>
     public bool IsProperSubsetOf(IEnumerable<T> other)
     {
         SwiftThrowHelper.ThrowIfNull(other, nameof(other));
@@ -390,6 +465,7 @@ public sealed partial class SwiftPackedSet<T> :
         return true;
     }
 
+    /// <inheritdoc/>
     public bool IsProperSupersetOf(IEnumerable<T> other)
     {
         SwiftThrowHelper.ThrowIfNull(other, nameof(other));
@@ -406,6 +482,7 @@ public sealed partial class SwiftPackedSet<T> :
         return true;
     }
 
+    /// <inheritdoc/>
     public bool IsSubsetOf(IEnumerable<T> other)
     {
         SwiftThrowHelper.ThrowIfNull(other, nameof(other));
@@ -422,6 +499,7 @@ public sealed partial class SwiftPackedSet<T> :
         return true;
     }
 
+    /// <inheritdoc/>
     public bool IsSupersetOf(IEnumerable<T> other)
     {
         SwiftThrowHelper.ThrowIfNull(other, nameof(other));
@@ -433,6 +511,7 @@ public sealed partial class SwiftPackedSet<T> :
         return true;
     }
 
+    /// <inheritdoc/>
     public bool Overlaps(IEnumerable<T> other)
     {
         SwiftThrowHelper.ThrowIfNull(other, nameof(other));
@@ -444,6 +523,7 @@ public sealed partial class SwiftPackedSet<T> :
         return false;
     }
 
+    /// <inheritdoc/>
     public bool SetEquals(IEnumerable<T> other)
     {
         SwiftThrowHelper.ThrowIfNull(other, nameof(other));
@@ -460,6 +540,7 @@ public sealed partial class SwiftPackedSet<T> :
         return true;
     }
 
+    /// <inheritdoc/>
     public void SymmetricExceptWith(IEnumerable<T> other)
     {
         SwiftThrowHelper.ThrowIfNull(other, nameof(other));
@@ -479,6 +560,7 @@ public sealed partial class SwiftPackedSet<T> :
         }
     }
 
+    /// <inheritdoc/>
     public void UnionWith(IEnumerable<T> other)
     {
         SwiftThrowHelper.ThrowIfNull(other, nameof(other));

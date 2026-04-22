@@ -25,12 +25,12 @@ public static class SwiftHashTools
     /// <summary>
     /// Provides a cryptographic random number generator for collision-hardening entropy.
     /// </summary>
-    private static RandomNumberGenerator rng;
+    private static RandomNumberGenerator? rng;
 
     /// <summary>
     /// Stores random bytes used for entropy generation.
     /// </summary>
-    private static byte[] data;
+    private static byte[]? data;
 
     /// <summary>
     /// Tracks the current index in the entropy data buffer.
@@ -45,7 +45,7 @@ public static class SwiftHashTools
     /// <summary>
     /// Holds serialization information for objects during the serialization process.
     /// </summary>
-    private static ConditionalWeakTable<object, SerializationInfo> s_SerializationInfoTable;
+    private static ConditionalWeakTable<object, SerializationInfo>? s_SerializationInfoTable;
 
     /// <summary>
     /// Gets the table that stores serialization information for objects.
@@ -56,7 +56,7 @@ public static class SwiftHashTools
         {
             if (s_SerializationInfoTable == null)
             {
-                ConditionalWeakTable<object, SerializationInfo> value = new ConditionalWeakTable<object, SerializationInfo>();
+                ConditionalWeakTable<object, SerializationInfo> value = new();
                 Interlocked.CompareExchange(ref s_SerializationInfoTable, value, null);
             }
 
@@ -64,6 +64,12 @@ public static class SwiftHashTools
         }
     }
 
+    /// <summary>
+    /// Determines whether the specified integer is a power of two.
+    /// </summary>
+    /// <remarks>Zero and negative values are not considered powers of two.</remarks>
+    /// <param name="x">The integer value to test.</param>
+    /// <returns>true if the value of x is a power of two; otherwise, false.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsPowerOfTwo(int x) => (x != 0) && ((x & (x - 1)) == 0);
 
@@ -156,12 +162,21 @@ public static class SwiftHashTools
     /// <summary>
     /// Combines the hash codes of the provided objects using a DJB2-inspired mixing strategy.
     /// </summary>
-    public static int CombineHashCodes(
-        params object[] values)
-    {
-        return values.CombineHashCodes();
-    }
+    public static int CombineHashCodes(params object[] values) => values.CombineHashCodes();
 
+    /// <summary>
+    /// Determines whether the specified comparer is a recognized, well-known equality comparer supported by the system.
+    /// </summary>
+    /// <remarks>
+    /// A well-known equality comparer is one that is commonly used and recognized by the system, 
+    /// such as the default equality comparers for string and object, or specific deterministic comparers. 
+    /// Use this method to check if a comparer is supported for optimized or special handling.
+    /// </remarks>
+    /// <param name="comparer">
+    /// The object to test as an equality comparer. 
+    /// This can be null or an instance of a supported equality comparer type.
+    /// </param>
+    /// <returns>true if the comparer is a well-known equality comparer; otherwise, false.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsWellKnownEqualityComparer(object comparer)
     {
@@ -226,9 +241,26 @@ public static class SwiftHashTools
             : new SwiftDeterministicObjectEqualityComparer(seed);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static IEqualityComparer<T> GetDefaultEqualityComparer<T>(IEqualityComparer<T> comparer = null)
+    internal static IEqualityComparer<T> GetDefaultEqualityComparer<T>(IEqualityComparer<T>? comparer = null)
         => comparer ?? GetDeterministicEqualityComparer<T>();
 
+    /// <summary>
+    /// Returns an IEqualityComparer instance optimized for use with Swift serialization, based on the specified comparer.
+    /// </summary>
+    /// <remarks>
+    /// Use this method to obtain an equality comparer that ensures deterministic behavior when serializing with Swift. 
+    /// If the provided comparer is not recognized, a default Swift object equality comparer is returned.
+    /// </remarks>
+    /// <param name="comparer">
+    /// The comparer object to evaluate. 
+    /// Determines which specialized Swift equality comparer to return. 
+    /// Can be an EqualityComparer for string or object, or a custom Swift deterministic comparer.
+    /// </param>
+    /// <returns>
+    /// An IEqualityComparer instance suitable for Swift serialization. 
+    /// Returns a specialized comparer for strings or objects, depending on the input.
+    /// </returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IEqualityComparer GetSwiftEqualityComparer(object comparer)
     {
         if (comparer == EqualityComparer<string>.Default || comparer is SwiftDeterministicStringEqualityComparer)
@@ -248,13 +280,10 @@ public static class SwiftHashTools
     {
         lock (lockObj)
         {
-            if (currentIndex == 1024)
+            if (currentIndex == 1024 || rng == null || data == null)
             {
-                if (rng == null)
-                {
-                    rng = RandomNumberGenerator.Create();
-                    data = new byte[1024];
-                }
+                rng ??= RandomNumberGenerator.Create();
+                data ??= new byte[1024];
 
                 rng.GetBytes(data);
                 currentIndex = 0;

@@ -99,6 +99,13 @@ public sealed class SwiftQueuePool<T> : SwiftCollectionPool<SwiftQueue<T>, T>, I
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>
+    /// Releases the resources used by the SwiftQueuePool instance.
+    /// </summary>
+    /// <remarks>
+    /// This finalizer ensures that unmanaged resources are released if Dispose was not called explicitly. 
+    /// It is recommended to call Dispose to release resources deterministically.
+    /// </remarks>
     ~SwiftQueuePool() => Dispose();
 
     #endregion

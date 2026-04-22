@@ -13,7 +13,7 @@ internal sealed class QueryTraversalScratch
 
     public SwiftIntStack RentIntStack(int capacity)
     {
-        SwiftIntStack stack = _intStack.Value;
+        SwiftIntStack stack = _intStack.Value!;
         stack.EnsureCapacity(capacity);
         stack.Clear();
         return stack;

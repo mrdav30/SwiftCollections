@@ -30,37 +30,77 @@ public partial class SwiftArray3D<T> : IEnumerable<T>, IEnumerable
 
     #region Constructors
 
+    /// <summary>
+    /// Initializes a new instance of the SwiftArray3D class with zero dimensions.
+    /// </summary>
+    /// <remarks>
+    /// This constructor creates an empty three-dimensional array. 
+    /// Use this overload when you intend to set the dimensions later or create an empty array.
+    /// </remarks>
     public SwiftArray3D() : this(0, 0, 0) { }
 
-    public SwiftArray3D(int width, int height, int length)
+    /// <summary>
+    /// Initializes a new instance of the SwiftArray3D class with the specified dimensions.
+    /// </summary>
+    /// <param name="width">The number of elements in the first dimension. Must be greater than zero.</param>
+    /// <param name="height">The number of elements in the second dimension. Must be greater than zero.</param>
+    /// <param name="depth">The number of elements in the third dimension. Must be greater than zero.</param>
+    public SwiftArray3D(int width, int height, int depth)
     {
-        Initialize(width, height, length);
+        _width = width;
+        _height = height;
+        _depth = depth;
+        _innerArray = new T[width * height * depth];
     }
 
-    public SwiftArray3D(int width, int height, int length, T defaultValue) : this(width, height, length)
+    /// <summary>
+    /// Initializes a new instance of the SwiftArray3D class with the specified dimensions and fills all elements with
+    /// the provided default value.
+    /// </summary>
+    /// <param name="width">The number of elements in the first dimension. Must be greater than zero.</param>
+    /// <param name="height">The number of elements in the second dimension. Must be greater than zero.</param>
+    /// <param name="depth">The number of elements in the third dimension. Must be greater than zero.</param>
+    /// <param name="defaultValue">The value to assign to each element in the array upon initialization.</param>
+    public SwiftArray3D(int width, int height, int depth, T defaultValue) : this(width, height, depth)
     {
         Fill(defaultValue);
     }
 
+    /// <summary>
+    /// Initializes a new instance of the SwiftArray3D class with the specified array state.
+    /// </summary>
+    /// <param name="state">
+    /// The state object that encapsulates the underlying data and configuration for the three-dimensional array. 
+    /// Cannot be null.
+    /// </param>
     [MemoryPackConstructor]
     public SwiftArray3D(Array3DState<T> state)
     {
         State = state;
+        _innerArray ??= Array.Empty<T>(); // Ensure _innerArray is initialized to avoid null reference issues.
     }
 
     #endregion
 
     #region Properties
 
-
+    /// <summary>
+    /// Gets the width of the object.
+    /// </summary>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Width => _width;
 
+    /// <summary>
+    /// Gets the height value associated with the current instance.
+    /// </summary>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Height => _height;
 
+    /// <summary>
+    /// Gets the current depth value for this instance.
+    /// </summary>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Depth => _depth;
@@ -77,6 +117,14 @@ public partial class SwiftArray3D<T> : IEnumerable<T>, IEnumerable
     [MemoryPackIgnore]
     public int Length => _innerArray.Length;
 
+    /// <summary>
+    /// Gets or sets the element at the specified three-dimensional indices.
+    /// </summary>
+    /// <remarks>An exception is thrown if any index is outside the valid range for its dimension.</remarks>
+    /// <param name="x">The zero-based index along the first dimension.</param>
+    /// <param name="y">The zero-based index along the second dimension.</param>
+    /// <param name="z">The zero-based index along the third dimension.</param>
+    /// <returns>The element located at the specified indices.</returns>
     [JsonIgnore]
     [MemoryPackIgnore]
     public T this[int x, int y, int z]
@@ -93,6 +141,14 @@ public partial class SwiftArray3D<T> : IEnumerable<T>, IEnumerable
         }
     }
 
+    /// <summary>
+    /// Gets or sets the complete state of the 3D array, including its dimensions and data contents.
+    /// </summary>
+    /// <remarks>
+    /// Setting this property replaces the current array's dimensions and data with those from the specified state. 
+    /// Getting this property returns a snapshot of the current array state. 
+    /// This property is intended for serialization and deserialization scenarios.
+    /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
     public Array3DState<T> State
@@ -124,17 +180,6 @@ public partial class SwiftArray3D<T> : IEnumerable<T>, IEnumerable
     #endregion
 
     #region Methods
-
-    /// <summary>
-    /// Initializes the 3D array with the specified dimensions.
-    /// </summary>
-    private void Initialize(int width, int height, int depth)
-    {
-        _width = width;
-        _height = height;
-        _depth = depth;
-        _innerArray = new T[width * height * depth];
-    }
 
     /// <summary>
     /// Resizes the 3D array to the specified dimensions.
@@ -223,6 +268,17 @@ public partial class SwiftArray3D<T> : IEnumerable<T>, IEnumerable
             _innerArray[i] = value;
     }
 
+    /// <summary>
+    /// Calculates the one-dimensional array index corresponding to the specified three-dimensional coordinates.
+    /// </summary>
+    /// <remarks>
+    /// Use this method to map three-dimensional coordinates to a linear array index when working with flattened 3D data structures. 
+    /// The valid ranges for x, y, and z depend on the dimensions of the underlying data structure.
+    /// </remarks>
+    /// <param name="x">The zero-based X coordinate to convert.</param>
+    /// <param name="y">The zero-based Y coordinate to convert.</param>
+    /// <param name="z">The zero-based Z coordinate to convert.</param>
+    /// <returns>The zero-based index in the underlying one-dimensional array that corresponds to the specified (x, y, z) coordinates.</returns>
     public virtual int GetIndex(int x, int y, int z)
     {
         return x * (Height * Depth) + y * Depth + z;

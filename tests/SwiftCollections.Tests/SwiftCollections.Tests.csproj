@@ -1,38 +1,38 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <LangVersion>11.0</LangVersion>
-    <TargetFrameworks>net8.0</TargetFrameworks>
-    <ImplicitUsings>disable</ImplicitUsings>
-    <Nullable>disable</Nullable>
-    <IsPackable>false</IsPackable>
-    <IsTestProject>true</IsTestProject>
-	<ProjectGuid>{3D1E9931-4504-4E2D-8528-664D4015B740}</ProjectGuid>
-	<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-	<Configurations>Debug;Release</Configurations>
-	<OutputType>Exe</OutputType>
-	<RunSettingsFilePath>$(MSBuildThisFileDirectory)coverlet.runsettings</RunSettingsFilePath>
-  </PropertyGroup>
-  <ItemGroup>
-	<ProjectReference Include="..\..\src\SwiftCollections\SwiftCollections.csproj">
-	  <Private>True</Private>
-	  <IncludeAssets>compile; build</IncludeAssets>
-	  <PrivateAssets>all</PrivateAssets>
-	</ProjectReference>
-    <PackageReference Include="coverlet.collector" Version="8.0.1">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-	<PackageReference Include="FluentAssertions" Version="8.9.0" />
-	<PackageReference Include="MemoryPack" Version="1.21.4" />
-	<PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.4.0" />
-	<PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
-	  <PrivateAssets>all</PrivateAssets>
-	  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-	</PackageReference>
-	<PackageReference Include="xunit.v3" Version="3.2.2" />
-	<PackageReference Include="xunit.v3.runner.console" Version="3.2.2">
-	  <PrivateAssets>all</PrivateAssets>
-	  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-	</PackageReference>
-  </ItemGroup>
+	<PropertyGroup>
+		<LangVersion>11.0</LangVersion>
+		<TargetFrameworks>net8.0</TargetFrameworks>
+		<ImplicitUsings>disable</ImplicitUsings>
+		<Nullable>disable</Nullable>
+		<IsPackable>false</IsPackable>
+		<IsTestProject>true</IsTestProject>
+		<ProjectGuid>{3D1E9931-4504-4E2D-8528-664D4015B740}</ProjectGuid>
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+		<Configurations>Debug;Release;ReleaseLean</Configurations>
+		<OutputType>Exe</OutputType>
+		<RunSettingsFilePath>$(MSBuildThisFileDirectory)coverlet.runsettings</RunSettingsFilePath>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\src\SwiftCollections\SwiftCollections.csproj">
+			<Private>True</Private>
+			<IncludeAssets>compile; build</IncludeAssets>
+			<PrivateAssets>all</PrivateAssets>
+		</ProjectReference>
+		<PackageReference Include="coverlet.collector" Version="8.0.1">
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+			<PrivateAssets>all</PrivateAssets>
+		</PackageReference>
+		<PackageReference Include="FluentAssertions" Version="8.9.0" />
+		<PackageReference Include="MemoryPack" Version="1.21.4" />
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.4.0" />
+		<PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="xunit.v3" Version="3.2.2" />
+		<PackageReference Include="xunit.v3.runner.console" Version="3.2.2">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
 </Project>

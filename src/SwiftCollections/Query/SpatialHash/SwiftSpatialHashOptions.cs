@@ -33,7 +33,17 @@ public readonly struct SwiftSpatialHashOptions : IEquatable<SwiftSpatialHashOpti
     public bool Equals(SwiftSpatialHashOptions other) => NeighborhoodPadding == other.NeighborhoodPadding;
 
     /// <inheritdoc />
-    public override bool Equals(object obj) => obj is SwiftSpatialHashOptions other && Equals(other);
+    public override bool Equals(object? obj) => obj is SwiftSpatialHashOptions other && Equals(other);
+
+    /// <summary>
+    /// Determines whether two SwiftSpatialHashOptions instances are equal.
+    /// </summary>
+    public static bool operator ==(SwiftSpatialHashOptions left, SwiftSpatialHashOptions right) => left.Equals(right);
+
+    /// <summary>
+    /// Determines whether two SwiftSpatialHashOptions instances are not equal.
+    /// </summary>
+    public static bool operator !=(SwiftSpatialHashOptions left, SwiftSpatialHashOptions right) => !left.Equals(right);
 
     /// <inheritdoc />
     public override int GetHashCode() => NeighborhoodPadding;

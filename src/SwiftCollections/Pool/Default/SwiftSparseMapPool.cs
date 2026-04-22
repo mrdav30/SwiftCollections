@@ -28,7 +28,7 @@ public sealed class SwiftSparseMapPool<T> : IDisposable
 
     #region Fields
 
-    private SwiftLazyDisposable<SwiftObjectPool<SwiftSparseMap<T>>> _lazyCollectionPool =
+    private readonly SwiftLazyDisposable<SwiftObjectPool<SwiftSparseMap<T>>> _lazyCollectionPool =
         new(() =>
         {
             return new SwiftObjectPool<SwiftSparseMap<T>>(
@@ -124,6 +124,13 @@ public sealed class SwiftSparseMapPool<T> : IDisposable
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>
+    /// Releases the resources used by the SwiftSparseMapPool instance.
+    /// </summary>
+    /// <remarks>
+    /// This finalizer ensures that unmanaged resources are released if Dispose was not called explicitly. 
+    /// It is recommended to call Dispose to release resources deterministically.
+    /// </remarks>
     ~SwiftSparseMapPool() => Dispose();
 
     #endregion

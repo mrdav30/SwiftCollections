@@ -18,7 +18,7 @@ public sealed class SwiftArrayPool<T> : IDisposable where T : new()
     /// A lazily initialized singleton instance of the array pool.
     /// </summary>
     private static readonly SwiftLazyDisposable<SwiftArrayPool<T>> _instance =
-        new SwiftLazyDisposable<SwiftArrayPool<T>>(() => new SwiftArrayPool<T>(), LazyThreadSafetyMode.ExecutionAndPublication);
+        new(() => new SwiftArrayPool<T>(), LazyThreadSafetyMode.ExecutionAndPublication);
 
     /// <summary>
     /// Gets the shared instance of the pool.
@@ -51,9 +51,9 @@ public sealed class SwiftArrayPool<T> : IDisposable where T : new()
     /// <param name="actionOnDestroy">An action performed when an array is removed from the pool (default: no action).</param>
     /// <param name="poolMaxCapacity">The maximum number of arrays each pool can hold for a specific size (default: 100).</param>
     public SwiftArrayPool(
-        Func<int, T[]> createFunc = null,
-        Action<T[]> actionOnRelease = null,
-        Action<T[]> actionOnDestroy = null,
+        Func<int, T[]>? createFunc = null,
+        Action<T[]>? actionOnRelease = null,
+        Action<T[]>? actionOnDestroy = null,
         int poolMaxCapacity = 100)
     {
         SwiftThrowHelper.ThrowIfNegativeOrZero(poolMaxCapacity, nameof(poolMaxCapacity));
@@ -79,12 +79,12 @@ public sealed class SwiftArrayPool<T> : IDisposable where T : new()
     /// <summary>
     /// Gets the action performed when an array is released back to the pool.
     /// </summary>
-    public Action<T[]> ActionOnRelease { get; }
+    public Action<T[]>? ActionOnRelease { get; }
 
     /// <summary>
     /// Gets the action performed when an array is removed from the pool.
     /// </summary>
-    public Action<T[]> ActionOnDestroy { get; }
+    public Action<T[]>? ActionOnDestroy { get; }
 
     /// <summary>
     /// Gets the maximum number of arrays each pool can hold for a specific size.
@@ -177,6 +177,13 @@ public sealed class SwiftArrayPool<T> : IDisposable where T : new()
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>
+    /// Releases the resources used by the SwiftArrayPool instance.
+    /// </summary>
+    /// <remarks>
+    /// This finalizer ensures that unmanaged resources are released if Dispose was not called explicitly. 
+    /// It is recommended to call Dispose to release resources deterministically.
+    /// </remarks>
     ~SwiftArrayPool() => Dispose();
 
     #endregion

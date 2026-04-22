@@ -10,8 +10,8 @@ namespace SwiftCollections.Pool;
 /// </summary>
 /// <typeparam name="TKey">The type of keys in the dictionary.</typeparam>
 /// <typeparam name="TValue">The type of values in the dictionary.</typeparam>
-public sealed class SwiftDictionaryPool<TKey, TValue> :
-    SwiftCollectionPool<SwiftDictionary<TKey, TValue>, KeyValuePair<TKey, TValue>>, IDisposable
+public sealed class SwiftDictionaryPool<TKey, TValue> : SwiftCollectionPool<SwiftDictionary<TKey, TValue>, KeyValuePair<TKey, TValue>>, IDisposable
+    where TKey : notnull
 {
     #region Singleton Instance
 
@@ -20,7 +20,7 @@ public sealed class SwiftDictionaryPool<TKey, TValue> :
     /// Uses <see cref="SwiftLazyDisposable{T}"/> to ensure lazy initialization and proper disposal.
     /// </summary>
     private readonly static SwiftLazyDisposable<SwiftDictionaryPool<TKey, TValue>> _lazyInstance =
-        new SwiftLazyDisposable<SwiftDictionaryPool<TKey, TValue>>(
+        new(
                 () => new SwiftDictionaryPool<TKey, TValue>(), LazyThreadSafetyMode.ExecutionAndPublication
             );
 
@@ -101,6 +101,13 @@ public sealed class SwiftDictionaryPool<TKey, TValue> :
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>
+    /// Releases the resources used by the SwiftDictionaryPool instance.
+    /// </summary>
+    /// <remarks>
+    /// This finalizer ensures that unmanaged resources are released if Dispose was not called explicitly. 
+    /// It is recommended to call Dispose to release resources deterministically.
+    /// </remarks>
     ~SwiftDictionaryPool() => Dispose();
 
     #endregion

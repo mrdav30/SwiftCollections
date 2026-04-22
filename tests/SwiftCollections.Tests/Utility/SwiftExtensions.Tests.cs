@@ -108,9 +108,9 @@ public class SwiftExtensionsTests
 
     private static int[] SimulateShuffle(IEnumerable<int> source, int seed)
     {
-        List<int> buffer = new List<int>(source);
-        Random rng = new Random(seed);
-        List<int> result = new List<int>(buffer.Count);
+        List<int> buffer = new(source);
+        Random rng = new(seed);
+        List<int> result = new(buffer.Count);
         int remaining = buffer.Count;
 
         while (remaining > 0)
@@ -126,8 +126,8 @@ public class SwiftExtensionsTests
 
     private static int[] SimulateShuffleInPlace(IList<int> source, int seed)
     {
-        List<int> buffer = new List<int>(source);
-        Random rng = new Random(seed);
+        List<int> buffer = new(source);
+        Random rng = new(seed);
         int remaining = buffer.Count;
 
         while (remaining > 1)

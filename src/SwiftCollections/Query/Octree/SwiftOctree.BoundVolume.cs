@@ -7,6 +7,7 @@ namespace SwiftCollections.Query;
 /// Represents a numerics-backed octree optimized for hierarchical spatial queries.
 /// </summary>
 public sealed class SwiftOctree<TKey> : SwiftOctree<TKey, BoundVolume>
+    where TKey : notnull, IEquatable<TKey>
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="SwiftOctree{TKey}"/> class.
@@ -15,9 +16,7 @@ public sealed class SwiftOctree<TKey> : SwiftOctree<TKey, BoundVolume>
     /// <param name="options">Backend-neutral octree options.</param>
     /// <param name="minNodeSize">The minimum child-node axis length allowed for numerics subdivision.</param>
     public SwiftOctree(BoundVolume worldBounds, SwiftOctreeOptions options, float minNodeSize)
-        : base(worldBounds, options, new BoundVolumeOctreePartitioner(minNodeSize))
-    {
-    }
+        : base(worldBounds, options, new BoundVolumeOctreePartitioner(minNodeSize)) { }
 
     private sealed class BoundVolumeOctreePartitioner : IOctreeBoundsPartitioner<BoundVolume>
     {

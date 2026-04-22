@@ -21,13 +21,13 @@ internal sealed class SwiftDeterministicObjectEqualityComparer : IEqualityCompar
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public new bool Equals(object x, object y)
+    public new bool Equals(object? x, object? y)
     {
         return x == y || (x != null && y != null && x.Equals(y));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public override bool Equals(object obj) => obj is SwiftDeterministicObjectEqualityComparer other && _seed == other._seed;
+    public override bool Equals(object? obj) => obj is SwiftDeterministicObjectEqualityComparer other && _seed == other._seed;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int GetHashCode(object obj)

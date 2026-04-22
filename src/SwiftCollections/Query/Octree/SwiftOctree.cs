@@ -10,6 +10,7 @@ namespace SwiftCollections.Query;
 /// <typeparam name="TKey">The key used to identify each stored entry.</typeparam>
 /// <typeparam name="TVolume">The volume type used for octree registration and queries.</typeparam>
 public class SwiftOctree<TKey, TVolume>
+    where TKey : notnull
     where TVolume : struct, IBoundVolume<TVolume>
 {
     private const string _diagnosticSource = nameof(SwiftOctree<TKey, TVolume>);
@@ -105,7 +106,7 @@ public class SwiftOctree<TKey, TVolume>
         if (entryIndex < 0)
             return false;
 
-        OctreeNode node = _entries[entryIndex].Node;
+        OctreeNode? node = _entries[entryIndex].Node;
         if (node != null)
             RemoveEntryFromNode(node, entryIndex);
 
@@ -210,10 +211,10 @@ public class SwiftOctree<TKey, TVolume>
         if (!node.HasChildren)
             return;
 
-        for (int i = 0; i < node.Children.Length; i++)
+        for (int i = 0; i < node.Children?.Length; i++)
         {
-            OctreeNode child = node.Children[i];
-            if (child.Bounds.Intersects(queryBounds))
+            OctreeNode? child = node.Children[i];
+            if (child != null && child.Bounds.Intersects(queryBounds))
                 QueryNode(child, queryBounds, results);
         }
     }
@@ -229,7 +230,7 @@ public class SwiftOctree<TKey, TVolume>
         if (currentBounds.BoundsEquals(newBounds))
             return true;
 
-        OctreeNode oldNode = _entries[entryIndex].Node;
+        OctreeNode? oldNode = _entries[entryIndex].Node;
         if (oldNode != null)
             RemoveEntryFromNode(oldNode, entryIndex);
 
@@ -246,7 +247,7 @@ public class SwiftOctree<TKey, TVolume>
     {
         if (node.HasChildren && _boundsPartitioner.TryGetContainingChildIndex(node.Bounds, _entries[entryIndex].Bounds, out int childIndex))
         {
-            InsertIntoNode(node.Children[childIndex], entryIndex);
+            InsertIntoNode(node.Children![childIndex], entryIndex);
             return;
         }
 
@@ -304,20 +305,20 @@ public class SwiftOctree<TKey, TVolume>
 
     private void TryMergeUp(OctreeNode node)
     {
-        OctreeNode current = node;
+        OctreeNode? current = node;
         while (current != null)
         {
             if (current.HasChildren && CanMerge(current))
                 CollapseChildrenInto(current);
 
-            current = current.Parent;
+            current = current.Parent ?? null;
         }
     }
 
     private bool CanMerge(OctreeNode node)
     {
         int totalEntries = node.EntryIndices.Count;
-        for (int i = 0; i < node.Children.Length; i++)
+        for (int i = 0; i < node.Children?.Length; i++)
         {
             OctreeNode child = node.Children[i];
             if (child.HasChildren)
@@ -333,7 +334,7 @@ public class SwiftOctree<TKey, TVolume>
 
     private void CollapseChildrenInto(OctreeNode node)
     {
-        for (int i = 0; i < node.Children.Length; i++)
+        for (int i = 0; i < node.Children?.Length; i++)
         {
             OctreeNode child = node.Children[i];
             for (int j = 0; j < child.EntryIndices.Count; j++)
@@ -421,7 +422,7 @@ public class SwiftOctree<TKey, TVolume>
         if (!node.HasChildren)
             return count;
 
-        for (int i = 0; i < node.Children.Length; i++)
+        for (int i = 0; i < node.Children?.Length; i++)
             count += CountNodes(node.Children[i]);
 
         return count;
@@ -433,7 +434,7 @@ public class SwiftOctree<TKey, TVolume>
         if (!node.HasChildren)
             return maxDepth;
 
-        for (int i = 0; i < node.Children.Length; i++)
+        for (int i = 0; i < node.Children?.Length; i++)
             maxDepth = Math.Max(maxDepth, GetMaxDepth(node.Children[i]));
 
         return maxDepth;
@@ -441,7 +442,7 @@ public class SwiftOctree<TKey, TVolume>
 
     private sealed class OctreeNode
     {
-        public OctreeNode(TVolume bounds, int depth, OctreeNode parent)
+        public OctreeNode(TVolume bounds, int depth, OctreeNode? parent)
         {
             Bounds = bounds;
             Depth = depth;
@@ -453,11 +454,11 @@ public class SwiftOctree<TKey, TVolume>
 
         public int Depth { get; }
 
-        public OctreeNode Parent { get; }
+        public OctreeNode? Parent { get; }
 
         public SwiftList<int> EntryIndices { get; }
 
-        public OctreeNode[] Children { get; set; }
+        public OctreeNode[]? Children { get; set; }
 
         public bool HasChildren => Children != null;
     }
@@ -466,12 +467,12 @@ public class SwiftOctree<TKey, TVolume>
     {
         public TKey Key;
         public TVolume Bounds;
-        public OctreeNode Node;
+        public OctreeNode? Node;
         public bool IsAllocated;
 
         public void Reset()
         {
-            Key = default;
+            Key = default!;
             Bounds = default;
             Node = null;
             IsAllocated = false;

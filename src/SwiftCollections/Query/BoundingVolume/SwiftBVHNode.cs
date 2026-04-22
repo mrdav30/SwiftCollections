@@ -27,6 +27,9 @@ public struct SwiftBVHNode<TKey, TVolume>
     /// </summary>
     public readonly bool HasParent => ParentIndex != -1;
 
+    /// <summary>
+    /// Gets or sets the index value associated with this instance.
+    /// </summary>
     public int MyIndex { get; set; }
 
     /// <summary>
@@ -72,9 +75,9 @@ public struct SwiftBVHNode<TKey, TVolume>
     /// <summary>
     /// Provides a custom default instance of <see cref="SwiftBVHNode{TKey, TVolume}"/>.
     /// </summary>
-    public static SwiftBVHNode<TKey, TVolume> Default => new SwiftBVHNode<TKey, TVolume>
+    public static SwiftBVHNode<TKey, TVolume> Default => new()
     {
-        Value = default,
+        Value = default!,
         Bounds = default,
         ParentIndex = -1,
         LeftChildIndex = -1,
@@ -90,7 +93,7 @@ public struct SwiftBVHNode<TKey, TVolume>
     /// </summary>
     public void Reset()
     {
-        Value = default;
+        Value = default!;
         Bounds = default;
         IsLeaf = false;
         ParentIndex = -1;

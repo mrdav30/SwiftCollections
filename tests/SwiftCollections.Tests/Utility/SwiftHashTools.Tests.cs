@@ -92,7 +92,7 @@ public class SwiftHashToolsTests
 
         ConditionalWeakTable<object, SerializationInfo> first = SwiftHashTools.SerializationInfoTable;
         ConditionalWeakTable<object, SerializationInfo> second = SwiftHashTools.SerializationInfoTable;
-        object key = new object();
+        object key = new();
         var info = CreateSerializationInfo(typeof(object));
 
         first.Add(key, info);
