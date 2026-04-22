@@ -1,0 +1,24 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Release" />
+    <BuildType Name="ReleaseNoMemoryPack" />
+  </Configurations>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="AGENTS.md" />
+    <File Path="CONTRIBUTING.md" />
+    <File Path="COPYRIGHT" />
+    <File Path="coverlet.runsettings" />
+    <File Path="LICENSE" />
+    <File Path="NOTICE" />
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="src/SwiftCollections.FixedMathSharp/SwiftCollections.FixedMathSharp.csproj" />
+  <Project Path="src/SwiftCollections/SwiftCollections.csproj" />
+  <Project Path="tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj" />
+  <Project Path="tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMathSharp.Tests.csproj" />
+  <Project Path="tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj" />
+</Solution>

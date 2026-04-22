@@ -1,52 +1,52 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-	<!-- Global Properties: General Configuration Settings -->
+
+	<!-- General Properties -->
 	<PropertyGroup>
 		<LangVersion>11.0</LangVersion>
 		<TargetFrameworks>netstandard2.1;net8.0</TargetFrameworks>
-		<!-- Versioning and Build Configuration -->
-		<!-- Set SemVer to GitVersion_FullSemVer if available, otherwise fallback to 0.0.0 -->
+		<Configurations>Debug;Release;ReleaseLean</Configurations>
+		<DisableMemoryPack Condition="'$(DisableMemoryPack)' == ''">false</DisableMemoryPack>
+		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+		<Deterministic>true</Deterministic>
+	</PropertyGroup>
+	
+	<!-- Git Versioning -->
+	<PropertyGroup>
 		<SemVer Condition="'$(GitVersion_FullSemVer)' != ''">$(GitVersion_FullSemVer)</SemVer>
 		<SemVer Condition="'$(SemVer)' == ''">0.0.0</SemVer>
-		<!-- Informational version fallback -->
 		<InfoVer Condition="'$(GitVersion_InformationalVersion)' != ''">$(GitVersion_InformationalVersion)</InfoVer>
 		<InfoVer Condition="'$(InfoVer)' == ''">$(SemVer)</InfoVer>
-		<!-- Set Assembly and File Versions -->
 		<AssemblySemVer Condition="'$(GitVersion_AssemblySemVer)' != ''">$(GitVersion_AssemblySemVer)</AssemblySemVer>
 		<AssemblySemVer Condition="'$(AssemblySemVer)' == ''">$(SemVer).0</AssemblySemVer>
 		<AssemblySemFileVer Condition="'$(GitVersion_AssemblySemFileVer)' != ''">$(GitVersion_AssemblySemFileVer)</AssemblySemFileVer>
 		<AssemblySemFileVer Condition="'$(AssemblySemFileVer)' == ''">$(AssemblySemVer)</AssemblySemFileVer>
-		<!-- Set final versions for the project -->
 		<InformationalVersion>$(InfoVer)</InformationalVersion>
 		<Version>$(SemVer)</Version>
 		<AssemblyVersion>$(AssemblySemVer)</AssemblyVersion>
 		<FileVersion>$(AssemblySemFileVer)</FileVersion>
+	</PropertyGroup>
+	
+	<!-- Code Analysis and Documentation -->
+	<PropertyGroup>
 		<ImplicitUsings>disable</ImplicitUsings>
-		<Nullable>disable</Nullable>
+		<Nullable>enable</Nullable>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<IncludeSymbols>true</IncludeSymbols>
 		<DebugType>portable</DebugType>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
-		<!-- Optional: Suppress warnings about missing XML comments -->
-		<NoWarn>1591</NoWarn>
 		<DocumentationFile>bin\$(Configuration)\$(TargetFramework)\SwiftCollections.xml</DocumentationFile>
-		<!-- Configuration to ensure deterministic builds -->
-		<Deterministic>true</Deterministic>
-		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
-		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-		<Configurations>Debug;Release</Configurations>
 	</PropertyGroup>
-	<!-- Debug and Release-specific Properties -->
-	<PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-		<DebugSymbols>true</DebugSymbols>
-		<Optimize>false</Optimize>
-		<DefineConstants>DEBUG;TRACE</DefineConstants>
+
+	<!-- Output Settings -->
+	<PropertyGroup>
+		<AssemblyName>SwiftCollections</AssemblyName>
+		<RootNamespace>SwiftCollections</RootNamespace>
+		<ProjectGuid>{009CBC1E-B915-476D-98D6-1081526F7A9E}</ProjectGuid>
+		<OutputPath>bin\$(Configuration)\</OutputPath>
 	</PropertyGroup>
-	<PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-		<Optimize>true</Optimize>
-		<DefineConstants>TRACE</DefineConstants>
-	</PropertyGroup>
+	
 	<!-- NuGet Packaging Metadata -->
 	<PropertyGroup>
-		<PackageId>SwiftCollections</PackageId>
 		<Authors>mrdav30</Authors>
 		<Description>SwiftCollections is a high-performance, memory-efficient library of collections designed for game development, simulations, and other performance-critical applications.</Description>
 		<PackageTags>collections;spatial-queries;dotnet;unity;simulations;physics-engine;game-development;high-precision;nuget</PackageTags>
@@ -58,20 +58,47 @@
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 	</PropertyGroup>
-	<!-- Output Settings -->
-	<PropertyGroup>
-		<AssemblyName>SwiftCollections</AssemblyName>
-		<RootNamespace>SwiftCollections</RootNamespace>
-		<ProjectGuid>{009CBC1E-B915-476D-98D6-1081526F7A9E}</ProjectGuid>
-		<OutputPath>bin\$(Configuration)\</OutputPath>
+	
+	<!-- Configurations Properties -->
+
+	<PropertyGroup Condition="'$(Configuration)' == 'ReleaseLean'">
+		<DisableMemoryPack>true</DisableMemoryPack>
 	</PropertyGroup>
+	
+	<PropertyGroup Condition="'$(DisableMemoryPack)' == 'true'">
+		<DefineConstants>$(DefineConstants);SWIFTCOLLECTIONS_DISABLE_MEMORYPACK</DefineConstants>
+		<PackageId>SwiftCollections.Lean</PackageId>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(DisableMemoryPack)' != 'true'">
+		<PackageId>SwiftCollections</PackageId>
+	</PropertyGroup>
+	
+	<PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+		<IncludeTransitiveProjectReferences>false</IncludeTransitiveProjectReferences>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+		<DebugSymbols>true</DebugSymbols>
+		<Optimize>false</Optimize>
+		<DefineConstants>$(DefineConstants);DEBUG;TRACE</DefineConstants>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)' == 'Release' Or '$(Configuration)' == 'ReleaseLean'">
+		<Optimize>true</Optimize>
+		<DefineConstants>$(DefineConstants);TRACE</DefineConstants>
+	</PropertyGroup>
+
 	<!-- Dependencies and Package References -->
-	<ItemGroup>
+	<ItemGroup Condition="'$(DisableMemoryPack)' != 'true'">
 		<PackageReference Include="MemoryPack" Version="1.21.4" />
 	</ItemGroup>
+	
 	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
-		<PackageReference Include="System.Text.Json" Version="10.0.6" />
+		<PackageReference Include="System.Text.Json" Version="10.0.5" />
 	</ItemGroup>
+	
 	<!-- Ensure LICENSE, README, & icon files are included in the NuGet package -->
 	<ItemGroup>
 		<None Include="..\..\COPYRIGHT" Pack="true" PackagePath="\" Visible="false" />
@@ -81,4 +108,10 @@
 		<None Include="..\..\icon.png" Pack="true" PackagePath="\" Visible="false" />
 		<None Remove=".gitignore" />
 	</ItemGroup>
+	
+	<!-- Ensure MemoryPack files are excluded when disabled -->
+	<ItemGroup Condition="'$(DisableMemoryPack)' == 'true'">
+		<Compile Remove="**\*.MemoryPack.cs" />
+	</ItemGroup>
+	
 </Project>

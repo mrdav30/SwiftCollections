@@ -1,7 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
+	<!-- General Properties -->
 	<PropertyGroup>
 		<LangVersion>11.0</LangVersion>
 		<TargetFrameworks>netstandard2.1;net8.0</TargetFrameworks>
+		<Configurations>Debug;Release;ReleaseLean</Configurations>
+		<DisableMemoryPack Condition="'$(DisableMemoryPack)' == ''">false</DisableMemoryPack>
+		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+		<Deterministic>true</Deterministic>
+	</PropertyGroup>
+
+	<!-- Git Versioning -->
+	<PropertyGroup>
 		<SemVer Condition="'$(GitVersion_FullSemVer)' != ''">$(GitVersion_FullSemVer)</SemVer>
 		<SemVer Condition="'$(SemVer)' == ''">0.0.0</SemVer>
 		<InfoVer Condition="'$(GitVersion_InformationalVersion)' != ''">$(GitVersion_InformationalVersion)</InfoVer>
@@ -14,33 +24,87 @@
 		<Version>$(SemVer)</Version>
 		<AssemblyVersion>$(AssemblySemVer)</AssemblyVersion>
 		<FileVersion>$(AssemblySemFileVer)</FileVersion>
+	</PropertyGroup>
+	
+	<!-- Code Analysis and Documentation -->
+	<PropertyGroup>
 		<ImplicitUsings>disable</ImplicitUsings>
 		<Nullable>disable</Nullable>
+		<IncludeSymbols>true</IncludeSymbols>
+		<DebugType>portable</DebugType>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
-		<NoWarn>1591</NoWarn>
-		<Configurations>Debug;Release</Configurations>
-		<Description>FixedMathSharp companion package for SwiftCollections query volume integrations.</Description>
-		<PackageId>SwiftCollections.FixedMathSharp</PackageId>
+		<DocumentationFile>bin\$(Configuration)\$(TargetFramework)\SwiftCollections.FixedMathSharp.xml</DocumentationFile>
+	</PropertyGroup>
+	
+	<!-- Output Settings -->
+	<PropertyGroup>
+		<AssemblyName>SwiftCollections.FixedMathSharp</AssemblyName>
+		<RootNamespace>SwiftCollections..FixedMathSharp</RootNamespace>
+		<ProjectGuid>{CB6B93CA-2A09-4500-9E45-4AF90D42E236}</ProjectGuid>
+		<OutputPath>bin\$(Configuration)</OutputPath>
+	</PropertyGroup>
+	
+	<!-- NuGet Packaging Metadata -->
+	<PropertyGroup>
 		<Authors>mrdav30</Authors>
+		<Description>FixedMathSharp companion package for SwiftCollections query volume integrations.</Description>
 		<PackageTags>collections;spatial-queries;fixed-point;deterministic;dotnet;physics;game-development</PackageTags>
 		<RepositoryUrl>https://github.com/mrdav30/SwiftCollections</RepositoryUrl>
 		<PackageIcon>icon.png</PackageIcon>
+		<PackageIconUrl>https://raw.githubusercontent.com/mrdav30/fixedmathsharp/main/icon.png</PackageIconUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
-		<IncludeSymbols>true</IncludeSymbols>
-		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<ProjectGuid>{CB6B93CA-2A09-4500-9E45-4AF90D42E236}</ProjectGuid>
-		<RootNamespace>SwiftCollections.FixedMathSharp</RootNamespace>
-		<AssemblyName>SwiftCollections.FixedMathSharp</AssemblyName>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 	</PropertyGroup>
+	
+	<!-- Configurations Properties -->
+
+	<PropertyGroup Condition="'$(Configuration)' == 'ReleaseLean'">
+		<DisableMemoryPack>true</DisableMemoryPack>
+	</PropertyGroup>
+	
+	<PropertyGroup Condition="'$(DisableMemoryPack)' == 'true'">
+		<DefineConstants>$(DefineConstants);SWIFTCOLLECTIONS_DISABLE_MEMORYPACK</DefineConstants>
+		<PackageId>SwiftCollections.FixedMathSharp.Lean</PackageId>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(DisableMemoryPack)' != 'true'">
+		<PackageId>SwiftCollections.FixedMathSharp</PackageId>
+	</PropertyGroup>
+	
+	<PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+		<DebugSymbols>true</DebugSymbols>
+		<Optimize>false</Optimize>
+		<DefineConstants>DEBUG;TRACE</DefineConstants>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)' == 'Release' Or '$(Configuration)' == 'ReleaseLean'">
+		<Optimize>true</Optimize>
+		<DefineConstants>$(DefineConstants);TRACE</DefineConstants>
+	</PropertyGroup>
+	
+	<!-- Dependencies and Package References -->
+	<ItemGroup Condition="'$(DisableMemoryPack)' != 'true'">
+		<PackageReference Include="FixedMathSharp" Version="3.0.1" />
+	</ItemGroup>
+	
+	<ItemGroup Condition="'$(DisableMemoryPack)' == 'true'">
+		<PackageReference Include="FixedMathSharp.NoMemoryPack" Version="3.0.1" />
+	</ItemGroup>
+	
 	<ItemGroup>
 		<ProjectReference Include="..\SwiftCollections\SwiftCollections.csproj" />
-		<PackageReference Include="FixedMathSharp" Version="3.0.0" />
 	</ItemGroup>
+	
+	<!-- Ensure LICENSE, README, & icon files are included in the NuGet package -->
 	<ItemGroup>
+		<None Include="..\..\COPYRIGHT" Pack="true" PackagePath="\" Visible="false" />
+		<None Include="..\..\NOTICE" Pack="true" PackagePath="\" Visible="false" />
 		<None Include="..\..\LICENSE" Pack="true" PackagePath="\" Visible="false" />
 		<None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
 		<None Include="..\..\icon.png" Pack="true" PackagePath="\" Visible="false" />
+		<None Remove=".gitignore" />
 	</ItemGroup>
+	
 </Project>
