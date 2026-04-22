@@ -17,7 +17,7 @@
 
 - **Optimized for Performance**: Designed for low time complexity and minimal memory allocations.
 - **Framework Agnostic** : Works with .NET, Unity, and other game engines.
-- **Full Serialization Support**: Out-of-the-box round-trip serialization via MemoryPack across most core collections, with System.Text.Json constructor support on .NET 8+.
+- **Full Serialization Support**: Out-of-the-box round-trip serialization via MemoryPack across most core collections, with System.Text.Json constructor support on .NET 8+. A Lean (no MemoryPack) variant is available for projects that manage serialization independently.
 - **Fast core collections**: `SwiftDictionary`, `SwiftHashSet`, `SwiftList`, `SwiftQueue`, `SwiftStack`, `SwiftSortedList`
 - **Specialized containers**: `SwiftBucket`, `SwiftGenerationalBucket`, `SwiftPackedSet`, `SwiftSparseMap`, `SwiftBiDictionary`
 - **Flat 2D/3D storage**: `SwiftArray2D`, `SwiftArray3D`, `SwiftBoolArray2D`, `SwiftShortArray2D`
@@ -30,25 +30,59 @@
 
 ## 🚀 Installation
 
-### NuGet
+### Non-Unity Projects
 
-```bash
-dotnet add package SwiftCollections
-```
+1. **Choose the package that fits your runtime**:
+   - Use `SwiftCollections` if you want the standard package with built-in `MemoryPack` support.
+   - Use `SwiftCollections.Lean` if you want the same collections without the `MemoryPack` dependency, such as when integrating with toolchains that do better without MemoryPack-generated code.
+   - Use `SwiftCollections.FixedMathSharp` if you need fixed-point spatial query volumes backed by `FixedMathSharp`, with `MemoryPack` support included.
+   - Use `SwiftCollections.FixedMathSharp.Lean` if you need the fixed-point companion without the `MemoryPack` dependency.
 
-### NuGet (Fixed-Point Companion)
+2. **Install via NuGet**:
+   - Standard package:
 
-```bash
-dotnet add package SwiftCollections.FixedMathSharp
-```
+     ```bash
+     dotnet add package SwiftCollections
+     ```
 
-### Source
+   - Lean (no MemoryPack) package:
 
-```bash
-git clone https://github.com/mrdav30/SwiftCollections.git
-```
+     ```bash
+     dotnet add package SwiftCollections.Lean
+     ```
 
-Then reference `src/SwiftCollections/SwiftCollections.csproj` or build the package locally.
+   - Fixed-point companion (with MemoryPack):
+
+     ```bash
+     dotnet add package SwiftCollections.FixedMathSharp
+     ```
+
+   - Fixed-point companion, Lean (no MemoryPack):
+
+     ```bash
+     dotnet add package SwiftCollections.FixedMathSharp.Lean
+     ```
+
+3. **Or Download/Clone**:
+
+   ```bash
+   git clone https://github.com/mrdav30/SwiftCollections.git
+   ```
+
+   Then reference `src/SwiftCollections/SwiftCollections.csproj` or build the package locally.
+
+### Package Variants
+
+SwiftCollections is published in two build variants per package so you can choose between convenience and maximum compatibility:
+
+- `SwiftCollections` / `SwiftCollections.FixedMathSharp`
+  Includes `MemoryPack` and its generated serialization support. This is the best default choice for most .NET applications.
+- `SwiftCollections.Lean` / `SwiftCollections.FixedMathSharp.Lean`
+  Excludes the `MemoryPack` package and uses internal shim attributes so the same source compiles without the dependency. Choose this when you do not need built-in MemoryPack serialization, when you prefer to use a different serializer, or when your target environment is sensitive to MemoryPack-generated code paths.
+
+Both standard and lean variants expose the same core collections API. The main difference is whether `MemoryPack` is part of the package and serialization surface.
+
+If you use Unity Burst AOT, prefer the Lean variants. `MemoryPack`'s Unity support is centered on IL2CPP via its .NET Source Generator path, so the Lean variants are the safer choice for Burst AOT scenarios.
 
 ### Unity
 
@@ -60,8 +94,8 @@ Unity support is maintained separately:
 
 ## 🧩 Dependencies
 
-- Core package dependency: [MemoryPack](https://github.com/Cysharp/MemoryPack)
-- Optional fixed-point companion: [FixedMathSharp](https://github.com/mrdav30/FixedMathSharp) via `SwiftCollections.FixedMathSharp`
+- Core package dependency: [MemoryPack](https://github.com/Cysharp/MemoryPack) *(standard variants only)*
+- Optional fixed-point companion: [FixedMathSharp](https://github.com/mrdav30/FixedMathSharp) via `SwiftCollections.FixedMathSharp` or `SwiftCollections.FixedMathSharp.Lean`
 
 ---
 
