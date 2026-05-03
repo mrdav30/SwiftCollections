@@ -60,6 +60,71 @@ public class DiagnosticChannelTests
     }
 
     [Fact]
+    public void Write_InterpolatedMessageDoesNotEvaluateFormattedExpressionsWhenDisabled()
+    {
+        int evaluations = 0;
+        var channel = new DiagnosticChannel("Gameplay")
+        {
+            MinimumLevel = DiagnosticLevel.Error
+        };
+
+        string SideEffect()
+        {
+            evaluations++;
+            return "evaluated";
+        }
+
+        channel.Write(DiagnosticLevel.Warning, $"Skipped {SideEffect()}.", "Tests");
+
+        Assert.Equal(0, evaluations);
+    }
+
+    [Fact]
+    public void Write_InterpolatedMessageEmitsDiagnosticsWhenEnabled()
+    {
+        var events = new List<DiagnosticEvent>();
+
+        void Capture(in DiagnosticEvent diagnostic) => events.Add(diagnostic);
+
+        var channel = new DiagnosticChannel("Gameplay")
+        {
+            MinimumLevel = DiagnosticLevel.Info,
+            Sink = Capture
+        };
+
+        channel.Write(DiagnosticLevel.Warning, $"Resized buffer to {128} entries.", "SwiftList");
+
+        DiagnosticEvent diagnostic = Assert.Single(events);
+        Assert.Equal("Gameplay", diagnostic.Channel);
+        Assert.Equal(DiagnosticLevel.Warning, diagnostic.Level);
+        Assert.Equal("Resized buffer to 128 entries.", diagnostic.Message);
+        Assert.Equal("SwiftList", diagnostic.Source);
+    }
+
+    [Fact]
+    public void Write_StringMessageRemainsSupported()
+    {
+        var events = new List<DiagnosticEvent>();
+
+        void Capture(in DiagnosticEvent diagnostic) => events.Add(diagnostic);
+
+        var channel = new DiagnosticChannel("Gameplay")
+        {
+            MinimumLevel = DiagnosticLevel.Info,
+            Sink = Capture
+        };
+
+        string message = "Existing string API.";
+
+        channel.Write(DiagnosticLevel.Info, message, "Tests");
+
+        DiagnosticEvent diagnostic = Assert.Single(events);
+        Assert.Equal(DiagnosticLevel.Info, diagnostic.Level);
+        Assert.Equal(message, diagnostic.Message);
+        Assert.Equal("Tests", diagnostic.Source);
+    }
+
+    [Fact]
     public void Write_IgnoresDisabledLevels()
     {
         var events = new List<DiagnosticEvent>();

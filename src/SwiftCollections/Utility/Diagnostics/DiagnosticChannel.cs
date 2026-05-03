@@ -1,5 +1,7 @@
 namespace SwiftCollections.Diagnostics;
 
+using System.Runtime.CompilerServices;
+
 /// <summary>
 /// Receives diagnostic events emitted by a <see cref="DiagnosticChannel"/>.
 /// </summary>
@@ -69,5 +71,23 @@ public sealed class DiagnosticChannel
             return;
 
         _sink(new DiagnosticEvent(Name, level, message, source));
+    }
+
+    /// <summary>
+    /// Emits a diagnostic event from an interpolated message when the specified level is enabled.
+    /// Disabled levels do not evaluate formatted interpolation expressions.
+    /// </summary>
+    /// <param name="level">The severity level of the diagnostic event.</param>
+    /// <param name="message">The interpolated diagnostic message.</param>
+    /// <param name="source">An optional source identifier.</param>
+    public void Write(
+        DiagnosticLevel level,
+        [InterpolatedStringHandlerArgument("", nameof(level))] DiagnosticInterpolatedStringHandler message,
+        string source = "")
+    {
+        if (!message.IsEnabled)
+            return;
+
+        _sink(new DiagnosticEvent(Name, level, message.GetFormattedText(), source));
     }
 }

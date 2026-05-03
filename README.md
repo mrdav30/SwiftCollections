@@ -147,6 +147,7 @@ Use them by workload:
 ### Diagnostics
 
 - **DiagnosticChannel / DiagnosticEvent / DiagnosticLevel**: Lightweight diagnostics primitives for routing informational, warning, or error events without coupling the library to a higher-level logging framework.
+- **No-work disabled interpolated diagnostics**: `DiagnosticChannel.Write` supports interpolated messages without evaluating formatted expressions when the requested level is disabled.
 - **SwiftCollectionDiagnostics.Shared**: Ready-to-use shared channel for library-wide diagnostics.
 
 Diagnostics are opt-in and disabled by default until you configure a minimum level and sink.
@@ -243,6 +244,7 @@ diagnostics.Sink = static (in DiagnosticEvent diagnostic) =>
 
 diagnostics.Write(DiagnosticLevel.Info, "Skipped because the minimum level is Warning.", "Bootstrap");
 diagnostics.Write(DiagnosticLevel.Error, "Pool allocation failed.", "Bootstrap");
+diagnostics.Write(DiagnosticLevel.Warning, $"Pool usage is {0.42:P0}.", "Bootstrap");
 ```
 
 ## 🧪 Development
