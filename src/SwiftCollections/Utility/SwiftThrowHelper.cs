@@ -25,6 +25,13 @@ public static class SwiftThrowHelper
             ThrowArgumentNullException(paramName);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void ThrowIfNullGeneric<T>([NotNull] T argument, string? paramName = null)
+    {
+        if (argument is null)
+            ThrowArgumentNullException(paramName);
+    }
+
     /// <summary>
     /// Throws an exception if the specified value is null and nulls are not allowed for TValue.
     /// </summary>

@@ -311,7 +311,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool InsertIfNotExists(T item)
     {
-        SwiftThrowHelper.ThrowIfNull(item, nameof(item));
+        SwiftThrowHelper.ThrowIfNullGeneric(item, nameof(item));
 
         int hashCode = _comparer.GetHashCode(item) & 0x7FFFFFFF;
         int entryIndex = hashCode & _entryMask;
@@ -353,7 +353,7 @@ public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerab
     /// </returns>
     public bool Remove(T item)
     {
-        SwiftThrowHelper.ThrowIfNull(item, nameof(item));
+        SwiftThrowHelper.ThrowIfNullGeneric(item, nameof(item));
 
         int hashCode = _comparer.GetHashCode(item) & 0x7FFFFFFF;
         int entryIndex = hashCode & _entryMask;

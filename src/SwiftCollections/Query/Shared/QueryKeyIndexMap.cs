@@ -104,7 +104,7 @@ internal sealed class QueryKeyIndexMap<TKey> where TKey : notnull
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int NormalizeBucketCapacity(int capacity)
     {
-        capacity = QueryCollectionGuards.NormalizeCapacity(capacity);
+        capacity = SwiftHashTools.NextPowerOfTwo(capacity);
         return capacity <= 1 ? 2 : capacity * 2;
     }
 

@@ -103,12 +103,64 @@ public class SwiftDictionaryTests
     }
 
     [Fact]
+    public void Add_WithValueTypeKey_DoesNotAllocateSteadyState()
+    {
+        var dictionary = new SwiftDictionary<int, string>(4);
+
+        for (int i = 0; i < 16; i++)
+        {
+            Assert.True(dictionary.Add(1, "One"));
+            dictionary.Clear();
+        }
+
+        int additions = 0;
+        long allocated = MeasureAllocatedBytes(() =>
+        {
+            for (int i = 0; i < 1_024; i++)
+            {
+                if (dictionary.Add(1, "One"))
+                    additions++;
+
+                dictionary.Clear();
+            }
+        });
+
+        Assert.Equal(1_024, additions);
+        Assert.True(allocated < 128, $"Expected steady-state add/clear reuse to avoid allocation, but allocated {allocated} bytes.");
+    }
+
+    [Fact]
     public void TryAdd_DuplicateKey_ReturnsFalse()
     {
         var dictionary = new SwiftDictionary<int, string>();
         dictionary.Add(1, "One");
 
         Assert.False(dictionary.Add(1, "One"));
+    }
+
+    [Fact]
+    public void TryGetValue_WithValueTypeKey_DoesNotAllocateSteadyState()
+    {
+        var dictionary = new SwiftDictionary<int, string>(4)
+        {
+            { 1, "One" }
+        };
+
+        for (int i = 0; i < 16; i++)
+            Assert.True(dictionary.TryGetValue(1, out _));
+
+        int hits = 0;
+        long allocated = MeasureAllocatedBytes(() =>
+        {
+            for (int i = 0; i < 1_024; i++)
+            {
+                if (dictionary.TryGetValue(1, out string value) && value.Length == 3)
+                    hits++;
+            }
+        });
+
+        Assert.Equal(1_024, hits);
+        Assert.True(allocated < 128, $"Expected steady-state lookup to avoid allocation, but allocated {allocated} bytes.");
     }
 
     [Fact]
@@ -1082,5 +1134,16 @@ public class SwiftDictionaryTests
 
         Assert.True(result.ContainsKey(15));
         Assert.Equal("Target", result[15]);
+    }
+
+    private static long MeasureAllocatedBytes(Action action)
+    {
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        action();
+        return GC.GetAllocatedBytesForCurrentThread() - before;
     }
 }

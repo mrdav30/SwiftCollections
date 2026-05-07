@@ -38,7 +38,7 @@ public class SwiftOctree<TKey, TVolume>
         Options = options;
         _boundsPartitioner = boundsPartitioner;
 
-        int capacity = QueryCollectionGuards.NormalizeCapacity(Math.Max(4, options.NodeCapacity));
+        int capacity = SwiftHashTools.NextPowerOfTwo(Math.Max(4, options.NodeCapacity));
         _keyToEntryIndex = new QueryKeyIndexMap<TKey>(capacity);
         _freeEntries = new SwiftIntStack();
         _entries = new OctreeEntry[capacity];
@@ -74,7 +74,7 @@ public class SwiftOctree<TKey, TVolume>
     /// <returns><c>true</c> when a new key was added; <c>false</c> when an existing key was replaced.</returns>
     public bool Insert(TKey key, TVolume bounds)
     {
-        QueryCollectionGuards.ThrowIfKeyNull(key, nameof(key));
+        SwiftThrowHelper.ThrowIfNull(key, nameof(key));
         EnsureWithinWorldBounds(bounds, nameof(bounds));
 
         int existingIndex = FindEntryIndex(key);
@@ -100,7 +100,7 @@ public class SwiftOctree<TKey, TVolume>
     /// <returns><c>true</c> when the key existed and was removed; otherwise, <c>false</c>.</returns>
     public bool Remove(TKey key)
     {
-        QueryCollectionGuards.ThrowIfKeyNull(key, nameof(key));
+        SwiftThrowHelper.ThrowIfNullGeneric(key, nameof(key));
 
         int entryIndex = FindEntryIndex(key);
         if (entryIndex < 0)
@@ -126,7 +126,7 @@ public class SwiftOctree<TKey, TVolume>
     /// </summary>
     public bool TryGetBounds(TKey key, out TVolume bounds)
     {
-        QueryCollectionGuards.ThrowIfKeyNull(key, nameof(key));
+        SwiftThrowHelper.ThrowIfNullGeneric(key, nameof(key));
 
         int entryIndex = FindEntryIndex(key);
         if (entryIndex < 0)
@@ -147,7 +147,7 @@ public class SwiftOctree<TKey, TVolume>
     /// <returns><c>true</c> when the key existed; otherwise, <c>false</c>.</returns>
     public bool UpdateEntryBounds(TKey key, TVolume newBounds)
     {
-        QueryCollectionGuards.ThrowIfKeyNull(key, nameof(key));
+        SwiftThrowHelper.ThrowIfNullGeneric(key, nameof(key));
 
         int entryIndex = FindEntryIndex(key);
         if (entryIndex < 0)
@@ -161,7 +161,7 @@ public class SwiftOctree<TKey, TVolume>
     /// </summary>
     public bool Contains(TKey key)
     {
-        QueryCollectionGuards.ThrowIfKeyNull(key, nameof(key));
+        SwiftThrowHelper.ThrowIfNullGeneric(key, nameof(key));
         return FindEntryIndex(key) >= 0;
     }
 
@@ -172,7 +172,7 @@ public class SwiftOctree<TKey, TVolume>
     /// <param name="results">The collection that receives intersecting keys.</param>
     public void Query(TVolume queryBounds, ICollection<TKey> results)
     {
-        QueryCollectionGuards.ThrowIfResultsCollectionNull(results, nameof(results));
+        SwiftThrowHelper.ThrowIfNull(results, nameof(results));
 
         if (_count == 0 || !_root.Bounds.Intersects(queryBounds))
             return;
@@ -385,7 +385,7 @@ public class SwiftOctree<TKey, TVolume>
         if (capacity <= _entries.Length)
             return;
 
-        int newCapacity = QueryCollectionGuards.NormalizeCapacity(capacity);
+        int newCapacity = SwiftHashTools.NextPowerOfTwo(capacity);
         Array.Resize(ref _entries, newCapacity);
         _keyToEntryIndex.ResizeAndRehash(newCapacity, _peakCount, IsAllocatedEntry, GetEntryKey);
         QueryCollectionDiagnostics.WriteInfo(_diagnosticSource, $"Resized octree entry storage to {newCapacity} entries.");

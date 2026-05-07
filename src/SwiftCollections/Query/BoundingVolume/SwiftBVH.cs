@@ -45,7 +45,7 @@ public class SwiftBVH<TKey, TVolume>
     /// </summary>
     public SwiftBVH(int capacity)
     {
-        capacity = QueryCollectionGuards.NormalizeCapacity(capacity);
+        capacity = SwiftHashTools.NextPowerOfTwo(capacity);
         _nodePool = new SwiftBVHNode<TKey, TVolume>[capacity].Populate(() =>
             new SwiftBVHNode<TKey, TVolume>() { ParentIndex = -1, LeftChildIndex = -1, RightChildIndex = -1 });
         _keyToNodeIndex = new QueryKeyIndexMap<TKey>(capacity);
@@ -244,7 +244,7 @@ public class SwiftBVH<TKey, TVolume>
     /// </summary>
     public void UpdateEntryBounds(TKey value, TVolume newBounds)
     {
-        QueryCollectionGuards.ThrowIfKeyNull(value, nameof(value));
+        SwiftThrowHelper.ThrowIfNullGeneric(value, nameof(value));
 
         int index = _keyToNodeIndex.Find(value, MatchesEntryKey);
         if (index == -1) return;
@@ -285,7 +285,7 @@ public class SwiftBVH<TKey, TVolume>
     /// </summary>
     public bool Remove(TKey value)
     {
-        QueryCollectionGuards.ThrowIfKeyNull(value, nameof(value));
+        SwiftThrowHelper.ThrowIfNullGeneric(value, nameof(value));
 
         int nodeIndex = _keyToNodeIndex.Find(value, MatchesEntryKey);
         if (nodeIndex == -1) return false;
@@ -396,7 +396,7 @@ public class SwiftBVH<TKey, TVolume>
     /// </summary>
     public void EnsureCapacity(int capacity)
     {
-        capacity = QueryCollectionGuards.NormalizeCapacity(capacity);
+        capacity = SwiftHashTools.NextPowerOfTwo(capacity);
         if (capacity > _nodePool.Length)
             Resize(capacity);
     }
@@ -454,7 +454,7 @@ public class SwiftBVH<TKey, TVolume>
     /// </summary>
     public void Query(TVolume queryBounds, ICollection<TKey> results)
     {
-        QueryCollectionGuards.ThrowIfResultsCollectionNull(results, nameof(results));
+        SwiftThrowHelper.ThrowIfNull(results, nameof(results));
 
         if (RootNodeIndex == -1) return;
 
@@ -496,7 +496,7 @@ public class SwiftBVH<TKey, TVolume>
     /// </summary>
     public int FindEntry(TKey value)
     {
-        QueryCollectionGuards.ThrowIfKeyNull(value, nameof(value));
+        SwiftThrowHelper.ThrowIfNullGeneric(value, nameof(value));
         return _keyToNodeIndex.Find(value, MatchesEntryKey);
     }
 

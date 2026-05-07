@@ -56,6 +56,33 @@ public class SwiftHashSetTests
     }
 
     [Fact]
+    public void Add_WithValueTypeItem_DoesNotAllocateSteadyState()
+    {
+        var set = new SwiftHashSet<ushort>(4);
+
+        for (ushort i = 0; i < 16; i++)
+        {
+            Assert.True(set.Add(i));
+            set.Clear();
+        }
+
+        int additions = 0;
+        long allocated = MeasureAllocatedBytes(() =>
+        {
+            for (int i = 0; i < 1_024; i++)
+            {
+                if (set.Add(7))
+                    additions++;
+
+                set.Clear();
+            }
+        });
+
+        Assert.Equal(1_024, additions);
+        Assert.True(allocated < 128, $"Expected steady-state add/clear reuse to avoid allocation, but allocated {allocated} bytes.");
+    }
+
+    [Fact]
     public void Remove_ExistingItem_ReturnsTrue()
     {
         var set = new SwiftHashSet<int> { 1, 2, 3 };
@@ -881,5 +908,16 @@ public class SwiftHashSetTests
     {
         var field = typeof(SwiftHashSet<T>).GetField("_entries", BindingFlags.Instance | BindingFlags.NonPublic);
         return ((Array)field.GetValue(set)).Length;
+    }
+
+    private static long MeasureAllocatedBytes(Action action)
+    {
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        action();
+        return GC.GetAllocatedBytesForCurrentThread() - before;
     }
 }

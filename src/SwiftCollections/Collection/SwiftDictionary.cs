@@ -476,7 +476,7 @@ public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, 
     /// <exception cref="ArgumentNullException">Thrown when the key is null.</exception>
     internal virtual bool InsertIfNotExist(TKey key, TValue value)
     {
-        SwiftThrowHelper.ThrowIfNull(key, nameof(key));
+        SwiftThrowHelper.ThrowIfNullGeneric(key, nameof(key));
 
         int hashCode = _comparer.GetHashCode(key) & 0x7FFFFFFF;
         int entryIndex = hashCode & _entryMask;

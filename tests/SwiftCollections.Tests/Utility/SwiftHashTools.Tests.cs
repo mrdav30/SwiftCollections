@@ -29,6 +29,7 @@ public class SwiftHashToolsTests
     {
         (int, string, object, int) tuple = (1, "two", null, 4);
         object[] values = { 1, "two", null, 4 };
+        object[] intValues = { 1, 2, 3 };
 
         int tupleHash = ((ITuple)tuple).CombineHashCodes(seed: 7, shift1: 3, shift2: 5, shift3: 2, factor3: 11);
         int objectArrayHash = values.CombineHashCodes(seed: 7, shift1: 3, shift2: 5, shift3: 2, factor3: 11);
@@ -36,6 +37,24 @@ public class SwiftHashToolsTests
         Assert.Equal(ComputeTupleHash((ITuple)tuple, 7, 3, 5, 2, 11), tupleHash);
         Assert.Equal(ComputeObjectArrayHash(values, 7, 3, 5, 2, 11), objectArrayHash);
         Assert.Equal(SwiftHashTools.CombineHashCodes(values), SwiftHashTools.CombineHashCodes(1, "two", null, 4));
+        Assert.Equal(SwiftHashTools.CombineHashCodes(intValues), SwiftHashTools.CombineHashCodes(1, 2, 3));
+    }
+
+    [Fact]
+    public void CombineHashCodes_WithIntCoordinates_DoesNotAllocateSteadyState()
+    {
+        for (int i = 0; i < 16; i++)
+            SwiftHashTools.CombineHashCodes(i, i + 1, i + 2);
+
+        int hash = 0;
+        long allocated = MeasureAllocatedBytes(() =>
+        {
+            for (int i = 0; i < 1_024; i++)
+                hash ^= SwiftHashTools.CombineHashCodes(i, i + 1, i + 2);
+        });
+
+        Assert.NotEqual(0, hash);
+        Assert.True(allocated < 128, $"Expected steady-state integer hash combining to avoid allocation, but allocated {allocated} bytes.");
     }
 
     [Fact]
@@ -161,5 +180,16 @@ public class SwiftHashToolsTests
 #pragma warning disable SYSLIB0050
         return new SerializationInfo(type, new FormatterConverter());
 #pragma warning restore SYSLIB0050
+    }
+
+    private static long MeasureAllocatedBytes(Action action)
+    {
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        action();
+        return GC.GetAllocatedBytesForCurrentThread() - before;
     }
 }

@@ -165,6 +165,87 @@ public static class SwiftHashTools
     public static int CombineHashCodes(params object[] values) => values.CombineHashCodes();
 
     /// <summary>
+    /// Combines two integer hash codes without allocating the object-array params path.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int CombineHashCodes(
+        int value1,
+        int value2)
+    {
+        const int seed = 5381;
+        const int shift1 = 16;
+        const int shift2 = 5;
+        const int shift3 = 27;
+        const int factor3 = 1566083941;
+        int hash1 = (seed << shift1) + seed;
+        int hash2 = hash1;
+
+        hash1 = MixHashCode(hash1, value1, shift2, shift3);
+        hash2 = MixHashCode(hash2, value2, shift2, shift3);
+
+        return hash1 + (hash2 * factor3);
+    }
+
+    /// <summary>
+    /// Combines three integer hash codes without allocating the object-array params path.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int CombineHashCodes(
+        int value1,
+        int value2,
+        int value3)
+    {
+        const int seed = 5381;
+        const int shift1 = 16;
+        const int shift2 = 5;
+        const int shift3 = 27;
+        const int factor3 = 1566083941;
+        int hash1 = (seed << shift1) + seed;
+        int hash2 = hash1;
+
+        hash1 = MixHashCode(hash1, value1, shift2, shift3);
+        hash2 = MixHashCode(hash2, value2, shift2, shift3);
+        hash1 = MixHashCode(hash1, value3, shift2, shift3);
+
+        return hash1 + (hash2 * factor3);
+    }
+
+    /// <summary>
+    /// Combines four integer hash codes without allocating the object-array params path.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int CombineHashCodes(
+        int value1,
+        int value2,
+        int value3,
+        int value4)
+    {
+        const int seed = 5381;
+        const int shift1 = 16;
+        const int shift2 = 5;
+        const int shift3 = 27;
+        const int factor3 = 1566083941;
+        int hash1 = (seed << shift1) + seed;
+        int hash2 = hash1;
+
+        hash1 = MixHashCode(hash1, value1, shift2, shift3);
+        hash2 = MixHashCode(hash2, value2, shift2, shift3);
+        hash1 = MixHashCode(hash1, value3, shift2, shift3);
+        hash2 = MixHashCode(hash2, value4, shift2, shift3);
+
+        return hash1 + (hash2 * factor3);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int MixHashCode(int hash, int itemHash, int shift2, int shift3)
+    {
+        unchecked
+        {
+            return ((hash << shift2) + hash + (hash >> shift3)) ^ itemHash;
+        }
+    }
+
+    /// <summary>
     /// Determines whether the specified comparer is a recognized, well-known equality comparer supported by the system.
     /// </summary>
     /// <remarks>
