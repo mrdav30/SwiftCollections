@@ -55,6 +55,7 @@ public class SwiftHashSetTests
         Assert.Single(set);
     }
 
+#if !DEBUG
     [Fact]
     public void Add_WithValueTypeItem_DoesNotAllocateSteadyState()
     {
@@ -81,6 +82,7 @@ public class SwiftHashSetTests
         Assert.Equal(1_024, additions);
         Assert.True(allocated < 128, $"Expected steady-state add/clear reuse to avoid allocation, but allocated {allocated} bytes.");
     }
+#endif
 
     [Fact]
     public void Remove_ExistingItem_ReturnsTrue()

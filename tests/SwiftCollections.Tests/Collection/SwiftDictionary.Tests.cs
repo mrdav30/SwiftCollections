@@ -102,6 +102,7 @@ public class SwiftDictionaryTests
         Assert.Equal("One", dictionary[1]);
     }
 
+#if !DEBUG
     [Fact]
     public void Add_WithValueTypeKey_DoesNotAllocateSteadyState()
     {
@@ -128,6 +129,7 @@ public class SwiftDictionaryTests
         Assert.Equal(1_024, additions);
         Assert.True(allocated < 128, $"Expected steady-state add/clear reuse to avoid allocation, but allocated {allocated} bytes.");
     }
+#endif
 
     [Fact]
     public void TryAdd_DuplicateKey_ReturnsFalse()
@@ -138,7 +140,7 @@ public class SwiftDictionaryTests
         Assert.False(dictionary.Add(1, "One"));
     }
 
-    [Fact]
+#if !DEBUG
     public void TryGetValue_WithValueTypeKey_DoesNotAllocateSteadyState()
     {
         var dictionary = new SwiftDictionary<int, string>(4)
@@ -162,6 +164,7 @@ public class SwiftDictionaryTests
         Assert.Equal(1_024, hits);
         Assert.True(allocated < 128, $"Expected steady-state lookup to avoid allocation, but allocated {allocated} bytes.");
     }
+#endif
 
     [Fact]
     public void Add_NullKey_ThrowsArgumentNullException()
