@@ -95,8 +95,10 @@ public class SwiftDictionaryTests
     [Fact]
     public void Add_NewKey_AddsElement()
     {
-        var dictionary = new SwiftDictionary<int, string>();
-        dictionary.Add(1, "One");
+        var dictionary = new SwiftDictionary<int, string>
+        {
+            { 1, "One" }
+        };
 
         Assert.Single(dictionary);
         Assert.Equal("One", dictionary[1]);
@@ -134,8 +136,10 @@ public class SwiftDictionaryTests
     [Fact]
     public void TryAdd_DuplicateKey_ReturnsFalse()
     {
-        var dictionary = new SwiftDictionary<int, string>();
-        dictionary.Add(1, "One");
+        var dictionary = new SwiftDictionary<int, string>
+        {
+            { 1, "One" }
+        };
 
         Assert.False(dictionary.Add(1, "One"));
     }
@@ -178,8 +182,10 @@ public class SwiftDictionaryTests
     [Fact]
     public void Indexer_Get_ExistingKey_ReturnsValue()
     {
-        var dictionary = new SwiftDictionary<int, string>();
-        dictionary.Add(1, "One");
+        var dictionary = new SwiftDictionary<int, string>
+        {
+            { 1, "One" }
+        };
 
         string value = dictionary[1];
 
@@ -197,8 +203,10 @@ public class SwiftDictionaryTests
     [Fact]
     public void Indexer_Set_NewKey_AddsElement()
     {
-        var dictionary = new SwiftDictionary<int, string>();
-        dictionary[1] = "One";
+        var dictionary = new SwiftDictionary<int, string>
+        {
+            [1] = "One"
+        };
 
         Assert.Equal("One", dictionary[1]);
         Assert.Single(dictionary);
@@ -293,9 +301,11 @@ public class SwiftDictionaryTests
     [Fact]
     public void Indexer_Set_ExistingKey_UpdatesValue()
     {
-        var dictionary = new SwiftDictionary<int, string>();
-        dictionary[1] = "One";
-        dictionary[1] = "Uno";
+        var dictionary = new SwiftDictionary<int, string>
+        {
+            [1] = "One",
+            [1] = "Uno"
+        };
 
         Assert.Equal("Uno", dictionary[1]);
         Assert.Single(dictionary);
@@ -304,8 +314,10 @@ public class SwiftDictionaryTests
     [Fact]
     public void Remove_ExistingKey_ReturnsTrue()
     {
-        var dictionary = new SwiftDictionary<int, string>();
-        dictionary.Add(1, "One");
+        var dictionary = new SwiftDictionary<int, string>
+        {
+            { 1, "One" }
+        };
 
         bool removed = dictionary.Remove(1);
 
@@ -335,8 +347,10 @@ public class SwiftDictionaryTests
     [Fact]
     public void ContainsKey_ExistingKey_ReturnsTrue()
     {
-        var dictionary = new SwiftDictionary<int, string>();
-        dictionary.Add(1, "One");
+        var dictionary = new SwiftDictionary<int, string>
+        {
+            { 1, "One" }
+        };
 
         bool contains = dictionary.ContainsKey(1);
 
@@ -356,8 +370,10 @@ public class SwiftDictionaryTests
     [Fact]
     public void ICollection_Contains_KeyValuePair_Existing_ReturnsTrue()
     {
-        var dictionary = new SwiftDictionary<int, string>();
-        dictionary.Add(1, "One");
+        var dictionary = new SwiftDictionary<int, string>
+        {
+            { 1, "One" }
+        };
 
         var kvp = new KeyValuePair<int, string>(1, "One");
         bool contains = ((ICollection<KeyValuePair<int, string>>)dictionary).Contains(kvp);
@@ -368,8 +384,10 @@ public class SwiftDictionaryTests
     [Fact]
     public void ICollection_Contains_KeyValuePair_NonExisting_ReturnsFalse()
     {
-        var dictionary = new SwiftDictionary<int, string>();
-        dictionary.Add(1, "One");
+        var dictionary = new SwiftDictionary<int, string>
+        {
+            { 1, "One" }
+        };
 
         var kvp = new KeyValuePair<int, string>(2, "Two");
         bool contains = ((ICollection<KeyValuePair<int, string>>)dictionary).Contains(kvp);
@@ -380,18 +398,20 @@ public class SwiftDictionaryTests
     [Fact]
     public void TryGetValue_ExistingKey_ReturnsTrue()
     {
-        var dictionary = new SwiftDictionary<int, string>(100);
-        dictionary.Add(1, "One");
-        dictionary.Add(2, "One");
-        dictionary.Add(3, "One");
-        dictionary.Add(4, "One");
-        dictionary.Add(5, "One");
-        dictionary.Add(6, "One");
-        dictionary.Add(7, "One");
-        dictionary.Add(8, "One");
-        dictionary.Add(9, "One");
-        dictionary.Add(10, "One");
-        dictionary.Add(11, "One");
+        var dictionary = new SwiftDictionary<int, string>(100)
+        {
+            { 1, "One" },
+            { 2, "One" },
+            { 3, "One" },
+            { 4, "One" },
+            { 5, "One" },
+            { 6, "One" },
+            { 7, "One" },
+            { 8, "One" },
+            { 9, "One" },
+            { 10, "One" },
+            { 11, "One" }
+        };
 
         bool found = dictionary.TryGetValue(5, out string value);
 
@@ -490,8 +510,10 @@ public class SwiftDictionaryTests
     [Fact]
     public void Add_NullValue_AllowsNull()
     {
-        var dictionary = new SwiftDictionary<int, string>();
-        dictionary.Add(1, null);
+        var dictionary = new SwiftDictionary<int, string>
+        {
+            { 1, null }
+        };
 
         Assert.Null(dictionary[1]);
     }
@@ -499,8 +521,10 @@ public class SwiftDictionaryTests
     [Fact]
     public void Indexer_Set_NullValue_AllowsNull()
     {
-        var dictionary = new SwiftDictionary<int, string>();
-        dictionary[1] = null;
+        var dictionary = new SwiftDictionary<int, string>
+        {
+            [1] = null
+        };
 
         Assert.Null(dictionary[1]);
     }
@@ -584,10 +608,11 @@ public class SwiftDictionaryTests
     [Fact]
     public void IDictionary_IndexerSet_AddsAndUpdatesEntries()
     {
-        IDictionary dictionary = new SwiftDictionary<int, string>();
-
-        dictionary[1] = "One";
-        dictionary[1] = "Uno";
+        IDictionary dictionary = new SwiftDictionary<int, string>
+        {
+            [1] = "One",
+            [1] = "Uno"
+        };
 
         Assert.Equal("Uno", dictionary[1]);
         Assert.True(dictionary.Contains(1));
@@ -864,12 +889,12 @@ public class SwiftDictionaryTests
         var dictionary = new SwiftDictionary<string, int>(256);
         string[] keys = CollisionStringFactory.CreateMaskedCollisions(dictionary.Comparer, dictionary.Capacity - 1, 110);
 
-        Assert.IsNotAssignableFrom<IRandomedEqualityComparer>(dictionary.Comparer);
+        Assert.IsNotType<IRandomedEqualityComparer>(dictionary.Comparer, exactMatch: false);
 
         for (int i = 0; i < keys.Length; i++)
             dictionary.Add(keys[i], i);
 
-        Assert.IsAssignableFrom<IRandomedEqualityComparer>(dictionary.Comparer);
+        Assert.IsType<IRandomedEqualityComparer>(dictionary.Comparer, exactMatch: false);
 
         for (int i = 0; i < keys.Length; i++)
             Assert.Equal(i, dictionary[keys[i]]);
@@ -1103,8 +1128,10 @@ public class SwiftDictionaryTests
     {
         var comparer = StringComparer.OrdinalIgnoreCase;
 
-        var dict = new SwiftDictionary<string, int>(8, comparer);
-        dict.Add("Hello", 1);
+        var dict = new SwiftDictionary<string, int>(8, comparer)
+        {
+            { "Hello", 1 }
+        };
 
         byte[] json = JsonSerializer.SerializeToUtf8Bytes(dict);
 

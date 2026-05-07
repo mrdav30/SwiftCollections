@@ -1,5 +1,5 @@
-﻿using MemoryPack;
-using Chronicler;
+﻿using Chronicler;
+using MemoryPack;
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;

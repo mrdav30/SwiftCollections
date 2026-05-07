@@ -13,9 +13,11 @@ public class SwiftBiDictionaryTests
     public void BiDictionary_Add_DuplicateValues_Test()
     {
         // Arrange
-        var biDict = new SwiftBiDictionary<string, int>();
-        biDict.Add("One", 1);
-        biDict.Add("Two", 1); // Duplicate value
+        var biDict = new SwiftBiDictionary<string, int>
+        {
+            { "One", 1 },
+            { "Two", 1 } // Duplicate value
+        };
 
         // Act
         bool containsKeyOne = biDict.TryGetKey(1, out _);
@@ -28,8 +30,10 @@ public class SwiftBiDictionaryTests
     public void BiDictionary_Remove_NonExistent_Test()
     {
         // Arrange
-        var biDict = new SwiftBiDictionary<string, int>();
-        biDict.Add("One", 1);
+        var biDict = new SwiftBiDictionary<string, int>
+        {
+            { "One", 1 }
+        };
 
         // Act
         bool removed = biDict.Remove("Two"); // Non-existent key
@@ -44,8 +48,10 @@ public class SwiftBiDictionaryTests
     public void BiDictionary_ReverseLookup_NonExistent_Test()
     {
         // Arrange
-        var biDict = new SwiftBiDictionary<string, int>();
-        biDict.Add("One", 1);
+        var biDict = new SwiftBiDictionary<string, int>
+        {
+            { "One", 1 }
+        };
 
         // Act
         bool found = biDict.TryGetKey(2, out string key);
@@ -59,9 +65,11 @@ public class SwiftBiDictionaryTests
     public void BiDictionary_Clear_Test()
     {
         // Arrange
-        var biDict = new SwiftBiDictionary<string, int>();
-        biDict.Add("One", 1);
-        biDict.Add("Two", 2);
+        var biDict = new SwiftBiDictionary<string, int>
+        {
+            { "One", 1 },
+            { "Two", 2 }
+        };
 
         // Act
         biDict.Clear();
@@ -113,9 +121,10 @@ public class SwiftBiDictionaryTests
     [Fact]
     public void BiDictionary_IndexerSet_NewKey_AddsForwardAndReverseMappings()
     {
-        var biDict = new SwiftBiDictionary<string, int>();
-
-        biDict["One"] = 1;
+        var biDict = new SwiftBiDictionary<string, int>
+        {
+            ["One"] = 1
+        };
 
         Assert.Single(biDict);
         Assert.Equal(1, biDict["One"]);
@@ -253,9 +262,10 @@ public class SwiftBiDictionaryTests
         var keyComparer = StringComparer.OrdinalIgnoreCase;
         var valueComparer = StringComparer.OrdinalIgnoreCase;
 
-        var dict = new SwiftBiDictionary<string, string>(keyComparer, valueComparer);
-
-        dict.Add("Key", "Value");
+        var dict = new SwiftBiDictionary<string, string>(keyComparer, valueComparer)
+        {
+            { "Key", "Value" }
+        };
 
         byte[] json = JsonSerializer.SerializeToUtf8Bytes(dict);
 
@@ -298,8 +308,10 @@ public class SwiftBiDictionaryTests
     public void BiDictionary_TryAdd_DuplicateKey_ShouldReturnFalse()
     {
         // Arrange
-        var biDict = new SwiftBiDictionary<string, int>();
-        biDict.Add("One", 1);
+        var biDict = new SwiftBiDictionary<string, int>
+        {
+            { "One", 1 }
+        };
 
         // Act
         bool result = biDict.Add("One", 2); // Duplicate key
@@ -331,8 +343,10 @@ public class SwiftBiDictionaryTests
     public void BiDictionary_Add_UpdateValue_ShouldSucceed()
     {
         // Arrange
-        var biDict = new SwiftBiDictionary<string, int>();
-        biDict.Add("One", 1);
+        var biDict = new SwiftBiDictionary<string, int>
+        {
+            { "One", 1 }
+        };
 
         // Act
         biDict["One"] = 2; // Update value
@@ -345,9 +359,11 @@ public class SwiftBiDictionaryTests
     public void BiDictionary_AddAndRetrieveReverse_Test()
     {
         // Arrange
-        var biDict = new SwiftBiDictionary<string, int>();
-        biDict.Add("One", 1);
-        biDict.Add("Two", 2);
+        var biDict = new SwiftBiDictionary<string, int>
+        {
+            { "One", 1 },
+            { "Two", 2 }
+        };
 
         // Act
         bool foundOne = biDict.TryGetKey(1, out string keyOne);
@@ -364,9 +380,11 @@ public class SwiftBiDictionaryTests
     public void BiDictionary_RemoveAndVerifyReverseMap_Test()
     {
         // Arrange
-        var biDict = new SwiftBiDictionary<string, int>();
-        biDict.Add("One", 1);
-        biDict.Add("Two", 2);
+        var biDict = new SwiftBiDictionary<string, int>
+        {
+            { "One", 1 },
+            { "Two", 2 }
+        };
 
         // Act
         bool removed = biDict.Remove("One");

@@ -49,9 +49,11 @@ public class SwiftBucketTests
     public void Remove_ShouldRemoveItemByValue()
     {
         // Arrange
-        var bucket = new SwiftBucket<string>();
-        bucket.Add("Item1");
-        bucket.Add("Item2");
+        var bucket = new SwiftBucket<string>
+        {
+            "Item1",
+            "Item2"
+        };
 
         // Act
         bool removed = bucket.TryRemove("Item1");
@@ -83,10 +85,12 @@ public class SwiftBucketTests
     public void GetEnumerator_ShouldEnumerateAllItems()
     {
         // Arrange
-        var bucket = new SwiftBucket<string>();
-        bucket.Add("Item1");
-        bucket.Add("Item2");
-        bucket.Add("Item3");
+        var bucket = new SwiftBucket<string>
+        {
+            "Item1",
+            "Item2",
+            "Item3"
+        };
 
         // Act
         var items = new List<string>();
@@ -104,9 +108,11 @@ public class SwiftBucketTests
     public void Remove_NonExistentItem_ShouldReturnFalse()
     {
         // Arrange
-        var bucket = new SwiftBucket<int>();
-        bucket.Add(1);
-        bucket.Add(2);
+        var bucket = new SwiftBucket<int>
+        {
+            1,
+            2
+        };
 
         // Act
         bool removed = bucket.TryRemove(3);
@@ -120,8 +126,10 @@ public class SwiftBucketTests
     public void Indexer_InvalidIndex_ShouldThrowException()
     {
         // Arrange
-        var bucket = new SwiftBucket<string>();
-        bucket.Add("Item1");
+        var bucket = new SwiftBucket<string>
+        {
+            "Item1"
+        };
 
         // Act
         Action act = () => { var item = bucket[5]; };
@@ -134,9 +142,11 @@ public class SwiftBucketTests
     public void InsertAt_ShouldInsertItemAtSpecifiedIndex()
     {
         // Arrange
-        var bucket = new SwiftBucket<string>();
-        bucket.Add("Item0"); // Index 0
-        bucket.Add("Item1"); // Index 1
+        var bucket = new SwiftBucket<string>
+        {
+            "Item0", // Index 0
+            "Item1" // Index 1
+        };
 
         // Act
         bucket.InsertAt(5, "Item5");
@@ -151,8 +161,10 @@ public class SwiftBucketTests
     public void InsertAt_ExistingIndex_ShouldReplaceItem()
     {
         // Arrange
-        var bucket = new SwiftBucket<int>();
-        bucket.Add(10); // Index 0
+        var bucket = new SwiftBucket<int>
+        {
+            10 // Index 0
+        };
 
         // Act
         bucket.InsertAt(0, 20);
@@ -166,10 +178,12 @@ public class SwiftBucketTests
     public void Clear_ShouldRemoveAllItems()
     {
         // Arrange
-        var bucket = new SwiftBucket<int>();
-        bucket.Add(1);
-        bucket.Add(2);
-        bucket.Add(3);
+        var bucket = new SwiftBucket<int>
+        {
+            1,
+            2,
+            3
+        };
 
         // Act
         bucket.Clear();
@@ -186,12 +200,16 @@ public class SwiftBucketTests
         // Arrange
         var bucket = new SwiftBucket<int>(8)
         {
-            3,4,5,6,7,8
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            // Act
+            1,
+            2
         };
-
-        // Act
-        bucket.Add(1);
-        bucket.Add(2);
         int capacityBefore = bucket.Capacity;
         bucket.Add(3); // Should trigger capacity expansion
         int capacityAfter = bucket.Capacity;
@@ -223,9 +241,11 @@ public class SwiftBucketTests
     public void Contains_ShouldReturnTrueIfItemExists()
     {
         // Arrange
-        var bucket = new SwiftBucket<string>();
-        bucket.Add("Item1");
-        bucket.Add("Item2");
+        var bucket = new SwiftBucket<string>
+        {
+            "Item1",
+            "Item2"
+        };
 
         // Act & Assert
         bucket.Contains("Item1").Should().BeTrue();
@@ -235,10 +255,12 @@ public class SwiftBucketTests
     [Fact]
     public void Exists_ShouldReturnTrueIfMatchIsFound()
     {
-        var bucket = new SwiftBucket<int>();
-        bucket.Add(1);
-        bucket.Add(2);
-        bucket.Add(3);
+        var bucket = new SwiftBucket<int>
+        {
+            1,
+            2,
+            3
+        };
 
         bucket.Exists(i => i == 2).Should().BeTrue();
     }
@@ -246,10 +268,12 @@ public class SwiftBucketTests
     [Fact]
     public void Find_ShouldReturnMatchingItem()
     {
-        var bucket = new SwiftBucket<int>();
-        bucket.Add(1);
-        bucket.Add(2);
-        bucket.Add(3);
+        var bucket = new SwiftBucket<int>
+        {
+            1,
+            2,
+            3
+        };
 
         bucket.Find(i => i == 2).Should().Be(2);
     }
@@ -257,9 +281,11 @@ public class SwiftBucketTests
     [Fact]
     public void Find_ShouldReturnDefaultIfMatchIsNotFound()
     {
-        var bucket = new SwiftBucket<int>();
-        bucket.Add(1);
-        bucket.Add(2);
+        var bucket = new SwiftBucket<int>
+        {
+            1,
+            2
+        };
 
         bucket.Find(i => i > 10).Should().Be(default);
     }
@@ -268,10 +294,12 @@ public class SwiftBucketTests
     public void CopyTo_ShouldCopyItemsToArray()
     {
         // Arrange
-        var bucket = new SwiftBucket<int>();
-        bucket.Add(1);
-        bucket.Add(2);
-        bucket.Add(3);
+        var bucket = new SwiftBucket<int>
+        {
+            1,
+            2,
+            3
+        };
         int[] array = new int[3];
 
         // Act
@@ -285,9 +313,11 @@ public class SwiftBucketTests
     public void Enumerator_Reset_ShouldRestartEnumeration()
     {
         // Arrange
-        var bucket = new SwiftBucket<string>();
-        bucket.Add("Item1");
-        bucket.Add("Item2");
+        var bucket = new SwiftBucket<string>
+        {
+            "Item1",
+            "Item2"
+        };
         var enumerator = bucket.GetEnumerator();
 
         // Act
@@ -471,9 +501,11 @@ public class SwiftBucketTests
     [Fact]
     public void EnsureCapacity_ShouldGrowWithoutChangingDenseEntries()
     {
-        var bucket = new SwiftBucket<int>();
-        bucket.Add(10);
-        bucket.Add(20);
+        var bucket = new SwiftBucket<int>
+        {
+            10,
+            20
+        };
 
         bucket.EnsureCapacity(64);
 
@@ -498,10 +530,12 @@ public class SwiftBucketTests
     [Fact]
     public void TrimExcessCapacity_ShouldShrinkDenseBucketAndPreserveEntries()
     {
-        var bucket = new SwiftBucket<int>(64);
-        bucket.Add(10);
-        bucket.Add(20);
-        bucket.Add(30);
+        var bucket = new SwiftBucket<int>(64)
+        {
+            10,
+            20,
+            30
+        };
 
         bucket.TrimExcessCapacity();
 
@@ -557,9 +591,11 @@ public class SwiftBucketTests
     [Fact]
     public void CloneTo_ShouldReplaceTargetContents()
     {
-        var bucket = new SwiftBucket<int>();
-        bucket.Add(10);
-        bucket.Add(20);
+        var bucket = new SwiftBucket<int>
+        {
+            10,
+            20
+        };
 
         var list = new List<int> { 1, 2, 3 };
 
@@ -571,9 +607,11 @@ public class SwiftBucketTests
     [Fact]
     public void CollectionMembersAndNonGenericEnumerator_ExposeCurrentState()
     {
-        ICollection<int> bucket = new SwiftBucket<int>();
-        bucket.Add(10);
-        bucket.Add(20);
+        ICollection<int> bucket = new SwiftBucket<int>
+        {
+            10,
+            20
+        };
 
         Assert.False(bucket.IsReadOnly);
         Assert.False(((SwiftBucket<int>)bucket).IsSynchronized);

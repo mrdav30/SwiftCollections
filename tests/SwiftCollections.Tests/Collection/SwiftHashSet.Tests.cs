@@ -401,9 +401,10 @@ public class SwiftHashSetTests
     public void Add_DifferentTypesWithCustomComparer()
     {
         var comparer = StringComparer.OrdinalIgnoreCase;
-        var set = new SwiftHashSet<string>(comparer);
-
-        set.Add("hello");
+        var set = new SwiftHashSet<string>(comparer)
+        {
+            "hello"
+        };
         bool added = set.Add("HELLO");
 
         Assert.False(added);
@@ -658,9 +659,11 @@ public class SwiftHashSetTests
     [Fact]
     public void UnionWith_ICollectionMembersAndEnumeratorCurrent_Work()
     {
-        ICollection<int> set = new SwiftHashSet<int> { 1 };
-
-        set.Add(2);
+        ICollection<int> set = new SwiftHashSet<int>
+        {
+            1,
+            2
+        };
         ((SwiftHashSet<int>)set).UnionWith(new[] { 3, 4 });
 
         Assert.False(set.IsReadOnly);

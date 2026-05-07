@@ -116,10 +116,11 @@ public class SwiftGenerationalBucketTests
     [Fact]
     public void Enumerator_ThrowsIfModified()
     {
-        var bucket = new SwiftGenerationalBucket<int>();
-
-        bucket.Add(1);
-        bucket.Add(2);
+        var bucket = new SwiftGenerationalBucket<int>
+        {
+            1,
+            2
+        };
 
         var enumerator = bucket.GetEnumerator();
 
@@ -174,11 +175,12 @@ public class SwiftGenerationalBucketTests
     [Fact]
     public void Exists_ReturnsTrueIfMatchIsFound()
     {
-        var bucket = new SwiftGenerationalBucket<int>();
-
-        bucket.Add(1);
-        bucket.Add(2);
-        bucket.Add(3);
+        var bucket = new SwiftGenerationalBucket<int>
+        {
+            1,
+            2,
+            3
+        };
 
         Assert.True(bucket.Exists(i => i == 2));
     }
@@ -186,11 +188,12 @@ public class SwiftGenerationalBucketTests
     [Fact]
     public void Find_ReturnsMatchingItem()
     {
-        var bucket = new SwiftGenerationalBucket<int>();
-
-        bucket.Add(1);
-        bucket.Add(2);
-        bucket.Add(3);
+        var bucket = new SwiftGenerationalBucket<int>
+        {
+            1,
+            2,
+            3
+        };
 
         Assert.Equal(2, bucket.Find(i => i == 2));
     }
@@ -198,10 +201,11 @@ public class SwiftGenerationalBucketTests
     [Fact]
     public void Find_ReturnsDefaultIfMatchIsNotFound()
     {
-        var bucket = new SwiftGenerationalBucket<int>();
-
-        bucket.Add(1);
-        bucket.Add(2);
+        var bucket = new SwiftGenerationalBucket<int>
+        {
+            1,
+            2
+        };
 
         Assert.Equal(default, bucket.Find(i => i > 10));
     }
@@ -215,11 +219,12 @@ public class SwiftGenerationalBucketTests
     [Fact]
     public void JsonSerialization_RoundTrip()
     {
-        var bucket = new SwiftGenerationalBucket<string>();
-
-        bucket.Add("A");
-        bucket.Add("B");
-        bucket.Add("C");
+        var bucket = new SwiftGenerationalBucket<string>
+        {
+            "A",
+            "B",
+            "C"
+        };
 
         string json = JsonSerializer.Serialize(bucket);
 
@@ -309,9 +314,11 @@ public class SwiftGenerationalBucketTests
     [Fact]
     public void EnsureCapacity_HandleEqualityAndEnumerationAdapters_Work()
     {
-        var bucket = new SwiftGenerationalBucket<int>(2);
-        bucket.Add(1);
-        bucket.Add(2);
+        var bucket = new SwiftGenerationalBucket<int>(2)
+        {
+            1,
+            2
+        };
 
         bucket.EnsureCapacity(64);
 

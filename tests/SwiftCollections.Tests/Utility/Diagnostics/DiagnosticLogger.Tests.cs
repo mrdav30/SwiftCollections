@@ -1,5 +1,4 @@
 using SwiftCollections.Diagnostics;
-using System;
 using System.Collections.Generic;
 using Xunit;
 

@@ -13,10 +13,11 @@ public class SwiftPackedSetTests
     [Fact]
     public void HandlesReferenceTypes()
     {
-        var set = new SwiftPackedSet<string>();
-
-        set.Add("Alpha");
-        set.Add("Beta");
+        var set = new SwiftPackedSet<string>
+        {
+            "Alpha",
+            "Beta"
+        };
 
         Assert.Contains("Alpha", set);
         Assert.True(set.Remove("Alpha"));
@@ -57,9 +58,10 @@ public class SwiftPackedSetTests
     [Fact]
     public void Contains_ReturnsCorrectResult()
     {
-        var set = new SwiftPackedSet<int>();
-
-        set.Add(5);
+        var set = new SwiftPackedSet<int>
+        {
+            5
+        };
 
         Assert.Contains(5, set);
         Assert.DoesNotContain(10, set);
@@ -68,11 +70,12 @@ public class SwiftPackedSetTests
     [Fact]
     public void Exists_ReturnsTrueIfMatchIsFound()
     {
-        var set = new SwiftPackedSet<int>();
-
-        set.Add(1);
-        set.Add(2);
-        set.Add(3);
+        var set = new SwiftPackedSet<int>
+        {
+            1,
+            2,
+            3
+        };
 
         Assert.True(set.Exists(i => i == 2));
     }
@@ -80,10 +83,11 @@ public class SwiftPackedSetTests
     [Fact]
     public void Exists_ReturnsFalseWhenMissing_AndThrowsForNullPredicate()
     {
-        var set = new SwiftPackedSet<int>();
-
-        set.Add(1);
-        set.Add(2);
+        var set = new SwiftPackedSet<int>
+        {
+            1,
+            2
+        };
 
         Assert.False(set.Exists(i => i == 99));
         Assert.Throws<ArgumentNullException>(() => set.Exists(null));
@@ -92,11 +96,12 @@ public class SwiftPackedSetTests
     [Fact]
     public void Find_ReturnsMatchingItem()
     {
-        var set = new SwiftPackedSet<int>();
-
-        set.Add(1);
-        set.Add(2);
-        set.Add(3);
+        var set = new SwiftPackedSet<int>
+        {
+            1,
+            2,
+            3
+        };
 
         Assert.Equal(2, set.Find(i => i == 2));
     }
@@ -104,10 +109,11 @@ public class SwiftPackedSetTests
     [Fact]
     public void Find_ReturnsDefaultIfMatchIsNotFound()
     {
-        var set = new SwiftPackedSet<int>();
-
-        set.Add(1);
-        set.Add(2);
+        var set = new SwiftPackedSet<int>
+        {
+            1,
+            2
+        };
 
         Assert.Equal(default, set.Find(i => i > 10));
     }
@@ -115,10 +121,11 @@ public class SwiftPackedSetTests
     [Fact]
     public void Remove_RemovesItem()
     {
-        var set = new SwiftPackedSet<int>();
-
-        set.Add(1);
-        set.Add(2);
+        var set = new SwiftPackedSet<int>
+        {
+            1,
+            2
+        };
 
         bool removed = set.Remove(1);
 
@@ -130,10 +137,11 @@ public class SwiftPackedSetTests
     [Fact]
     public void Remove_ShouldClearReleasedReferenceSlot()
     {
-        var set = new SwiftPackedSet<string>();
-
-        set.Add("alpha");
-        set.Add("beta");
+        var set = new SwiftPackedSet<string>
+        {
+            "alpha",
+            "beta"
+        };
 
         Assert.True(set.Remove("beta"));
         Assert.Null(set.Dense[set.Count]);
@@ -142,10 +150,11 @@ public class SwiftPackedSetTests
     [Fact]
     public void Remove_LastElement_ShouldNotPerformSwapBack()
     {
-        var set = new SwiftPackedSet<string>();
-
-        set.Add("alpha");
-        set.Add("beta");
+        var set = new SwiftPackedSet<string>
+        {
+            "alpha",
+            "beta"
+        };
 
         Assert.True(set.Remove("beta"));
         Assert.Single(set);
@@ -166,11 +175,12 @@ public class SwiftPackedSetTests
     [Fact]
     public void Remove_SwapBackMaintainsIntegrity()
     {
-        var set = new SwiftPackedSet<int>();
-
-        set.Add(1);
-        set.Add(2);
-        set.Add(3);
+        var set = new SwiftPackedSet<int>
+        {
+            1,
+            2,
+            3
+        };
 
         set.Remove(2);
 
@@ -183,10 +193,11 @@ public class SwiftPackedSetTests
     [Fact]
     public void Clear_RemovesAllItems()
     {
-        var set = new SwiftPackedSet<int>();
-
-        set.Add(1);
-        set.Add(2);
+        var set = new SwiftPackedSet<int>
+        {
+            1,
+            2
+        };
 
         set.Clear();
 
@@ -197,10 +208,11 @@ public class SwiftPackedSetTests
     [Fact]
     public void Clear_ShouldReleaseStoredReferences()
     {
-        var set = new SwiftPackedSet<string>();
-
-        set.Add("alpha");
-        set.Add("beta");
+        var set = new SwiftPackedSet<string>
+        {
+            "alpha",
+            "beta"
+        };
 
         set.Clear();
 
@@ -211,11 +223,12 @@ public class SwiftPackedSetTests
     [Fact]
     public void DenseArray_ContainsAllValues()
     {
-        var set = new SwiftPackedSet<int>();
-
-        set.Add(10);
-        set.Add(20);
-        set.Add(30);
+        var set = new SwiftPackedSet<int>
+        {
+            10,
+            20,
+            30
+        };
 
         var dense = set.Dense;
 
@@ -227,11 +240,12 @@ public class SwiftPackedSetTests
     [Fact]
     public void AsReadOnlySpan_ExposesActiveDenseValues()
     {
-        var set = new SwiftPackedSet<int>();
-
-        set.Add(10);
-        set.Add(20);
-        set.Add(30);
+        var set = new SwiftPackedSet<int>
+        {
+            10,
+            20,
+            30
+        };
 
         Assert.Equal(set.Dense.AsSpan(0, set.Count).ToArray(), set.AsReadOnlySpan().ToArray());
     }
@@ -239,10 +253,11 @@ public class SwiftPackedSetTests
     [Fact]
     public void Enumerator_ReturnsAllValues()
     {
-        var set = new SwiftPackedSet<int>();
-
-        set.Add(1);
-        set.Add(2);
+        var set = new SwiftPackedSet<int>
+        {
+            1,
+            2
+        };
 
         var values = set.ToList();
 
@@ -253,10 +268,11 @@ public class SwiftPackedSetTests
     [Fact]
     public void Enumerator_ModificationThrows()
     {
-        var set = new SwiftPackedSet<int>();
-
-        set.Add(1);
-        set.Add(2);
+        var set = new SwiftPackedSet<int>
+        {
+            1,
+            2
+        };
 
         var enumerator = set.GetEnumerator();
 
@@ -286,10 +302,11 @@ public class SwiftPackedSetTests
     [Fact]
     public void CloneTo_CopiesValues()
     {
-        var set = new SwiftPackedSet<int>();
-
-        set.Add(1);
-        set.Add(2);
+        var set = new SwiftPackedSet<int>
+        {
+            1,
+            2
+        };
 
         var list = new List<int>();
 
@@ -325,10 +342,11 @@ public class SwiftPackedSetTests
     [Fact]
     public void Json_RoundTrip_PreservesValues()
     {
-        var set = new SwiftPackedSet<int>();
-
-        set.Add(10);
-        set.Add(20);
+        var set = new SwiftPackedSet<int>
+        {
+            10,
+            20
+        };
 
         byte[] json = JsonSerializer.SerializeToUtf8Bytes(set);
 
@@ -342,11 +360,12 @@ public class SwiftPackedSetTests
     [Fact]
     public void Json_RoundTrip_PreservesDenseIntegrity()
     {
-        var set = new SwiftPackedSet<int>();
-
-        set.Add(5);
-        set.Add(10);
-        set.Add(15);
+        var set = new SwiftPackedSet<int>
+        {
+            5,
+            10,
+            15
+        };
 
         byte[] json = JsonSerializer.SerializeToUtf8Bytes(set);
 
@@ -373,10 +392,11 @@ public class SwiftPackedSetTests
     [Fact]
     public void MemoryPack_RoundTrip_PreservesValues()
     {
-        var set = new SwiftPackedSet<int>();
-
-        set.Add(1);
-        set.Add(2);
+        var set = new SwiftPackedSet<int>
+        {
+            1,
+            2
+        };
 
         byte[] bytes = MemoryPackSerializer.Serialize(set);
 
@@ -556,9 +576,11 @@ public class SwiftPackedSetTests
     [Fact]
     public void PackedSet_UnionWithAndCollectionMembers_Work()
     {
-        ICollection<int> set = new SwiftPackedSet<int> { 1 };
-
-        set.Add(2);
+        ICollection<int> set = new SwiftPackedSet<int>
+        {
+            1,
+            2
+        };
         ((SwiftPackedSet<int>)set).UnionWith(new[] { 3, 4 });
 
         Assert.False(set.IsReadOnly);

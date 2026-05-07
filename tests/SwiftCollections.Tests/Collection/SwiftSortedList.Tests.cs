@@ -66,8 +66,10 @@ public class SwiftSortedListTests
     [Fact]
     public void Add_SingleElement_ShouldAddCorrectly()
     {
-        var sorter = new SwiftSortedList<int>();
-        sorter.Add(5);
+        var sorter = new SwiftSortedList<int>
+        {
+            5
+        };
         Assert.Single(sorter);
         Assert.Equal(5, sorter.PeekMin());
     }
@@ -75,10 +77,12 @@ public class SwiftSortedListTests
     [Fact]
     public void Add_MultipleElements_ShouldMaintainOrder()
     {
-        var sorter = new SwiftSortedList<int>();
-        sorter.Add(10);
-        sorter.Add(5);
-        sorter.Add(15);
+        var sorter = new SwiftSortedList<int>
+        {
+            10,
+            5,
+            15
+        };
         Assert.Equal(3, sorter.Count);
         Assert.Equal(5, sorter.PeekMin());
         Assert.Equal(15, sorter.PeekMax());
@@ -111,8 +115,10 @@ public class SwiftSortedListTests
     [Fact]
     public void AddRange_SortedCollection_ShouldMergeCorrectly()
     {
-        var sorter = new SwiftSortedList<int>();
-        sorter.Add(5);
+        var sorter = new SwiftSortedList<int>
+        {
+            5
+        };
         sorter.AddRange(new List<int> { 1, 3, 7, 9 });
         Assert.Equal(5, sorter.Count);
         Assert.Equal(1, sorter.PeekMin());
@@ -122,8 +128,10 @@ public class SwiftSortedListTests
     [Fact]
     public void AddRange_UnsortedCollection_ShouldSortAndMerge()
     {
-        var sorter = new SwiftSortedList<int>();
-        sorter.Add(10);
+        var sorter = new SwiftSortedList<int>
+        {
+            10
+        };
         sorter.AddRange(new List<int> { 15, 5, 20 });
         Assert.Equal(4, sorter.Count);
         Assert.Equal(5, sorter.PeekMin());
@@ -143,9 +151,11 @@ public class SwiftSortedListTests
     [Fact]
     public void Add_WithUniquenessNotEnforced_AddsDuplicates()
     {
-        var sorter = new SwiftSortedList<int>();
-        sorter.Add(1);
-        sorter.Add(1);
+        var sorter = new SwiftSortedList<int>
+        {
+            1,
+            1
+        };
 
         Assert.Equal(2, sorter.Count);
         Assert.Equal(1, sorter.PeekMin());
@@ -183,10 +193,12 @@ public class SwiftSortedListTests
     [Fact]
     public void PopMin_ShouldRemoveAndReturnSmallestElement()
     {
-        var sorter = new SwiftSortedList<int>();
-        sorter.Add(10);
-        sorter.Add(5);
-        sorter.Add(15);
+        var sorter = new SwiftSortedList<int>
+        {
+            10,
+            5,
+            15
+        };
         Assert.Equal(5, sorter.PopMin());
         Assert.Equal(2, sorter.Count);
     }
@@ -194,10 +206,12 @@ public class SwiftSortedListTests
     [Fact]
     public void PopMax_ShouldRemoveAndReturnLargestElement()
     {
-        var sorter = new SwiftSortedList<int>();
-        sorter.Add(10);
-        sorter.Add(5);
-        sorter.Add(15);
+        var sorter = new SwiftSortedList<int>
+        {
+            10,
+            5,
+            15
+        };
         Assert.Equal(15, sorter.PopMax());
         Assert.Equal(2, sorter.Count);
     }
@@ -223,20 +237,24 @@ public class SwiftSortedListTests
     [Fact]
     public void PeekMin_ShouldReturnSmallestElement()
     {
-        var sorter = new SwiftSortedList<int>();
-        sorter.Add(10);
-        sorter.Add(5);
-        sorter.Add(15);
+        var sorter = new SwiftSortedList<int>
+        {
+            10,
+            5,
+            15
+        };
         Assert.Equal(5, sorter.PeekMin());
     }
 
     [Fact]
     public void PeekMax_ShouldReturnLargestElement()
     {
-        var sorter = new SwiftSortedList<int>();
-        sorter.Add(10);
-        sorter.Add(5);
-        sorter.Add(15);
+        var sorter = new SwiftSortedList<int>
+        {
+            10,
+            5,
+            15
+        };
         Assert.Equal(15, sorter.PeekMax());
     }
 
@@ -261,9 +279,11 @@ public class SwiftSortedListTests
     [Fact]
     public void Contains_ElementExists_ShouldReturnTrue()
     {
-        var sorter = new SwiftSortedList<int>();
-        sorter.Add(10);
-        sorter.Add(5);
+        var sorter = new SwiftSortedList<int>
+        {
+            10,
+            5
+        };
         bool contains = sorter.Contains(10);
         Assert.True(contains);
     }
@@ -271,9 +291,11 @@ public class SwiftSortedListTests
     [Fact]
     public void Contains_ElementDoesNotExist_ShouldReturnFalse()
     {
-        var sorter = new SwiftSortedList<int>();
-        sorter.Add(10);
-        sorter.Add(5);
+        var sorter = new SwiftSortedList<int>
+        {
+            10,
+            5
+        };
         bool contains = sorter.Contains(15);
         Assert.False(contains);
     }
@@ -362,9 +384,11 @@ public class SwiftSortedListTests
     [Fact]
     public void Remove_NonExistentElement_ShouldReturnFalse()
     {
-        var sorter = new SwiftSortedList<int>();
-        sorter.Add(10);
-        sorter.Add(5);
+        var sorter = new SwiftSortedList<int>
+        {
+            10,
+            5
+        };
         Assert.False(sorter.Remove(15));
     }
 
@@ -375,9 +399,11 @@ public class SwiftSortedListTests
     [Fact]
     public void Clear_NonEmptyList_ShouldRemoveAllElements()
     {
-        var sorter = new SwiftSortedList<int>();
-        sorter.Add(10);
-        sorter.Add(5);
+        var sorter = new SwiftSortedList<int>
+        {
+            10,
+            5
+        };
         sorter.Clear();
         Assert.Empty(sorter);
     }
