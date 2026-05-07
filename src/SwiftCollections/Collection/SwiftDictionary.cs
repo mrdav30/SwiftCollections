@@ -1,4 +1,5 @@
 ﻿using MemoryPack;
+using Chronicler;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -50,9 +51,9 @@ internal
 /// <see cref="SetComparer(IEqualityComparer{TKey})"/>.
 /// </remarks>
 [Serializable]
-[JsonConverter(typeof(SwiftStateJsonConverterFactory))]
+[JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
-public partial class SwiftDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IDictionary
+public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionaryState<TKey, TValue>>, IDictionary<TKey, TValue>, IDictionary
     where TKey : notnull
 {
     #region Constants

@@ -1,4 +1,5 @@
 ﻿using MemoryPack;
+using Chronicler;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -11,9 +12,9 @@ namespace SwiftCollections.Dimensions;
 /// </summary>
 /// <typeparam name="T">The type of elements in the array.</typeparam>
 [Serializable]
-[JsonConverter(typeof(SwiftStateJsonConverterFactory))]
+[JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
-public partial class SwiftArray2D<T> : IEnumerable<T>, IEnumerable
+public partial class SwiftArray2D<T> : IStateBacked<Array2DState<T>>, IEnumerable<T>, IEnumerable
 {
     #region Fields
 

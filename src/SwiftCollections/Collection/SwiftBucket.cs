@@ -1,4 +1,5 @@
 ﻿using MemoryPack;
+using Chronicler;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -39,9 +40,9 @@ namespace SwiftCollections;
 /// </remarks>
 /// <typeparam name="T">Specifies the type of elements in the bucket.</typeparam>
 [Serializable]
-[JsonConverter(typeof(SwiftStateJsonConverterFactory))]
+[JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
-public sealed partial class SwiftBucket<T> : ISwiftCloneable<T>, IEnumerable<T>, ICollection<T>, ICollection
+public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, ISwiftCloneable<T>, IEnumerable<T>, ICollection<T>, ICollection
 {
     #region Constants
 

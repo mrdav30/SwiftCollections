@@ -1,4 +1,5 @@
 ﻿using MemoryPack;
+using Chronicler;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -28,9 +29,9 @@ namespace SwiftCollections;
 /// </remarks>
 /// <typeparam name="T">The type of elements contained in the set.</typeparam>
 [Serializable]
-[JsonConverter(typeof(SwiftStateJsonConverterFactory))]
+[JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
-public sealed partial class SwiftPackedSet<T> : ISwiftCloneable<T>, ISet<T>, IEnumerable<T>, IEnumerable
+public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>, ISwiftCloneable<T>, ISet<T>, IEnumerable<T>, IEnumerable
     where T : notnull
 {
     #region Constants

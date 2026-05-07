@@ -1,4 +1,5 @@
 ﻿using MemoryPack;
+using Chronicler;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -13,9 +14,9 @@ namespace SwiftCollections.Observable;
 /// </summary>
 /// <typeparam name="T">The type of elements in the list.</typeparam>
 [Serializable]
-[JsonConverter(typeof(SwiftStateJsonConverterFactory))]
+[JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
-public partial class SwiftObservableList<T> : SwiftList<T>, INotifyPropertyChanged, INotifyCollectionChanged
+public partial class SwiftObservableList<T> : SwiftList<T>, IStateBacked<SwiftArrayState<T>>, INotifyPropertyChanged, INotifyCollectionChanged
 {
     #region Events
 

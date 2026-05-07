@@ -1,4 +1,5 @@
 ﻿using MemoryPack;
+using Chronicler;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -41,9 +42,9 @@ namespace SwiftCollections;
 /// </remarks>
 /// <typeparam name="T">Value type stored by key.</typeparam>
 [Serializable]
-[JsonConverter(typeof(SwiftStateJsonConverterFactory))]
+[JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
-public sealed partial class SwiftSparseMap<T> : ISwiftCloneable<T>, IEnumerable<KeyValuePair<int, T>>, IEnumerable
+public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseSetState<T>>, ISwiftCloneable<T>, IEnumerable<KeyValuePair<int, T>>, IEnumerable
 {
     #region Constants
 

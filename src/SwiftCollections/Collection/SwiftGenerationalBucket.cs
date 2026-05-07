@@ -1,4 +1,5 @@
 ﻿using MemoryPack;
+using Chronicler;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -43,9 +44,9 @@ namespace SwiftCollections;
 /// </remarks>
 /// <typeparam name="T">Specifies the type of elements stored in the bucket.</typeparam>
 [Serializable]
-[JsonConverter(typeof(SwiftStateJsonConverterFactory))]
+[JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
-public sealed partial class SwiftGenerationalBucket<T> : ISwiftCloneable<T>, IEnumerable<T>
+public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGenerationalBucketState<T>>, ISwiftCloneable<T>, IEnumerable<T>
 {
     #region Nested Types
 

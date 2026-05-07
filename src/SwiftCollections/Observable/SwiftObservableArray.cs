@@ -1,4 +1,5 @@
 ﻿using MemoryPack;
+using Chronicler;
 using System;
 using System.ComponentModel;
 using System.Text.Json.Serialization;
@@ -11,9 +12,9 @@ namespace SwiftCollections.Observable;
 /// </summary>
 /// <typeparam name="TValue">The type of elements in the array.</typeparam>
 [Serializable]
-[JsonConverter(typeof(SwiftStateJsonConverterFactory))]
+[JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
-public partial class SwiftObservableArray<TValue> : INotifyPropertyChanged
+public partial class SwiftObservableArray<TValue> : IStateBacked<SwiftArrayState<TValue>>, INotifyPropertyChanged
 {
     #region Fields
 

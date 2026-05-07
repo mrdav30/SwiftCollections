@@ -1,4 +1,5 @@
 ﻿using MemoryPack;
+using Chronicler;
 using System;
 using System.Text.Json.Serialization;
 
@@ -8,9 +9,9 @@ namespace SwiftCollections.Dimensions;
 /// Represents a 2D array specifically designed to handle short integer values.
 /// </summary>
 [Serializable]
-[JsonConverter(typeof(SwiftStateJsonConverterFactory))]
+[JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
-public partial class SwiftShortArray2D : SwiftArray2D<short>
+public partial class SwiftShortArray2D : SwiftArray2D<short>, IStateBacked<Array2DState<short>>
 {
     #region Constructors
 

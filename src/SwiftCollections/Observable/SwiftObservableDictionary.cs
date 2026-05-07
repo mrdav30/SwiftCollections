@@ -1,4 +1,5 @@
 ﻿using MemoryPack;
+using Chronicler;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -13,9 +14,9 @@ namespace SwiftCollections.Observable;
 /// <typeparam name="TKey">The type of keys in the dictionary.</typeparam>
 /// <typeparam name="TValue">The type of values in the dictionary.</typeparam>
 [Serializable]
-[JsonConverter(typeof(SwiftStateJsonConverterFactory))]
+[JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
-public partial class SwiftObservableDictionary<TKey, TValue> : SwiftDictionary<TKey, TValue>, INotifyPropertyChanged, INotifyCollectionChanged
+public partial class SwiftObservableDictionary<TKey, TValue> : SwiftDictionary<TKey, TValue>, IStateBacked<SwiftDictionaryState<TKey, TValue>>, INotifyPropertyChanged, INotifyCollectionChanged
     where TKey : notnull
 {
     #region Events

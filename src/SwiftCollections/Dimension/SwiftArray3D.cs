@@ -1,4 +1,5 @@
 ﻿using MemoryPack;
+using Chronicler;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -12,9 +13,9 @@ namespace SwiftCollections.Dimensions;
 /// </summary>
 /// <typeparam name="T">The type of elements in the 3D array.</typeparam>
 [Serializable]
-[JsonConverter(typeof(SwiftStateJsonConverterFactory))]
+[JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
-public partial class SwiftArray3D<T> : IEnumerable<T>, IEnumerable
+public partial class SwiftArray3D<T> : IStateBacked<Array3DState<T>>, IEnumerable<T>, IEnumerable
 {
     #region Fields
 

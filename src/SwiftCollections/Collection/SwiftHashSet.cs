@@ -1,4 +1,5 @@
 ﻿using MemoryPack;
+using Chronicler;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -24,9 +25,9 @@ namespace SwiftCollections;
 /// <see cref="SetComparer(IEqualityComparer{T})"/>.
 /// </remarks>
 [Serializable]
-[JsonConverter(typeof(SwiftStateJsonConverterFactory))]
+[JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
-public sealed partial class SwiftHashSet<T> : ISet<T>, ICollection<T>, IEnumerable<T>, IEnumerable, IReadOnlyCollection<T>
+public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, ISet<T>, ICollection<T>, IEnumerable<T>, IEnumerable, IReadOnlyCollection<T>
     where T : notnull
 {
     #region Constants

@@ -1,4 +1,5 @@
 ﻿using MemoryPack;
+using Chronicler;
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
@@ -27,9 +28,9 @@ namespace SwiftCollections;
 /// <see cref="SetComparer(IEqualityComparer{T1}, IEqualityComparer{T2})"/>.
 /// </remarks>
 [Serializable]
-[JsonConverter(typeof(SwiftStateJsonConverterFactory))]
+[JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
-public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>
+public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IStateBacked<SwiftDictionaryState<T1, T2>>
     where T1 : notnull
     where T2 : notnull
 {
