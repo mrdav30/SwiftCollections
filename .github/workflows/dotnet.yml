@@ -38,7 +38,7 @@ jobs:
 
     - name: Execute GitVersion
       id: gitversion
-      uses: gittools/actions/gitversion/execute@v4.0.0
+      uses: gittools/actions/gitversion/execute@v4.5.0
 
     - name: Cache NuGet packages
       uses: actions/cache@v5

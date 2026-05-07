@@ -54,28 +54,46 @@ public class QuerySharedInfrastructureTests
     {
         DiagnosticLevel originalLevel = SwiftCollectionDiagnostics.Shared.MinimumLevel;
         DiagnosticSink originalSink = SwiftCollectionDiagnostics.Shared.Sink;
+        var gate = new object();
+        var events = new List<DiagnosticEvent>();
 
         try
         {
             SwiftCollectionDiagnostics.Shared.MinimumLevel = DiagnosticLevel.Info;
-            SwiftCollectionDiagnostics.Shared.Sink = static (in DiagnosticEvent diagnostic) =>
+            SwiftCollectionDiagnostics.Shared.Sink = (in DiagnosticEvent diagnostic) =>
             {
-                QuerySharedInfrastructureTestsState.Events.Add(diagnostic);
+                lock (gate)
+                    events.Add(diagnostic);
             };
 
-            QuerySharedInfrastructureTestsState.Events.Clear();
             QueryCollectionDiagnostics.WriteInfo("QueryTests", "diagnostic message");
 
-            Assert.Single(QuerySharedInfrastructureTestsState.Events);
-            Assert.Equal("QueryTests", QuerySharedInfrastructureTestsState.Events[0].Source);
-            Assert.Equal("diagnostic message", QuerySharedInfrastructureTestsState.Events[0].Message);
-            Assert.Equal(DiagnosticLevel.Info, QuerySharedInfrastructureTestsState.Events[0].Level);
+            DiagnosticEvent matched = default;
+            int matchCount = 0;
+            lock (gate)
+            {
+                for (int i = 0; i < events.Count; i++)
+                {
+                    DiagnosticEvent diagnostic = events[i];
+                    if (diagnostic.Source == "QueryTests"
+                        && diagnostic.Message == "diagnostic message"
+                        && diagnostic.Level == DiagnosticLevel.Info)
+                    {
+                        matched = diagnostic;
+                        matchCount++;
+                    }
+                }
+            }
+
+            Assert.Equal(1, matchCount);
+            Assert.Equal("QueryTests", matched.Source);
+            Assert.Equal("diagnostic message", matched.Message);
+            Assert.Equal(DiagnosticLevel.Info, matched.Level);
         }
         finally
         {
             SwiftCollectionDiagnostics.Shared.MinimumLevel = originalLevel;
             SwiftCollectionDiagnostics.Shared.Sink = originalSink;
-            QuerySharedInfrastructureTestsState.Events.Clear();
         }
     }
 
@@ -120,8 +138,4 @@ public class QuerySharedInfrastructureTests
         public override int GetHashCode() => 1;
     }
 
-    private static class QuerySharedInfrastructureTestsState
-    {
-        public static List<DiagnosticEvent> Events { get; } = new List<DiagnosticEvent>();
-    }
 }

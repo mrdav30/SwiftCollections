@@ -141,6 +141,7 @@ public class SwiftDictionaryTests
     }
 
 #if !DEBUG
+    [Fact]
     public void TryGetValue_WithValueTypeKey_DoesNotAllocateSteadyState()
     {
         var dictionary = new SwiftDictionary<int, string>(4)
