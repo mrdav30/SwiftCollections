@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Xunit;
@@ -543,6 +544,28 @@ public class SwiftDictionaryTests
         Assert.Empty(dictionary);
         Assert.False(dictionary.ContainsKey(1));
         Assert.False(dictionary.ContainsKey(2));
+    }
+
+    [Fact]
+    public void Clear_ResetsTombstones_ForReuse()
+    {
+        var dictionary = new SwiftDictionary<int, string>(64);
+        for (int i = 0; i < 32; i++)
+            dictionary[i * 17] = i.ToString();
+
+        dictionary.Remove(17);
+        dictionary.Clear();
+
+        Array entries = GetEntries(dictionary);
+        for (int i = 0; i < entries.Length; i++)
+        {
+            object entry = entries.GetValue(i);
+            int hashCode = GetEntryHashCode(entry);
+            bool isUsed = GetEntryIsUsed(entry);
+
+            Assert.False(isUsed);
+            Assert.NotEqual(-1, hashCode);
+        }
     }
 
     [Fact]
@@ -1165,6 +1188,30 @@ public class SwiftDictionaryTests
 
         Assert.True(result.ContainsKey(15));
         Assert.Equal("Target", result[15]);
+    }
+
+    private static Array GetEntries<TKey, TValue>(SwiftDictionary<TKey, TValue> dictionary)
+        where TKey : notnull
+    {
+        return (Array)typeof(SwiftDictionary<TKey, TValue>)
+            .GetField("_entries", BindingFlags.Instance | BindingFlags.NonPublic)
+            .GetValue(dictionary);
+    }
+
+    private static int GetEntryHashCode(object entry)
+    {
+        return (int)entry
+            .GetType()
+            .GetField("HashCode")
+            .GetValue(entry);
+    }
+
+    private static bool GetEntryIsUsed(object entry)
+    {
+        return (bool)entry
+            .GetType()
+            .GetField("IsUsed")
+            .GetValue(entry);
     }
 
     private static long MeasureAllocatedBytes(Action action)

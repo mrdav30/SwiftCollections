@@ -154,7 +154,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         /// Gets or sets the lower 31 bits of the hash code associated with this entry.
         /// </summary>
         /// <remarks>
-        /// A value of -1 indicates that the entry is unused. 
+        /// A value of -1 indicates that the entry is a deleted probe tombstone.
         /// Only the lower 31 bits are used; the highest bit is reserved.</remarks>
         public int HashCode;
 
@@ -572,7 +572,9 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
 
         for (uint i = 0; i <= (uint)_lastIndex; i++)
         {
-            _entries[i].HashCode = -1;
+            // Clear is a full reset, not a delete; future probes must be able to stop
+            // at these now-empty slots instead of treating them as tombstones.
+            _entries[i].HashCode = 0;
             _entries[i].Key = default!;
             _entries[i].Value = default!;
             _entries[i].IsUsed = false;
