@@ -56,26 +56,10 @@ public struct BoundVolume : IBoundVolume<BoundVolume>, IEquatable<BoundVolume>
     }
 
     /// <inheritdoc cref="_min"/>
-    public Vector3 Min
-    {
-        readonly get => _min;
-        private set
-        {
-            _isDirty = true;
-            _min = value;
-        }
-    }
+    public readonly Vector3 Min => _min;
 
     /// <inheritdoc cref="_max"/>
-    public Vector3 Max
-    {
-        readonly get => _max;
-        private set
-        {
-            _isDirty = true;
-            _max = value;
-        }
-    }
+    public readonly Vector3 Max => _max;
 
     /// <inheritdoc cref="_center"/>
     public Vector3 Center
