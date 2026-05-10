@@ -304,7 +304,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     {
         SwiftThrowHelper.ThrowIfNegative(index, nameof(index));
         if ((uint)index >= (uint)_innerArray.Length)
-            Resize(_innerArray.Length * 2);
+            Resize(SwiftHashTools.NextPowerOfTwo(index + 1));
         if (!_innerArray[index].IsUsed)
         {
             _count++;
@@ -625,6 +625,10 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
             }
         }
         catch (ArrayTypeMismatchException)
+        {
+            throw new ArgumentException("Invalid array type.");
+        }
+        catch (InvalidCastException)
         {
             throw new ArgumentException("Invalid array type.");
         }
