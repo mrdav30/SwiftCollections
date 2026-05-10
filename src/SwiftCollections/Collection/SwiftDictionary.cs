@@ -482,14 +482,36 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         int hashCode = _comparer.GetHashCode(key) & 0x7FFFFFFF;
         int entryIndex = hashCode & _entryMask;
 
+        int firstDeletedIndex = -1;
         int step = 1;
-        while (_entries[entryIndex].IsUsed)
+        int probeLimit = _entries.Length;
+        while ((uint)step <= (uint)probeLimit)
         {
-            if (_entries[entryIndex].HashCode == hashCode && _comparer.Equals(_entries[entryIndex].Key, key))
-                return false; // Item already exists
+            ref Entry entry = ref _entries[entryIndex];
+            if (entry.IsUsed)
+            {
+                if (entry.HashCode == hashCode && _comparer.Equals(entry.Key, key))
+                    return false; // Item already exists
+            }
+            else if (entry.HashCode == -1)
+            {
+                if (firstDeletedIndex < 0) firstDeletedIndex = entryIndex;
+            }
+            else
+            {
+                break;
+            }
 
             entryIndex = (entryIndex + step * step) & _entryMask; // Quadratic probing
             step++;
+        }
+
+        if (firstDeletedIndex >= 0)
+            entryIndex = firstDeletedIndex;
+        else if ((uint)step > (uint)probeLimit)
+        {
+            Resize(_entries.Length * _adaptiveResizeFactor);
+            return InsertIfNotExist(key, value);
         }
 
         if ((uint)entryIndex > (uint)_lastIndex) _lastIndex = entryIndex;

@@ -102,6 +102,139 @@ public static class SwiftHashTools
     }
 
     /// <summary>
+    /// Determines whether the specified comparer is a recognized, well-known equality comparer supported by the system.
+    /// </summary>
+    /// <remarks>
+    /// A well-known equality comparer is one that is commonly used and recognized by the system, 
+    /// such as the default equality comparers for string and object, or specific deterministic comparers. 
+    /// Use this method to check if a comparer is supported for optimized or special handling.
+    /// </remarks>
+    /// <param name="comparer">
+    /// The object to test as an equality comparer. 
+    /// This can be null or an instance of a supported equality comparer type.
+    /// </param>
+    /// <returns>true if the comparer is a well-known equality comparer; otherwise, false.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool IsWellKnownEqualityComparer(object comparer)
+    {
+        return comparer == null
+            || comparer == EqualityComparer<string>.Default
+            || comparer == EqualityComparer<object>.Default
+            || comparer is SwiftDeterministicStringEqualityComparer
+            || comparer is SwiftDeterministicObjectEqualityComparer;
+    }
+
+    /// <summary>
+    /// Gets the default comparer used by SwiftCollections for the specified type when no comparer is supplied.
+    /// String keys are hashed deterministically. Object keys hash strings deterministically, while other object-key
+    /// determinism still depends on the underlying key type's <see cref="object.GetHashCode()"/> implementation.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static IEqualityComparer<T> GetDeterministicEqualityComparer<T>()
+    {
+        if (typeof(T) == typeof(string))
+            return (IEqualityComparer<T>)GetDeterministicStringEqualityComparer();
+
+        if (typeof(T) == typeof(object))
+            return (IEqualityComparer<T>)GetDeterministicObjectEqualityComparer();
+
+        return EqualityComparer<T>.Default;
+    }
+
+    /// <summary>
+    /// Gets the deterministic default comparer used by SwiftCollections for strings.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static IEqualityComparer<string> GetDeterministicStringEqualityComparer()
+        => s_deterministicStringComparer;
+
+    /// <summary>
+    /// Gets a deterministic string comparer using the supplied seed.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static IEqualityComparer<string> GetDeterministicStringEqualityComparer(int seed)
+        => seed == DefaultDeterministicStringHashSeed
+            ? s_deterministicStringComparer
+            : new SwiftDeterministicStringEqualityComparer(seed);
+
+    /// <summary>
+    /// Gets the default comparer used by SwiftCollections for object keys.
+    /// Strings are hashed deterministically even when stored as objects. Other object keys still depend on their
+    /// runtime <see cref="object.GetHashCode()"/> implementations.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static IEqualityComparer<object> GetDeterministicObjectEqualityComparer()
+        => s_deterministicObjectComparer;
+
+    /// <summary>
+    /// Gets an object comparer using the supplied seed.
+    /// Strings are hashed deterministically even when stored as objects. Other object keys still depend on their
+    /// runtime <see cref="object.GetHashCode()"/> implementations.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static IEqualityComparer<object> GetDeterministicObjectEqualityComparer(int seed)
+        => seed == DefaultDeterministicObjectHashSeed
+            ? s_deterministicObjectComparer
+            : new SwiftDeterministicObjectEqualityComparer(seed);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static IEqualityComparer<T> GetDefaultEqualityComparer<T>(IEqualityComparer<T>? comparer = null)
+        => comparer ?? GetDeterministicEqualityComparer<T>();
+
+    /// <summary>
+    /// Returns an IEqualityComparer instance optimized for use with Swift serialization, based on the specified comparer.
+    /// </summary>
+    /// <remarks>
+    /// Use this method to obtain an equality comparer that ensures deterministic behavior when serializing with Swift. 
+    /// If the provided comparer is not recognized, a default Swift object equality comparer is returned.
+    /// </remarks>
+    /// <param name="comparer">
+    /// The comparer object to evaluate. 
+    /// Determines which specialized Swift equality comparer to return. 
+    /// Can be an EqualityComparer for string or object, or a custom Swift deterministic comparer.
+    /// </param>
+    /// <returns>
+    /// An IEqualityComparer instance suitable for Swift serialization. 
+    /// Returns a specialized comparer for strings or objects, depending on the input.
+    /// </returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static IEqualityComparer GetSwiftEqualityComparer(object comparer)
+    {
+        if (comparer == EqualityComparer<string>.Default || comparer is SwiftDeterministicStringEqualityComparer)
+            return new SwiftStringEqualityComparer();
+
+        if (comparer == EqualityComparer<object>.Default || comparer is SwiftDeterministicObjectEqualityComparer)
+            return new SwiftObjectEqualityComparer();
+
+        return new SwiftObjectEqualityComparer();
+    }
+
+    /// <summary>
+    /// Generates a cryptographically strong random 64-bit integer for collision-hardening entropy.
+    /// </summary>
+    /// <returns>A 64-bit integer filled with cryptographically strong random bytes.</returns>
+    internal static long GetEntropy()
+    {
+        lock (lockObj)
+        {
+            if (currentIndex == 1024 || rng == null || data == null)
+            {
+                rng ??= RandomNumberGenerator.Create();
+                data ??= new byte[1024];
+
+                rng.GetBytes(data);
+                currentIndex = 0;
+            }
+
+            long result = BitConverter.ToInt64(data, currentIndex);
+            currentIndex += 8;
+            return result;
+        }
+    }
+
+    #region Hash Code Combination
+
+    /// <summary>
     /// Combines the hash codes of the elements in a tuple using a DJB2-inspired mixing strategy.
     /// </summary>
     public static int CombineHashCodes(
@@ -246,137 +379,6 @@ public static class SwiftHashTools
     }
 
     /// <summary>
-    /// Determines whether the specified comparer is a recognized, well-known equality comparer supported by the system.
-    /// </summary>
-    /// <remarks>
-    /// A well-known equality comparer is one that is commonly used and recognized by the system, 
-    /// such as the default equality comparers for string and object, or specific deterministic comparers. 
-    /// Use this method to check if a comparer is supported for optimized or special handling.
-    /// </remarks>
-    /// <param name="comparer">
-    /// The object to test as an equality comparer. 
-    /// This can be null or an instance of a supported equality comparer type.
-    /// </param>
-    /// <returns>true if the comparer is a well-known equality comparer; otherwise, false.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool IsWellKnownEqualityComparer(object comparer)
-    {
-        return comparer == null
-            || comparer == EqualityComparer<string>.Default
-            || comparer == EqualityComparer<object>.Default
-            || comparer is SwiftDeterministicStringEqualityComparer
-            || comparer is SwiftDeterministicObjectEqualityComparer;
-    }
-
-    /// <summary>
-    /// Gets the default comparer used by SwiftCollections for the specified type when no comparer is supplied.
-    /// String keys are hashed deterministically. Object keys hash strings deterministically, while other object-key
-    /// determinism still depends on the underlying key type's <see cref="object.GetHashCode()"/> implementation.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static IEqualityComparer<T> GetDeterministicEqualityComparer<T>()
-    {
-        if (typeof(T) == typeof(string))
-            return (IEqualityComparer<T>)GetDeterministicStringEqualityComparer();
-
-        if (typeof(T) == typeof(object))
-            return (IEqualityComparer<T>)GetDeterministicObjectEqualityComparer();
-
-        return EqualityComparer<T>.Default;
-    }
-
-    /// <summary>
-    /// Gets the deterministic default comparer used by SwiftCollections for strings.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static IEqualityComparer<string> GetDeterministicStringEqualityComparer()
-        => s_deterministicStringComparer;
-
-    /// <summary>
-    /// Gets a deterministic string comparer using the supplied seed.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static IEqualityComparer<string> GetDeterministicStringEqualityComparer(int seed)
-        => seed == DefaultDeterministicStringHashSeed
-            ? s_deterministicStringComparer
-            : new SwiftDeterministicStringEqualityComparer(seed);
-
-    /// <summary>
-    /// Gets the default comparer used by SwiftCollections for object keys.
-    /// Strings are hashed deterministically even when stored as objects. Other object keys still depend on their
-    /// runtime <see cref="object.GetHashCode()"/> implementations.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static IEqualityComparer<object> GetDeterministicObjectEqualityComparer()
-        => s_deterministicObjectComparer;
-
-    /// <summary>
-    /// Gets an object comparer using the supplied seed.
-    /// Strings are hashed deterministically even when stored as objects. Other object keys still depend on their
-    /// runtime <see cref="object.GetHashCode()"/> implementations.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static IEqualityComparer<object> GetDeterministicObjectEqualityComparer(int seed)
-        => seed == DefaultDeterministicObjectHashSeed
-            ? s_deterministicObjectComparer
-            : new SwiftDeterministicObjectEqualityComparer(seed);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static IEqualityComparer<T> GetDefaultEqualityComparer<T>(IEqualityComparer<T>? comparer = null)
-        => comparer ?? GetDeterministicEqualityComparer<T>();
-
-    /// <summary>
-    /// Returns an IEqualityComparer instance optimized for use with Swift serialization, based on the specified comparer.
-    /// </summary>
-    /// <remarks>
-    /// Use this method to obtain an equality comparer that ensures deterministic behavior when serializing with Swift. 
-    /// If the provided comparer is not recognized, a default Swift object equality comparer is returned.
-    /// </remarks>
-    /// <param name="comparer">
-    /// The comparer object to evaluate. 
-    /// Determines which specialized Swift equality comparer to return. 
-    /// Can be an EqualityComparer for string or object, or a custom Swift deterministic comparer.
-    /// </param>
-    /// <returns>
-    /// An IEqualityComparer instance suitable for Swift serialization. 
-    /// Returns a specialized comparer for strings or objects, depending on the input.
-    /// </returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static IEqualityComparer GetSwiftEqualityComparer(object comparer)
-    {
-        if (comparer == EqualityComparer<string>.Default || comparer is SwiftDeterministicStringEqualityComparer)
-            return new SwiftStringEqualityComparer();
-
-        if (comparer == EqualityComparer<object>.Default || comparer is SwiftDeterministicObjectEqualityComparer)
-            return new SwiftObjectEqualityComparer();
-
-        return new SwiftObjectEqualityComparer();
-    }
-
-    /// <summary>
-    /// Generates a cryptographically strong random 64-bit integer for collision-hardening entropy.
-    /// </summary>
-    /// <returns>A 64-bit integer filled with cryptographically strong random bytes.</returns>
-    internal static long GetEntropy()
-    {
-        lock (lockObj)
-        {
-            if (currentIndex == 1024 || rng == null || data == null)
-            {
-                rng ??= RandomNumberGenerator.Create();
-                data ??= new byte[1024];
-
-                rng.GetBytes(data);
-                currentIndex = 0;
-            }
-
-            long result = BitConverter.ToInt64(data, currentIndex);
-            currentIndex += 8;
-            return result;
-        }
-    }
-
-    /// <summary>
     /// Computes a hash code for a string using the MurmurHash3 algorithm, incorporating entropy for randomization.
     /// </summary>
     /// <param name="key">The string to hash.</param>
@@ -438,4 +440,6 @@ public static class SwiftHashTools
         h ^= h >> 16;
         return h;
     }
+
+    #endregion
 }

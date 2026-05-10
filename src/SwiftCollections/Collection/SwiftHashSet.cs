@@ -105,7 +105,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     private struct Entry
     {
         public T Value;
-        public int HashCode;    // Lower 31 bits of hash code, -1 if unused
+        public int HashCode;    // Lower 31 bits of hash code, -1 if deleted probe tombstone
         public bool IsUsed;
     }
 
@@ -317,14 +317,36 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
         int hashCode = _comparer.GetHashCode(item) & 0x7FFFFFFF;
         int entryIndex = hashCode & _entryMask;
 
+        int firstDeletedIndex = -1;
         int step = 1;
-        while (_entries[entryIndex].IsUsed)
+        int probeLimit = _entries.Length;
+        while ((uint)step <= (uint)probeLimit)
         {
-            if (_entries[entryIndex].HashCode == hashCode && _comparer.Equals(_entries[entryIndex].Value, item))
-                return false; // Item already exists
+            ref Entry entry = ref _entries[entryIndex];
+            if (entry.IsUsed)
+            {
+                if (entry.HashCode == hashCode && _comparer.Equals(entry.Value, item))
+                    return false; // Item already exists
+            }
+            else if (entry.HashCode == -1)
+            {
+                if (firstDeletedIndex < 0) firstDeletedIndex = entryIndex;
+            }
+            else
+            {
+                break;
+            }
 
             entryIndex = (entryIndex + step * step) & _entryMask; // Quadratic probing
             step++;
+        }
+
+        if (firstDeletedIndex >= 0)
+            entryIndex = firstDeletedIndex;
+        else if ((uint)step > (uint)probeLimit)
+        {
+            Resize(_entries.Length * _adaptiveResizeFactor);
+            return InsertIfNotExists(item);
         }
 
         if ((uint)entryIndex > (uint)_lastIndex) _lastIndex = entryIndex;
@@ -394,7 +416,9 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
 
         for (uint i = 0; i <= (uint)_lastIndex; i++)
         {
-            _entries[i].HashCode = -1;
+            // Clear is a full reset, not a delete; future probes must be able to stop
+            // at these now-empty slots instead of treating them as tombstones.
+            _entries[i].HashCode = 0;
             _entries[i].Value = default!;
             _entries[i].IsUsed = false;
         }

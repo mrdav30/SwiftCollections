@@ -158,6 +158,28 @@ public class SwiftHashSetTests
     }
 
     [Fact]
+    public void Clear_ResetsTombstones_ForReuse()
+    {
+        var set = new SwiftHashSet<int>(64);
+        for (int i = 0; i < 32; i++)
+            set.Add(i * 17);
+
+        set.Remove(17);
+        set.Clear();
+
+        Array entries = GetEntries(set);
+        for (int i = 0; i < entries.Length; i++)
+        {
+            object entry = entries.GetValue(i);
+            int hashCode = GetEntryHashCode(entry);
+            bool isUsed = GetEntryIsUsed(entry);
+
+            Assert.False(isUsed);
+            Assert.NotEqual(-1, hashCode);
+        }
+    }
+
+    [Fact]
     public void Constructor_WithEmptyState_InitializesEmptySet()
     {
         var set = new SwiftHashSet<int>(new SwiftArrayState<int>(Array.Empty<int>()));
@@ -592,6 +614,18 @@ public class SwiftHashSetTests
     }
 
     [Fact]
+    public void Add_ProbesPastDeletedEntriesBeforeReusingTombstone()
+    {
+        var comparer = new SelectiveIntHashComparer((1, 0), (9, 0));
+        var set = new SwiftHashSet<int>(8, comparer) { 1, 9 };
+
+        Assert.True(set.Remove(1));
+        Assert.False(set.Add(9));
+        Assert.Single(set);
+        Assert.Contains(9, set);
+    }
+
+    [Fact]
     public void ExceptWith_RemovesIntersectingItems()
     {
         var set = new SwiftHashSet<int> { 1, 2, 3, 4 };
@@ -911,8 +945,30 @@ public class SwiftHashSetTests
 
     private static int GetCapacity<T>(SwiftHashSet<T> set)
     {
-        var field = typeof(SwiftHashSet<T>).GetField("_entries", BindingFlags.Instance | BindingFlags.NonPublic);
-        return ((Array)field.GetValue(set)).Length;
+        return GetEntries(set).Length;
+    }
+
+    private static Array GetEntries<T>(SwiftHashSet<T> set)
+    {
+        return (Array)typeof(SwiftHashSet<T>)
+            .GetField("_entries", BindingFlags.Instance | BindingFlags.NonPublic)
+            .GetValue(set);
+    }
+
+    private static int GetEntryHashCode(object entry)
+    {
+        return (int)entry
+            .GetType()
+            .GetField("HashCode")
+            .GetValue(entry);
+    }
+
+    private static bool GetEntryIsUsed(object entry)
+    {
+        return (bool)entry
+            .GetType()
+            .GetField("IsUsed")
+            .GetValue(entry);
     }
 
     private static long MeasureAllocatedBytes(Action action)

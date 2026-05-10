@@ -726,6 +726,22 @@ public class SwiftDictionaryTests
     }
 
     [Fact]
+    public void Add_ProbesPastDeletedEntriesBeforeReusingTombstone()
+    {
+        var comparer = new SelectiveIntHashComparer((1, 0), (9, 0));
+        var dictionary = new SwiftDictionary<int, string>(8, comparer)
+        {
+            [1] = "One",
+            [9] = "Nine"
+        };
+
+        Assert.True(dictionary.Remove(1));
+        Assert.False(dictionary.Add(9, "Duplicate"));
+        Assert.Single(dictionary);
+        Assert.Equal("Nine", dictionary[9]);
+    }
+
+    [Fact]
     public void ICollectionOfKeyValuePair_Remove_ReturnsFalseWhenValueDoesNotMatch()
     {
         var dictionary = new SwiftDictionary<int, string>
