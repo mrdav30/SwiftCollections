@@ -146,86 +146,117 @@ public class SwiftBVH<TKey, TVolume>
         if (parentNodeIndex < 0 || !_nodePool[parentNodeIndex].IsAllocated)
             return newNodeIndex;
 
+        if (_nodePool[parentNodeIndex].IsLeaf)
+            return CreateParentForLeaves(parentNodeIndex, newNodeIndex);
+
+        InsertIntoBestChild(parentNodeIndex, newNodeIndex);
+        RefreshParentNode(parentNodeIndex);
+        return parentNodeIndex;
+    }
+
+    private int CreateParentForLeaves(int existingLeafIndex, int newLeafIndex)
+    {
+        TVolume combinedBounds = _nodePool[existingLeafIndex].Bounds.Union(_nodePool[newLeafIndex].Bounds);
+        int oldParentIndex = _nodePool[existingLeafIndex].ParentIndex;
+        int newParentIndex = AllocateNode(default!, combinedBounds, false);
+
+        ref SwiftBVHNode<TKey, TVolume> newParentNode = ref _nodePool[newParentIndex];
+        newParentNode.ParentIndex = oldParentIndex;
+        newParentNode.LeftChildIndex = existingLeafIndex;
+        newParentNode.RightChildIndex = newLeafIndex;
+        newParentNode.SubtreeSize = 1 + _nodePool[existingLeafIndex].SubtreeSize + _nodePool[newLeafIndex].SubtreeSize;
+
+        _nodePool[existingLeafIndex].ParentIndex = newParentIndex;
+        _nodePool[newLeafIndex].ParentIndex = newParentIndex;
+
+        return newParentIndex;
+    }
+
+    private void InsertIntoBestChild(int parentNodeIndex, int newNodeIndex)
+    {
         ref SwiftBVHNode<TKey, TVolume> parentNode = ref _nodePool[parentNodeIndex];
-        ref SwiftBVHNode<TKey, TVolume> newNode = ref _nodePool[newNodeIndex];
-        if (parentNode.IsLeaf)
-        {
-            // Create a new parent node
-            int newParentIndex = AllocateNode(default!, parentNode.Bounds.Union(newNode.Bounds), false);
-            ref SwiftBVHNode<TKey, TVolume> newParentNode = ref _nodePool[newParentIndex];
-            newParentNode.ParentIndex = parentNode.ParentIndex;
-
-            newParentNode.LeftChildIndex = parentNodeIndex;
-            newParentNode.RightChildIndex = newNodeIndex;
-
-            parentNode.ParentIndex = newParentIndex;
-            newNode.ParentIndex = newParentIndex;
-
-            newParentNode.SubtreeSize = 1 + parentNode.SubtreeSize + newNode.SubtreeSize;
-            return newParentIndex;
-        }
-
-        // Determines the optimal child for insertion.
-        // When one subtree is more than 2× the size of the other, force balance to bound
-        // tree depth at ~1.71×log₂(n).  Within that envelope, SAH cost guides routing
-        // for better spatial grouping and query performance.
-        SwiftBVHNode<TKey, TVolume> leftChild = parentNode.HasLeftChild
-           ? _nodePool[parentNode.LeftChildIndex]
-           : SwiftBVHNode<TKey, TVolume>.Default;
-        SwiftBVHNode<TKey, TVolume> rightChild = parentNode.HasRightChild
-            ? _nodePool[parentNode.RightChildIndex]
-            : SwiftBVHNode<TKey, TVolume>.Default;
-
-        int leftSize = leftChild.IsAllocated ? leftChild.SubtreeSize : 0;
-        int rightSize = rightChild.IsAllocated ? rightChild.SubtreeSize : 0;
-
-        bool isInsertingLeft;
-        int maxSize = leftSize > rightSize ? leftSize : rightSize;
-        int minSize = leftSize < rightSize ? leftSize : rightSize;
-
-        if (maxSize > minSize * 2)
-        {
-            // One subtree is more than 2x the other — force insertion into the smaller side
-            isInsertingLeft = leftSize <= rightSize;
-        }
-        else
-        {
-            // Subtrees are roughly balanced — use SAH cost for better spatial quality
-            long leftCost = parentNode.HasLeftChild
-                ? leftChild.Bounds.GetCost(newNode.Bounds)
-                : 0L;
-
-            long rightCost = parentNode.HasRightChild
-                ? rightChild.Bounds.GetCost(newNode.Bounds)
-                : 0L;
-
-            if (leftCost == rightCost)
-                isInsertingLeft = leftSize <= rightSize;
-            else
-                isInsertingLeft = leftCost < rightCost;
-        }
-
-        if (isInsertingLeft)
-        {
+        if (ShouldInsertIntoLeftChild(parentNodeIndex, newNodeIndex))
             parentNode.LeftChildIndex = InsertIntoTree(parentNode.LeftChildIndex, newNodeIndex);
-            leftChild = parentNode.HasLeftChild
-               ? _nodePool[parentNode.LeftChildIndex]
-               : SwiftBVHNode<TKey, TVolume>.Default;
-        }
         else
-        {
             parentNode.RightChildIndex = InsertIntoTree(parentNode.RightChildIndex, newNodeIndex);
-            rightChild = parentNode.HasRightChild
-                ? _nodePool[parentNode.RightChildIndex]
-                : SwiftBVHNode<TKey, TVolume>.Default;
-        }
+    }
+
+    private bool ShouldInsertIntoLeftChild(int parentNodeIndex, int newNodeIndex)
+    {
+        SwiftBVHNode<TKey, TVolume> parentNode = _nodePool[parentNodeIndex];
+        SwiftBVHNode<TKey, TVolume> leftChild = GetNodeOrDefault(parentNode.LeftChildIndex);
+        SwiftBVHNode<TKey, TVolume> rightChild = GetNodeOrDefault(parentNode.RightChildIndex);
+        int leftSize = GetSubtreeSize(leftChild);
+        int rightSize = GetSubtreeSize(rightChild);
+
+        if (IsSeverelyUnbalanced(leftSize, rightSize))
+            return leftSize <= rightSize;
+
+        return ShouldInsertIntoLowerCostChild(
+            parentNode,
+            leftChild,
+            rightChild,
+            leftSize,
+            rightSize,
+            _nodePool[newNodeIndex].Bounds);
+    }
+
+    private static bool IsSeverelyUnbalanced(int leftSize, int rightSize)
+    {
+        int maxSize = Math.Max(leftSize, rightSize);
+        int minSize = Math.Min(leftSize, rightSize);
+        return maxSize > minSize * 2;
+    }
+
+    private static bool ShouldInsertIntoLowerCostChild(
+        SwiftBVHNode<TKey, TVolume> parentNode,
+        SwiftBVHNode<TKey, TVolume> leftChild,
+        SwiftBVHNode<TKey, TVolume> rightChild,
+        int leftSize,
+        int rightSize,
+        TVolume newBounds)
+    {
+        long leftCost = GetInsertionCost(parentNode.LeftChildIndex, leftChild, newBounds);
+        long rightCost = GetInsertionCost(parentNode.RightChildIndex, rightChild, newBounds);
+
+        if (leftCost == rightCost)
+            return leftSize <= rightSize;
+
+        return leftCost < rightCost;
+    }
+
+    private static long GetInsertionCost(int childIndex, SwiftBVHNode<TKey, TVolume> child, TVolume newBounds)
+    {
+        if (childIndex == -1)
+            return 0L;
+
+        return child.Bounds.GetCost(newBounds);
+    }
+
+    private void RefreshParentNode(int parentNodeIndex)
+    {
+        ref SwiftBVHNode<TKey, TVolume> parentNode = ref _nodePool[parentNodeIndex];
+        SwiftBVHNode<TKey, TVolume> leftChild = GetNodeOrDefault(parentNode.LeftChildIndex);
+        SwiftBVHNode<TKey, TVolume> rightChild = GetNodeOrDefault(parentNode.RightChildIndex);
 
         parentNode.Bounds = GetCombinedBounds(leftChild, rightChild);
-        parentNode.SubtreeSize = 1
-            + (leftChild.IsAllocated ? leftChild.SubtreeSize : 0)
-            + (rightChild.IsAllocated ? rightChild.SubtreeSize : 0);
+        parentNode.SubtreeSize = 1 + GetSubtreeSize(leftChild) + GetSubtreeSize(rightChild);
+    }
 
-        return parentNodeIndex;
+    private SwiftBVHNode<TKey, TVolume> GetNodeOrDefault(int nodeIndex)
+    {
+        if (nodeIndex == -1)
+            return SwiftBVHNode<TKey, TVolume>.Default;
+
+        return _nodePool[nodeIndex];
+    }
+
+    private static int GetSubtreeSize(SwiftBVHNode<TKey, TVolume> node)
+    {
+        if (!node.IsAllocated)
+            return 0;
+
+        return node.SubtreeSize;
     }
 
     /// <summary>

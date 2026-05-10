@@ -198,56 +198,100 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
             var generations = value.Generations ?? Array.Empty<uint>();
             var freeIndices = value.FreeIndices ?? Array.Empty<int>();
 
-            int sourceLength = Math.Max(items.Length, Math.Max(allocated.Length, generations.Length));
-            int capacity = sourceLength < DefaultCapacity
-                ? DefaultCapacity
-                : SwiftHashTools.NextPowerOfTwo(sourceLength);
+            int sourceLength = GetStateSourceLength(items, allocated, generations);
+            int capacity = GetStateCapacity(sourceLength);
+            InitializeStateStorage(capacity, freeIndices.Length);
 
-            _entries = new Entry[capacity];
-            _freeIndices = new SwiftIntStack(Math.Max(SwiftIntStack.DefaultCapacity, freeIndices.Length));
+            int maxReferencedIndex = RestoreEntries(items, allocated, generations, sourceLength);
+            maxReferencedIndex = RestoreFreeIndices(freeIndices, capacity, maxReferencedIndex);
 
-            _count = 0;
-            int maxReferencedIndex = -1;
-
-            for (int i = 0; i < sourceLength; i++)
-            {
-                ref Entry entry = ref _entries[i];
-
-                entry.Generation = generations.Length > i ? generations[i] : 0;
-                if (entry.Generation != 0)
-                    maxReferencedIndex = i;
-
-                if (allocated.Length > i && allocated[i])
-                {
-                    if (items.Length > i)
-                        entry.Value = items[i];
-
-                    entry.IsUsed = true;
-                    _count++;
-                    maxReferencedIndex = i;
-                }
-            }
-
-            foreach (var index in freeIndices)
-            {
-                if ((uint)index >= (uint)capacity)
-                    throw new ArgumentException("Free index is out of range.");
-
-                _freeIndices.Push(index);
-                if (index > maxReferencedIndex)
-                    maxReferencedIndex = index;
-            }
-
-            int peak = value.Peak;
-            if (peak < 0)
-                peak = 0;
-
-            _peak = Math.Max(peak, maxReferencedIndex + 1);
-            if (_peak > capacity)
-                _peak = capacity;
-
+            _peak = NormalizePeak(value.Peak, maxReferencedIndex, capacity);
             _version = 0;
         }
+    }
+
+    private static int GetStateSourceLength(T[] items, bool[] allocated, uint[] generations)
+    {
+        return Math.Max(items.Length, Math.Max(allocated.Length, generations.Length));
+    }
+
+    private static int GetStateCapacity(int sourceLength)
+    {
+        if (sourceLength < DefaultCapacity)
+            return DefaultCapacity;
+
+        return SwiftHashTools.NextPowerOfTwo(sourceLength);
+    }
+
+    private void InitializeStateStorage(int capacity, int freeIndexCount)
+    {
+        _entries = new Entry[capacity];
+        _freeIndices = new SwiftIntStack(Math.Max(SwiftIntStack.DefaultCapacity, freeIndexCount));
+        _count = 0;
+    }
+
+    private int RestoreEntries(T[] items, bool[] allocated, uint[] generations, int sourceLength)
+    {
+        int maxReferencedIndex = -1;
+        for (int i = 0; i < sourceLength; i++)
+        {
+            ref Entry entry = ref _entries[i];
+            bool isAllocated = IsStateIndexAllocated(allocated, i);
+
+            entry.Generation = GetStateGeneration(generations, i);
+            if (entry.Generation != 0 || isAllocated)
+                maxReferencedIndex = i;
+
+            if (isAllocated)
+                RestoreAllocatedEntry(ref entry, items, i);
+        }
+
+        return maxReferencedIndex;
+    }
+
+    private static uint GetStateGeneration(uint[] generations, int index)
+    {
+        if (generations.Length <= index)
+            return 0;
+
+        return generations[index];
+    }
+
+    private static bool IsStateIndexAllocated(bool[] allocated, int index)
+    {
+        return allocated.Length > index && allocated[index];
+    }
+
+    private void RestoreAllocatedEntry(ref Entry entry, T[] items, int index)
+    {
+        if (items.Length > index)
+            entry.Value = items[index];
+
+        entry.IsUsed = true;
+        _count++;
+    }
+
+    private int RestoreFreeIndices(int[] freeIndices, int capacity, int maxReferencedIndex)
+    {
+        foreach (var index in freeIndices)
+        {
+            if ((uint)index >= (uint)capacity)
+                throw new ArgumentException("Free index is out of range.");
+
+            _freeIndices.Push(index);
+            if (index > maxReferencedIndex)
+                maxReferencedIndex = index;
+        }
+
+        return maxReferencedIndex;
+    }
+
+    private static int NormalizePeak(int peak, int maxReferencedIndex, int capacity)
+    {
+        if (peak < 0)
+            peak = 0;
+
+        return Math.Min(Math.Max(peak, maxReferencedIndex + 1), capacity);
     }
 
     #endregion
