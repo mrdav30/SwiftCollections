@@ -187,6 +187,18 @@ public class SwiftQueueTests
     }
 
     [Fact]
+    public void EnsureCapacity_WhenContiguous_CopiesItemsInQueueOrder()
+    {
+        var queue = new SwiftQueue<int>(8);
+        queue.EnqueueRange(new[] { 1, 2, 3, 4 }.AsSpan());
+
+        queue.EnsureCapacity(32);
+
+        Assert.True(queue.Capacity >= 32);
+        Assert.Equal(new[] { 1, 2, 3, 4 }, queue.ToArray());
+    }
+
+    [Fact]
     public void EnqueueRange_NonCollectionEnumerable_AppendsItems()
     {
         var queue = new SwiftQueue<int>();
@@ -233,6 +245,20 @@ public class SwiftQueueTests
         Assert.Equal(5, array.Length);
         Assert.Equal(0, array[0]);
         Assert.Equal(4, array[4]);
+    }
+
+    [Fact]
+    public void ToArray_CopiesWrappedQueueInOrder()
+    {
+        var queue = new SwiftQueue<int>(8);
+        queue.EnqueueRange(new[] { 0, 1, 2, 3, 4, 5 }.AsSpan());
+
+        for (int i = 0; i < 4; i++)
+            queue.Dequeue();
+
+        queue.EnqueueRange(new[] { 6, 7, 8 }.AsSpan());
+
+        Assert.Equal(new[] { 4, 5, 6, 7, 8 }, queue.ToArray());
     }
 
     [Fact]
@@ -300,6 +326,22 @@ public class SwiftQueueTests
 
         Assert.Equal(new[] { 0, 4, 5, 6, 7, 8, 0 }, genericDestination);
         Assert.Equal(new object[] { null, 4, 5, 6, 7, 8, null }, (object[])objectDestination);
+    }
+
+    [Fact]
+    public void CopyTo_NonGenericArray_CopiesContiguousQueueAndEmptyQueueReturns()
+    {
+        var queue = new SwiftQueue<int>();
+        var emptyDestination = new int[1];
+        queue.CopyTo((Array)emptyDestination, 0);
+
+        queue.EnqueueRange(new[] { 1, 2, 3 }.AsSpan());
+        Array destination = new object[5];
+
+        queue.CopyTo(destination, 1);
+
+        Assert.Equal(new object[] { null, 1, 2, 3, null }, (object[])destination);
+        Assert.Equal(new[] { 0 }, emptyDestination);
     }
 
     [Fact]
@@ -584,6 +626,35 @@ public class SwiftQueueTests
 
         int[] expected = { 6, 7, 8, 9 };
         Assert.Equal(expected, queue.ToArray());
+    }
+
+    [Fact]
+    public void TrimExcessCapacity_CompactsLargeWrappedQueueAcrossArrayEnd()
+    {
+        var queue = new SwiftQueue<int>(16);
+        queue.EnqueueRange(new[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }.AsSpan());
+
+        for (int i = 0; i < 10; i++)
+            queue.Dequeue();
+
+        queue.EnqueueRange(new[] { 12, 13, 14, 15, 16, 17 }.AsSpan());
+
+        queue.TrimExcessCapacity();
+
+        Assert.Equal(new[] { 10, 11, 12, 13, 14, 15, 16, 17 }, queue.ToArray());
+        Assert.Equal(8, queue.Capacity);
+    }
+
+    [Fact]
+    public void TrimExcessCapacity_CompactsContiguousQueue()
+    {
+        var queue = new SwiftQueue<int>(64);
+        queue.EnqueueRange(new[] { 1, 2, 3, 4 }.AsSpan());
+
+        queue.TrimExcessCapacity();
+
+        Assert.True(queue.Capacity <= SwiftQueue<int>.DefaultCapacity);
+        Assert.Equal(new[] { 1, 2, 3, 4 }, queue.ToArray());
     }
 
     [Fact]

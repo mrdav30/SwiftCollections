@@ -499,6 +499,88 @@ public class SwiftBucketTests
     }
 
     [Fact]
+    public void SwiftBucket_StateConstructor_RestoresFreeIndicesAndNormalizesPeak()
+    {
+        var state = new SwiftBucketState<int>(
+            new[] { 10 },
+            new[] { true },
+            new[] { 3 },
+            -1);
+
+        var bucket = new SwiftBucket<int>(state);
+
+        bucket.PeakCount.Should().Be(4);
+        int reused = bucket.Add(40);
+        reused.Should().Be(3);
+        bucket[reused].Should().Be(40);
+    }
+
+    [Fact]
+    public void SwiftBucket_StateConstructor_ClampsLargePeakAndRejectsOutOfRangeFreeIndex()
+    {
+        var largePeakState = new SwiftBucketState<int>(
+            new[] { 10 },
+            new[] { true },
+            Array.Empty<int>(),
+            999);
+        var invalidFreeState = new SwiftBucketState<int>(
+            new[] { 10 },
+            new[] { true },
+            new[] { 99 },
+            1);
+
+        var bucket = new SwiftBucket<int>(largePeakState);
+
+        bucket.PeakCount.Should().Be(bucket.Capacity);
+        Assert.Throws<InvalidOperationException>(() => new SwiftBucket<int>(invalidFreeState));
+    }
+
+    [Fact]
+    public void SwiftBucket_NullValueSearchAndMissPaths_ReturnExpectedResults()
+    {
+        var bucket = new SwiftBucket<string>();
+        bucket.Add("first");
+        int nullIndex = bucket.Add(null);
+        bucket.Add("last");
+
+        bucket.IndexOf(null).Should().Be(nullIndex);
+        bucket.Contains(null).Should().BeTrue();
+        bucket.TryGetValue(99, out string missing).Should().BeFalse();
+        missing.Should().BeNull();
+        bucket.Exists(static value => value == "missing").Should().BeFalse();
+    }
+
+    [Fact]
+    public void SwiftBucket_ExplicitCollectionAddAndHighInsertUseExpectedSlots()
+    {
+        var bucket = new SwiftBucket<int>(8);
+        ((ICollection<int>)bucket).Add(1);
+
+        bucket.InsertAt(20, 20);
+
+        bucket[0].Should().Be(1);
+        bucket[20].Should().Be(20);
+        bucket.Capacity.Should().BeGreaterThan(8);
+    }
+
+    [Fact]
+    public void SwiftBucket_NonGenericCopyTo_ValidatesShapeCapacityAndType()
+    {
+        var bucket = new SwiftBucket<int>
+        {
+            1,
+            2
+        };
+        Array nonZeroLowerBound = Array.CreateInstance(typeof(int), new[] { 4 }, new[] { 1 });
+
+        Assert.Throws<ArgumentException>(() => ((ICollection)bucket).CopyTo(new int[1, 2], 0));
+        Assert.Throws<ArgumentException>(() => ((ICollection)bucket).CopyTo(nonZeroLowerBound, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => ((ICollection)bucket).CopyTo(new int[2], 3));
+        Assert.Throws<InvalidOperationException>(() => ((ICollection)bucket).CopyTo(new int[1], 0));
+        Assert.Throws<ArgumentException>(() => ((ICollection)bucket).CopyTo(new string[2], 0));
+    }
+
+    [Fact]
     public void EnsureCapacity_ShouldGrowWithoutChangingDenseEntries()
     {
         var bucket = new SwiftBucket<int>

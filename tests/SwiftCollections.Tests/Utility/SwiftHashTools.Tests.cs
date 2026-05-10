@@ -58,6 +58,14 @@ public class SwiftHashToolsTests
     }
 
     [Fact]
+    public void CombineHashCodes_IntOverloadsMatchEquivalentObjectMixing()
+    {
+        Assert.Equal(SwiftHashTools.CombineHashCodes(new object[] { 1, 2 }), SwiftHashTools.CombineHashCodes(1, 2));
+        Assert.Equal(SwiftHashTools.CombineHashCodes(new object[] { 1, 2, 3 }), SwiftHashTools.CombineHashCodes(1, 2, 3));
+        Assert.Equal(SwiftHashTools.CombineHashCodes(new object[] { 1, 2, 3, 4 }), SwiftHashTools.CombineHashCodes(1, 2, 3, 4));
+    }
+
+    [Fact]
     public void DeterministicComparerFactories_ReturnExpectedComparers()
     {
         var defaultStringComparer = SwiftHashTools.GetDeterministicStringEqualityComparer();

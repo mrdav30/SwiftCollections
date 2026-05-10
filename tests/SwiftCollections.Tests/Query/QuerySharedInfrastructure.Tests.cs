@@ -1,4 +1,5 @@
 using SwiftCollections.Diagnostics;
+using System;
 using System.Collections.Generic;
 using Xunit;
 
@@ -106,6 +107,67 @@ public class QuerySharedInfrastructureTests
         Assert.Equal(first.Count, second.Count);
         for (int i = 0; i < first.Count; i++)
             Assert.True(first[i].BoundsEquals(second[i]));
+    }
+
+    [Fact]
+    public void SwiftOctreeOptions_ValidateAndCompareValues()
+    {
+        var options = new SwiftOctreeOptions(3, 2, false);
+        var same = new SwiftOctreeOptions(3, 2, false);
+        var differentDepth = new SwiftOctreeOptions(4, 2, false);
+        var differentCapacity = new SwiftOctreeOptions(3, 3, false);
+        var differentMerge = new SwiftOctreeOptions(3, 2, true);
+
+        Assert.Equal(3, options.MaxDepth);
+        Assert.Equal(2, options.NodeCapacity);
+        Assert.False(options.EnableMergeOnRemove);
+        Assert.True(options.Equals(same));
+        Assert.True(options.Equals((object)same));
+        Assert.False(options.Equals((object)"not options"));
+        Assert.False(options.Equals(differentDepth));
+        Assert.False(options.Equals(differentCapacity));
+        Assert.False(options.Equals(differentMerge));
+        Assert.True(options == same);
+        Assert.True(options != differentDepth);
+        Assert.Equal(options.GetHashCode(), same.GetHashCode());
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SwiftOctreeOptions(-1, 1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SwiftOctreeOptions(1, 0));
+    }
+
+    [Fact]
+    public void SwiftSpatialHashOptions_ValidateAndCompareValues()
+    {
+        var options = new SwiftSpatialHashOptions(2);
+        var same = new SwiftSpatialHashOptions(2);
+        var different = new SwiftSpatialHashOptions(3);
+
+        Assert.Equal(1, SwiftSpatialHashOptions.Default.NeighborhoodPadding);
+        Assert.Equal(2, options.NeighborhoodPadding);
+        Assert.True(options.Equals(same));
+        Assert.True(options.Equals((object)same));
+        Assert.False(options.Equals((object)"not options"));
+        Assert.False(options.Equals(different));
+        Assert.True(options == same);
+        Assert.True(options != different);
+        Assert.Equal(options.GetHashCode(), same.GetHashCode());
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SwiftSpatialHashOptions(-1));
+    }
+
+    [Fact]
+    public void SwiftSpatialHashCellIndex_EqualityOperatorsHashAndStringUseCoordinates()
+    {
+        var cell = new SwiftSpatialHashCellIndex(1, 2, 3);
+        var same = new SwiftSpatialHashCellIndex(1, 2, 3);
+        var different = new SwiftSpatialHashCellIndex(1, 2, 4);
+
+        Assert.True(cell.Equals(same));
+        Assert.True(cell.Equals((object)same));
+        Assert.False(cell.Equals((object)"not a cell"));
+        Assert.True(cell == same);
+        Assert.True(cell != different);
+        Assert.False(cell == different);
+        Assert.Equal(cell.GetHashCode(), same.GetHashCode());
+        Assert.Equal("(1, 2, 3)", cell.ToString());
     }
 
     private readonly struct Entry

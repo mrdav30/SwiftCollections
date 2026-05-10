@@ -19,6 +19,16 @@ public class SwiftDictionaryTests
     }
 
     [Fact]
+    public void MemberNotNullAttribute_ConstructorsStoreMemberNames()
+    {
+        var single = new MemberNotNullAttribute("field");
+        var multiple = new MemberNotNullAttribute("left", "right");
+
+        Assert.Equal(new[] { "field" }, single.Members);
+        Assert.Equal(new[] { "left", "right" }, multiple.Members);
+    }
+
+    [Fact]
     public void Constructor_DefaultStringComparer_UsesDeterministicHashesAcrossInstances()
     {
         var first = new SwiftDictionary<string, int>();
@@ -629,6 +639,14 @@ public class SwiftDictionaryTests
     }
 
     [Fact]
+    public void IDictionary_Add_InvalidValueType_ThrowsArgumentException()
+    {
+        IDictionary dictionary = new SwiftDictionary<int, string>();
+
+        Assert.Throws<ArgumentException>(() => dictionary.Add(1, 42));
+    }
+
+    [Fact]
     public void IDictionary_IndexerSet_AddsAndUpdatesEntries()
     {
         IDictionary dictionary = new SwiftDictionary<int, string>
@@ -707,6 +725,24 @@ public class SwiftDictionaryTests
 
         for (int i = 0; i < 12; i++)
             Assert.Equal($"Value {i}", dictionary[i]);
+    }
+
+    [Fact]
+    public void TrimExcess_RehashesCollidingEntries()
+    {
+        var comparer = new SelectiveIntHashComparer((1, 0), (9, 0), (17, 0));
+        var dictionary = new SwiftDictionary<int, string>(256, comparer)
+        {
+            [1] = "One",
+            [9] = "Nine",
+            [17] = "Seventeen"
+        };
+
+        dictionary.TrimExcess();
+
+        Assert.Equal("One", dictionary[1]);
+        Assert.Equal("Nine", dictionary[9]);
+        Assert.Equal("Seventeen", dictionary[17]);
     }
 
     [Fact]

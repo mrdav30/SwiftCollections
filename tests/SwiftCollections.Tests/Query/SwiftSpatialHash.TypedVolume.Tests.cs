@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Collections.Generic;
 using Xunit;
 
@@ -134,6 +135,79 @@ public class SwiftSpatialHashTypedVolumeTests
         hash.Query(new TestBoundVolume(0, 0, 0, 1, 1, 1), results);
 
         Assert.Equal(32, results.Count);
+    }
+
+    [Fact]
+    public void Clear_RemovesEntriesAndAllowsReuseAfterward()
+    {
+        var hash = new SwiftSpatialHash<int, TestBoundVolume>(2, s_unitCellMapper);
+        hash.Clear();
+        hash.Insert(1, new TestBoundVolume(0, 0, 0, 1, 1, 1));
+        hash.Insert(2, new TestBoundVolume(3, 3, 3, 4, 4, 4));
+
+        hash.Clear();
+
+        var emptyResults = new List<int>();
+        hash.Query(new TestBoundVolume(0, 0, 0, 5, 5, 5), emptyResults);
+        Assert.Empty(emptyResults);
+        Assert.Equal(0, hash.Count);
+
+        Assert.True(hash.Insert(3, new TestBoundVolume(1, 1, 1, 2, 2, 2)));
+        var reusedResults = new List<int>();
+        hash.Query(new TestBoundVolume(0, 0, 0, 3, 3, 3), reusedResults);
+
+        Assert.Single(reusedResults);
+        Assert.Equal(3, reusedResults[0]);
+    }
+
+    [Fact]
+    public void PublicLookupMethods_ReportMissingKeysAndUnchangedUpdates()
+    {
+        var hash = new SwiftSpatialHash<int, TestBoundVolume>(2, s_unitCellMapper);
+        var bounds = new TestBoundVolume(0, 0, 0, 1, 1, 1);
+        hash.Insert(1, bounds);
+
+        Assert.False(hash.Remove(99));
+        Assert.False(hash.UpdateEntryBounds(99, bounds));
+        Assert.True(hash.Contains(1));
+        Assert.False(hash.Contains(99));
+        Assert.False(hash.TryGetBounds(99, out TestBoundVolume missingBounds));
+        Assert.Equal(default, missingBounds);
+        Assert.True(hash.TryGetBounds(1, out TestBoundVolume storedBounds));
+        Assert.Equal(bounds, storedBounds);
+        Assert.True(hash.UpdateEntryBounds(1, bounds));
+    }
+
+    [Fact]
+    public void RemoveThenInsert_ReusesFreedEntrySlot()
+    {
+        var hash = new SwiftSpatialHash<int, TestBoundVolume>(2, s_unitCellMapper);
+        hash.Insert(1, new TestBoundVolume(0, 0, 0, 1, 1, 1));
+
+        Assert.True(hash.Remove(1));
+        Assert.True(hash.Insert(2, new TestBoundVolume(2, 2, 2, 3, 3, 3)));
+
+        var results = new List<int>();
+        hash.Query(new TestBoundVolume(0, 0, 0, 4, 4, 4), results);
+
+        Assert.Single(results);
+        Assert.Equal(2, results[0]);
+    }
+
+    [Fact]
+    public void Query_WhenQueryStampOverflows_ResetsStampsAndContinues()
+    {
+        var hash = new SwiftSpatialHash<int, TestBoundVolume>(2, s_unitCellMapper);
+        hash.Insert(1, new TestBoundVolume(0, 0, 0, 1, 1, 1));
+        typeof(SwiftSpatialHash<int, TestBoundVolume>)
+            .GetField("_queryStamp", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(hash, int.MaxValue);
+
+        var results = new List<int>();
+        hash.Query(new TestBoundVolume(0, 0, 0, 1, 1, 1), results);
+
+        Assert.Single(results);
+        Assert.Equal(1, results[0]);
     }
 
     private sealed class TestBoundVolumeCellMapper : ISpatialHashCellMapper<TestBoundVolume>

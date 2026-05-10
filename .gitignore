@@ -1,5 +1,7 @@
 .vs/
 BenchmarkDotNet.Artifacts/
 artifacts/
-tests/SwiftCollections.Tests/TestResults/
+TestResults/
 .codex
+bin/
+obj/

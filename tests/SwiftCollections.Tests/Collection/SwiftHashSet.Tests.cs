@@ -188,6 +188,14 @@ public class SwiftHashSetTests
     }
 
     [Fact]
+    public void StateGetter_WhenEmpty_ReturnsEmptyState()
+    {
+        var set = new SwiftHashSet<int>();
+
+        Assert.Empty(set.State.Items);
+    }
+
+    [Fact]
     public void Enumerate_ItemsAreIteratedCorrectly()
     {
         var set = new SwiftHashSet<int> { 1, 2, 3 };
@@ -253,6 +261,18 @@ public class SwiftHashSetTests
         set.AddRange(source);
 
         Assert.True(set.SetEquals(new[] { 0, 1, 2, 3 }));
+    }
+
+    [Fact]
+    public void AddRange_WithSelfOrEmptyCollection_DoesNotChangeSet()
+    {
+        var set = new SwiftHashSet<int> { 1, 2 };
+
+        set.AddRange(set);
+        set.AddRange(Array.Empty<int>());
+        ((ICollection<int>)set).Add(3);
+
+        Assert.True(set.SetEquals(new[] { 1, 2, 3 }));
     }
 
     [Fact]
@@ -586,6 +606,19 @@ public class SwiftHashSetTests
 
         for (int i = 0; i < 12; i++)
             Assert.Contains(i, set);
+    }
+
+    [Fact]
+    public void TrimExcess_RehashesCollidingEntries()
+    {
+        var comparer = new SelectiveIntHashComparer((1, 0), (9, 0), (17, 0));
+        var set = new SwiftHashSet<int>(256, comparer) { 1, 9, 17 };
+
+        set.TrimExcess();
+
+        Assert.Contains(1, set);
+        Assert.Contains(9, set);
+        Assert.Contains(17, set);
     }
 
     [Fact]

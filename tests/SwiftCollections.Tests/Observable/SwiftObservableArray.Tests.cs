@@ -23,6 +23,33 @@ public class SwiftObservableArrayTests
     }
 
     [Fact]
+    public void Constructor_ObservableProperties_AssignsIndicesAndSubscribesToChanges()
+    {
+        var properties = new[]
+        {
+            new SwiftObservableProperty<int>(10),
+            new SwiftObservableProperty<int>(20)
+        };
+        var array = new SwiftObservableArray<int>(properties);
+        int eventIndex = -1;
+        int newValue = -1;
+
+        array.ElementChanged += (sender, args) =>
+        {
+            eventIndex = args.Index;
+            newValue = args.NewValue;
+        };
+
+        properties[1].Value = 30;
+
+        Assert.Equal(0, properties[0].Index);
+        Assert.Equal(1, properties[1].Index);
+        Assert.Equal(1, eventIndex);
+        Assert.Equal(30, newValue);
+        Assert.Equal(new[] { 10, 30 }, array.ToArray());
+    }
+
+    [Fact]
     public void Indexer_Get_ReturnsCorrectValue()
     {
         var array = new SwiftObservableArray<int>(5);

@@ -287,6 +287,49 @@ public class SwiftGenerationalBucketTests
         Assert.Equal(30, third);
     }
 
+    [Fact]
+    public void StateConstructor_RestoresGenerationsFreeIndicesAndNormalizesPeak()
+    {
+        var state = new SwiftGenerationalBucketState<int>(
+            new[] { 10 },
+            new[] { true },
+            new uint[] { 7 },
+            new[] { 3 },
+            -1);
+
+        var bucket = new SwiftGenerationalBucket<int>(state);
+
+        SwiftHandle reused = bucket.Add(40);
+
+        Assert.Equal(3, reused.Index);
+        Assert.True(bucket.TryGet(new SwiftHandle(0, 7), out int first));
+        Assert.Equal(10, first);
+        Assert.True(bucket.TryGet(reused, out int added));
+        Assert.Equal(40, added);
+    }
+
+    [Fact]
+    public void StateConstructor_ClampsLargePeakAndRejectsOutOfRangeFreeIndex()
+    {
+        var largePeakState = new SwiftGenerationalBucketState<int>(
+            new[] { 10 },
+            new[] { true },
+            new uint[] { 7 },
+            Array.Empty<int>(),
+            999);
+        var invalidFreeState = new SwiftGenerationalBucketState<int>(
+            new[] { 10 },
+            new[] { true },
+            new uint[] { 7 },
+            new[] { 99 },
+            1);
+
+        var bucket = new SwiftGenerationalBucket<int>(largePeakState);
+
+        Assert.Equal(bucket.Capacity, bucket.State.Peak);
+        Assert.Throws<ArgumentException>(() => new SwiftGenerationalBucket<int>(invalidFreeState));
+    }
+
     #endregion
 
     #region Edge Cases

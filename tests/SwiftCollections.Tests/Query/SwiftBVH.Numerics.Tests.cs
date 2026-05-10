@@ -144,6 +144,36 @@ namespace SwiftCollections.Query.Tests
         }
 
         [Fact]
+        public void BoundVolume_Intersects_ReturnsFalseForEachSeparatedAxis()
+        {
+            var volume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+
+            Assert.False(volume.Intersects(new BoundVolume(new Vector3(2, 0, 0), new Vector3(3, 1, 1))));
+            Assert.False(volume.Intersects(new BoundVolume(new Vector3(-3, 0, 0), new Vector3(-2, 1, 1))));
+            Assert.False(volume.Intersects(new BoundVolume(new Vector3(0, 2, 0), new Vector3(1, 3, 1))));
+            Assert.False(volume.Intersects(new BoundVolume(new Vector3(0, -3, 0), new Vector3(1, -2, 1))));
+            Assert.False(volume.Intersects(new BoundVolume(new Vector3(0, 0, 2), new Vector3(1, 1, 3))));
+            Assert.False(volume.Intersects(new BoundVolume(new Vector3(0, 0, -3), new Vector3(1, 1, -2))));
+        }
+
+        [Fact]
+        public void BoundVolume_GetCost_ClampsHugeExpansionAndEqualityOperatorsCompareBounds()
+        {
+            var volume = new BoundVolume(Vector3.Zero, Vector3.One);
+            var same = new BoundVolume(Vector3.Zero, Vector3.One);
+            var different = new BoundVolume(Vector3.One, new Vector3(2, 2, 2));
+            var huge = new BoundVolume(Vector3.Zero, new Vector3(float.MaxValue, float.MaxValue, float.MaxValue));
+
+            Assert.Equal(long.MaxValue, volume.GetCost(huge));
+            Assert.True(volume == same);
+            Assert.False(volume != same);
+            Assert.False(volume == different);
+            Assert.True(volume != different);
+            Assert.False(volume.Equals((object)"not a volume"));
+            Assert.Equal(volume.GetHashCode(), same.GetHashCode());
+        }
+
+        [Fact]
         public void BoundVolume_MetadataProperties_AreCalculatedLazilyAndCorrectly()
         {
             var volume = new BoundVolume(new Vector3(2, 4, 6), new Vector3(6, 10, 14));

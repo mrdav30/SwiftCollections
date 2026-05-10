@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Xunit;
 
@@ -90,6 +91,61 @@ public class SwiftOctreeTypedVolumeTests
 
         Assert.Single(results);
         Assert.Equal(1, results[0]);
+    }
+
+    [Fact]
+    public void Subdivide_KeepsExistingSpanningEntryAtParent()
+    {
+        var octree = CreateTypedOctree(new SwiftOctreeOptions(4, 1), 1f);
+        octree.Insert(1, new TestBoundVolume(15, 1, 1, 17, 2, 2));
+        octree.Insert(2, new TestBoundVolume(1, 1, 1, 2, 2, 2));
+
+        var results = new List<int>();
+        octree.Query(new TestBoundVolume(14, 0, 0, 18, 3, 3), results);
+
+        Assert.True(octree.DebugRootHasChildren);
+        Assert.Single(results);
+        Assert.Equal(1, results[0]);
+    }
+
+    [Fact]
+    public void PublicLookupMethods_ReportMissingKeysAndUnchangedUpdates()
+    {
+        var octree = CreateTypedOctree(new SwiftOctreeOptions(4, 1), 1f);
+        var bounds = new TestBoundVolume(1, 1, 1, 2, 2, 2);
+        octree.Insert(1, bounds);
+
+        Assert.False(octree.Remove(99));
+        Assert.False(octree.UpdateEntryBounds(99, bounds));
+        Assert.False(octree.TryGetBounds(99, out TestBoundVolume missingBounds));
+        Assert.Equal(default, missingBounds);
+        Assert.True(octree.TryGetBounds(1, out TestBoundVolume storedBounds));
+        Assert.Equal(bounds, storedBounds);
+        Assert.True(octree.UpdateEntryBounds(1, bounds));
+        Assert.False(octree.Contains(99));
+    }
+
+    [Fact]
+    public void Query_WhenEmptyOrOutsideWorld_ReturnsNoResults()
+    {
+        var octree = CreateTypedOctree(new SwiftOctreeOptions(4, 1), 1f);
+        var results = new List<int>();
+
+        octree.Query(new TestBoundVolume(0, 0, 0, 2, 2, 2), results);
+        octree.Insert(1, new TestBoundVolume(1, 1, 1, 2, 2, 2));
+        octree.Query(new TestBoundVolume(40, 40, 40, 42, 42, 42), results);
+
+        Assert.Empty(results);
+    }
+
+    [Fact]
+    public void InsertOrUpdate_WithBoundsOutsideWorld_Throws()
+    {
+        var octree = CreateTypedOctree(new SwiftOctreeOptions(4, 1), 1f);
+        octree.Insert(1, new TestBoundVolume(1, 1, 1, 2, 2, 2));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => octree.Insert(2, new TestBoundVolume(-1, 0, 0, 1, 1, 1)));
+        Assert.Throws<ArgumentOutOfRangeException>(() => octree.UpdateEntryBounds(1, new TestBoundVolume(0, 0, 0, 40, 1, 1)));
     }
 
     [Fact]
