@@ -232,7 +232,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            if ((uint)index >= (uint)_count) throw new ArgumentOutOfRangeException(nameof(index));
+            SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count, nameof(index));
             return _innerArray[GetPhysicalIndex(index)];
         }
     }
@@ -303,7 +303,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// </summary>
     private void Insert(T item, int index)
     {
-        if ((uint)index > (uint)_count) throw new ArgumentOutOfRangeException(nameof(index));
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(index, _count, nameof(index));
         if (_offset + _count + 1 > _innerArray.Length)
             Resize(_innerArray.Length * 2);
 
@@ -435,7 +435,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <returns>The minimum element.</returns>
     public T PopMin()
     {
-        if ((uint)_count == 0) throw new IndexOutOfRangeException();
+        SwiftThrowHelper.ThrowIfTrue((uint)_count == 0, message: "Cannot pop from an empty list.");
 
         int index = GetPhysicalIndex(0);
         T ret = _innerArray[index];
@@ -455,7 +455,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <returns>The maximum element.</returns>
     public T PopMax()
     {
-        if ((uint)_count == 0) throw new IndexOutOfRangeException();
+        SwiftThrowHelper.ThrowIfTrue((uint)_count == 0, message: "Cannot pop from an empty list.");
 
         int index = GetPhysicalIndex(--_count);
         T ret = _innerArray[index];
@@ -487,7 +487,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <param name="index">The zero-based arrayIndex of the element to remove.</param>
     public void RemoveAt(int index)
     {
-        if ((uint)index >= (uint)_count) throw new ArgumentOutOfRangeException(nameof(index));
+        SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count, nameof(index));
 
         int physicalIndex = GetPhysicalIndex(index);
 
@@ -638,7 +638,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <returns>The minimum element.</returns>
     public T PeekMin()
     {
-        if ((uint)_count == 0) throw new IndexOutOfRangeException();
+        SwiftThrowHelper.ThrowIfTrue((uint)_count == 0, message: "Cannot peek from an empty list.");
         return _innerArray[GetPhysicalIndex(0)];
     }
 
@@ -649,7 +649,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T PeekMax()
     {
-        if ((uint)_count == 0) throw new IndexOutOfRangeException();
+        SwiftThrowHelper.ThrowIfTrue((uint)_count == 0, message: "Cannot peek from an empty list.");
         return _innerArray[GetPhysicalIndex(_count - 1)];
     }
 
@@ -750,8 +750,8 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     public void CopyTo(T[] array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
-        if (array.Length - arrayIndex < _count) throw new ArgumentException("The target array is too small.", nameof(array));
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, nameof(arrayIndex));
+        SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _count, message: "The target array is too small.");
 
         Array.Copy(_innerArray, _offset, array, arrayIndex, _count);
     }
@@ -760,9 +760,9 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     public void CopyTo(Array array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
-        if (array.Length - arrayIndex < _count) throw new ArgumentException("The target array is too small.", nameof(array));
-
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, nameof(arrayIndex));
+        SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _count, message: "The target array is too small.");
+ 
         Array.Copy(_innerArray, _offset, array, arrayIndex, _count);
     }
 
@@ -822,7 +822,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                if ((uint)_index > _count) throw new InvalidOperationException("Bad enumeration");
+                SwiftThrowHelper.ThrowIfTrue((uint)_index > _count, message: "Enumerator is past the end of the collection.");
                 return _current!;
             }
 
@@ -832,8 +832,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
-            if (_version != _list._version)
-                throw new InvalidOperationException("Enumerator modified outside of enumeration!");
+            SwiftThrowHelper.ThrowIfTrue(_version != _list._version, message: "Enumerator modified outside of enumeration!");
 
             if (_index < _count)
             {
@@ -850,8 +849,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         /// <inheritdoc/>
         public void Reset()
         {
-            if (_version != _list._version)
-                throw new InvalidOperationException("Enumerator modified outside of enumeration!");
+            SwiftThrowHelper.ThrowIfTrue(_version != _list._version, message: "Enumerator modified outside of enumeration!");
 
             _index = 0;
             _current = default!;

@@ -356,8 +356,7 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
         /// <inheritdoc/>
         public bool MoveNext()
         {
-            if (_version != _set._version)
-                throw new InvalidOperationException("Collection modified during enumeration");
+            SwiftThrowHelper.ThrowIfTrue(_version != _set._version, message: "Collection was modified during enumeration.");
 
             int next = _index + 1;
             if (next >= _set._count)
@@ -374,8 +373,7 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
         /// <inheritdoc/>
         public void Reset()
         {
-            if (_version != _set._version)
-                throw new InvalidOperationException("Collection modified during enumeration");
+            SwiftThrowHelper.ThrowIfTrue(_version != _set._version, message: "Collection was modified during enumeration.");
 
             _index = -1;
             Current = default!;
@@ -404,8 +402,8 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     public void CopyTo(T[] array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
-        if (array.Length - arrayIndex < _count) throw new ArgumentException("Destination array is not long enough.", nameof(array));
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
+        SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _count, message: "Destination array is not long enough.");
 
         Array.Copy(_dense, 0, array, arrayIndex, _count);
     }

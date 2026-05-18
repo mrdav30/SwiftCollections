@@ -456,8 +456,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
             return;
 
         long requiredCount = (long)_count + incomingCount;
-        if (requiredCount > int.MaxValue)
-            throw new InvalidOperationException("The collection is too large.");
+        SwiftThrowHelper.ThrowIfTrue(requiredCount > int.MaxValue, message: "The collection is too large.");
 
         double minimumCapacity = Math.Ceiling(requiredCount / (double)_LoadFactorThreshold);
         EnsureCapacity(minimumCapacity >= int.MaxValue ? int.MaxValue : (int)minimumCapacity);
@@ -664,8 +663,8 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     public void CopyTo(T[] array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
-        if (array.Length - arrayIndex < _count) throw new InvalidOperationException("The array is not large enough to hold the elements.");
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
+        SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _count, message: "The array is not large enough to hold the elements.");
 
         for (uint i = 0; i <= (uint)_lastIndex; i++)
         {
@@ -809,7 +808,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
         {
             get
             {
-                if (_index > (uint)_set._lastIndex) throw new InvalidOperationException("Bad enumeration");
+                SwiftThrowHelper.ThrowIfTrue(_index > (uint)_set._lastIndex, message: "Enumeration has either not started or has already finished.");
                 return _current;
             }
         }
@@ -817,8 +816,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
         /// <inheritdoc/>
         public bool MoveNext()
         {
-            if (_version != _set._version)
-                throw new InvalidOperationException("Collection was modified during enumeration.");
+            SwiftThrowHelper.ThrowIfTrue(_version != _set._version, message: "Collection was modified during enumeration.");
 
             uint last = (uint)_set._lastIndex;
             while (++_index <= last)
@@ -837,8 +835,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
         /// <inheritdoc/>
         public void Reset()
         {
-            if (_version != _set._version)
-                throw new InvalidOperationException("Collection was modified during enumeration.");
+            SwiftThrowHelper.ThrowIfTrue(_version != _set._version, message: "Collection was modified during enumeration.");
 
             _index = -1;
             _current = default!;

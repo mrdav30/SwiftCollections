@@ -140,7 +140,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
 
     /// <summary>
     /// Gets or sets the element at the specified arrayIndex.
-    /// Throws <see cref="ArgumentOutOfRangeException"/> if the arrayIndex is invalid or unallocated.
+    /// Throws <see cref="InvalidOperationException"/> if the arrayIndex is invalid or unallocated.
     /// </summary>
     /// <param name="index">The zero-based arrayIndex of the element to get or set.</param>
     [JsonIgnore]
@@ -150,13 +150,13 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            if (!IsAllocated(index)) throw new ArgumentOutOfRangeException(nameof(index));
+            SwiftThrowHelper.ThrowIfTrue(!IsAllocated(index), nameof(index), message: "Index is out of range or unallocated.");
             return _innerArray[index].Value;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set
         {
-            if (!IsAllocated(index)) throw new ArgumentOutOfRangeException(nameof(index));
+            SwiftThrowHelper.ThrowIfTrue(!IsAllocated(index), nameof(index), message: "Index is out of range or unallocated.");
             _innerArray[index].Value = value;
             _version++;
         }
@@ -244,8 +244,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
 
             foreach (var index in freeIndices)
             {
-                if ((uint)index >= (uint)capacity)
-                    throw new InvalidOperationException("Free index is out of range.");
+                SwiftThrowHelper.ThrowIfTrue((uint)index >= (uint)capacity, message: "Free index is out of range.");
 
                 _freeIndices.Push(index);
                 if (index > maxReferencedIndex)
@@ -590,8 +589,8 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     public void CopyTo(T[] array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
-        if (array.Length - arrayIndex < _count) throw new InvalidOperationException("The array is not large enough to hold the elements.");
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
+        SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _count, message: "The array is not large enough to hold the elements.");
 
         uint count = 0;
         for (uint i = 0; i < (uint)_peakCount && count < (uint)_count; i++)
@@ -607,10 +606,10 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     void ICollection.CopyTo(Array array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        if ((uint)array.Rank != 1) throw new ArgumentException("Array must be single dimensional.");
-        if ((uint)array.GetLowerBound(0) != 0) throw new ArgumentException("Array must have zero-based indexing.");
-        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
-        if (array.Length - arrayIndex < _count) throw new InvalidOperationException("The array is not large enough to hold the elements.");
+        SwiftThrowHelper.ThrowIfTrue((uint)array.Rank != 1, message: "Array must be single dimensional.");
+        SwiftThrowHelper.ThrowIfTrue((uint)array.GetLowerBound(0) != 0, message: "Array must have zero-based indexing.");
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
+        SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _count, message: "The array is not large enough to hold the elements.");
 
         try
         {
@@ -692,7 +691,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
         {
             get
             {
-                if (_index > (uint)_bucket._count) throw new InvalidOperationException("Bad enumeration");
+                SwiftThrowHelper.ThrowIfTrue(_index > (uint)_bucket._count, message: "Enumerator is before the first element or after the last element.");
                 return _current!;
             }
         }
@@ -701,9 +700,8 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
-            if (_version != _bucket._version)
-                throw new InvalidOperationException("Enumerator modified outside of enumeration!");
-
+            SwiftThrowHelper.ThrowIfTrue(_version != _bucket._version, message: "Enumerator modified outside of enumeration!");
+            
             uint count = (uint)_bucket._peakCount;
             while (++_index < count)
             {
@@ -719,8 +717,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
         /// <inheritdoc/>
         public void Reset()
         {
-            if (_version != _bucket._version)
-                throw new InvalidOperationException("Enumerator modified outside of enumeration!");
+            SwiftThrowHelper.ThrowIfTrue(_version != _bucket._version, message: "Enumerator modified outside of enumeration!");
 
             _index = -1;
             _current = default!;

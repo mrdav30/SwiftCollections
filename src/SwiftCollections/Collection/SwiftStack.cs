@@ -172,13 +172,13 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            SwiftThrowHelper.ThrowIfIndexInvalid(index, _count);
+            SwiftThrowHelper.ThrowIfArrayIndexInvalid(index, _count);
             return _innerArray[index];
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set
         {
-            SwiftThrowHelper.ThrowIfIndexInvalid(index, _count);
+            SwiftThrowHelper.ThrowIfArrayIndexInvalid(index, _count);
             _innerArray[index] = value;
         }
     }
@@ -276,7 +276,7 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Pop()
     {
-        if ((uint)_count == 0) throw new InvalidOperationException("Stack is empty.");
+        SwiftThrowHelper.ThrowIfTrue((uint)_count == 0, message: "Stack is empty.");
         T item = _innerArray[--_count];
         if (_clearReleasedSlots)
             _innerArray[_count] = default!;
@@ -369,7 +369,7 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Peek()
     {
-        if ((uint)_count == 0) throw new InvalidOperationException("Stack is empty.");
+        SwiftThrowHelper.ThrowIfTrue((uint)_count == 0, message: "Stack is empty.");
         return _innerArray[_count - 1];
     }
 
@@ -412,8 +412,8 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     public void CopyTo(T[] array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException();
-        if ((uint)(array.Length - arrayIndex) < (uint)_count) throw new ArgumentException("Destination array is not long enough.");
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
+        SwiftThrowHelper.ThrowIfTrue((uint)(array.Length - arrayIndex) < (uint)_count, message: "Destination array is not long enough.");
 
         Array.Copy(_innerArray, 0, array, arrayIndex, _count);
     }
@@ -424,8 +424,7 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// <param name="destination">The destination span.</param>
     public void CopyTo(Span<T> destination)
     {
-        if (destination.Length < _count)
-            throw new ArgumentException("Destination span is not long enough.", nameof(destination));
+        SwiftThrowHelper.ThrowIfTrue(destination.Length < _count, message: "Destination span is not long enough.");
 
         AsSpan().CopyTo(destination);
     }
@@ -434,10 +433,10 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     public void CopyTo(Array array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        if ((uint)array.Rank != 1) throw new ArgumentException("Array must be single dimensional.");
-        if ((uint)array.GetLowerBound(0) != 0) throw new ArgumentException("Array must have zero-based indexing.");
-        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException();
-        if ((uint)(array.Length - arrayIndex) < _count) throw new ArgumentException("Destination array is not long enough.");
+        SwiftThrowHelper.ThrowIfTrue(array.Rank != 1, message: "Array must be single dimensional.");
+        SwiftThrowHelper.ThrowIfTrue(array.GetLowerBound(0) != 0, message: "Array must have zero-based indexing.");
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
+        SwiftThrowHelper.ThrowIfTrue((uint)(array.Length - arrayIndex) < (uint)_count, message: "Destination array is not long enough.");
 
         try
         {
@@ -549,7 +548,7 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
         {
             get
             {
-                if ((uint)_index > _count) throw new InvalidOperationException("Bad enumeration");
+                SwiftThrowHelper.ThrowIfTrue((uint)_index > _count, message: "Bad enumeration");
                 return _current!;
             }
         }
@@ -558,8 +557,7 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
-            if (_version != _stack._version)
-                throw new InvalidOperationException("Enumerator modified outside of enumeration!");
+            SwiftThrowHelper.ThrowIfTrue(_version != _stack._version, message: "Enumerator modified outside of enumeration!");
 
             if (_index == -2)
             {
@@ -584,8 +582,7 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
         /// <inheritdoc/>
         public void Reset()
         {
-            if (_version != _stack._version)
-                throw new InvalidOperationException("Enumerator modified outside of enumeration!");
+            SwiftThrowHelper.ThrowIfTrue(_version != _stack._version, message: "Enumerator modified outside of enumeration!");
 
             _index = -2;
             _current = default!;

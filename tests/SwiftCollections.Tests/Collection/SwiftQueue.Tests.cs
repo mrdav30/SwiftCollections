@@ -680,8 +680,8 @@ public class SwiftQueueTests
 
         Array nonZeroLowerBound = Array.CreateInstance(typeof(int), new[] { 4 }, new[] { 1 });
 
-        Assert.Throws<ArgumentException>(() => queue.CopyTo(new int[1, 2], 0));
-        Assert.Throws<ArgumentException>(() => queue.CopyTo(nonZeroLowerBound, 0));
+        Assert.Throws<InvalidOperationException>(() => queue.CopyTo(new int[1, 2], 0));
+        Assert.Throws<InvalidOperationException>(() => queue.CopyTo(nonZeroLowerBound, 0));
         Assert.Throws<ArgumentException>(() => queue.CopyTo(new string[2], 0));
     }
 
@@ -691,8 +691,8 @@ public class SwiftQueueTests
         var queue = new SwiftQueue<int>();
         queue.EnqueueRange(new[] { 1, 2 });
 
-        Assert.Throws<ArgumentException>(() => queue.CopyTo(new int[1], 0));
-        Assert.Throws<ArgumentException>(() => queue.CopyTo(new int[1].AsSpan()));
+        Assert.Throws<InvalidOperationException>(() => queue.CopyTo(new int[1], 0));
+        Assert.Throws<InvalidOperationException>(() => queue.CopyTo(new int[1].AsSpan()));
     }
 
     [Fact]

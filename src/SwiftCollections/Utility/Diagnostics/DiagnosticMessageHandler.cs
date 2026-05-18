@@ -91,9 +91,7 @@ public ref struct DiagnosticMessageHandler<TLevel>
         DiagnosticLevel level,
         out bool isEnabled)
     {
-        if (channel == null)
-            throw new ArgumentNullException(nameof(channel));
-
+        SwiftThrowHelper.ThrowIfNull(channel, nameof(channel));
         _message = new DiagnosticInterpolatedStringHandler(literalLength, formattedCount, channel, level, out isEnabled);
     }
 

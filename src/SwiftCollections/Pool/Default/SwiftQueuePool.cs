@@ -43,8 +43,7 @@ public sealed class SwiftQueuePool<T> : SwiftCollectionPool<SwiftQueue<T>, T>, I
     /// <returns>A <see cref="SwiftQueue{T}"/> instance.</returns>
     public override SwiftQueue<T> Rent()
     {
-        if (_disposed)
-            throw new ObjectDisposedException(nameof(SwiftQueuePool<T>));
+        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftQueuePool<T>));
 
         return base.Rent();
     }
@@ -58,8 +57,7 @@ public sealed class SwiftQueuePool<T> : SwiftCollectionPool<SwiftQueue<T>, T>, I
     /// </remarks>
     public override void Release(SwiftQueue<T> queue)
     {
-        if (_disposed)
-            throw new ObjectDisposedException(nameof(SwiftQueuePool<T>));
+        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftQueuePool<T>));
 
         if (queue == null) return;
 
@@ -73,7 +71,6 @@ public sealed class SwiftQueuePool<T> : SwiftCollectionPool<SwiftQueue<T>, T>, I
     public override void Clear()
     {
         if (_disposed) return;
-
         base.Clear();
     }
 
@@ -87,8 +84,7 @@ public sealed class SwiftQueuePool<T> : SwiftCollectionPool<SwiftQueue<T>, T>, I
     /// </summary>
     public void Dispose()
     {
-        if (_disposed)
-            return;
+        if (_disposed) return;
 
         Clear();
         base.Flush();

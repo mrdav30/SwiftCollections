@@ -42,7 +42,7 @@ public class SwiftBucketTests
         // Assert
         bucket.Count.Should().Be(0);
         Action act = () => { var item = bucket[index]; };
-        act.Should().Throw<ArgumentOutOfRangeException>();
+        act.Should().Throw<InvalidOperationException>();
     }
 
     [Fact]
@@ -135,7 +135,7 @@ public class SwiftBucketTests
         Action act = () => { var item = bucket[5]; };
 
         // Assert
-        act.Should().Throw<ArgumentOutOfRangeException>();
+        act.Should().Throw<InvalidOperationException>();
     }
 
     [Fact]
@@ -191,7 +191,7 @@ public class SwiftBucketTests
         // Assert
         bucket.Count.Should().Be(0);
         Action act = () => { var item = bucket[0]; };
-        act.Should().Throw<ArgumentOutOfRangeException>();
+        act.Should().Throw<InvalidOperationException>();
     }
 
     [Fact]
@@ -575,9 +575,9 @@ public class SwiftBucketTests
         };
         Array nonZeroLowerBound = Array.CreateInstance(typeof(int), new[] { 4 }, new[] { 1 });
 
-        Assert.Throws<ArgumentException>(() => ((ICollection)bucket).CopyTo(new int[1, 2], 0));
-        Assert.Throws<ArgumentException>(() => ((ICollection)bucket).CopyTo(nonZeroLowerBound, 0));
-        Assert.Throws<ArgumentOutOfRangeException>(() => ((ICollection)bucket).CopyTo(new int[2], 3));
+        Assert.Throws<InvalidOperationException>(() => ((ICollection)bucket).CopyTo(new int[1, 2], 0));
+        Assert.Throws<InvalidOperationException>(() => ((ICollection)bucket).CopyTo(nonZeroLowerBound, 0));
+        Assert.Throws<IndexOutOfRangeException>(() => ((ICollection)bucket).CopyTo(new int[2], 3));
         Assert.Throws<InvalidOperationException>(() => ((ICollection)bucket).CopyTo(new int[1], 0));
         Assert.Throws<ArgumentException>(() => ((ICollection)bucket).CopyTo(new string[2], 0));
     }

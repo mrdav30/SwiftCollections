@@ -132,7 +132,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     /// </remarks>
     /// <param name="key">The key whose value to get or set. Cannot be null.</param>
     /// <returns>The value associated with the specified key.</returns>
-    /// <exception cref="ArgumentException">Thrown when the specified value already exists in the collection.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the specified value already exists in the collection.</exception>
     [JsonIgnore]
     [MemoryPackIgnore]
     public new T2 this[T1 key]
@@ -151,8 +151,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
                         return;
 
                     // Prevent duplicate values
-                    if (_reverseMap.ContainsKey(value))
-                        throw new ArgumentException("Value already exists", nameof(value));
+                    SwiftThrowHelper.ThrowIfTrue(_reverseMap.ContainsKey(value), objectName: nameof(value), message: "Value already exists");
 
                     // Remove old reverse mapping
                     _reverseMap.Remove(oldValue);
@@ -169,8 +168,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
                 else
                 {
                     // New insert
-                    if (_reverseMap.ContainsKey(value))
-                        throw new ArgumentException("Value already exists", nameof(value));
+                    SwiftThrowHelper.ThrowIfTrue(_reverseMap.ContainsKey(value), objectName: nameof(value), message: "Value already exists");
 
                     CheckLoadThreshold();
 

@@ -220,14 +220,14 @@ public class SwiftSortedListTests
     public void PopMin_OnEmpty_ShouldThrowException()
     {
         var sorter = new SwiftSortedList<int>();
-        Assert.Throws<IndexOutOfRangeException>(() => sorter.PopMin());
+        Assert.Throws<InvalidOperationException>(() => sorter.PopMin());
     }
 
     [Fact]
     public void PopMax_OnEmpty_ShouldThrowException()
     {
         var sorter = new SwiftSortedList<int>();
-        Assert.Throws<IndexOutOfRangeException>(() => sorter.PopMax());
+        Assert.Throws<InvalidOperationException>(() => sorter.PopMax());
     }
 
     #endregion
@@ -262,14 +262,14 @@ public class SwiftSortedListTests
     public void PeekMin_OnEmpty_ShouldThrowException()
     {
         var sorter = new SwiftSortedList<int>();
-        Assert.Throws<IndexOutOfRangeException>(() => sorter.PeekMin());
+        Assert.Throws<InvalidOperationException>(() => sorter.PeekMin());
     }
 
     [Fact]
     public void PeekMax_OnEmpty_ShouldThrowException()
     {
         var sorter = new SwiftSortedList<int>();
-        Assert.Throws<IndexOutOfRangeException>(() => sorter.PeekMax());
+        Assert.Throws<InvalidOperationException>(() => sorter.PeekMax());
     }
 
     #endregion
@@ -616,7 +616,7 @@ public class SwiftSortedListTests
     {
         var sorter = new SwiftSortedList<int> { 1, 2, 3 };
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => _ = sorter[3]);
+        Assert.Throws<IndexOutOfRangeException>(() => _ = sorter[3]);
     }
 
     [Fact]
@@ -665,8 +665,8 @@ public class SwiftSortedListTests
     {
         var sorter = new SwiftSortedList<int> { 1, 2, 3 };
 
-        Assert.Throws<ArgumentException>(() => sorter.CopyTo(new int[2], 0));
-        Assert.Throws<ArgumentException>(() => sorter.CopyTo(new object[2], 0));
+        Assert.Throws<InvalidOperationException>(() => sorter.CopyTo(new int[2], 0));
+        Assert.Throws<InvalidOperationException>(() => sorter.CopyTo(new object[2], 0));
     }
 
     [Fact]

@@ -275,8 +275,7 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
     {
         foreach (var index in freeIndices)
         {
-            if ((uint)index >= (uint)capacity)
-                throw new ArgumentException("Free index is out of range.");
+            SwiftThrowHelper.ThrowIfArrayIndexInvalid(index, capacity, message: "Free index is out of range.");
 
             _freeIndices.Push(index);
             if (index > maxReferencedIndex)
@@ -380,8 +379,7 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
     {
         ref Entry entry = ref _entries[handle.Index];
 
-        if (!entry.IsUsed || entry.Generation != handle.Generation)
-            throw new InvalidOperationException("Invalid handle");
+        SwiftThrowHelper.ThrowIfTrue(!entry.IsUsed || entry.Generation != handle.Generation, message: "Invalid handle");
 
         return ref entry.Value;
     }
@@ -582,8 +580,7 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
         /// <inheritdoc/>
         public bool MoveNext()
         {
-            if (_version != _bucket._version)
-                throw new InvalidOperationException("Collection modified");
+            SwiftThrowHelper.ThrowIfTrue(_version != _bucket._version, message: "Collection modified");
 
             uint peak = (uint)_bucket._peak;
             while (++_index < peak)

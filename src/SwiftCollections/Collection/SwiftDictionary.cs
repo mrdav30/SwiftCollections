@@ -817,8 +817,8 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
-        if (array.Length - arrayIndex < _count) throw new ArgumentException("Insufficient space", nameof(array));
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
+        SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _count, nameof(array), message: "Insufficient space in the target array.");
 
         for (uint i = 0; i <= (uint)_lastIndex; i++)
         {
@@ -831,10 +831,10 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     public void CopyTo(Array array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        if (array.Rank != 1) throw new ArgumentException("Multidimensional array not supported", nameof(array));
-        if (array.GetLowerBound(0) != 0) throw new ArgumentException("Non-zero lower bound", nameof(array));
-        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
-        if (array.Length - arrayIndex < _count) throw new ArgumentException("Insufficient space", nameof(array));
+        SwiftThrowHelper.ThrowIfTrue(array.Rank != 1, nameof(array), message: "Multidimensional array not supported");
+        SwiftThrowHelper.ThrowIfTrue(array.GetLowerBound(0) != 0, nameof(array), message: "Non-zero lower bound");
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
+        SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _count, nameof(array), message: "Insufficient space in the target array.");
 
         if (array is KeyValuePair<TKey, TValue>[] pairs)
             ((ICollection<KeyValuePair<TKey, TValue>>)this).CopyTo(pairs, arrayIndex);
@@ -1002,7 +1002,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         {
             get
             {
-                if (_index > (uint)_dictionary._lastIndex) throw new InvalidOperationException("Bad enumeration");
+                SwiftThrowHelper.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
                 return _current.Key;
             }
         }
@@ -1011,7 +1011,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         {
             get
             {
-                if (_index > (uint)_dictionary._lastIndex) throw new InvalidOperationException("Bad enumeration");
+                SwiftThrowHelper.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
                 return _current.Value!;
             }
         }
@@ -1020,7 +1020,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         {
             get
             {
-                if (_index > (uint)_dictionary._lastIndex) throw new InvalidOperationException("Bad enumeration");
+                SwiftThrowHelper.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
                 return new DictionaryEntry(_current.Key, _current.Value);
             }
         }
@@ -1032,7 +1032,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         {
             get
             {
-                if (_index > (uint)_dictionary._lastIndex) throw new InvalidOperationException("Bad enumeration");
+                SwiftThrowHelper.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
                 return _returnEntry
                     ? new DictionaryEntry(_current.Key, _current.Value)
                     : new KeyValuePair<TKey, TValue>(_current.Key, _current.Value);
@@ -1042,8 +1042,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         /// <inheritdoc/>
         public bool MoveNext()
         {
-            if (_version != _dictionary._version)
-                throw new InvalidOperationException("Enumerator modified outside of enumeration!");
+            SwiftThrowHelper.ThrowIfTrue(_version != _dictionary._version, message: "Enumerator modified outside of enumeration!");
 
             while (++_index <= (uint)_dictionary._lastIndex)
             {
@@ -1061,8 +1060,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         /// <inheritdoc/>
         public void Reset()
         {
-            if (_version != _dictionary._version)
-                throw new InvalidOperationException("Enumerator modified outside of enumeration!");
+            SwiftThrowHelper.ThrowIfTrue(_version != _dictionary._version, message: "Enumerator modified outside of enumeration!");
 
             _index = -1;
             _current = default;
@@ -1092,7 +1090,8 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         /// <exception cref="ArgumentNullException">The dictionary is null.</exception>
         public KeyCollection(SwiftDictionary<TKey, TValue> dictionary)
         {
-            _dictionary = dictionary ?? throw new ArgumentNullException(nameof(dictionary));
+            SwiftThrowHelper.ThrowIfNull(dictionary, nameof(dictionary));
+            _dictionary = dictionary;
             _entries = dictionary._entries;
         }
 
@@ -1117,8 +1116,8 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         public void CopyTo(TKey[] array, int arrayIndex)
         {
             SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-            if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
-            if (array.Length - arrayIndex < _dictionary._count) throw new ArgumentException("Insufficient space", nameof(array));
+            SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
+            SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _dictionary._count, nameof(array),  message: "Insufficient space in the target array.");
 
             for (int i = 0, j = arrayIndex; i < _entries.Length; i++)
             {
@@ -1130,10 +1129,10 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         void ICollection.CopyTo(Array array, int arrayIndex)
         {
             SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-            if (array.Rank != 1) throw new ArgumentException("Multidimensional array not supported");
-            if (array.GetLowerBound(0) != 0) throw new ArgumentException("Non-zero lower bound");
-            if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
-            if (array.Length - arrayIndex < _dictionary._count) throw new ArgumentException("Insufficient space", nameof(array));
+            SwiftThrowHelper.ThrowIfTrue(array.Rank != 1, nameof(array), message: "Multidimensional array not supported");
+            SwiftThrowHelper.ThrowIfTrue(array.GetLowerBound(0) != 0, nameof(array), message: "Non-zero lower bound");
+            SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
+            SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _dictionary._count, nameof(array), message: "Insufficient space in the target array.");
 
             if (array is TKey[] keysArray)
                 CopyTo(keysArray, arrayIndex);
@@ -1199,7 +1198,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
             {
                 get
                 {
-                    if (_index > (uint)_dictionary._lastIndex) throw new InvalidOperationException("Bad enumeration");
+                    SwiftThrowHelper.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
                     return _currentKey;
                 }
             }
@@ -1207,8 +1206,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
             /// <inheritdoc/>
             public bool MoveNext()
             {
-                if (_version != _dictionary._version)
-                    throw new InvalidOperationException("Enumerator modified outside of enumeration!");
+                SwiftThrowHelper.ThrowIfTrue(_version != _dictionary._version, message: "Enumerator modified outside of enumeration!");
 
                 while (++_index <= (uint)_dictionary._lastIndex)
                 {
@@ -1226,8 +1224,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
             /// <inheritdoc/>
             public void Reset()
             {
-                if (_version != _dictionary._version)
-                    throw new InvalidOperationException("Enumerator modified outside of enumeration!");
+                SwiftThrowHelper.ThrowIfTrue(_version != _dictionary._version, message: "Enumerator modified outside of enumeration!");
 
                 _index = -1;
                 _currentKey = default!;
@@ -1254,7 +1251,8 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         /// <exception cref="ArgumentNullException">The dictionary is null.</exception>
         public ValueCollection(SwiftDictionary<TKey, TValue> dictionary)
         {
-            _dictionary = dictionary ?? throw new ArgumentNullException(nameof(dictionary));
+            SwiftThrowHelper.ThrowIfNull(dictionary, nameof(dictionary));
+            _dictionary = dictionary;
             _entries = dictionary._entries;
         }
 
@@ -1287,9 +1285,8 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         public void CopyTo(TValue[] array, int arrayIndex)
         {
             SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-            if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
-            if (array.Length - arrayIndex < _dictionary._count) throw new ArgumentException("Insufficient space", nameof(array));
-
+            SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
+            SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _dictionary._count, nameof(array), message: "Insufficient space in the target array.");
 
             for (int i = 0, j = arrayIndex; i <= _dictionary._lastIndex; i++)
             {
@@ -1301,10 +1298,10 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         void ICollection.CopyTo(Array array, int arrayIndex)
         {
             SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-            if (array.Rank != 1) throw new ArgumentException("Multidimensional array not supported", nameof(array));
-            if (array.GetLowerBound(0) != 0) throw new ArgumentException("Non-zero lower bound", nameof(array));
-            if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
-            if (array.Length - arrayIndex < _dictionary._count) throw new ArgumentException("Insufficient space", nameof(array));
+            SwiftThrowHelper.ThrowIfTrue(array.Rank != 1, nameof(array),  message:"Multidimensional array not supported");
+            SwiftThrowHelper.ThrowIfTrue(array.GetLowerBound(0) != 0, nameof(array), message: "Non-zero lower bound");
+            SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
+            SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _dictionary._count, nameof(array), message: "Insufficient space in the target array.");
 
             if (array is TValue[] valuesArray)
                 CopyTo(valuesArray, arrayIndex);
@@ -1364,7 +1361,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
             {
                 get
                 {
-                    if (_index > (uint)_dictionary._lastIndex) throw new InvalidOperationException("Bad enumeration");
+                    SwiftThrowHelper.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
                     return _currentValue!;
                 }
             }
@@ -1372,8 +1369,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
             /// <inheritdoc/>
             public bool MoveNext()
             {
-                if (_version != _dictionary._version)
-                    throw new InvalidOperationException("Enumerator modified outside of enumeration!");
+                SwiftThrowHelper.ThrowIfTrue(_version != _dictionary._version, message: "Enumerator modified outside of enumeration!");
 
                 while (++_index <= (uint)_dictionary._lastIndex)
                 {
@@ -1391,8 +1387,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
             /// <inheritdoc/>
             public void Reset()
             {
-                if (_version != _dictionary._version)
-                    throw new InvalidOperationException("Enumerator modified outside of enumeration!");
+                SwiftThrowHelper.ThrowIfTrue(_version != _dictionary._version, message: "Enumerator modified outside of enumeration!");
 
                 _index = -1;
                 _currentValue = default!;

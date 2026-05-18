@@ -89,8 +89,8 @@ public class SwiftExtensionsTests
         Assert.Equal(30, queue.SecondToLast());
 
         Assert.Throws<ArgumentNullException>(() => SwiftExtensions.IsPopulated<int>(null));
-        Assert.Throws<ArgumentOutOfRangeException>(() => swiftList.FromEnd(0));
-        Assert.Throws<ArgumentOutOfRangeException>(() => swiftList.FromEnd(5));
+        Assert.Throws<InvalidOperationException>(() => swiftList.FromEnd(0));
+        Assert.Throws<InvalidOperationException>(() => swiftList.FromEnd(5));
     }
 
     [Fact]

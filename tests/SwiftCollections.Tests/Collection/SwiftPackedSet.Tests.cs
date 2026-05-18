@@ -333,8 +333,8 @@ public class SwiftPackedSetTests
     {
         var set = new SwiftPackedSet<int> { 1, 2, 3 };
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => set.CopyTo(new int[3], 4));
-        Assert.Throws<ArgumentException>(() => set.CopyTo(new int[2], 0));
+        Assert.Throws<IndexOutOfRangeException>(() => set.CopyTo(new int[3], 4));
+        Assert.Throws<InvalidOperationException>(() => set.CopyTo(new int[2], 0));
     }
 
     #region Serialization

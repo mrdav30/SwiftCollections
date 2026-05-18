@@ -182,13 +182,13 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            if ((uint)index >= (uint)_count) throw new ArgumentOutOfRangeException(nameof(index));
+            SwiftThrowHelper.ThrowIfArrayIndexInvalid(index, _count, message: "Index is out of range.");
             return _innerArray[(_head + index) & _mask];
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set
         {
-            if ((uint)index >= (uint)_count) throw new ArgumentOutOfRangeException(nameof(index));
+            SwiftThrowHelper.ThrowIfArrayIndexInvalid(index, _count, message: "Index is out of range.");
             _innerArray[(_head + index) & _mask] = value;
         }
     }
@@ -326,7 +326,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Dequeue()
     {
-        if ((uint)_count == 0) throw new InvalidOperationException("Queue is Empty");
+        SwiftThrowHelper.ThrowIfTrue((uint)_count == 0, message: "Queue is Empty");
         T item = _innerArray[_head];
         if (_clearReleasedSlots)
             _innerArray[_head] = default!;
@@ -367,7 +367,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Peek()
     {
-        if ((uint)_count == 0) throw new InvalidOperationException("Queue is Empty");
+        SwiftThrowHelper.ThrowIfTrue((uint)_count == 0, message: "Queue is Empty");
         return _innerArray[_head];
     }
 
@@ -395,7 +395,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T PeekTail()
     {
-        if ((uint)_count == 0) throw new InvalidOperationException("Queue is Empty");
+        SwiftThrowHelper.ThrowIfTrue((uint)_count == 0, message: "Queue is Empty");
         int tailIndex = (_tail - 1) & _mask;
         return _innerArray[tailIndex];
     }
@@ -635,11 +635,11 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     public void CopyTo(Array array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        if ((uint)array.Rank != 1) throw new ArgumentException("Array must be single dimensional.", nameof(array));
-        if ((uint)array.GetLowerBound(0) != 0) throw new ArgumentException("Array must have zero-based indexing.", nameof(array));
-        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
-        if ((uint)(array.Length - arrayIndex) < _count) throw new ArgumentException("Destination array is not long enough.", nameof(array));
-
+        SwiftThrowHelper.ThrowIfTrue((uint)array.Rank != 1, message: "Array must be single dimensional.");
+        SwiftThrowHelper.ThrowIfTrue((uint)array.GetLowerBound(0) != 0, message: "Array must have zero-based indexing.");
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
+        SwiftThrowHelper.ThrowIfTrue((uint)(array.Length - arrayIndex) < _count, message: "Destination array is not long enough.");
+    
         if ((uint)_count == 0)
             return;
 
@@ -657,10 +657,10 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     public void CopyTo(T[] array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        if ((uint)array.Rank != 1) throw new ArgumentException("Array must be single dimensional.", nameof(array));
-        if ((uint)array.GetLowerBound(0) != 0) throw new ArgumentException("Array must have zero-based indexing.", nameof(array));
-        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
-        if ((uint)(array.Length - arrayIndex) < _count) throw new ArgumentException("Destination array is not long enough.", nameof(array));
+        SwiftThrowHelper.ThrowIfTrue((uint)array.Rank != 1, message: "Array must be single dimensional.");
+        SwiftThrowHelper.ThrowIfTrue((uint)array.GetLowerBound(0) != 0, message: "Array must have zero-based indexing.");
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
+        SwiftThrowHelper.ThrowIfTrue((uint)(array.Length - arrayIndex) < _count, message: "Destination array is not long enough.");
 
         if ((uint)_count == 0) return;
 
@@ -673,8 +673,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// <param name="destination">The destination span.</param>
     public void CopyTo(Span<T> destination)
     {
-        if (destination.Length < _count)
-            throw new ArgumentException("Destination span is not long enough.", nameof(destination));
+        SwiftThrowHelper.ThrowIfTrue((uint)destination.Length < _count, message: "Destination span is not long enough.");
 
         GetSegments(out ReadOnlySpan<T> first, out ReadOnlySpan<T> second);
         first.CopyTo(destination);
@@ -749,7 +748,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                if (_index >= (uint)_queue._count) throw new InvalidOperationException("Bad enumeration");
+                SwiftThrowHelper.ThrowIfTrue(_index >= (uint)_queue._count, message: "Bad enumeration");
                 return _current!;
             }
         }
@@ -758,8 +757,8 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
-            if (_version != _queue._version)
-                throw new InvalidOperationException("Collection was modified during enumeration.");
+            SwiftThrowHelper.ThrowIfTrue(_version != _queue._version, message: "Collection was modified during enumeration.");
+
             _index++;
             if (_index > (uint)_queue._count) return false;
             _currentIndex++;
@@ -771,8 +770,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
         /// <inheritdoc/>
         public void Reset()
         {
-            if (_version != _queue._version)
-                throw new InvalidOperationException("Collection was modified during enumeration.");
+            SwiftThrowHelper.ThrowIfTrue(_version != _queue._version, message: "Collection was modified during enumeration.");
 
             _index = 0;
             _currentIndex = (uint)_queue._head - 1;

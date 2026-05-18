@@ -205,13 +205,13 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            if ((uint)index >= (uint)_count) throw new ArgumentOutOfRangeException(nameof(index));
+            SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count, message: "Index is out of range.");
             return _innerArray[index];
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set
         {
-            if ((uint)index >= (uint)_count) throw new ArgumentOutOfRangeException(nameof(index));
+            SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count, message: "Index is out of range.");
             _innerArray[index] = value;
         }
     }
@@ -374,7 +374,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// </summary>
     public virtual void RemoveAt(int index)
     {
-        if ((uint)index >= (uint)_count) throw new ArgumentOutOfRangeException(nameof(index));
+        SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count, message: "Index is out of range.");
         Array.Copy(_innerArray, index + 1, _innerArray, index, _count - index - 1);
         _count--;
         if (_clearReleasedSlots)
@@ -421,7 +421,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// </summary>
     public virtual void Insert(int index, T item)
     {
-        if ((uint)index > (uint)_count) throw new ArgumentOutOfRangeException(nameof(index));
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(index, _count, message: "Index is out of range.");
         if ((uint)_count == (uint)_innerArray.Length)
             Resize(_innerArray.Length * 2);
         if ((uint)index < (uint)_count)
@@ -686,9 +686,9 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     public void CopyTo(T[] array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
-        if (array.Length - arrayIndex < _count) throw new ArgumentException("Destination array is not long enough.", nameof(array));
-
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
+        SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _count, message: "Destination array is not long enough.");
+ 
         Array.Copy(_innerArray, 0, array, arrayIndex, _count);
     }
 
@@ -698,8 +698,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// <param name="destination">The destination span.</param>
     public void CopyTo(Span<T> destination)
     {
-        if (destination.Length < _count)
-            throw new ArgumentException("Destination span is not long enough.", nameof(destination));
+        SwiftThrowHelper.ThrowIfTrue(destination.Length < _count, message: "Destination span is not long enough.");
 
         AsSpan().CopyTo(destination);
     }
@@ -708,11 +707,11 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     public void CopyTo(Array array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        if (array.Rank != 1) throw new ArgumentException("Array must be single dimensional.", nameof(array));
-        if (array.GetLowerBound(0) != 0) throw new ArgumentException("Array must have zero-based indexing.", nameof(array));
-        if ((uint)arrayIndex > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
-        if (array.Length - arrayIndex < _count) throw new ArgumentException("Destination array is not long enough.", nameof(array));
-
+        SwiftThrowHelper.ThrowIfTrue(array.Rank != 1, message: "Array must be single dimensional.");
+        SwiftThrowHelper.ThrowIfTrue(array.GetLowerBound(0) != 0, message: "Array must have zero-based indexing.");
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
+        SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _count, message: "Destination array is not long enough.");
+        
         Array.Copy(_innerArray, 0, array, arrayIndex, _count);
     }
 
@@ -771,7 +770,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                if (_index >= _count) throw new InvalidOperationException("Bad enumeration");
+                SwiftThrowHelper.ThrowIfTrue(_index >= _count, message: "Enumeration has either not started or has already finished.");
                 return _current!;
             }
         }
@@ -780,9 +779,8 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
-            if (_version != _list._version)
-                throw new InvalidOperationException("Collection was modified during enumeration.");
-
+            SwiftThrowHelper.ThrowIfTrue(_version != _list._version, message: "Collection was modified during enumeration.");
+ 
             if (_index >= _count) return false;
             _current = _array[_index++];
             return true;
@@ -791,8 +789,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
         /// <inheritdoc/>
         public void Reset()
         {
-            if (_version != _list._version)
-                throw new InvalidOperationException("Collection was modified during enumeration.");
+            SwiftThrowHelper.ThrowIfTrue(_version != _list._version, message: "Collection was modified during enumeration.");
 
             _index = 0;
             _current = default!;

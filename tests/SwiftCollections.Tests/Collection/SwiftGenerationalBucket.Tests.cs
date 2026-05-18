@@ -329,7 +329,7 @@ public class SwiftGenerationalBucketTests
         var bucket = new SwiftGenerationalBucket<int>(largePeakState);
 
         Assert.Equal(bucket.Capacity, bucket.State.Peak);
-        Assert.Throws<ArgumentException>(() => new SwiftGenerationalBucket<int>(invalidFreeState));
+        Assert.Throws<IndexOutOfRangeException>(() => new SwiftGenerationalBucket<int>(invalidFreeState));
     }
 
     #endregion

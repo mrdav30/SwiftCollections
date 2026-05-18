@@ -142,7 +142,7 @@ public class SwiftBiDictionaryTests
             { "Two", 2 }
         };
 
-        Assert.Throws<ArgumentException>(() => biDict["One"] = 2);
+        Assert.Throws<InvalidOperationException>(() => biDict["One"] = 2);
 
         Assert.Equal(1, biDict["One"]);
         Assert.Equal(2, biDict["Two"]);

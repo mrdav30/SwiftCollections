@@ -170,8 +170,8 @@ public class SwiftObservableListTests
     {
         var list = new SwiftObservableList<int>();
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => list[0] = 42);
-        Assert.Throws<ArgumentOutOfRangeException>(() => list.RemoveAt(0));
+        Assert.Throws<IndexOutOfRangeException>(() => list[0] = 42);
+        Assert.Throws<IndexOutOfRangeException>(() => list.RemoveAt(0));
     }
 
     [Fact]
@@ -443,8 +443,8 @@ public class SwiftObservableListTests
 
         list.CollectionChanged += (sender, e) => eventRaised = true;
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => list.RemoveAt(0));
-        Assert.Throws<ArgumentOutOfRangeException>(() => list[0] = 42);
+        Assert.Throws<IndexOutOfRangeException>(() => list.RemoveAt(0));
+        Assert.Throws<IndexOutOfRangeException>(() => list[0] = 42);
 
         Assert.False(eventRaised);
     }

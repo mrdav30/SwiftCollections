@@ -285,8 +285,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseSetState
 
             int n = value.DenseKeys.Length;
 
-            if (n != value.DenseValues.Length)
-                throw new ArgumentException("DenseKeys and DenseValues length mismatch.");
+            SwiftThrowHelper.ThrowIfTrue(n != value.DenseValues.Length, message: "DenseKeys and DenseValues length mismatch.");
 
             // Allocate dense storage
             _denseKeys = n == 0 ? Array.Empty<int>() : new int[Math.Max(DefaultDenseCapacity, n)];
@@ -305,8 +304,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseSetState
             for (int i = 0; i < n; i++)
             {
                 int key = _denseKeys[i];
-                if (key < 0)
-                    throw new ArgumentException("Key cannot be negative.");
+                SwiftThrowHelper.ThrowIfTrue(key < 0, message: "Key cannot be negative.");
 
                 if (key > maxKey)
                     maxKey = key;
@@ -323,8 +321,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseSetState
             {
                 int key = _denseKeys[i];
 
-                if (_sparse[key] != NotPresent)
-                    throw new ArgumentException("Duplicate key in DenseKeys.");
+                SwiftThrowHelper.ThrowIfTrue(_sparse[key] != NotPresent, message: "Duplicate key in DenseKeys.");
 
                 _sparse[key] = i + 1;
             }
@@ -615,8 +612,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseSetState
         /// <inheritdoc/>
         public bool MoveNext()
         {
-            if (_version != _set._version)
-                throw new InvalidOperationException("Collection was modified during enumeration.");
+            SwiftThrowHelper.ThrowIfTrue(_version != _set._version, message: "Collection was modified during enumeration.");
 
             int next = _index + 1;
             if (next >= _count)
@@ -633,8 +629,8 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseSetState
         /// <inheritdoc/>
         public void Reset()
         {
-            if (_version != _set._version)
-                throw new InvalidOperationException("Collection was modified during enumeration.");
+            SwiftThrowHelper.ThrowIfTrue(_version != _set._version, message: "Collection was modified during enumeration.");
+
             _index = -1;
             Current = default;
         }
@@ -674,11 +670,8 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseSetState
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int GetRequiredSparseCapacity(int key)
     {
-        if (key < 0)
-            throw new ArgumentOutOfRangeException(nameof(key), "Key must be non-negative.");
-
-        if (key == int.MaxValue)
-            throw new ArgumentOutOfRangeException(nameof(key), "Key is too large for direct sparse indexing.");
+        SwiftThrowHelper.ThrowIfNegative(key, nameof(key));
+        SwiftThrowHelper.ThrowIfTrue(key == int.MaxValue, nameof(key), message: "Key is too large for direct sparse indexing.");
 
         return key + 1;
     }
@@ -686,12 +679,11 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseSetState
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int GetDenseIndexOrThrow(int key)
     {
-        if ((uint)key >= (uint)_sparse.Length)
-            throw new KeyNotFoundException($"Key not found: {key}");
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(key, _sparse.Length, message: "Key is out of range for this collection.");
 
         int slot = _sparse[key];
-        if (slot == NotPresent)
-            throw new KeyNotFoundException($"Key not found: {key}");
+
+        SwiftThrowHelper.ThrowIfTrue(slot == NotPresent, nameof(key), message: $"Key not found in collection: {key}");
 
         return slot - 1;
     }

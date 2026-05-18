@@ -179,8 +179,7 @@ namespace SwiftCollections
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T FromEnd<T>(this SwiftList<T> list, int reverseIndex)
         {
-            if (reverseIndex <= 0 || reverseIndex > list.Count)
-                throw new ArgumentOutOfRangeException(nameof(reverseIndex));
+            SwiftThrowHelper.ThrowIfTrue(reverseIndex <= 0 || reverseIndex > list.Count, nameof(reverseIndex));
             return list[^reverseIndex];
         }
 

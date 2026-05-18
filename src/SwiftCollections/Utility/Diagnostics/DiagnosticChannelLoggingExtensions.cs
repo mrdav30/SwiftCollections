@@ -101,9 +101,7 @@ public static class DiagnosticChannelLoggingExtensions
         DiagnosticInterpolatedStringHandler message,
         string source)
     {
-        if (channel == null)
-            throw new ArgumentNullException(nameof(channel));
-
+        SwiftThrowHelper.ThrowIfNull(channel, nameof(channel));
         channel.Write(level, message, source);
     }
 
