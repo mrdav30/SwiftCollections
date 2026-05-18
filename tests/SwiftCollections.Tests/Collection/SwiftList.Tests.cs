@@ -742,6 +742,7 @@ public class SwiftListTests
         }
     }
 
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
     [Fact]
     public void SwiftList_MemoryPackSerialization_RoundTripMaintainsData()
     {
@@ -756,4 +757,5 @@ public class SwiftListTests
         Assert.Equal(originalValue.Count, deserializedValue.Count);
         Assert.Equal(originalValue, deserializedValue);
     }
+#endif
 }

@@ -465,6 +465,7 @@ public class SwiftBucketTests
             Assert.Equal(originalBucket[i], deserializedBucket[i]);
     }
 
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
     [Fact]
     public void SwiftBucket_MemoryPackSerialization_RoundTripMaintainsData()
     {
@@ -480,6 +481,7 @@ public class SwiftBucketTests
         Assert.Equal(originalValue.PeakCount, deserializedValue.PeakCount);
         Assert.Equal(originalValue, deserializedValue);
     }
+#endif
 
     [Fact]
     public void SwiftBucket_StateConstructor_AllowsNullFreeIndices()

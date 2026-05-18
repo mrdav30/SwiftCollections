@@ -220,6 +220,7 @@ public class SwiftObservableDictionaryTests
         Assert.Equal(NotifyCollectionChangedAction.Replace, args.Action);
     }
 
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
     [Fact]
     public void MemoryPack_RoundTrip_PreservesValues()
     {
@@ -255,6 +256,7 @@ public class SwiftObservableDictionaryTests
         Assert.NotNull(args);
         Assert.Equal(NotifyCollectionChangedAction.Replace, args.Action);
     }
+#endif
 
     [Fact]
     public void Json_RoundTrip_NestedObservableCollections()

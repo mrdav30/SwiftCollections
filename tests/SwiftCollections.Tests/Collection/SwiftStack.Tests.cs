@@ -782,6 +782,7 @@ public class SwiftStackTests
             Assert.Equal(originalStack[i], deserializedStack[i]);
     }
 
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
     [Fact]
     public void SwiftStack_MemoryPackSerialization_RoundTripMaintainsData()
     {
@@ -796,4 +797,5 @@ public class SwiftStackTests
         Assert.Equal(originalValue.Count, deserializedValue.Count);
         Assert.Equal(originalValue, deserializedValue);
     }
+#endif
 }

@@ -246,6 +246,7 @@ public class SwiftGenerationalBucketTests
 
     #region MemoryPack Serialization
 
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
     [Fact]
     public void MemoryPack_RoundTrip()
     {
@@ -267,6 +268,7 @@ public class SwiftGenerationalBucketTests
 
         Assert.Equal(bucket.Count, count);
     }
+#endif
 
     [Fact]
     public void StateConstructor_AllowsNullFreeIndices()

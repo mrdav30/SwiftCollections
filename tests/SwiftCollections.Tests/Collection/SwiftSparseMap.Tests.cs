@@ -391,6 +391,7 @@ public class SwiftSparseMapTests
         }
     }
 
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
     [Fact]
     public void MemoryPack_RoundTrip_PreservesData()
     {
@@ -408,7 +409,9 @@ public class SwiftSparseMapTests
         Assert.Equal(10, result[1]);
         Assert.Equal(20, result[2]);
     }
+#endif
 
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
     [Fact]
     public void MemoryPack_RoundTrip_PreservesSparseKeys()
     {
@@ -424,6 +427,7 @@ public class SwiftSparseMapTests
         Assert.True(result.ContainsKey(64));
         Assert.Equal(99, result[64]);
     }
+#endif
 
     #endregion
 }

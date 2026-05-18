@@ -734,6 +734,7 @@ public class SwiftQueueTests
         }
     }
 
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
     [Fact]
     public void SwiftQueue_MemoryPackSerialization_RoundTripMaintainsData()
     {
@@ -748,4 +749,5 @@ public class SwiftQueueTests
         Assert.Equal(originalValue.Count, deserializedValue.Count);
         Assert.Equal(originalValue, deserializedValue);
     }
+#endif
 }

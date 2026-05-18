@@ -521,6 +521,7 @@ public class SwiftObservableListTests
         Assert.Equal(0, eventCount);
     }
 
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
     [Fact]
     public void MemoryPack_RoundTrip_PreservesValues()
     {
@@ -548,6 +549,7 @@ public class SwiftObservableListTests
         Assert.NotNull(args);
         Assert.Equal(NotifyCollectionChangedAction.Add, args.Action);
     }
+#endif
 
     #endregion
 }

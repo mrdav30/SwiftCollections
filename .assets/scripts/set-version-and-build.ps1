@@ -9,6 +9,15 @@ Set-Location $solutionDir
 # Ensure GitVersion environment variables are set
 Ensure-GitVersion-Environment
 
+$archiveRoot = Join-Path $solutionDir "artifacts"
+$archiveOutputDir = Join-Path $archiveRoot "releases"
+
+if (-not (Test-Path $archiveOutputDir)) {
+    New-Item -ItemType Directory -Path $archiveOutputDir -Force | Out-Null
+}
+
+Write-Host "Archives will be written to: $archiveOutputDir"
+
 # Build and package for each release configuration
 $configurations = @("Release", "ReleaseLean")
 
@@ -40,7 +49,7 @@ foreach ($config in $configurations){
 
             # Construct final archive name
             $zipFileName = "${projectName}-v$($Env:GitVersion_FullSemVer)-${frameworkName}-${configLabel}.zip"
-            $zipPath = Join-Path $releaseDir $zipFileName
+            $zipPath = Join-Path $archiveOutputDir $zipFileName
 
             Write-Host "Creating archive: $zipPath"
 

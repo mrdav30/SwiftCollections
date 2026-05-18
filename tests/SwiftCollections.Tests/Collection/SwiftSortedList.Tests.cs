@@ -734,6 +734,7 @@ public class SwiftSortedListTests
         Assert.Equal(sorter.PeekMax(), deserializedSorter.PeekMax());
     }
 
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
     [Fact]
     public void SwiftSortedList_MemoryPackSerialization_RoundTripMaintainsData()
     {
@@ -750,6 +751,7 @@ public class SwiftSortedListTests
         Assert.Equal(sorter.PeekMin(), deserializedSorter.PeekMin());
         Assert.Equal(sorter.PeekMax(), deserializedSorter.PeekMax());
     }
+#endif
 
     [Fact]
     public void SortedList_CustomComparer_RoundTrip()

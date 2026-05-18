@@ -1,7 +1,17 @@
-.vs/
-BenchmarkDotNet.Artifacts/
-artifacts/
-TestResults/
-.codex
 bin/
 obj/
+.vs/
+TestResults/
+.codex
+*.lscache
+
+# Local build, release, and CI artifact output
+artifacts/
+.vs/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+BenchmarkDotNet.Artifacts/
+docs/feature-work/prototype/

@@ -313,6 +313,7 @@ public class SwiftObservableArrayTests
         Assert.Contains("Items", json);
     }
 
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
     [Fact]
     public void MemoryPack_RoundTrip_PreservesValues()
     {
@@ -361,6 +362,8 @@ public class SwiftObservableArrayTests
 
         Assert.Equal(0, eventCount);
     }
+
+#endif
 
     #endregion
 }

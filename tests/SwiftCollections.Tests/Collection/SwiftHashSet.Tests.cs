@@ -807,6 +807,7 @@ public class SwiftHashSetTests
             Assert.Contains(item, deserializedSet);
     }
 
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
     [Fact]
     public void SwiftHashSet_MemoryPackSerialization_RoundTripMaintainsData()
     {
@@ -819,6 +820,7 @@ public class SwiftHashSetTests
         Assert.Equal(originalValue.Count, deserializedValue.Count);
         Assert.Equal(originalValue, deserializedValue);
     }
+#endif
 
     [Fact]
     public void HashSet_CustomComparer_RoundTrip()
@@ -844,6 +846,7 @@ public class SwiftHashSetTests
         Assert.Contains("hello", result);
     }
 
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
     [Fact]
     public void HashSet_CustomComparer_MemoryPackRoundTrip()
     {
@@ -865,6 +868,7 @@ public class SwiftHashSetTests
 
         Assert.Contains("hello", result);
     }
+#endif
 
     [Fact]
     public void HashSet_SetComparer_RehashesEntriesOutsideInitialProbeSample()

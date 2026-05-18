@@ -238,6 +238,7 @@ public class SwiftBiDictionaryTests
         Assert.Equal("One", key);
     }
 
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
     [Fact]
     public void SwiftBiDictionary_MemoryPackSerialization_RoundTripMaintainsData()
     {
@@ -255,6 +256,7 @@ public class SwiftBiDictionaryTests
         Assert.Equal(originalValue.Count, deserializedValue.Count);
         Assert.Equal(originalValue, deserializedValue);
     }
+#endif
 
     [Fact]
     public void BiDictionary_CustomComparer_RoundTrip()

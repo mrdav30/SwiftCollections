@@ -1,4 +1,4 @@
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("SwiftCollections.Benchmarks")]
-[assembly: InternalsVisibleTo("SwiftCollections.Tests")]
+[assembly: InternalsVisibleTo("SwiftCollections.FixedMathSharp.Tests")]

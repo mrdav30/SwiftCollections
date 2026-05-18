@@ -1180,6 +1180,7 @@ public class SwiftDictionaryTests
         Assert.Equal(1, deserializedDict["test"]);
     }
 
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
     [Fact]
     public void SwiftDictionary_MemoryPackSerialization_RoundTripMaintainsData()
     {
@@ -1197,6 +1198,7 @@ public class SwiftDictionaryTests
         Assert.Equal(originalValue.Count, deserializedValue.Count);
         Assert.Equal(originalValue, deserializedValue);
     }
+#endif
 
     [Fact]
     public void Dictionary_CustomComparer_RoundTrip()

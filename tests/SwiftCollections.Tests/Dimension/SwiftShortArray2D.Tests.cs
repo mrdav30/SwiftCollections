@@ -99,6 +99,7 @@ public class SwiftShortArray2DTests
         }
     }
 
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
     [Fact]
     public void ShortArray2D_MemoryPackSerialization_RoundTripMaintainsData()
     {
@@ -116,4 +117,5 @@ public class SwiftShortArray2DTests
         Assert.Equal(originalValue.Length, deserializedValue.Length);
         Assert.Equal(originalValue, deserializedValue);
     }
+#endif
 }

@@ -264,6 +264,7 @@ public class SwiftArray3DTests
         Assert.Equal(originalArray[1, 1, 1], deserializedArray[1, 1, 1]);
     }
 
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
     [Fact]
     public void Array3D_MemoryPackSerialization_RoundTripMaintainsData()
     {
@@ -280,4 +281,5 @@ public class SwiftArray3DTests
         Assert.Equal(originalValue.Length, deserializedValue.Length);
         Assert.Equal(originalValue, deserializedValue);
     }
+#endif
 }

@@ -389,6 +389,7 @@ public class SwiftPackedSetTests
         Assert.Empty(result);
     }
 
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
     [Fact]
     public void MemoryPack_RoundTrip_PreservesValues()
     {
@@ -406,7 +407,9 @@ public class SwiftPackedSetTests
         Assert.Contains(1, result);
         Assert.Contains(2, result);
     }
+#endif
 
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
     [Fact]
     public void MemoryPack_RoundTrip_PreservesLargeCollections()
     {
@@ -424,7 +427,9 @@ public class SwiftPackedSetTests
         for (int i = 0; i < 1000; i++)
             Assert.Contains(i, result);
     }
+#endif
 
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
     [Fact]
     public void MemoryPack_EmptySet_RoundTrip()
     {
@@ -436,6 +441,7 @@ public class SwiftPackedSetTests
 
         Assert.Empty(result);
     }
+#endif
 
     [Fact]
     public void PackedSet_IsProperSupersetOf_IgnoresDuplicatesInOther()

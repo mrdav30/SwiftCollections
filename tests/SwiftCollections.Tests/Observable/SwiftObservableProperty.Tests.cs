@@ -59,6 +59,7 @@ public class SwiftObservablePropertyTests
         Assert.Equal(42, result.Value);
     }
 
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
     [Fact]
     public void MemoryPack_RoundTrip_PreservesValue()
     {
@@ -70,6 +71,7 @@ public class SwiftObservablePropertyTests
 
         Assert.Equal(42, result.Value);
     }
+#endif
 
     #endregion
 }
