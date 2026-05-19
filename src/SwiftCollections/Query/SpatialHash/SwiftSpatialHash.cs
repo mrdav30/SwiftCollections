@@ -251,26 +251,43 @@ public class SwiftSpatialHash<TKey, TVolume>
                 for (int z = minCell.Z - padding; z <= maxCell.Z + padding; z++)
                 {
                     var cell = new SwiftSpatialHashCellIndex(x, y, z);
-                    if (!_cells.TryGetValue(cell, out SwiftList<int> entryIndices))
-                        continue;
-
-                    for (int i = 0; i < entryIndices.Count; i++)
-                    {
-                        int entryIndex = entryIndices[i];
-                        ref SpatialHashEntry entry = ref _entries[entryIndex];
-                        if (!entry.IsAllocated || entry.QueryStamp == queryStamp)
-                            continue;
-
-                        entry.QueryStamp = queryStamp;
-
-                        if (requireIntersection && !entry.Bounds.Intersects(queryBounds))
-                            continue;
-
-                        results.Add(entry.Key);
-                    }
+                    ProcessQueryCell(cell, queryBounds, queryStamp, requireIntersection, results);
                 }
             }
         }
+    }
+
+    private void ProcessQueryCell(
+        SwiftSpatialHashCellIndex cell,
+        TVolume queryBounds,
+        int queryStamp,
+        bool requireIntersection,
+        ICollection<TKey> results)
+    {
+        if (!_cells.TryGetValue(cell, out SwiftList<int> entryIndices))
+            return;
+
+        for (int i = 0; i < entryIndices.Count; i++)
+            TryAddQueryResult(entryIndices[i], queryBounds, queryStamp, requireIntersection, results);
+    }
+
+    private void TryAddQueryResult(
+        int entryIndex,
+        TVolume queryBounds,
+        int queryStamp,
+        bool requireIntersection,
+        ICollection<TKey> results)
+    {
+        ref SpatialHashEntry entry = ref _entries[entryIndex];
+        if (!entry.IsAllocated || entry.QueryStamp == queryStamp)
+            return;
+
+        entry.QueryStamp = queryStamp;
+
+        if (requireIntersection && !entry.Bounds.Intersects(queryBounds))
+            return;
+
+        results.Add(entry.Key);
     }
 
     private void AddEntryToCells(int entryIndex, TVolume bounds)
@@ -307,22 +324,31 @@ public class SwiftSpatialHash<TKey, TVolume>
                 for (int z = minCell.Z; z <= maxCell.Z; z++)
                 {
                     var cell = new SwiftSpatialHashCellIndex(x, y, z);
-                    if (!_cells.TryGetValue(cell, out SwiftList<int> entryIndices))
-                        continue;
-
-                    for (int i = 0; i < entryIndices.Count; i++)
-                    {
-                        if (entryIndices[i] != entryIndex)
-                            continue;
-
-                        entryIndices.RemoveAt(i);
-                        break;
-                    }
-
-                    if (entryIndices.Count == 0)
-                        _cells.Remove(cell);
+                    RemoveEntryFromCell(cell, entryIndex);
                 }
             }
+        }
+    }
+
+    private void RemoveEntryFromCell(SwiftSpatialHashCellIndex cell, int entryIndex)
+    {
+        if (!_cells.TryGetValue(cell, out SwiftList<int> entryIndices))
+            return;
+
+        RemoveEntryIndex(entryIndices, entryIndex);
+        if (entryIndices.Count == 0)
+            _cells.Remove(cell);
+    }
+
+    private static void RemoveEntryIndex(SwiftList<int> entryIndices, int entryIndex)
+    {
+        for (int i = 0; i < entryIndices.Count; i++)
+        {
+            if (entryIndices[i] != entryIndex)
+                continue;
+
+            entryIndices.RemoveAt(i);
+            return;
         }
     }
 

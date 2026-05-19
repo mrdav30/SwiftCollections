@@ -232,27 +232,54 @@ public partial class SwiftArray3D<T> : IStateBacked<Array3DState<T>>, IEnumerabl
     {
         var newArray = new T[Width * Height * Depth];
 
+        if (wrap)
+            ShiftWrapped(newArray, xOffset, yOffset, zOffset);
+        else
+            ShiftClamped(newArray, xOffset, yOffset, zOffset);
+
+        _innerArray = newArray;
+    }
+
+    private void ShiftWrapped(T[] newArray, int xOffset, int yOffset, int zOffset)
+    {
+        int normalizedXOffset = NormalizeShift(xOffset, Width);
+        int normalizedYOffset = NormalizeShift(yOffset, Height);
+        int normalizedZOffset = NormalizeShift(zOffset, Depth);
+
         for (int x = 0; x < Width; x++)
         {
+            int newX = WrapForwardIndex(x, normalizedXOffset, Width);
             for (int y = 0; y < Height; y++)
             {
+                int newY = WrapForwardIndex(y, normalizedYOffset, Height);
                 for (int z = 0; z < Depth; z++)
                 {
-                    int newX = wrap ? (x + xOffset + Width) % Width : x + xOffset;
-                    int newY = wrap ? (y + yOffset + Height) % Height : y + yOffset;
-                    int newZ = wrap ? (z + zOffset + Depth) % Depth : z + zOffset;
-
-                    if (IsValidIndex(newX, newY, newZ))
-                    {
-                        int srcIndex = GetIndex(x, y, z);
-                        int dstIndex = GetIndex(newX, newY, newZ);
-                        newArray[dstIndex] = _innerArray[srcIndex];
-                    }
+                    int newZ = WrapForwardIndex(z, normalizedZOffset, Depth);
+                    newArray[GetIndex(newX, newY, newZ)] = _innerArray[GetIndex(x, y, z)];
                 }
             }
         }
+    }
 
-        _innerArray = newArray;
+    private void ShiftClamped(T[] newArray, int xOffset, int yOffset, int zOffset)
+    {
+        GetShiftRange(Width, xOffset, out int xStart, out int xEnd);
+        GetShiftRange(Height, yOffset, out int yStart, out int yEnd);
+        GetShiftRange(Depth, zOffset, out int zStart, out int zEnd);
+
+        for (int x = xStart; x < xEnd; x++)
+        {
+            int newX = x + xOffset;
+            for (int y = yStart; y < yEnd; y++)
+            {
+                int newY = y + yOffset;
+                for (int z = zStart; z < zEnd; z++)
+                {
+                    int newZ = z + zOffset;
+                    newArray[GetIndex(newX, newY, newZ)] = _innerArray[GetIndex(x, y, z)];
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -293,6 +320,32 @@ public partial class SwiftArray3D<T> : IStateBacked<Array3DState<T>>, IEnumerabl
     {
         if (!IsValidIndex(x, y, z))
             throw new IndexOutOfRangeException($"Invalid index ({x}, {y}, {z}) for dimensions ({Width}, {Height}, {Depth}).");
+    }
+
+    private static int NormalizeShift(int shift, int length)
+    {
+        if (length == 0)
+            return 0;
+
+        int normalized = shift % length;
+        return normalized < 0 ? normalized + length : normalized;
+    }
+
+    private static int WrapForwardIndex(int index, int normalizedShift, int length)
+    {
+        int shifted = index + normalizedShift;
+        return shifted >= length ? shifted - length : shifted;
+    }
+
+    private static void GetShiftRange(int length, int shift, out int start, out int end)
+    {
+        long startValue = shift < 0 ? -(long)shift : 0L;
+        long endValue = shift > 0 ? (long)length - shift : length;
+
+        start = (int)Math.Min(startValue, length);
+        end = (int)Math.Max(0L, Math.Min(endValue, length));
+        if (end < start)
+            end = start;
     }
 
     /// <summary>

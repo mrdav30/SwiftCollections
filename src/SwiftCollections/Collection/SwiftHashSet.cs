@@ -283,27 +283,33 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
 
         if (items is ICollection<T> collection)
         {
-            EnsureCapacityForAddRange(collection.Count);
-
-            foreach (T item in collection)
-                if (item != null) InsertIfNotExists(item);
-
+            AddKnownCountRange(collection, collection.Count);
             return;
         }
 
         if (items is IReadOnlyCollection<T> readOnlyCollection)
         {
-            EnsureCapacityForAddRange(readOnlyCollection.Count);
-
-            foreach (T item in readOnlyCollection)
-                if (item != null) InsertIfNotExists(item);
-
+            AddKnownCountRange(readOnlyCollection, readOnlyCollection.Count);
             return;
         }
 
-        // Preserve single-pass enumeration for lazy or one-shot sources.
+        AddUnknownCountRange(items);
+    }
+
+    private void AddKnownCountRange(IEnumerable<T> items, int count)
+    {
+        EnsureCapacityForAddRange(count);
+
         foreach (T item in items)
-            if (item != null) Add(item);
+            if (item != null)
+                InsertIfNotExists(item);
+    }
+
+    private void AddUnknownCountRange(IEnumerable<T> items)
+    {
+        foreach (T item in items)
+            if (item != null)
+                Add(item);
     }
 
     /// <summary>

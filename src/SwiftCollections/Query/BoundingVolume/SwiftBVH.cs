@@ -357,19 +357,31 @@ public class SwiftBVH<TKey, TVolume>
 
         if (parentIndex == -1)
         {
-            // Leaf was the root (single-node case already handled by Remove)
-            _leafCount--;
-            _nodePool[nodeIndex].Reset();
-            _freeIndices.Push(nodeIndex);
-            _rootNodeIndex = -1;
+            RemoveRootLeaf(nodeIndex);
             return;
         }
 
+        int siblingIndex = ReleaseLeafAndParent(nodeIndex, parentIndex, out int grandParentIndex);
+        PromoteSiblingToGrandParent(siblingIndex, parentIndex, grandParentIndex);
+        if (grandParentIndex != -1)
+            RefreshAncestors(grandParentIndex);
+    }
+
+    private void RemoveRootLeaf(int nodeIndex)
+    {
+        _leafCount--;
+        _nodePool[nodeIndex].Reset();
+        _freeIndices.Push(nodeIndex);
+        _rootNodeIndex = -1;
+    }
+
+    private int ReleaseLeafAndParent(int nodeIndex, int parentIndex, out int grandParentIndex)
+    {
         ref SwiftBVHNode<TKey, TVolume> parent = ref _nodePool[parentIndex];
         int siblingIndex = parent.LeftChildIndex == nodeIndex
             ? parent.RightChildIndex
             : parent.LeftChildIndex;
-        int grandParentIndex = parent.ParentIndex;
+        grandParentIndex = parent.ParentIndex;
 
         // Push parent before the leaf so that the leaf index sits on top of the
         // freelist stack and is reused first by the next allocation.
@@ -380,7 +392,11 @@ public class SwiftBVH<TKey, TVolume>
         _nodePool[nodeIndex].Reset();
         _freeIndices.Push(nodeIndex);
 
-        // Promote sibling to grandparent
+        return siblingIndex;
+    }
+
+    private void PromoteSiblingToGrandParent(int siblingIndex, int parentIndex, int grandParentIndex)
+    {
         if (siblingIndex != -1)
             _nodePool[siblingIndex].ParentIndex = grandParentIndex;
 
@@ -395,26 +411,14 @@ public class SwiftBVH<TKey, TVolume>
             grandParent.LeftChildIndex = siblingIndex;
         else
             grandParent.RightChildIndex = siblingIndex;
+    }
 
-        // Propagate bounds and subtree sizes upward from grandparent
-        int current = grandParentIndex;
+    private void RefreshAncestors(int current)
+    {
         while (current != -1)
         {
-            ref SwiftBVHNode<TKey, TVolume> node = ref _nodePool[current];
-
-            SwiftBVHNode<TKey, TVolume> leftChild = node.HasLeftChild
-                ? _nodePool[node.LeftChildIndex]
-                : SwiftBVHNode<TKey, TVolume>.Default;
-            SwiftBVHNode<TKey, TVolume> rightChild = node.HasRightChild
-                ? _nodePool[node.RightChildIndex]
-                : SwiftBVHNode<TKey, TVolume>.Default;
-
-            node.Bounds = GetCombinedBounds(leftChild, rightChild);
-            node.SubtreeSize = 1
-                + (leftChild.IsAllocated ? leftChild.SubtreeSize : 0)
-                + (rightChild.IsAllocated ? rightChild.SubtreeSize : 0);
-
-            current = node.ParentIndex;
+            RefreshParentNode(current);
+            current = _nodePool[current].ParentIndex;
         }
     }
 
@@ -495,30 +499,44 @@ public class SwiftBVH<TKey, TVolume>
         while (nodeStack.Count > 0)
         {
             int index = nodeStack.Pop();
-            ref SwiftBVHNode<TKey, TVolume> node = ref _nodePool[index];
-
-            if (!node.IsAllocated)
-            {
-                QueryCollectionDiagnostics.WriteError(
-                    _diagnosticSource,
-                    $"Encountered an unallocated node at index {index} during query traversal.");
-                throw new InvalidOperationException($"Encountered an unallocated node at index {index} during query traversal.");
-            }
-
-            if (!queryBounds.Intersects(node.Bounds))
-                continue;
-
-            if (node.IsLeaf)
-            {
-                results.Add(node.Value);
-                continue;
-            }
-
-            if (node.HasLeftChild)
-                nodeStack.Push(node.LeftChildIndex);
-            if (node.HasRightChild)
-                nodeStack.Push(node.RightChildIndex);
+            QueryNode(index, queryBounds, results, nodeStack);
         }
+    }
+
+    private void QueryNode(int index, TVolume queryBounds, ICollection<TKey> results, SwiftIntStack nodeStack)
+    {
+        ref SwiftBVHNode<TKey, TVolume> node = ref _nodePool[index];
+        ThrowIfQueryNodeIsUnallocated(index, node);
+
+        if (!queryBounds.Intersects(node.Bounds))
+            return;
+
+        if (node.IsLeaf)
+        {
+            results.Add(node.Value);
+            return;
+        }
+
+        PushChildNodes(node, nodeStack);
+    }
+
+    private static void PushChildNodes(SwiftBVHNode<TKey, TVolume> node, SwiftIntStack nodeStack)
+    {
+        if (node.HasLeftChild)
+            nodeStack.Push(node.LeftChildIndex);
+        if (node.HasRightChild)
+            nodeStack.Push(node.RightChildIndex);
+    }
+
+    private static void ThrowIfQueryNodeIsUnallocated(int index, SwiftBVHNode<TKey, TVolume> node)
+    {
+        if (node.IsAllocated)
+            return;
+
+        QueryCollectionDiagnostics.WriteError(
+            _diagnosticSource,
+            $"Encountered an unallocated node at index {index} during query traversal.");
+        throw new InvalidOperationException($"Encountered an unallocated node at index {index} during query traversal.");
     }
 
     /// <summary>

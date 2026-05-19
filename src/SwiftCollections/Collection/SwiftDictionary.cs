@@ -839,29 +839,41 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         if (array is KeyValuePair<TKey, TValue>[] pairs)
             ((ICollection<KeyValuePair<TKey, TValue>>)this).CopyTo(pairs, arrayIndex);
         else if (array is DictionaryEntry[] dictEntryArray)
-        {
-            for (uint i = 0; i <= (uint)_lastIndex; i++)
-            {
-                if (_entries[i].IsUsed)
-                    dictEntryArray[arrayIndex++] = new DictionaryEntry(_entries[i].Key, _entries[i].Value);
-            }
-        }
+            CopyToDictionaryEntries(dictEntryArray, arrayIndex);
         else
-        {
-            if (array is not object[] objects) throw new ArgumentException("Invalid array type", nameof(array));
+            CopyToObjects(array, arrayIndex);
+    }
 
-            try
-            {
-                for (uint i = 0; i <= (uint)_lastIndex; i++)
-                {
-                    if (_entries[i].IsUsed)
-                        objects[arrayIndex++] = new KeyValuePair<TKey, TValue>(_entries[i].Key, _entries[i].Value);
-                }
-            }
-            catch (ArrayTypeMismatchException)
-            {
-                throw new ArgumentException("Invalid array type", nameof(array));
-            }
+    private void CopyToDictionaryEntries(DictionaryEntry[] array, int arrayIndex)
+    {
+        for (uint i = 0; i <= (uint)_lastIndex; i++)
+        {
+            if (_entries[i].IsUsed)
+                array[arrayIndex++] = new DictionaryEntry(_entries[i].Key, _entries[i].Value);
+        }
+    }
+
+    private void CopyToObjects(Array array, int arrayIndex)
+    {
+        if (array is not object[] objects)
+            throw new ArgumentException("Invalid array type", nameof(array));
+
+        try
+        {
+            CopyToObjects(objects, arrayIndex);
+        }
+        catch (ArrayTypeMismatchException)
+        {
+            throw new ArgumentException("Invalid array type", nameof(array));
+        }
+    }
+
+    private void CopyToObjects(object[] array, int arrayIndex)
+    {
+        for (uint i = 0; i <= (uint)_lastIndex; i++)
+        {
+            if (_entries[i].IsUsed)
+                array[arrayIndex++] = new KeyValuePair<TKey, TValue>(_entries[i].Key, _entries[i].Value);
         }
     }
 

@@ -66,6 +66,18 @@ public class SwiftArray2DTests
     }
 
     [Fact]
+    public void Shift_WrapAround_WithLargeNegativeOffsets_NormalizesOffsets()
+    {
+        var array = new SwiftArray2D<int>(3, 4);
+        array[2, 3] = 42;
+
+        array.Shift(-7, -9);
+
+        Assert.Equal(42, array[1, 2]);
+        Assert.Equal(0, array[2, 3]);
+    }
+
+    [Fact]
     public void Shift_NonWrapping_DiscardOutOfBounds()
     {
         var array = new SwiftArray2D<int>(3, 3);

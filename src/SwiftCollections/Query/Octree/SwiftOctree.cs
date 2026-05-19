@@ -200,6 +200,14 @@ public class SwiftOctree<TKey, TVolume>
 
     private void QueryNode(OctreeNode node, TVolume queryBounds, ICollection<TKey> results)
     {
+        AddIntersectingEntries(node, queryBounds, results);
+
+        if (node.HasChildren)
+            QueryIntersectingChildren(node, queryBounds, results);
+    }
+
+    private void AddIntersectingEntries(OctreeNode node, TVolume queryBounds, ICollection<TKey> results)
+    {
         for (int i = 0; i < node.EntryIndices.Count; i++)
         {
             int entryIndex = node.EntryIndices[i];
@@ -207,10 +215,10 @@ public class SwiftOctree<TKey, TVolume>
             if (entry.IsAllocated && entry.Bounds.Intersects(queryBounds))
                 results.Add(entry.Key);
         }
+    }
 
-        if (!node.HasChildren)
-            return;
-
+    private void QueryIntersectingChildren(OctreeNode node, TVolume queryBounds, ICollection<TKey> results)
+    {
         for (int i = 0; i < node.Children?.Length; i++)
         {
             OctreeNode? child = node.Children[i];
@@ -254,21 +262,35 @@ public class SwiftOctree<TKey, TVolume>
         node.EntryIndices.Add(entryIndex);
         _entries[entryIndex].Node = node;
 
-        if (!node.HasChildren &&
-            node.Depth < Options.MaxDepth &&
-            node.EntryIndices.Count > Options.NodeCapacity &&
-            _boundsPartitioner.CanSubdivide(node.Bounds))
-        {
+        if (ShouldSubdivide(node))
             Subdivide(node);
-        }
+    }
+
+    private bool ShouldSubdivide(OctreeNode node)
+    {
+        return !node.HasChildren &&
+               node.Depth < Options.MaxDepth &&
+               node.EntryIndices.Count > Options.NodeCapacity &&
+               _boundsPartitioner.CanSubdivide(node.Bounds);
     }
 
     private void Subdivide(OctreeNode node)
     {
+        CreateChildNodes(node);
+        MoveContainedEntriesToChildren(node);
+        SubdivideOverflowingChildren(node);
+    }
+
+    private void CreateChildNodes(OctreeNode node)
+    {
         node.Children = new OctreeNode[8];
         for (int i = 0; i < node.Children.Length; i++)
             node.Children[i] = CreateChildNode(node, i);
+    }
 
+    private void MoveContainedEntriesToChildren(OctreeNode node)
+    {
+        OctreeNode[] children = node.Children!;
         int entryIndex = 0;
         while (entryIndex < node.EntryIndices.Count)
         {
@@ -279,22 +301,29 @@ public class SwiftOctree<TKey, TVolume>
                 continue;
             }
 
-            OctreeNode child = node.Children[childIndex];
+            OctreeNode child = children[childIndex];
             child.EntryIndices.Add(currentEntryIndex);
             _entries[currentEntryIndex].Node = child;
             node.EntryIndices.RemoveAt(entryIndex);
         }
+    }
 
-        for (int i = 0; i < node.Children.Length; i++)
+    private void SubdivideOverflowingChildren(OctreeNode node)
+    {
+        OctreeNode[] children = node.Children!;
+        for (int i = 0; i < children.Length; i++)
         {
-            OctreeNode child = node.Children[i];
-            if (child.EntryIndices.Count > Options.NodeCapacity &&
-                child.Depth < Options.MaxDepth &&
-                _boundsPartitioner.CanSubdivide(child.Bounds))
-            {
+            OctreeNode child = children[i];
+            if (ChildShouldSubdivide(child))
                 Subdivide(child);
-            }
         }
+    }
+
+    private bool ChildShouldSubdivide(OctreeNode child)
+    {
+        return child.EntryIndices.Count > Options.NodeCapacity &&
+               child.Depth < Options.MaxDepth &&
+               _boundsPartitioner.CanSubdivide(child.Bounds);
     }
 
     private OctreeNode CreateChildNode(OctreeNode parent, int childIndex)

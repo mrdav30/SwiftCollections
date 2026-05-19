@@ -389,31 +389,43 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     {
         SwiftThrowHelper.ThrowIfNull(match, nameof(match));
 
-        int i = 0;
-        // Move to the first element that should be removed
-        while (i < _count && !match(_innerArray[i])) i++;
+        int firstMatchIndex = IndexOfFirstMatch(match);
+        if (firstMatchIndex >= _count)
+            return 0;
 
-        if (i >= _count) return 0;  // No items to remove
-
-        int j = i + 1;
-        while (j < _count)
-        {
-            // Find the next element to keep
-            while (j < _count && match(_innerArray[j])) j++;
-
-            if (j < _count)
-                _innerArray[i++] = _innerArray[j++];
-        }
-
-        int removedCount = _count - i;
-        if (_clearReleasedSlots && removedCount > 0)
-            Array.Clear(_innerArray, i, removedCount);
-
-        _count = i;
-
+        int newCount = CompactUnmatchedItems(firstMatchIndex, match);
+        int removedCount = _count - newCount;
+        ClearReleasedSlots(newCount, removedCount);
+        _count = newCount;
         _version++;
 
         return removedCount;
+    }
+
+    private int IndexOfFirstMatch(Predicate<T> match)
+    {
+        int index = 0;
+        while (index < _count && !match(_innerArray[index]))
+            index++;
+
+        return index;
+    }
+
+    private int CompactUnmatchedItems(int writeIndex, Predicate<T> match)
+    {
+        for (int readIndex = writeIndex + 1; readIndex < _count; readIndex++)
+        {
+            if (!match(_innerArray[readIndex]))
+                _innerArray[writeIndex++] = _innerArray[readIndex];
+        }
+
+        return writeIndex;
+    }
+
+    private void ClearReleasedSlots(int startIndex, int count)
+    {
+        if (_clearReleasedSlots && count > 0)
+            Array.Clear(_innerArray, startIndex, count);
     }
 
     /// <summary>

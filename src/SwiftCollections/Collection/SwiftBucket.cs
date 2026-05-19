@@ -227,40 +227,53 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
             _freeIndices = new SwiftIntStack(Math.Max(SwiftIntStack.DefaultCapacity, freeIndices.Length));
 
             _count = 0;
-            int maxReferencedIndex = -1;
-
-            for (int i = 0; i < sourceLength; i++)
-            {
-                if (allocated.Length > i && allocated[i])
-                {
-                    if (items.Length > i)
-                        _innerArray[i].Value = items[i];
-
-                    _innerArray[i].IsUsed = true;
-                    _count++;
-                    maxReferencedIndex = i;
-                }
-            }
-
-            foreach (var index in freeIndices)
-            {
-                SwiftThrowHelper.ThrowIfTrue((uint)index >= (uint)capacity, message: "Free index is out of range.");
-
-                _freeIndices.Push(index);
-                if (index > maxReferencedIndex)
-                    maxReferencedIndex = index;
-            }
-
-            int peakCount = value.PeakCount;
-            if (peakCount < 0)
-                peakCount = 0;
-
-            _peakCount = Math.Max(peakCount, maxReferencedIndex + 1);
-            if (_peakCount > capacity)
-                _peakCount = capacity;
-
+            int maxReferencedIndex = RestoreAllocatedEntries(items, allocated, sourceLength);
+            maxReferencedIndex = RestoreFreeIndices(freeIndices, capacity, maxReferencedIndex);
+            _peakCount = NormalizePeakCount(value.PeakCount, maxReferencedIndex, capacity);
             _version = 0;
         }
+    }
+
+    private int RestoreAllocatedEntries(T[] items, bool[] allocated, int sourceLength)
+    {
+        int maxReferencedIndex = -1;
+        for (int i = 0; i < sourceLength; i++)
+        {
+            if (allocated.Length <= i || !allocated[i])
+                continue;
+
+            if (items.Length > i)
+                _innerArray[i].Value = items[i];
+
+            _innerArray[i].IsUsed = true;
+            _count++;
+            maxReferencedIndex = i;
+        }
+
+        return maxReferencedIndex;
+    }
+
+    private int RestoreFreeIndices(int[] freeIndices, int capacity, int maxReferencedIndex)
+    {
+        foreach (var index in freeIndices)
+        {
+            SwiftThrowHelper.ThrowIfTrue((uint)index >= (uint)capacity, message: "Free index is out of range.");
+
+            _freeIndices.Push(index);
+            if (index > maxReferencedIndex)
+                maxReferencedIndex = index;
+        }
+
+        return maxReferencedIndex;
+    }
+
+    private static int NormalizePeakCount(int peakCount, int maxReferencedIndex, int capacity)
+    {
+        if (peakCount < 0)
+            peakCount = 0;
+
+        int normalizedPeak = Math.Max(peakCount, maxReferencedIndex + 1);
+        return normalizedPeak > capacity ? capacity : normalizedPeak;
     }
 
     #endregion

@@ -226,21 +226,50 @@ public partial class SwiftArray2D<T> : IStateBacked<Array2DState<T>>, IEnumerabl
     {
         T[] newArray = new T[_innerArray.Length];
 
+        if (wrap)
+            ShiftWrapped(newArray, xShift, yShift);
+        else
+            ShiftClamped(newArray, xShift, yShift);
+
+        _innerArray = newArray;
+    }
+
+    private void ShiftWrapped(T[] newArray, int xShift, int yShift)
+    {
+        int normalizedXShift = NormalizeShift(xShift, _width);
+        int normalizedYShift = NormalizeShift(yShift, _height);
+
         for (int x = 0; x < _width; x++)
         {
-            int newX = wrap ? (x + xShift + _width) % _width : x + xShift;
-            if (!wrap && (newX < 0 || newX >= _width)) continue;
+            int newX = WrapForwardIndex(x, normalizedXShift, _width);
+            int sourceBase = x * _height;
+            int targetBase = newX * _height;
 
             for (int y = 0; y < _height; y++)
             {
-                int newY = wrap ? (y + yShift + _height) % _height : y + yShift;
-                if (!wrap && (newY < 0 || newY >= _height)) continue;
-
-                newArray[newX * _height + newY] = this[x, y];
+                int newY = WrapForwardIndex(y, normalizedYShift, _height);
+                newArray[targetBase + newY] = _innerArray[sourceBase + y];
             }
         }
+    }
 
-        _innerArray = newArray;
+    private void ShiftClamped(T[] newArray, int xShift, int yShift)
+    {
+        GetShiftRange(_width, xShift, out int xStart, out int xEnd);
+        GetShiftRange(_height, yShift, out int yStart, out int yEnd);
+
+        for (int x = xStart; x < xEnd; x++)
+        {
+            int newX = x + xShift;
+            int sourceBase = x * _height;
+            int targetBase = newX * _height;
+
+            for (int y = yStart; y < yEnd; y++)
+            {
+                int newY = y + yShift;
+                newArray[targetBase + newY] = _innerArray[sourceBase + y];
+            }
+        }
     }
 
     /// <summary>
@@ -285,6 +314,32 @@ public partial class SwiftArray2D<T> : IStateBacked<Array2DState<T>>, IEnumerabl
         _width = Math.Max(0, width);
         _height = Math.Max(0, height);
         _innerArray = new T[_width * _height];
+    }
+
+    private static int NormalizeShift(int shift, int length)
+    {
+        if (length == 0)
+            return 0;
+
+        int normalized = shift % length;
+        return normalized < 0 ? normalized + length : normalized;
+    }
+
+    private static int WrapForwardIndex(int index, int normalizedShift, int length)
+    {
+        int shifted = index + normalizedShift;
+        return shifted >= length ? shifted - length : shifted;
+    }
+
+    private static void GetShiftRange(int length, int shift, out int start, out int end)
+    {
+        long startValue = shift < 0 ? -(long)shift : 0L;
+        long endValue = shift > 0 ? (long)length - shift : length;
+
+        start = (int)Math.Min(startValue, length);
+        end = (int)Math.Max(0L, Math.Min(endValue, length));
+        if (end < start)
+            end = start;
     }
 
     /// <summary>
