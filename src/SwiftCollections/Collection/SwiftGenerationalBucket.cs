@@ -275,7 +275,7 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
     {
         foreach (var index in freeIndices)
         {
-            SwiftThrowHelper.ThrowIfArrayIndexInvalid(index, capacity, message: "Free index is out of range.");
+            SwiftThrowHelper.ThrowIfArgument((uint)index >= (uint)capacity, message: "Free index is out of range.");
 
             _freeIndices.Push(index);
             if (index > maxReferencedIndex)

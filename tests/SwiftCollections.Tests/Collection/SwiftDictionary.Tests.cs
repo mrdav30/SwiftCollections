@@ -836,8 +836,8 @@ public class SwiftDictionaryTests
 
         Array nonZeroLowerBound = Array.CreateInstance(typeof(KeyValuePair<int, string>), new[] { 2 }, new[] { 1 });
 
-        Assert.Throws<InvalidOperationException>(() => dictionary.CopyTo(new KeyValuePair<int, string>[1, 1], 0));
-        Assert.Throws<InvalidOperationException>(() => dictionary.CopyTo(nonZeroLowerBound, 0));
+        Assert.Throws<ArgumentException>(() => dictionary.CopyTo(new KeyValuePair<int, string>[1, 1], 0));
+        Assert.Throws<ArgumentException>(() => dictionary.CopyTo(nonZeroLowerBound, 0));
         Assert.Throws<ArgumentException>(() => dictionary.CopyTo(new int[1], 0));
     }
 
@@ -1040,7 +1040,7 @@ public class SwiftDictionaryTests
 
         var array = new KeyValuePair<int, string>[1];
 
-        Assert.Throws<InvalidOperationException>(() => ((ICollection)dictionary).CopyTo(array, 0));
+        Assert.Throws<ArgumentException>(() => ((ICollection)dictionary).CopyTo(array, 0));
     }
 
     [Fact]

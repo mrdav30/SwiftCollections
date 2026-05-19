@@ -285,7 +285,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseSetState
 
             int n = value.DenseKeys.Length;
 
-            SwiftThrowHelper.ThrowIfTrue(n != value.DenseValues.Length, message: "DenseKeys and DenseValues length mismatch.");
+            SwiftThrowHelper.ThrowIfArgument(n != value.DenseValues.Length, nameof(value), "DenseKeys and DenseValues length mismatch.");
 
             // Allocate dense storage
             _denseKeys = n == 0 ? Array.Empty<int>() : new int[Math.Max(DefaultDenseCapacity, n)];
@@ -304,7 +304,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseSetState
             for (int i = 0; i < n; i++)
             {
                 int key = _denseKeys[i];
-                SwiftThrowHelper.ThrowIfTrue(key < 0, message: "Key cannot be negative.");
+                SwiftThrowHelper.ThrowIfArgument(key < 0, nameof(value), "Key cannot be negative.");
 
                 if (key > maxKey)
                     maxKey = key;
@@ -321,7 +321,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseSetState
             {
                 int key = _denseKeys[i];
 
-                SwiftThrowHelper.ThrowIfTrue(_sparse[key] != NotPresent, message: "Duplicate key in DenseKeys.");
+                SwiftThrowHelper.ThrowIfArgument(_sparse[key] != NotPresent, nameof(value), "Duplicate key in DenseKeys.");
 
                 _sparse[key] = i + 1;
             }
@@ -671,7 +671,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseSetState
     private static int GetRequiredSparseCapacity(int key)
     {
         SwiftThrowHelper.ThrowIfNegative(key, nameof(key));
-        SwiftThrowHelper.ThrowIfTrue(key == int.MaxValue, nameof(key), message: "Key is too large for direct sparse indexing.");
+        SwiftThrowHelper.ThrowIfArgumentOutOfRange(key == int.MaxValue, key, nameof(key), "Key is too large for direct sparse indexing.");
 
         return key + 1;
     }
@@ -679,11 +679,11 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseSetState
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int GetDenseIndexOrThrow(int key)
     {
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(key, _sparse.Length, message: "Key is out of range for this collection.");
+        SwiftThrowHelper.ThrowIfKeyNotFound((uint)key >= (uint)_sparse.Length, key);
 
         int slot = _sparse[key];
 
-        SwiftThrowHelper.ThrowIfTrue(slot == NotPresent, nameof(key), message: $"Key not found in collection: {key}");
+        SwiftThrowHelper.ThrowIfKeyNotFound(slot == NotPresent, key);
 
         return slot - 1;
     }

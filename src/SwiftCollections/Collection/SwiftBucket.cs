@@ -590,7 +590,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
-        SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _count, message: "The array is not large enough to hold the elements.");
+        SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "The array is not large enough to hold the elements.");
 
         uint count = 0;
         for (uint i = 0; i < (uint)_peakCount && count < (uint)_count; i++)
@@ -606,10 +606,10 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     void ICollection.CopyTo(Array array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfTrue((uint)array.Rank != 1, message: "Array must be single dimensional.");
-        SwiftThrowHelper.ThrowIfTrue((uint)array.GetLowerBound(0) != 0, message: "Array must have zero-based indexing.");
+        SwiftThrowHelper.ThrowIfArgument((uint)array.Rank != 1, nameof(array), "Array must be single dimensional.");
+        SwiftThrowHelper.ThrowIfArgument((uint)array.GetLowerBound(0) != 0, nameof(array), "Array must have zero-based indexing.");
         SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
-        SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _count, message: "The array is not large enough to hold the elements.");
+        SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "The array is not large enough to hold the elements.");
 
         try
         {

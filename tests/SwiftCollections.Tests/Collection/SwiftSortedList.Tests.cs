@@ -665,8 +665,8 @@ public class SwiftSortedListTests
     {
         var sorter = new SwiftSortedList<int> { 1, 2, 3 };
 
-        Assert.Throws<InvalidOperationException>(() => sorter.CopyTo(new int[2], 0));
-        Assert.Throws<InvalidOperationException>(() => sorter.CopyTo(new object[2], 0));
+        Assert.Throws<ArgumentException>(() => sorter.CopyTo(new int[2], 0));
+        Assert.Throws<ArgumentException>(() => sorter.CopyTo(new object[2], 0));
     }
 
     [Fact]

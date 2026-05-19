@@ -569,7 +569,7 @@ public class SwiftHashSetTests
         var set = new SwiftHashSet<int> { 1, 2, 3 };
         var array = new int[3];
 
-        Assert.Throws<IndexOutOfRangeException>(() => set.CopyTo(array, -1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => set.CopyTo(array, -1));
     }
 
     [Fact]
@@ -578,7 +578,7 @@ public class SwiftHashSetTests
         var set = new SwiftHashSet<int> { 1, 2, 3 };
         var array = new int[3];
 
-        Assert.Throws<IndexOutOfRangeException>(() => set.CopyTo(array, 4));
+        Assert.Throws<ArgumentOutOfRangeException>(() => set.CopyTo(array, 4));
     }
 
     [Fact]
@@ -587,7 +587,7 @@ public class SwiftHashSetTests
         var set = new SwiftHashSet<int> { 1, 2, 3 };
         var array = new int[2];
 
-        Assert.Throws<InvalidOperationException>(() => set.CopyTo(array, 0));
+        Assert.Throws<ArgumentException>(() => set.CopyTo(array, 0));
     }
 
     [Fact]

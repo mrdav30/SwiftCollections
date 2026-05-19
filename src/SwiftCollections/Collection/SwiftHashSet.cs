@@ -664,7 +664,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
-        SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _count, message: "The array is not large enough to hold the elements.");
+        SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "The array is not large enough to hold the elements.");
 
         for (uint i = 0; i <= (uint)_lastIndex; i++)
         {

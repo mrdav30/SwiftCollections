@@ -403,7 +403,7 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
-        SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _count, message: "Destination array is not long enough.");
+        SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "Destination array is not long enough.");
 
         Array.Copy(_dense, 0, array, arrayIndex, _count);
     }

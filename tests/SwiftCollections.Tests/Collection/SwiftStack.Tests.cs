@@ -288,9 +288,9 @@ public class SwiftStackTests
         Action rankAct = () => collection.CopyTo(new int[1, 3], 0);
         Action lowerBoundAct = () => collection.CopyTo(nonZeroLowerBound, 0);
 
-        spanAct.Should().Throw<InvalidOperationException>();
-        rankAct.Should().Throw<InvalidOperationException>();
-        lowerBoundAct.Should().Throw<InvalidOperationException>();
+        spanAct.Should().Throw<ArgumentException>();
+        rankAct.Should().Throw<ArgumentException>();
+        lowerBoundAct.Should().Throw<ArgumentException>();
     }
 
     [Fact]
@@ -305,6 +305,19 @@ public class SwiftStackTests
 
         // Assert
         act.Should().Throw<IndexOutOfRangeException>();
+    }
+
+    [Fact]
+    public void Indexer_GetOrSetAtCount_ShouldThrowIndexOutOfRangeException()
+    {
+        var stack = new SwiftStack<int>(4);
+        stack.Push(1);
+
+        Action getAct = () => { var item = stack[stack.Count]; };
+        Action setAct = () => stack[stack.Count] = 2;
+
+        getAct.Should().Throw<IndexOutOfRangeException>();
+        setAct.Should().Throw<IndexOutOfRangeException>();
     }
 
     [Fact]
@@ -425,7 +438,7 @@ public class SwiftStackTests
         Action act = () => stack.CopyTo(array, -1);
 
         // Assert
-        act.Should().Throw<IndexOutOfRangeException>();
+        act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
     [Fact]
@@ -441,7 +454,7 @@ public class SwiftStackTests
         Action act = () => stack.CopyTo(array, 1);
 
         // Assert
-        act.Should().Throw<InvalidOperationException>().WithMessage("Destination array is not long enough.");
+        act.Should().Throw<ArgumentException>().WithMessage("Destination array is not long enough.*");
     }
 
     [Fact]

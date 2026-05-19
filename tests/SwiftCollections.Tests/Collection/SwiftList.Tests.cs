@@ -295,7 +295,7 @@ public class SwiftListTests
     {
         var list = new SwiftList<int>(8) { 1, 2, 3 };
 
-        Assert.Throws<IndexOutOfRangeException>(() => list.Insert(5, 99));
+        Assert.Throws<ArgumentOutOfRangeException>(() => list.Insert(5, 99));
         Assert.Equal(new[] { 1, 2, 3 }, list.ToArray());
     }
 
@@ -528,7 +528,7 @@ public class SwiftListTests
         var list = new SwiftList<int> { 1, 2, 3 };
         var array = new int[3];
 
-        Assert.Throws<InvalidOperationException>(() => list.CopyTo(array, 2));
+        Assert.Throws<ArgumentException>(() => list.CopyTo(array, 2));
     }
 
     [Fact]
@@ -537,7 +537,7 @@ public class SwiftListTests
         var list = new SwiftList<int> { 1, 2, 3 };
         var array = new int[2];  // Smaller than the list count
 
-        Assert.Throws<InvalidOperationException>(() => list.CopyTo(array, 0));
+        Assert.Throws<ArgumentException>(() => list.CopyTo(array, 0));
     }
 
     [Fact]
@@ -588,9 +588,9 @@ public class SwiftListTests
         var list = new SwiftList<int> { 1, 2, 3 };
         Array nonZeroLowerBound = Array.CreateInstance(typeof(int), new[] { 4 }, new[] { 1 });
 
-        Assert.Throws<InvalidOperationException>(() => list.CopyTo(new int[2].AsSpan()));
-        Assert.Throws<InvalidOperationException>(() => list.CopyTo(new int[1, 3], 0));
-        Assert.Throws<InvalidOperationException>(() => list.CopyTo(nonZeroLowerBound, 0));
+        Assert.Throws<ArgumentException>(() => list.CopyTo(new int[2].AsSpan()));
+        Assert.Throws<ArgumentException>(() => list.CopyTo(new int[1, 3], 0));
+        Assert.Throws<ArgumentException>(() => list.CopyTo(nonZeroLowerBound, 0));
     }
 
     [Fact]

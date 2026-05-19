@@ -95,7 +95,7 @@ public sealed class SwiftObjectPool<T> : IDisposable, ISwiftObjectPool<T> where 
         }
 
         var newObj = _createFunc();
-        SwiftThrowHelper.ThrowIfNull(newObj, message: "Failed to create a new object.");
+        SwiftThrowHelper.ThrowIfTrue(newObj is null, message: "Failed to create a new object.");
         CountAll++;
         _actionOnGet?.Invoke(newObj);
         return newObj;

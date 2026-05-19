@@ -182,13 +182,13 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            SwiftThrowHelper.ThrowIfArrayIndexInvalid(index, _count, message: "Index is out of range.");
+            SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count, message: "Index is out of range.");
             return _innerArray[(_head + index) & _mask];
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set
         {
-            SwiftThrowHelper.ThrowIfArrayIndexInvalid(index, _count, message: "Index is out of range.");
+            SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count, message: "Index is out of range.");
             _innerArray[(_head + index) & _mask] = value;
         }
     }
@@ -635,10 +635,10 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     public void CopyTo(Array array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfTrue((uint)array.Rank != 1, message: "Array must be single dimensional.");
-        SwiftThrowHelper.ThrowIfTrue((uint)array.GetLowerBound(0) != 0, message: "Array must have zero-based indexing.");
+        SwiftThrowHelper.ThrowIfArgument((uint)array.Rank != 1, nameof(array), "Array must be single dimensional.");
+        SwiftThrowHelper.ThrowIfArgument((uint)array.GetLowerBound(0) != 0, nameof(array), "Array must have zero-based indexing.");
         SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
-        SwiftThrowHelper.ThrowIfTrue((uint)(array.Length - arrayIndex) < _count, message: "Destination array is not long enough.");
+        SwiftThrowHelper.ThrowIfArgument((uint)(array.Length - arrayIndex) < _count, nameof(array), "Destination array is not long enough.");
     
         if ((uint)_count == 0)
             return;
@@ -657,10 +657,10 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     public void CopyTo(T[] array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfTrue((uint)array.Rank != 1, message: "Array must be single dimensional.");
-        SwiftThrowHelper.ThrowIfTrue((uint)array.GetLowerBound(0) != 0, message: "Array must have zero-based indexing.");
+        SwiftThrowHelper.ThrowIfArgument((uint)array.Rank != 1, nameof(array), "Array must be single dimensional.");
+        SwiftThrowHelper.ThrowIfArgument((uint)array.GetLowerBound(0) != 0, nameof(array), "Array must have zero-based indexing.");
         SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
-        SwiftThrowHelper.ThrowIfTrue((uint)(array.Length - arrayIndex) < _count, message: "Destination array is not long enough.");
+        SwiftThrowHelper.ThrowIfArgument((uint)(array.Length - arrayIndex) < _count, nameof(array), "Destination array is not long enough.");
 
         if ((uint)_count == 0) return;
 
@@ -673,7 +673,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// <param name="destination">The destination span.</param>
     public void CopyTo(Span<T> destination)
     {
-        SwiftThrowHelper.ThrowIfTrue((uint)destination.Length < _count, message: "Destination span is not long enough.");
+        SwiftThrowHelper.ThrowIfArgument((uint)destination.Length < _count, nameof(destination), "Destination span is not long enough.");
 
         GetSegments(out ReadOnlySpan<T> first, out ReadOnlySpan<T> second);
         first.CopyTo(destination);

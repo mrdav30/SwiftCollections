@@ -818,7 +818,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
-        SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _count, nameof(array), message: "Insufficient space in the target array.");
+        SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "Insufficient space in the target array.");
 
         for (uint i = 0; i <= (uint)_lastIndex; i++)
         {
@@ -831,10 +831,10 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     public void CopyTo(Array array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfTrue(array.Rank != 1, nameof(array), message: "Multidimensional array not supported");
-        SwiftThrowHelper.ThrowIfTrue(array.GetLowerBound(0) != 0, nameof(array), message: "Non-zero lower bound");
+        SwiftThrowHelper.ThrowIfArgument(array.Rank != 1, nameof(array), "Multidimensional array not supported");
+        SwiftThrowHelper.ThrowIfArgument(array.GetLowerBound(0) != 0, nameof(array), "Non-zero lower bound");
         SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
-        SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _count, nameof(array), message: "Insufficient space in the target array.");
+        SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "Insufficient space in the target array.");
 
         if (array is KeyValuePair<TKey, TValue>[] pairs)
             ((ICollection<KeyValuePair<TKey, TValue>>)this).CopyTo(pairs, arrayIndex);
@@ -1117,7 +1117,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         {
             SwiftThrowHelper.ThrowIfNull(array, nameof(array));
             SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
-            SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _dictionary._count, nameof(array),  message: "Insufficient space in the target array.");
+            SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _dictionary._count, nameof(array), "Insufficient space in the target array.");
 
             for (int i = 0, j = arrayIndex; i < _entries.Length; i++)
             {
@@ -1129,10 +1129,10 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         void ICollection.CopyTo(Array array, int arrayIndex)
         {
             SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-            SwiftThrowHelper.ThrowIfTrue(array.Rank != 1, nameof(array), message: "Multidimensional array not supported");
-            SwiftThrowHelper.ThrowIfTrue(array.GetLowerBound(0) != 0, nameof(array), message: "Non-zero lower bound");
+            SwiftThrowHelper.ThrowIfArgument(array.Rank != 1, nameof(array), "Multidimensional array not supported");
+            SwiftThrowHelper.ThrowIfArgument(array.GetLowerBound(0) != 0, nameof(array), "Non-zero lower bound");
             SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
-            SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _dictionary._count, nameof(array), message: "Insufficient space in the target array.");
+            SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _dictionary._count, nameof(array), "Insufficient space in the target array.");
 
             if (array is TKey[] keysArray)
                 CopyTo(keysArray, arrayIndex);
@@ -1286,7 +1286,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         {
             SwiftThrowHelper.ThrowIfNull(array, nameof(array));
             SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
-            SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _dictionary._count, nameof(array), message: "Insufficient space in the target array.");
+            SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _dictionary._count, nameof(array), "Insufficient space in the target array.");
 
             for (int i = 0, j = arrayIndex; i <= _dictionary._lastIndex; i++)
             {
@@ -1298,10 +1298,10 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         void ICollection.CopyTo(Array array, int arrayIndex)
         {
             SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-            SwiftThrowHelper.ThrowIfTrue(array.Rank != 1, nameof(array),  message:"Multidimensional array not supported");
-            SwiftThrowHelper.ThrowIfTrue(array.GetLowerBound(0) != 0, nameof(array), message: "Non-zero lower bound");
+            SwiftThrowHelper.ThrowIfArgument(array.Rank != 1, nameof(array), "Multidimensional array not supported");
+            SwiftThrowHelper.ThrowIfArgument(array.GetLowerBound(0) != 0, nameof(array), "Non-zero lower bound");
             SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
-            SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _dictionary._count, nameof(array), message: "Insufficient space in the target array.");
+            SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _dictionary._count, nameof(array), "Insufficient space in the target array.");
 
             if (array is TValue[] valuesArray)
                 CopyTo(valuesArray, arrayIndex);

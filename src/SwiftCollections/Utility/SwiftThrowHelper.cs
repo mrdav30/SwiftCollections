@@ -24,7 +24,7 @@ public static class SwiftThrowHelper
     /// <param name="paramName">The name of the parameter that caused the exception.</param>
     /// <param name="message">An optional message to include in the exception.</param>
     /// <exception cref="ArgumentNullException">Thrown when the argument is null.</exception>
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void ThrowIfNull([NotNull] object? argument, string? paramName = null, string? message = null)
     {
         if (argument is null)
@@ -54,7 +54,7 @@ public static class SwiftThrowHelper
     /// <param name="defaultValue">A default value of type TValue used to determine if nulls are illegal.</param>
     /// <param name="message">An optional message to include in the exception.</param>
     /// <exception cref="ArgumentNullException">The value is null and TValue is a value type.</exception>
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void ThrowIfNullAndNullsAreIllegal<TValue>(object? value, TValue? defaultValue, string? message = null)
     {
         if (value == null && !(defaultValue == null))
@@ -77,11 +77,11 @@ public static class SwiftThrowHelper
     /// <param name="paramName">The name of the parameter that caused the exception.</param>
     /// <param name="message">An optional message to include in the exception.</param>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when the value is negative.</exception>
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void ThrowIfNegative(int value, string? paramName = null, string? message = null)
     {
         if (value < 0)
-            ThrowArgumentOutOfRangeException(value, paramName, message);
+            ThrowArgumentOutOfRangeException(paramName, value, message ?? $"{paramName} must be non-negative.");
     }
 
     /// <summary>
@@ -91,21 +91,70 @@ public static class SwiftThrowHelper
     /// <param name="paramName">The name of the parameter that caused the exception.</param>
     /// <param name="message">An optional message to include in the exception.</param>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when the value is negative or zero.</exception>
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void ThrowIfNegativeOrZero(int value, string? paramName = null, string? message = null)
     {
         if (value < 0 || value == 0)
-            ThrowArgumentOutOfRangeException(value, paramName, message);
+            ThrowArgumentOutOfRangeException(paramName, value, message ?? $"{paramName} must be greater than zero.");
+    }
+
+    /// <summary>
+    /// Throws an ArgumentOutOfRangeException if the specified condition is true.
+    /// </summary>
+    /// <param name="condition">The condition to evaluate.</param>
+    /// <param name="actualValue">The value that caused the exception.</param>
+    /// <param name="paramName">The name of the parameter that caused the exception.</param>
+    /// <param name="message">An optional message to include in the exception.</param>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when the condition is true.</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void ThrowIfArgumentOutOfRange([DoesNotReturnIf(true)] bool condition, int actualValue, string? paramName = null, string? message = null)
+    {
+        if (condition)
+            ThrowArgumentOutOfRangeException(paramName, actualValue, message);
+    }
+
+    /// <summary>
+    /// Throws an ArgumentOutOfRangeException if a copy destination index is outside [0, length].
+    /// </summary>
+    /// <param name="index">The destination index to check.</param>
+    /// <param name="length">The destination length.</param>
+    /// <param name="paramName">The name of the parameter that caused the exception.</param>
+    /// <param name="message">An optional message to include in the exception.</param>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when the index is outside [0, length].</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void ThrowIfArrayIndexInvalid(int index, int length, string? paramName = null, string? message = null)
+    {
+        if ((uint)index > (uint)length)
+            ThrowArgumentOutOfRangeException(paramName ?? nameof(index), index, message ?? "Array index is out of range.");
     }
 
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowArgumentOutOfRangeException(int value, string? paramName, string? message = null) =>
-        throw new ArgumentOutOfRangeException(paramName, message ?? $"{paramName} must be greater than zero. Value: {value}");
+    private static void ThrowArgumentOutOfRangeException(string? paramName, object? actualValue, string? message = null) =>
+        throw new ArgumentOutOfRangeException(paramName, actualValue, message);
 
     #endregion
 
     #region Invalid State Validation
+
+    /// <summary>
+    /// Throws an ArgumentException if the specified condition is true.
+    /// </summary>
+    /// <param name="condition">The condition to evaluate.</param>
+    /// <param name="paramName">The name of the parameter that caused the exception.</param>
+    /// <param name="message">An optional message to include in the exception.</param>
+    /// <exception cref="ArgumentException">Thrown when the condition is true.</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void ThrowIfArgument([DoesNotReturnIf(true)] bool condition, string? paramName = null, string? message = null)
+    {
+        if (condition)
+            ThrowArgumentException(paramName, message);
+    }
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowArgumentException(string? paramName, string? message = null) =>
+        throw new ArgumentException(message, paramName);
 
     /// <summary>
     /// Throws an InvalidOperationException if the specified condition is true, indicating that the object is in an invalid state for the attempted operation.
@@ -114,7 +163,7 @@ public static class SwiftThrowHelper
     /// <param name="objectName">The name of the object in an invalid state.</param>
     /// <param name="message">An optional message to include in the exception.</param>
     /// <exception cref="InvalidOperationException">Thrown when the condition is true, indicating an invalid state.</exception>
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void ThrowIfTrue([DoesNotReturnIf(true)] bool condition, string? objectName = null, string? message = null)
     {
         if (condition)
@@ -133,7 +182,7 @@ public static class SwiftThrowHelper
     /// <param name="objectName">The name of the object that has been disposed.</param>
     /// <param name="message">An optional message to include in the exception.</param>
     /// <exception cref="ObjectDisposedException">Thrown when the condition is true, indicating that the object has been disposed.</exception>
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void ThrowIfDisposed([DoesNotReturnIf(true)] bool condition, string? objectName = null, string? message = null)
     {
         if (condition)
@@ -152,11 +201,25 @@ public static class SwiftThrowHelper
     /// <param name="key">The key associated with the index.</param>
     /// <param name="message">An optional message to include in the exception.</param>
     /// <exception cref="KeyNotFoundException">Thrown when the index is negative, indicating an invalid key.</exception>
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void ThrowIfKeyInvalid(int index, object? key = null, string? message = null)
     {
         if (index < 0)
             ThrowKeyNotFoundException(index, key, message);
+    }
+
+    /// <summary>
+    /// Throws a KeyNotFoundException if the specified condition is true.
+    /// </summary>
+    /// <param name="condition">The condition to evaluate.</param>
+    /// <param name="key">The key associated with the lookup.</param>
+    /// <param name="message">An optional message to include in the exception.</param>
+    /// <exception cref="KeyNotFoundException">Thrown when the condition is true.</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void ThrowIfKeyNotFound([DoesNotReturnIf(true)] bool condition, object? key = null, string? message = null)
+    {
+        if (condition)
+            ThrowKeyNotFoundException(-1, key, message);
     }
 
     [DoesNotReturn]
@@ -171,15 +234,7 @@ public static class SwiftThrowHelper
     /// <param name="count">The total number of elements in the collection.</param>
     /// <param name="message">An optional message to include in the exception.</param>
     /// <exception cref="IndexOutOfRangeException">Thrown when the index is outside the valid range.</exception>
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    public static void ThrowIfArrayIndexInvalid(int index, int count, string? message = null)
-    {
-        if ((uint)index > (uint)count)
-            ThrowIndexOutOfRangeException(index, message);
-    }
-
-    /// <inheritdoc cref="ThrowIfArrayIndexInvalid(int, int, string?)"/>
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void ThrowIfListIndexInvalid(int index, int count, string? message = null)
     {
         if ((uint)index >= (uint)count)

@@ -179,7 +179,7 @@ namespace SwiftCollections
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T FromEnd<T>(this SwiftList<T> list, int reverseIndex)
         {
-            SwiftThrowHelper.ThrowIfTrue(reverseIndex <= 0 || reverseIndex > list.Count, nameof(reverseIndex));
+            SwiftThrowHelper.ThrowIfArgumentOutOfRange(reverseIndex <= 0 || reverseIndex > list.Count, reverseIndex, nameof(reverseIndex));
             return list[^reverseIndex];
         }
 

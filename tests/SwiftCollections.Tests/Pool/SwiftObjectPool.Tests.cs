@@ -73,7 +73,7 @@ namespace SwiftCollections.Pool.Tests
             var pool = new SwiftObjectPool<string>(() => null);
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => pool.Rent());
+            Assert.Throws<InvalidOperationException>(() => pool.Rent());
         }
     }
 }

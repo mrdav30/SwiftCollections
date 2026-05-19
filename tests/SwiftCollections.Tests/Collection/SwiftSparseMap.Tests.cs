@@ -91,7 +91,7 @@ public class SwiftSparseMapTests
     {
         var set = new SwiftSparseMap<int>();
 
-        Assert.Throws<InvalidOperationException>(() => set.Add(int.MaxValue, 5));
+        Assert.Throws<ArgumentOutOfRangeException>(() => set.Add(int.MaxValue, 5));
     }
 
     [Fact]
@@ -327,14 +327,14 @@ public class SwiftSparseMapTests
     [Fact]
     public void Constructor_WithState_MismatchedDenseLengths_Throws()
     {
-        Assert.Throws<InvalidOperationException>(() =>
+        Assert.Throws<ArgumentException>(() =>
             new SwiftSparseMap<int>(new SwiftSparseSetState<int>(new[] { 1 }, Array.Empty<int>())));
     }
 
     [Fact]
     public void Constructor_WithState_DuplicateKeys_Throws()
     {
-        Assert.Throws<InvalidOperationException>(() =>
+        Assert.Throws<ArgumentException>(() =>
             new SwiftSparseMap<int>(new SwiftSparseSetState<int>(new[] { 1, 1 }, new[] { 10, 20 })));
     }
 
@@ -346,8 +346,9 @@ public class SwiftSparseMapTests
             { 2, 20 }
         };
 
-        Assert.Throws<InvalidOperationException>(() => _ = set[1]);
-        Assert.Throws<IndexOutOfRangeException>(() => _ = set[10]);
+        Assert.Throws<KeyNotFoundException>(() => _ = set[1]);
+        Assert.Throws<KeyNotFoundException>(() => _ = set[10]);
+        Assert.Throws<KeyNotFoundException>(() => _ = set[-1]);
     }
 
     #region Serialization

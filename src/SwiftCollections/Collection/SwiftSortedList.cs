@@ -751,7 +751,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, nameof(arrayIndex));
-        SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _count, message: "The target array is too small.");
+        SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "The target array is too small.");
 
         Array.Copy(_innerArray, _offset, array, arrayIndex, _count);
     }
@@ -761,7 +761,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, nameof(arrayIndex));
-        SwiftThrowHelper.ThrowIfTrue(array.Length - arrayIndex < _count, message: "The target array is too small.");
+        SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "The target array is too small.");
  
         Array.Copy(_innerArray, _offset, array, arrayIndex, _count);
     }
