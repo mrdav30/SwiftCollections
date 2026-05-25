@@ -107,7 +107,7 @@ public static class SwiftThrowHelper
     /// <param name="message">An optional message to include in the exception.</param>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when the condition is true.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void ThrowIfArgumentOutOfRange([DoesNotReturnIf(true)] bool condition, int actualValue, string? paramName = null, string? message = null)
+    public static void ThrowIfArgumentOutOfRange([DoesNotReturnIf(true)] bool condition, int? actualValue, string? paramName = null, string? message = null)
     {
         if (condition)
             ThrowArgumentOutOfRangeException(paramName, actualValue, message);
