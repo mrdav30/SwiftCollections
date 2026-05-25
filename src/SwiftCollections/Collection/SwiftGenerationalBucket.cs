@@ -121,10 +121,10 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
     [MemoryPackConstructor]
     public SwiftGenerationalBucket(SwiftGenerationalBucketState<T> state)
     {
+        _entries = Array.Empty<Entry>();
+        _freeIndices = new SwiftIntStack(0);
+
         State = state;
-        // Ensure that the internal structures are initialized even if the state is null or incomplete.
-        _entries ??= new Entry[DefaultCapacity];
-        _freeIndices ??= new SwiftIntStack(DefaultCapacity);
     }
 
     #endregion

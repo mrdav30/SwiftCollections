@@ -123,6 +123,20 @@ public class SwiftSparseMapTests
     }
 
     [Fact]
+    public void TryGetValue_ReturnsFalseForInRangeMissingKey()
+    {
+        var set = new SwiftSparseMap<int>
+        {
+            { 3, 30 }
+        };
+
+        bool result = set.TryGetValue(1, out int value);
+
+        Assert.False(result);
+        Assert.Equal(default, value);
+    }
+
+    [Fact]
     public void Remove_RemovesExistingKey()
     {
         var set = new SwiftSparseMap<int>
@@ -143,6 +157,19 @@ public class SwiftSparseMapTests
         var set = new SwiftSparseMap<int>();
 
         Assert.False(set.Remove(50));
+    }
+
+    [Fact]
+    public void Remove_ReturnsFalseForInRangeMissingKey()
+    {
+        var set = new SwiftSparseMap<int>
+        {
+            { 3, 30 }
+        };
+
+        Assert.False(set.Remove(1));
+        Assert.Single(set);
+        Assert.Equal(30, set[3]);
     }
 
     [Fact]
@@ -286,6 +313,33 @@ public class SwiftSparseMapTests
     }
 
     [Fact]
+    public void EnsureCapacityAndTrimExcess_HandleEmptyAndPopulatedPaths()
+    {
+        var empty = new SwiftSparseMap<int>(0, 0);
+        empty.EnsureDenseCapacity(1);
+        empty.EnsureSparseCapacity(1);
+
+        Assert.True(empty.DenseCapacity >= SwiftSparseMap<int>.DefaultDenseCapacity);
+        Assert.True(empty.SparseCapacity >= SwiftSparseMap<int>.DefaultSparseCapacity);
+
+        var populated = new SwiftSparseMap<int>
+        {
+            { 1, 10 }
+        };
+
+        populated.EnsureDenseCapacity(64);
+
+        Assert.True(populated.DenseCapacity >= 64);
+        Assert.Equal(10, populated[1]);
+
+        var oversizedEmpty = new SwiftSparseMap<int>(64, 64);
+        oversizedEmpty.TrimExcess();
+
+        Assert.Equal(SwiftSparseMap<int>.DefaultSparseCapacity, oversizedEmpty.SparseCapacity);
+        Assert.Equal(SwiftSparseMap<int>.DefaultDenseCapacity, oversizedEmpty.DenseCapacity);
+    }
+
+    [Fact]
     public void CloneTo_ClearsTargetAndCopiesValues()
     {
         var set = new SwiftSparseMap<int>
@@ -339,6 +393,17 @@ public class SwiftSparseMapTests
     {
         Assert.Throws<ArgumentException>(() =>
             new SwiftSparseMap<int>(new SwiftSparseMapState<int>(new[] { 1, 1 }, new[] { 10, 20 })));
+    }
+
+    [Fact]
+    public void Constructor_WithState_NullArrays_UsesEmptyStorage()
+    {
+        var map = new SwiftSparseMap<int>(new SwiftSparseMapState<int>(null, null));
+
+        Assert.Empty(map);
+        Assert.Equal(SwiftSparseMap<int>.DefaultSparseCapacity, map.SparseCapacity);
+        Assert.Empty(map.DenseKeys);
+        Assert.Empty(map.DenseValues);
     }
 
     [Fact]

@@ -126,11 +126,11 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     [MemoryPackConstructor]
     public SwiftSparseMap(SwiftSparseMapState<T> state)
     {
-        State = state;
+        _sparse = Array.Empty<int>();
+        _denseKeys = Array.Empty<int>();
+        _denseValues = Array.Empty<T>();
 
-        _sparse ??= new int[DefaultSparseCapacity];
-        _denseKeys ??= new int[DefaultDenseCapacity];
-        _denseValues ??= new T[DefaultDenseCapacity];
+        State = state;
     }
 
     #endregion

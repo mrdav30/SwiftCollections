@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Numerics;
+using System;
 using Xunit;
 
 namespace SwiftCollections.Query.Tests;
@@ -32,5 +33,15 @@ public class SwiftSpatialHashNumericsTests
         Assert.Equal(2, results.Count);
         Assert.Contains(1, results);
         Assert.Contains(2, results);
+    }
+
+    [Theory]
+    [InlineData(0f)]
+    [InlineData(-1f)]
+    [InlineData(float.NaN)]
+    [InlineData(float.PositiveInfinity)]
+    public void NumericsWrapper_RejectsInvalidCellSizes(float cellSize)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SwiftSpatialHash<int>(4, cellSize));
     }
 }

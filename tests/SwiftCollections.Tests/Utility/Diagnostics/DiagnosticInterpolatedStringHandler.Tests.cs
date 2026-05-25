@@ -120,6 +120,14 @@ public class DiagnosticInterpolatedStringHandlerTests
     }
 
     [Fact]
+    public void DynamicDiagnosticLevel_UsesNonePlaceholderLevel()
+    {
+        var level = default(DynamicDiagnosticLevel);
+
+        Assert.Equal(DiagnosticLevel.None, level.Level);
+    }
+
+    [Fact]
     public void DiagnosticMessageHandler_RejectsNullChannel()
     {
         Assert.Throws<ArgumentNullException>(() => new DiagnosticMessageHandler<InfoDiagnosticLevel>(0, 0, null, out _));

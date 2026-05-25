@@ -523,6 +523,17 @@ public class SwiftQueueTests
     }
 
     [Fact]
+    public void Enumerator_MoveNext_ReturnsFalseAfterLastElement()
+    {
+        var queue = new SwiftQueue<int>();
+        queue.Enqueue(1);
+        var enumerator = queue.GetEnumerator();
+
+        Assert.True(enumerator.MoveNext());
+        Assert.False(enumerator.MoveNext());
+    }
+
+    [Fact]
     public void Exists_ReturnsTrueIfMatchIsFound()
     {
         var queue = new SwiftQueue<int>();

@@ -75,5 +75,44 @@ namespace SwiftCollections.Pool.Tests
             // Act & Assert
             Assert.Throws<InvalidOperationException>(() => pool.Rent());
         }
+
+        [Fact]
+        public void RentAndRelease_InvokeGetAndDestroyCallbacksAcrossReuseAndOverflow()
+        {
+            int getCount = 0;
+            int destroyCount = 0;
+            var pool = new SwiftObjectPool<SwiftCollections.Tests.DisposableSpy>(
+                () => new SwiftCollections.Tests.DisposableSpy(),
+                actionOnGet: _ => getCount++,
+                actionOnDestroy: _ => destroyCount++,
+                maxSize: 1);
+
+            var first = pool.Rent();
+            pool.Release(first);
+            var reused = pool.Rent();
+            var overflow = pool.Rent();
+
+            pool.Release(reused);
+            pool.Release(overflow);
+
+            Assert.Equal(3, getCount);
+            Assert.Equal(1, destroyCount);
+        }
+
+        [Fact]
+        public void Release_WhenFullWithoutDestroyCallback_DropsOverflowObject()
+        {
+            var pool = new SwiftObjectPool<SwiftCollections.Tests.DisposableSpy>(
+                () => new SwiftCollections.Tests.DisposableSpy(),
+                maxSize: 1);
+
+            var first = pool.Rent();
+            var overflow = pool.Rent();
+
+            pool.Release(first);
+            pool.Release(overflow);
+
+            Assert.Equal(1, pool.CountInactive);
+        }
     }
 }

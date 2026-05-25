@@ -25,6 +25,25 @@ public class SwiftSparseSetTests
     }
 
     [Fact]
+    public void Constructor_WithSingleCapacity_UsesMatchingCapacities()
+    {
+        var set = new SwiftSparseSet(16);
+
+        Assert.Equal(16, set.SparseCapacity);
+        Assert.Equal(16, set.DenseCapacity);
+    }
+
+    [Fact]
+    public void Constructor_WithEmptyState_UsesDefaultSparseCapacityAndEmptyDenseStorage()
+    {
+        var set = new SwiftSparseSet(new SwiftArrayState<int>(Array.Empty<int>()));
+
+        Assert.Empty(set);
+        Assert.Equal(SwiftSparseSet.DefaultSparseCapacity, set.SparseCapacity);
+        Assert.Empty(set.DenseKeys);
+    }
+
+    [Fact]
     public void Add_InsertsIdAndExposesDenseKeys()
     {
         var set = new SwiftSparseSet
@@ -241,6 +260,100 @@ public class SwiftSparseSetTests
     }
 
     [Fact]
+    public void SetOperations_WorkAgainstHashSetInputs()
+    {
+        var set = new SwiftSparseSet
+        {
+            1,
+            2,
+            3
+        };
+        var other = new HashSet<int> { 2, 3, 4 };
+
+        set.IntersectWith(other);
+
+        Assert.True(set.SetEquals(new HashSet<int> { 2, 3 }));
+        Assert.True(set.IsSubsetOf(new HashSet<int> { 2, 3, 5 }));
+        Assert.False(set.IsSubsetOf(new HashSet<int> { 2 }));
+        Assert.True(set.IsProperSubsetOf(new HashSet<int> { 2, 3, 5 }));
+        Assert.True(new SwiftSparseSet { 2, 3, 4 }.IsProperSupersetOf(new HashSet<int> { 2, 3 }));
+
+        set.SymmetricExceptWith(new HashSet<int> { 3, 5 });
+
+        Assert.True(set.SetEquals(new HashSet<int> { 2, 5 }));
+        Assert.False(set.IsSupersetOf(new HashSet<int> { 2, 5, 9 }));
+    }
+
+    [Fact]
+    public void SetOperations_WorkAgainstMaterializedEnumerableFallbacks()
+    {
+        var set = new SwiftSparseSet
+        {
+            1,
+            2,
+            3
+        };
+        IEnumerable<int> other = Enumerable.Range(2, 3).Where(_ => true);
+
+        Assert.True(set.IsProperSubsetOf(Enumerable.Range(1, 4).Where(_ => true)));
+        Assert.True(set.IsProperSupersetOf(Enumerable.Range(1, 2).Where(_ => true)));
+        Assert.False(set.Overlaps(new[] { 8, 9 }.Where(_ => true)));
+        Assert.False(set.SetEquals(other));
+
+        set.SymmetricExceptWith(other);
+
+        Assert.True(set.SetEquals(new[] { 1, 4 }));
+    }
+
+    [Fact]
+    public void SetOperations_SelfInputsUseFastPaths()
+    {
+        var set = new SwiftSparseSet
+        {
+            1,
+            2
+        };
+
+        set.IntersectWith(set);
+
+        Assert.True(set.IsSubsetOf(set));
+        Assert.True(set.IsSupersetOf(set));
+        Assert.True(set.SetEquals(set));
+
+        set.SymmetricExceptWith(set);
+
+        Assert.Empty(set);
+    }
+
+    [Fact]
+    public void SetComparisons_ReturnFalseForEqualSizeMismatches()
+    {
+        var set = new SwiftSparseSet
+        {
+            1,
+            2
+        };
+        var sparseEqualSizeMismatch = new SwiftSparseSet
+        {
+            1,
+            3
+        };
+        var hashEqualSizeMismatch = new HashSet<int> { 1, 3 };
+        IEnumerable<int> enumerableEqualSizeMismatch = hashEqualSizeMismatch.Where(_ => true);
+
+        Assert.False(set.IsProperSubsetOf(sparseEqualSizeMismatch));
+        Assert.False(set.IsProperSubsetOf(hashEqualSizeMismatch));
+        Assert.False(set.IsProperSubsetOf(enumerableEqualSizeMismatch));
+        Assert.False(set.IsProperSupersetOf(sparseEqualSizeMismatch));
+        Assert.False(set.IsProperSupersetOf(hashEqualSizeMismatch));
+        Assert.False(set.IsProperSupersetOf(enumerableEqualSizeMismatch));
+        Assert.False(set.SetEquals(sparseEqualSizeMismatch));
+        Assert.False(set.SetEquals(hashEqualSizeMismatch));
+        Assert.False(set.SetEquals(enumerableEqualSizeMismatch));
+        Assert.True(new SwiftSparseSet().IsSubsetOf(Array.Empty<int>()));
+    }
+
+    [Fact]
     public void DenseViewsCopyAndClone_ExposeCurrentState()
     {
         var set = new SwiftSparseSet
@@ -264,6 +377,56 @@ public class SwiftSparseSetTests
         Assert.Equal(new[] { 1, 2 }, target);
         Assert.True(enumerator.MoveNext());
         Assert.NotNull(enumerator.Current);
+    }
+
+    [Fact]
+    public void ICollectionCopyTo_CopiesToSupportedArrayShapes()
+    {
+        ICollection collection = new SwiftSparseSet
+        {
+            1,
+            2
+        };
+        var integers = new int[2];
+        var objects = new object[2];
+
+        collection.CopyTo(integers, 0);
+        collection.CopyTo(objects, 0);
+
+        Assert.Equal(new[] { 1, 2 }, integers);
+        Assert.Equal(new object[] { 1, 2 }, objects);
+    }
+
+    [Fact]
+    public void ICollectionCopyTo_ThrowsForUnsupportedArrayShapes()
+    {
+        ICollection collection = new SwiftSparseSet
+        {
+            1,
+            2
+        };
+        Array nonZeroLowerBound = Array.CreateInstance(typeof(int), new[] { 3 }, new[] { 1 });
+
+        Assert.Throws<ArgumentException>(() => collection.CopyTo(new int[1, 2], 0));
+        Assert.Throws<ArgumentException>(() => collection.CopyTo(nonZeroLowerBound, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => collection.CopyTo(new int[2], -1));
+        Assert.Throws<ArgumentException>(() => collection.CopyTo(new int[1], 0));
+        Assert.Throws<ArgumentException>(() => collection.CopyTo(new string[2], 0));
+    }
+
+    [Fact]
+    public void EnsureDenseCapacity_WithExistingItems_CopiesDenseKeys()
+    {
+        var set = new SwiftSparseSet(0, 0)
+        {
+            7
+        };
+
+        set.EnsureDenseCapacity(32);
+
+        Assert.Equal(32, set.DenseCapacity);
+        Assert.Contains(7, set);
+        Assert.Equal(7, set.DenseKeys[0]);
     }
 
     [Fact]

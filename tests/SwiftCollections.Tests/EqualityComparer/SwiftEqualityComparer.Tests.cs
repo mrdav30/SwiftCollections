@@ -28,6 +28,7 @@ public class SwiftEqualityComparerTests
         Assert.Equal(0, comparer.GetHashCode((string)null));
         Assert.Equal(0, nonGeneric.GetHashCode(null));
         Assert.Equal(comparer.GetHashCode("lockstep"), sameSeed.GetHashCode("lockstep"));
+        Assert.Equal(comparer.GetHashCode("lockstep"), nonGeneric.GetHashCode("lockstep"));
         Assert.Equal(nonGeneric.GetHashCode(5), nonGeneric.GetHashCode(5));
         Assert.True(comparer.Equals((object)sameSeed));
         Assert.False(comparer.Equals((object)differentSeed));

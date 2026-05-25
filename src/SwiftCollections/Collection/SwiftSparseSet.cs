@@ -108,10 +108,10 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     [MemoryPackConstructor]
     public SwiftSparseSet(SwiftArrayState<int> state)
     {
-        State = state;
+        _sparse = Array.Empty<int>();
+        _denseKeys = Array.Empty<int>();
 
-        _sparse ??= new int[DefaultSparseCapacity];
-        _denseKeys ??= new int[DefaultDenseCapacity];
+        State = state;
     }
 
     #endregion
@@ -700,7 +700,8 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
             return;
         }
 
-        if (array is object[] objects)
+        Type? elementType = array.GetType().GetElementType();
+        if (array is object[] objects && elementType != null && elementType.IsAssignableFrom(typeof(int)))
         {
             for (int i = 0; i < _count; i++)
                 objects[index + i] = _denseKeys[i];

@@ -49,6 +49,16 @@ public class SwiftLazyDisposableTests
     }
 
     [Fact]
+    public void ToString_ReturnsEmptyStringWhenCreatedValueReturnsNullText()
+    {
+        var lazy = new SwiftLazyDisposable<NullTextDisposable>(() => new NullTextDisposable());
+
+        _ = lazy.Value;
+
+        Assert.Equal(string.Empty, lazy.ToString());
+    }
+
+    [Fact]
     public void Dispose_OnlyDisposesCreatedValueOnce()
     {
         var notCreated = new SwiftLazyDisposable<DisposableSpy>(() => new DisposableSpy());
@@ -68,5 +78,12 @@ public class SwiftLazyDisposableTests
     {
         created++;
         return new DisposableSpy { Name = name };
+    }
+
+    private sealed class NullTextDisposable : System.IDisposable
+    {
+        public void Dispose() { }
+
+        public override string ToString() => null;
     }
 }

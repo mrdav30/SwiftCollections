@@ -48,6 +48,16 @@ public class SwiftObservablePropertyTests
         Assert.False(eventRaised);
     }
 
+    [Fact]
+    public void Value_Set_WithNoSubscribers_StillUpdatesValue()
+    {
+        var property = new SwiftObservableProperty<int>(42);
+
+        property.Value = 100;
+
+        Assert.Equal(100, property.Value);
+    }
+
     #region Serialization
 
     [Fact]

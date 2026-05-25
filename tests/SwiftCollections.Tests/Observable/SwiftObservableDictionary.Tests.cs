@@ -47,6 +47,23 @@ public class SwiftObservableDictionaryTests
     }
 
     [Fact]
+    public void Remove_MissingKey_ReturnsFalseWithoutNotifications()
+    {
+        var dictionary = new SwiftObservableDictionary<string, int>();
+        bool collectionChanged = false;
+        bool propertyChanged = false;
+
+        dictionary.CollectionChanged += (_, _) => collectionChanged = true;
+        dictionary.PropertyChanged += (_, _) => propertyChanged = true;
+
+        bool removed = dictionary.Remove("missing");
+
+        Assert.False(removed);
+        Assert.False(collectionChanged);
+        Assert.False(propertyChanged);
+    }
+
+    [Fact]
     public void Replace_RaisesCollectionChangedEvent()
     {
         var dictionary = new SwiftObservableDictionary<string, int>

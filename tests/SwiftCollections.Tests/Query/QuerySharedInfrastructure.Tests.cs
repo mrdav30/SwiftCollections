@@ -1,12 +1,48 @@
 using SwiftCollections.Diagnostics;
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 using Xunit;
 
 namespace SwiftCollections.Query.Tests;
 
 public class QuerySharedInfrastructureTests
 {
+    [Fact]
+    public void SwiftBVHNode_DefaultAndResetExposeRelationshipFlags()
+    {
+        var node = SwiftBVHNode<int, BoundVolume>.Default;
+
+        Assert.False(node.HasParent);
+        Assert.False(node.HasLeftChild);
+        Assert.False(node.HasRightChild);
+        Assert.False(node.HasChildren);
+
+        node.ParentIndex = 0;
+        node.LeftChildIndex = 1;
+        node.RightChildIndex = 2;
+        node.Bounds = new BoundVolume(Vector3.Zero, Vector3.One);
+        node.Value = 42;
+        node.IsLeaf = true;
+        node.IsAllocated = true;
+        node.SubtreeSize = 3;
+
+        Assert.True(node.HasParent);
+        Assert.True(node.HasLeftChild);
+        Assert.True(node.HasRightChild);
+        Assert.True(node.HasChildren);
+
+        node.Reset();
+
+        Assert.False(node.HasParent);
+        Assert.False(node.HasLeftChild);
+        Assert.False(node.HasRightChild);
+        Assert.False(node.HasChildren);
+        Assert.False(node.IsAllocated);
+        Assert.False(node.IsLeaf);
+        Assert.Equal(-1, node.MyIndex);
+    }
+
     [Fact]
     public void QueryKeyIndexMap_Remove_RehashesCollidingEntries()
     {
@@ -158,11 +194,15 @@ public class QuerySharedInfrastructureTests
     {
         var cell = new SwiftSpatialHashCellIndex(1, 2, 3);
         var same = new SwiftSpatialHashCellIndex(1, 2, 3);
+        var differentX = new SwiftSpatialHashCellIndex(9, 2, 3);
+        var differentY = new SwiftSpatialHashCellIndex(1, 9, 3);
         var different = new SwiftSpatialHashCellIndex(1, 2, 4);
 
         Assert.True(cell.Equals(same));
         Assert.True(cell.Equals((object)same));
         Assert.False(cell.Equals((object)"not a cell"));
+        Assert.False(cell.Equals(differentX));
+        Assert.False(cell.Equals(differentY));
         Assert.True(cell == same);
         Assert.True(cell != different);
         Assert.False(cell == different);

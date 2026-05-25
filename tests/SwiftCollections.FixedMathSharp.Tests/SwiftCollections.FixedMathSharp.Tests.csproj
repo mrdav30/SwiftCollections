@@ -9,6 +9,7 @@
 		<ProjectGuid>{E5DC9388-4709-456D-B6B9-0C57EEBC6D2A}</ProjectGuid>
 		<Configurations>Debug;Release;ReleaseLean</Configurations>
 		<OutputType>Exe</OutputType>
+		<RunSettingsFilePath>$(MSBuildThisFileDirectory)../SwiftCollections.Tests/coverlet.runsettings</RunSettingsFilePath>
 	</PropertyGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\SwiftCollections.FixedMathSharp\SwiftCollections.FixedMathSharp.csproj" />

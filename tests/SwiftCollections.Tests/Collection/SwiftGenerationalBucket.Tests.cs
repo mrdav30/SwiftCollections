@@ -293,6 +293,45 @@ public class SwiftGenerationalBucketTests
     }
 
     [Fact]
+    public void StateConstructor_AllowsDefaultState()
+    {
+        var bucket = new SwiftGenerationalBucket<int>(default(SwiftGenerationalBucketState<int>));
+
+        Assert.Equal(0, bucket.Count);
+        Assert.Equal(SwiftGenerationalBucket<int>.DefaultCapacity, bucket.Capacity);
+    }
+
+    [Fact]
+    public void SwiftGenerationalBucketState_Constructor_NormalizesNullArraysToEmptyArrays()
+    {
+        var state = new SwiftGenerationalBucketState<int>(null, null, null, null, 5);
+
+        Assert.Empty(state.Items);
+        Assert.Empty(state.Allocated);
+        Assert.Empty(state.Generations);
+        Assert.Empty(state.FreeIndices);
+        Assert.Equal(5, state.Peak);
+    }
+
+    [Fact]
+    public void StateConstructor_AllowsShortAllocationAndGenerationArrays()
+    {
+        var state = new SwiftGenerationalBucketState<int>(
+            new[] { 10, 20, 30 },
+            new[] { true },
+            new uint[] { 7 },
+            Array.Empty<int>(),
+            3);
+
+        var bucket = new SwiftGenerationalBucket<int>(state);
+
+        Assert.Equal(1, bucket.Count);
+        Assert.True(bucket.TryGet(new SwiftHandle(0, 7), out int first));
+        Assert.Equal(10, first);
+        Assert.False(bucket.TryGet(new SwiftHandle(1, 0), out _));
+    }
+
+    [Fact]
     public void StateConstructor_RestoresGenerationsFreeIndicesAndNormalizesPeak()
     {
         var state = new SwiftGenerationalBucketState<int>(
@@ -372,11 +411,14 @@ public class SwiftGenerationalBucketTests
 
         var left = new SwiftHandle(1, 2);
         var same = new SwiftHandle(1, 2);
+        var differentIndex = new SwiftHandle(2, 2);
         var different = new SwiftHandle(1, 3);
 
         Assert.True(bucket.Capacity >= 64);
         Assert.True(left.Equals(same));
+        Assert.False(left.Equals(differentIndex));
         Assert.True(left.Equals((object)same));
+        Assert.False(left.Equals((object)"not a handle"));
         Assert.True(left == same);
         Assert.True(left != different);
         Assert.Equal("Handle(1:2)", left.ToString());
@@ -392,6 +434,20 @@ public class SwiftGenerationalBucketTests
         nongeneric.Reset();
 
         Assert.True(nongeneric.MoveNext());
+    }
+
+    [Fact]
+    public void InvalidHandlePaths_ReturnExpectedResults()
+    {
+        var bucket = new SwiftGenerationalBucket<int> { 10 };
+        var stale = new SwiftHandle(0, 1);
+        var outOfRange = new SwiftHandle(bucket.Capacity, 0);
+
+        Assert.False(bucket.Remove(stale));
+        Assert.False(bucket.IsValid(stale));
+        Assert.False(bucket.IsValid(outOfRange));
+        Assert.Throws<InvalidOperationException>(() => bucket.GetRef(stale));
+        Assert.False(bucket.Exists(static value => value == 99));
     }
 
     #endregion

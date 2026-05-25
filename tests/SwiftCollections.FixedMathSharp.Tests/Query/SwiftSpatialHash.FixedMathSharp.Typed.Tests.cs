@@ -1,4 +1,5 @@
 using FixedMathSharp;
+using System;
 using System.Collections.Generic;
 using Xunit;
 
@@ -30,5 +31,13 @@ public class SwiftSpatialHashFixedMathSharpTypedTests
 
         Assert.Single(results);
         Assert.Equal(1, results[0]);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void SwiftFixedSpatialHash_RejectsInvalidCellSizes(int cellSize)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SwiftFixedSpatialHash<int>(4, (Fixed64)cellSize));
     }
 }

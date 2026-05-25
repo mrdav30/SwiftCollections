@@ -504,6 +504,27 @@ public class SwiftBucketTests
     }
 
     [Fact]
+    public void SwiftBucket_StateConstructor_AllowsDefaultState()
+    {
+        var bucket = new SwiftBucket<int>(default(SwiftBucketState<int>));
+
+        bucket.Count.Should().Be(0);
+        bucket.PeakCount.Should().Be(0);
+        bucket.Capacity.Should().Be(SwiftBucket<int>.DefaultCapacity);
+    }
+
+    [Fact]
+    public void SwiftBucketState_Constructor_NormalizesNullArraysToEmptyArrays()
+    {
+        var state = new SwiftBucketState<int>(null, null, null, 5);
+
+        state.Items.Should().BeEmpty();
+        state.Allocated.Should().BeEmpty();
+        state.FreeIndices.Should().BeEmpty();
+        state.PeakCount.Should().Be(5);
+    }
+
+    [Fact]
     public void SwiftBucket_StateConstructor_RestoresFreeIndicesAndNormalizesPeak()
     {
         var state = new SwiftBucketState<int>(
