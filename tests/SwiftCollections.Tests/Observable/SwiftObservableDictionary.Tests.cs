@@ -1,9 +1,12 @@
-﻿using MemoryPack;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Text.Json;
 using Xunit;
+
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
+using MemoryPack;
+#endif
 
 namespace SwiftCollections.Observable.Tests;
 

@@ -1,7 +1,10 @@
-﻿using MemoryPack;
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 using Xunit;
+
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
+using MemoryPack;
+#endif
 
 namespace SwiftCollections.Dimensions.Tests;
 

@@ -1,10 +1,13 @@
-﻿using MemoryPack;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using Xunit;
+
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
+using MemoryPack;
+#endif
 
 namespace SwiftCollections.Tests;
 

@@ -700,7 +700,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
         SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "Destination array is not long enough.");
- 
+
         Array.Copy(_innerArray, 0, array, arrayIndex, _count);
     }
 
@@ -723,7 +723,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
         SwiftThrowHelper.ThrowIfArgument(array.GetLowerBound(0) != 0, nameof(array), "Array must have zero-based indexing.");
         SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
         SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "Destination array is not long enough.");
-        
+
         Array.Copy(_innerArray, 0, array, arrayIndex, _count);
     }
 
@@ -792,7 +792,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
         public bool MoveNext()
         {
             SwiftThrowHelper.ThrowIfTrue(_version != _list._version, message: "Collection was modified during enumeration.");
- 
+
             if (_index >= _count) return false;
             _current = _array[_index++];
             return true;

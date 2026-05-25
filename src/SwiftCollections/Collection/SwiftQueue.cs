@@ -639,7 +639,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
         SwiftThrowHelper.ThrowIfArgument((uint)array.GetLowerBound(0) != 0, nameof(array), "Array must have zero-based indexing.");
         SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
         SwiftThrowHelper.ThrowIfArgument((uint)(array.Length - arrayIndex) < _count, nameof(array), "Destination array is not long enough.");
-    
+
         if ((uint)_count == 0)
             return;
 

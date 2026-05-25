@@ -714,7 +714,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
         public bool MoveNext()
         {
             SwiftThrowHelper.ThrowIfTrue(_version != _bucket._version, message: "Enumerator modified outside of enumeration!");
-            
+
             uint count = (uint)_bucket._peakCount;
             while (++_index < count)
             {

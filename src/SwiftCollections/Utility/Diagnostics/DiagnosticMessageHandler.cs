@@ -1,6 +1,5 @@
 namespace SwiftCollections.Diagnostics;
 
-using System;
 using System.Runtime.CompilerServices;
 
 /// <summary>
