@@ -328,14 +328,14 @@ public class SwiftSparseMapTests
     public void Constructor_WithState_MismatchedDenseLengths_Throws()
     {
         Assert.Throws<ArgumentException>(() =>
-            new SwiftSparseMap<int>(new SwiftSparseSetState<int>(new[] { 1 }, Array.Empty<int>())));
+            new SwiftSparseMap<int>(new SwiftSparseMapState<int>(new[] { 1 }, Array.Empty<int>())));
     }
 
     [Fact]
     public void Constructor_WithState_DuplicateKeys_Throws()
     {
         Assert.Throws<ArgumentException>(() =>
-            new SwiftSparseMap<int>(new SwiftSparseSetState<int>(new[] { 1, 1 }, new[] { 10, 20 })));
+            new SwiftSparseMap<int>(new SwiftSparseMapState<int>(new[] { 1, 1 }, new[] { 10, 20 })));
     }
 
     [Fact]

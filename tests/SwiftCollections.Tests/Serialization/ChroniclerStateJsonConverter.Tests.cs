@@ -22,7 +22,7 @@ public class ChroniclerStateJsonConverterTests
         { typeof(SwiftSortedList<int>), typeof(SwiftArrayState<int>) },
         { typeof(SwiftDictionary<string, int>), typeof(SwiftDictionaryState<string, int>) },
         { typeof(SwiftBiDictionary<string, int>), typeof(SwiftDictionaryState<string, int>) },
-        { typeof(SwiftSparseMap<int>), typeof(SwiftSparseSetState<int>) },
+        { typeof(SwiftSparseMap<int>), typeof(SwiftSparseMapState<int>) },
         { typeof(SwiftBucket<int>), typeof(SwiftBucketState<int>) },
         { typeof(SwiftGenerationalBucket<int>), typeof(SwiftGenerationalBucketState<int>) },
         { typeof(SwiftArray2D<int>), typeof(Array2DState<int>) },

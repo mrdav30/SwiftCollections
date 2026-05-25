@@ -5,16 +5,16 @@ using System.Text.Json.Serialization;
 namespace SwiftCollections;
 
 /// <summary>
-/// Represents the immutable state of a sparse set, containing the dense keys and associated values.
+/// Represents the immutable state of a sparse map, containing the dense keys and associated values.
 /// </summary>
 /// <remarks>
-/// This structure is typically used to serialize or inspect the contents of a sparse set. 
-/// The arrays are guaranteed to be non-null, but may be empty if the set contains no elements.
+/// This structure is typically used to serialize or inspect the contents of a sparse map. 
+/// The arrays are guaranteed to be non-null, but may be empty if the map contains no elements.
 /// </remarks>
-/// <typeparam name="T">The type of values stored in the sparse set.</typeparam>
+/// <typeparam name="T">The type of values stored in the sparse map.</typeparam>
 [Serializable]
 [MemoryPackable]
-public readonly partial struct SwiftSparseSetState<T>
+public readonly partial struct SwiftSparseMapState<T>
 {
     /// <summary>
     /// Gets the collection of dense keys associated with this instance.
@@ -31,10 +31,10 @@ public readonly partial struct SwiftSparseSetState<T>
     public readonly T[] DenseValues;
 
     /// <summary>
-    /// Initializes a new instance of the SwiftSparseSetState class with the specified dense keys and values.
+    /// Initializes a new instance of the SwiftSparseMapState class with the specified dense keys and values.
     /// </summary>
     /// <param name="denseKeys">
-    /// An array of integers representing the dense keys to initialize the set with. 
+    /// An array of integers representing the dense keys to initialize the map with. 
     /// If null, an empty array is used.
     /// </param>
     /// <param name="denseValues">
@@ -43,7 +43,7 @@ public readonly partial struct SwiftSparseSetState<T>
     /// </param>
     [JsonConstructor]
     [MemoryPackConstructor]
-    public SwiftSparseSetState(int[] denseKeys, T[] denseValues)
+    public SwiftSparseMapState(int[] denseKeys, T[] denseValues)
     {
         DenseKeys = denseKeys ?? Array.Empty<int>();
         DenseValues = denseValues ?? Array.Empty<T>();

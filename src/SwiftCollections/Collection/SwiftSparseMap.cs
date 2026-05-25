@@ -44,7 +44,7 @@ namespace SwiftCollections;
 [Serializable]
 [JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
-public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseSetState<T>>, ISwiftCloneable<T>, IEnumerable<KeyValuePair<int, T>>, IEnumerable
+public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState<T>>, ISwiftCloneable<T>, IEnumerable<KeyValuePair<int, T>>, IEnumerable
 {
     #region Constants
 
@@ -124,7 +124,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseSetState
     /// </summary>
     /// <param name="state">The state object that provides the initial configuration and data for the map. Cannot be null.</param>
     [MemoryPackConstructor]
-    public SwiftSparseMap(SwiftSparseSetState<T> state)
+    public SwiftSparseMap(SwiftSparseMapState<T> state)
     {
         State = state;
 
@@ -256,16 +256,16 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseSetState
     }
 
     /// <summary>
-    /// Gets or sets the current state of the sparse set, including the used dense keys and values.
+    /// Gets or sets the current state of the sparse map, including the used dense keys and values.
     /// </summary>
     /// <remarks>
-    /// The state includes only the active elements in the set. 
+    /// The state includes only the active elements in the map. 
     /// Setting this property replaces the current contents with the provided state. 
     /// The setter is intended for internal use, such as serialization or deserialization scenarios.
     /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
-    public SwiftSparseSetState<T> State
+    public SwiftSparseMapState<T> State
     {
         get
         {
@@ -276,7 +276,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseSetState
             var denseValues = new T[_count];
             Array.Copy(_denseValues, denseValues, _count);
 
-            return new SwiftSparseSetState<T>(denseKeys, denseValues);
+            return new SwiftSparseMapState<T>(denseKeys, denseValues);
         }
         internal set
         {
@@ -587,20 +587,20 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseSetState
     /// </remarks>
     public struct SwiftSparseMapEnumerator : IEnumerator<KeyValuePair<int, T>>
     {
-        private readonly SwiftSparseMap<T> _set;
+        private readonly SwiftSparseMap<T> _map;
         private readonly int[] _keys;
         private readonly T[] _values;
         private readonly int _count;
         private readonly uint _version;
         private int _index;
 
-        internal SwiftSparseMapEnumerator(SwiftSparseMap<T> set)
+        internal SwiftSparseMapEnumerator(SwiftSparseMap<T> map)
         {
-            _set = set;
-            _keys = set._denseKeys;
-            _values = set._denseValues;
-            _count = set._count;
-            _version = set._version;
+            _map = map;
+            _keys = map._denseKeys;
+            _values = map._denseValues;
+            _count = map._count;
+            _version = map._version;
             _index = -1;
             Current = default;
         }
@@ -612,7 +612,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseSetState
         /// <inheritdoc/>
         public bool MoveNext()
         {
-            SwiftThrowHelper.ThrowIfTrue(_version != _set._version, message: "Collection was modified during enumeration.");
+            SwiftThrowHelper.ThrowIfTrue(_version != _map._version, message: "Collection was modified during enumeration.");
 
             int next = _index + 1;
             if (next >= _count)
@@ -629,7 +629,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseSetState
         /// <inheritdoc/>
         public void Reset()
         {
-            SwiftThrowHelper.ThrowIfTrue(_version != _set._version, message: "Collection was modified during enumeration.");
+            SwiftThrowHelper.ThrowIfTrue(_version != _map._version, message: "Collection was modified during enumeration.");
 
             _index = -1;
             Current = default;
