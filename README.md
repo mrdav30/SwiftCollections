@@ -19,7 +19,7 @@
 - **Framework Agnostic** : Works with .NET, Unity, and other game engines.
 - **Full Serialization Support**: Out-of-the-box round-trip serialization via MemoryPack across most core collections, with System.Text.Json constructor support on .NET 8+. A Lean (no MemoryPack) variant is available for projects that manage serialization independently.
 - **Fast core collections**: `SwiftDictionary`, `SwiftHashSet`, `SwiftList`, `SwiftQueue`, `SwiftStack`, `SwiftSortedList`
-- **Specialized containers**: `SwiftBucket`, `SwiftGenerationalBucket`, `SwiftPackedSet`, `SwiftSparseMap`, `SwiftBiDictionary`
+- **Specialized containers**: `SwiftBucket`, `SwiftGenerationalBucket`, `SwiftPackedSet`, `SwiftSparseSet`, `SwiftSparseMap`, `SwiftBiDictionary`
 - **Flat 2D/3D storage**: `SwiftArray2D`, `SwiftArray3D`, `SwiftBoolArray2D`, `SwiftShortArray2D`
 - **Pools**: `SwiftObjectPool`, `SwiftArrayPool`, `SwiftCollectionPool`, and typed pool helpers
 - **Observable collections** for change-tracking scenarios
@@ -108,8 +108,9 @@ Unity support is maintained separately:
 - **SwiftHashSet**: An optimized set for unique values with fast operations.
 - **SwiftBucket**: High-performance collection for O(1) addition and removal with stable indexing.
 - **SwiftGenerationalBucket**: A bucket variant that tracks generations to prevent stale references.
-- **SwiftPackedSet**: A compact set implementation for dense integer keys.
-- **SwiftSparseMap**: A memory-efficient map for sparse key distributions.
+- **SwiftPackedSet**: A compact set implementation for densely iterated values with hash-backed membership checks.
+- **SwiftSparseSet**: A sparse-set membership container for externally supplied non-negative integer IDs.
+- **SwiftSparseMap**: A sparse-set-backed map for externally supplied non-negative integer IDs with attached values.
 - **SwiftQueue**: Circular-buffer-based queue for ultra-low-latency operations.
 - **SwiftList**: A dynamic list optimized for speed-critical applications.
 - **SwiftSortedList**: Dynamically sorted collection with O(log n) operations.
@@ -120,6 +121,15 @@ Unity support is maintained separately:
 - **SwiftOctree**: Hierarchical octree for dynamic scenes with uneven density.
 
 `SwiftDictionary<TKey, TValue>` and `SwiftHashSet<T>` use deterministic default comparers for `string` keys when no comparer is supplied. `object` keys also get a SwiftCollections default comparer that hashes strings deterministically, but non-string object-key determinism still depends on the underlying key type. Custom comparers are still supported.
+
+Use the specialized containers by ownership model:
+
+| Use case | Better fit |
+| --- | --- |
+| Store this object and give me a stable handle | `SwiftBucket<T>` |
+| I already have an int ID; track whether it belongs here | `SwiftSparseSet` |
+| I already have an int ID; attach a value to it | `SwiftSparseMap<T>` |
+| IDs are arbitrary, huge, or widely sparse | `SwiftHashSet<int>` / `SwiftDictionary<int, T>` style |
 
 ### Pools
 

@@ -19,6 +19,7 @@ public class ChroniclerStateJsonConverterTests
         { typeof(SwiftQueue<int>), typeof(SwiftArrayState<int>) },
         { typeof(SwiftHashSet<int>), typeof(SwiftArrayState<int>) },
         { typeof(SwiftPackedSet<int>), typeof(SwiftArrayState<int>) },
+        { typeof(SwiftSparseSet), typeof(SwiftArrayState<int>) },
         { typeof(SwiftSortedList<int>), typeof(SwiftArrayState<int>) },
         { typeof(SwiftDictionary<string, int>), typeof(SwiftDictionaryState<string, int>) },
         { typeof(SwiftBiDictionary<string, int>), typeof(SwiftDictionaryState<string, int>) },
