@@ -9,255 +9,146 @@
 [![License](https://img.shields.io/github/license/mrdav30/SwiftCollections.svg)](https://github.com/mrdav30/SwiftCollections/blob/main/LICENSE)
 [![Frameworks](https://img.shields.io/badge/frameworks-netstandard2.1%20%7C%20net8.0-512BD4.svg)](https://github.com/mrdav30/SwiftCollections)
 
-**SwiftCollections** is a high-performance collection library for performance-sensitive .NET workloads, including game systems, simulations, and spatial queries.
+SwiftCollections is a performance-oriented collection library for .NET systems that care about hot-path cost: simulations, games, spatial queries, deterministic runtimes, and allocation-sensitive tooling.
 
----
+The standard .NET collections are excellent general-purpose defaults. SwiftCollections is for the places where you need more control over storage layout, pooling, dense iteration, externally owned integer IDs, deterministic string hashing, or broad-phase spatial query structures. It is not meant to replace every `List<T>` or `Dictionary<TKey, TValue>` in an application. It is meant to give performance-critical code a sharper set of tools.
 
-## 🛠️ Key Features
+## Why Use It
 
-- **Optimized for Performance**: Designed for low time complexity and minimal memory allocations.
-- **Framework Agnostic** : Works with .NET, Unity, and other game engines.
-- **Full Serialization Support**: Out-of-the-box round-trip serialization via MemoryPack across most core collections, with System.Text.Json constructor support on .NET 8+. A Lean (no MemoryPack) variant is available for projects that manage serialization independently.
-- **Fast core collections**: `SwiftDictionary`, `SwiftHashSet`, `SwiftList`, `SwiftQueue`, `SwiftStack`, `SwiftSortedList`
-- **Specialized containers**: `SwiftBucket`, `SwiftGenerationalBucket`, `SwiftPackedSet`, `SwiftSparseSet`, `SwiftSparseMap`, `SwiftBiDictionary`
-- **Flat 2D/3D storage**: `SwiftArray2D`, `SwiftArray3D`, `SwiftBoolArray2D`, `SwiftShortArray2D`
-- **Pools**: `SwiftObjectPool`, `SwiftArrayPool`, `SwiftCollectionPool`, and typed pool helpers
-- **Observable collections** for change-tracking scenarios
-- **Spatial queries** via typed `SwiftBVH<TKey, TVolume>`, `SwiftSpatialHash<TKey, TVolume>`, and `SwiftOctree<TKey, TVolume>` plus default numerics wrappers
-- **Lightweight diagnostics** via `SwiftCollections.Diagnostics` for opt-in low-level log/event routing
+- Low-allocation collection types for repeated simulation and gameplay loops.
+- Hash tables, lists, queues, stacks, buckets, packed sets, sparse sets, and sparse maps with APIs designed for predictable hot-path behavior.
+- Dense integer-ID membership and value lookup through `SwiftSparseSet` and `SwiftSparseMap<T>`.
+- Stable-handle storage through `SwiftBucket<T>` and generation-checked handles through `SwiftGenerationalBucket<T>`.
+- Spatial query structures: BVH, spatial hash, and octree implementations over `System.Numerics` volumes, plus fixed-point companions through `SwiftCollections.FixedMathSharp`.
+- Optional MemoryPack serialization in standard packages, with lean variants for projects that want the same core APIs without MemoryPack.
+- Benchmarks and high coverage are part of the repo workflow, not an afterthought.
 
----
+## Packages
 
-## 🚀 Installation
+Choose the package that matches your runtime and serialization needs.
 
-### Non-Unity Projects
+| Package | Use When |
+| --- | --- |
+| `SwiftCollections` | You want the core collections with MemoryPack support. |
+| `SwiftCollections.Lean` | You want the core collections without the MemoryPack dependency. |
+| `SwiftCollections.FixedMathSharp` | You need fixed-point BVH, octree, or spatial hash volume wrappers backed by FixedMathSharp. |
+| `SwiftCollections.FixedMathSharp.Lean` | You need the fixed-point companion without MemoryPack. |
 
-1. **Choose the package that fits your runtime**:
-   - Use `SwiftCollections` if you want the standard package with built-in `MemoryPack` support.
-   - Use `SwiftCollections.Lean` if you want the same collections without the `MemoryPack` dependency, such as when integrating with toolchains that do better without MemoryPack-generated code.
-   - Use `SwiftCollections.FixedMathSharp` if you need fixed-point spatial query volumes backed by `FixedMathSharp`, with `MemoryPack` support included.
-   - Use `SwiftCollections.FixedMathSharp.Lean` if you need the fixed-point companion without the `MemoryPack` dependency.
+```bash
+dotnet add package SwiftCollections
+dotnet add package SwiftCollections.Lean
+dotnet add package SwiftCollections.FixedMathSharp
+dotnet add package SwiftCollections.FixedMathSharp.Lean
+```
 
-2. **Install via NuGet**:
-   - Standard package:
+The standard and lean variants expose the same core collection APIs. The difference is whether MemoryPack is included. If you are targeting Unity Burst AOT or already have a serializer pipeline, prefer the lean variants.
 
-     ```bash
-     dotnet add package SwiftCollections
-     ```
+Unity package support lives in a separate repository: [SwiftCollections-Unity](https://github.com/mrdav30/SwiftCollections-Unity).
 
-   - Lean (no MemoryPack) package:
-
-     ```bash
-     dotnet add package SwiftCollections.Lean
-     ```
-
-   - Fixed-point companion (with MemoryPack):
-
-     ```bash
-     dotnet add package SwiftCollections.FixedMathSharp
-     ```
-
-   - Fixed-point companion, Lean (no MemoryPack):
-
-     ```bash
-     dotnet add package SwiftCollections.FixedMathSharp.Lean
-     ```
-
-3. **Or Download/Clone**:
-
-   ```bash
-   git clone https://github.com/mrdav30/SwiftCollections.git
-   ```
-
-   Then reference `src/SwiftCollections/SwiftCollections.csproj` or build the package locally.
-
-### Package Variants
-
-SwiftCollections is published in two build variants per package so you can choose between convenience and maximum compatibility:
-
-- `SwiftCollections` / `SwiftCollections.FixedMathSharp`
-  Includes `MemoryPack` and its generated serialization support. This is the best default choice for most .NET applications.
-- `SwiftCollections.Lean` / `SwiftCollections.FixedMathSharp.Lean`
-  Excludes the `MemoryPack` package and uses internal shim attributes so the same source compiles without the dependency. Choose this when you do not need built-in MemoryPack serialization, when you prefer to use a different serializer, or when your target environment is sensitive to MemoryPack-generated code paths.
-
-Both standard and lean variants expose the same core collections API. The main difference is whether `MemoryPack` is part of the package and serialization surface.
-
-If you use Unity Burst AOT, prefer the Lean variants. `MemoryPack`'s Unity support is centered on IL2CPP via its .NET Source Generator path, so the Lean variants are the safer choice for Burst AOT scenarios.
-
-### Unity
-
-Unity support is maintained separately:
-
-[SwiftCollections-Unity](https://github.com/mrdav30/SwiftCollections-Unity)
-
----
-
-## 🧩 Dependencies
-
-- Core package dependency: [MemoryPack](https://github.com/Cysharp/MemoryPack) *(standard variants only)*
-- Optional fixed-point companion: [FixedMathSharp](https://github.com/mrdav30/FixedMathSharp) via `SwiftCollections.FixedMathSharp` or `SwiftCollections.FixedMathSharp.Lean`
-
----
-
-## 📦 Library Overview
-
-### Core Data Structures
-
-- **SwiftDictionary**: A high-performance dictionary optimized for O(1) operations and minimal memory usage.
-- **SwiftBiDictionary**: A bidirectional dictionary for efficient forward and reverse lookups in O(1).
-- **SwiftHashSet**: An optimized set for unique values with fast operations.
-- **SwiftBucket**: High-performance collection for O(1) addition and removal with stable indexing.
-- **SwiftGenerationalBucket**: A bucket variant that tracks generations to prevent stale references.
-- **SwiftPackedSet**: A compact set implementation for densely iterated values with hash-backed membership checks.
-- **SwiftSparseSet**: A sparse-set membership container for externally supplied non-negative integer IDs.
-- **SwiftSparseMap**: A sparse-set-backed map for externally supplied non-negative integer IDs with attached values.
-- **SwiftQueue**: Circular-buffer-based queue for ultra-low-latency operations.
-- **SwiftList**: A dynamic list optimized for speed-critical applications.
-- **SwiftSortedList**: Dynamically sorted collection with O(log n) operations.
-- **SwiftStack**: Fast array-based stack with O(1) operations.
-- **SwiftArray2D / SwiftArray3D**: Efficient, flat-mapped arrays for 2D and 3D data.
-- **SwiftBVH**: Bounding Volume Hierarchy for broad-phase spatial queries.
-- **SwiftSpatialHash**: Spatial hash for high-churn, uniform-size, and sparse huge-world scenes.
-- **SwiftOctree**: Hierarchical octree for dynamic scenes with uneven density.
-
-`SwiftDictionary<TKey, TValue>` and `SwiftHashSet<T>` use deterministic default comparers for `string` keys when no comparer is supplied. `object` keys also get a SwiftCollections default comparer that hashes strings deterministically, but non-string object-key determinism still depends on the underlying key type. Custom comparers are still supported.
-
-Use the specialized containers by ownership model:
+## Picking A Container
 
 | Use case | Better fit |
 | --- | --- |
-| Store this object and give me a stable handle | `SwiftBucket<T>` |
-| I already have an int ID; track whether it belongs here | `SwiftSparseSet` |
-| I already have an int ID; attach a value to it | `SwiftSparseMap<T>` |
-| IDs are arbitrary, huge, or widely sparse | `SwiftHashSet<int>` / `SwiftDictionary<int, T>` style |
+| General key/value lookup with arbitrary keys | `SwiftDictionary<TKey, TValue>` |
+| General unique values | `SwiftHashSet<T>` |
+| Fast list, queue, stack, or sorted-list operations | `SwiftList<T>`, `SwiftQueue<T>`, `SwiftStack<T>`, `SwiftSortedList<T>` |
+| Store objects and receive stable integer slots | `SwiftBucket<T>` |
+| Store objects and guard against stale handles | `SwiftGenerationalBucket<T>` |
+| Track membership for compact externally owned integer IDs | `SwiftSparseSet` |
+| Attach values to compact externally owned integer IDs | `SwiftSparseMap<T>` |
+| Store densely iterated unique values with hash-backed membership checks | `SwiftPackedSet<T>` |
+| Arbitrary, huge, or widely sparse integer IDs | `SwiftHashSet<int>` or `SwiftDictionary<int, T>` |
+| Broad-phase spatial queries | `SwiftBVH<TKey>`, `SwiftSpatialHash<TKey>`, `SwiftOctree<TKey>` |
 
-### Pools
+More detail is available in the [library overview](https://github.com/mrdav30/SwiftCollections/blob/main/docs/OVERVIEW.md).
 
-- **SwiftObjectPool**: Thread-safe generic object pooling for improved memory usage and performance.
-- **SwiftArrayPool**: Array-specific pool for efficient reuse of arrays.
-- **SwiftCollectionPool**: Pool for reusable collection instances (e.g., List, HashSet).
-- **Default Collection Pools**: Ready-to-use pools are available for `SwiftList`, `SwiftQueue`, `SwiftHashSet`, `SwiftDictionary`, `SwiftStack`, `SwiftPackedSet`, and `SwiftSparseMap`.
+## Quick Examples
 
-### Spatial Data Structures
-
-- **SwiftBVH**: Bounding Volume Hierarchy for broad-phase queries with mixed or extreme object-size variance.
-- **SwiftSpatialHash**: Spatial hash for sparse huge-world needle queries and uniform-size high-churn workloads.
-- **SwiftOctree**: Hierarchical octree for dynamic scenes, uneven density, and repeated region queries.
-
-Use them by workload:
-
-- **SwiftBVH** is the best fit for scenes with mixed or extreme object-size variance (e.g. tiny units alongside large terrain pieces), large churning objects, and general broad-phase intersection queries over heterogeneous populations. It is not thread-safe; synchronize access externally if needed. Avoid it for dense same-size clustered scenes and for sparse huge-world needle (tiny query window) lookups.
-- **SwiftSpatialHash** is the best fit for sparse, huge-world scenes where small query windows rarely overlap many cells (O(1) bucket lookup dominates), and for high-frequency updates with mostly uniform-size objects. Performance degrades when object sizes vary widely, since a fixed cell size becomes either too coarse or too fine.
-- **SwiftOctree** is the strongest all-around performer for dynamic scenes with uniform or small objects, mixed broad-phase, and repeated regional queries over uneven distributions. Prefer it when most objects are similar in size or when queries target specific spatial sub-regions repeatedly.
-
-### Observable Collections
-
-- **SwiftObservableArray / SwiftObservableList / SwiftObservableDictionary**: Reactive, observable collections with property and collection change notifications.
-
-### Diagnostics
-
-- **DiagnosticChannel / DiagnosticEvent / DiagnosticLevel**: Lightweight diagnostics primitives for routing informational, warning, or error events without coupling the library to a higher-level logging framework.
-- **No-work disabled interpolated diagnostics**: `DiagnosticChannel.Write` supports interpolated messages without evaluating formatted expressions when the requested level is disabled.
-- **SwiftCollectionDiagnostics.Shared**: Ready-to-use shared channel for library-wide diagnostics.
-
-Diagnostics are opt-in and disabled by default until you configure a minimum level and sink.
-
-## 📖 Usage Examples
-
-### SwiftBVH for Spatial Queries
+### Sparse Membership For External IDs
 
 ```csharp
-var bvh = new SwiftBVH<int>(100);
-var volume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
-bvh.Insert(1, volume);
+using SwiftCollections;
 
-var results = new SwiftList<int>();
-bvh.Query(new BoundVolume(new Vector3(0, 0, 0), new Vector3(2, 2, 2)), results);
-Console.WriteLine(results.Count); // Output: 1
+var activeBodies = new SwiftSparseSet();
+
+activeBodies.Add(42);
+activeBodies.Add(128);
+
+if (activeBodies.Contains(42))
+{
+    activeBodies.Remove(42);
+}
+
+foreach (int bodyId in activeBodies)
+{
+    // Dense iteration over active IDs.
+}
 ```
 
-### SwiftBVH with Custom Typed Volumes
+### Sparse Values For External IDs
 
 ```csharp
-var typedBvh = new SwiftBVH<int, BoundVolume>(100);
-typedBvh.Insert(1, new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1)));
+using System.Numerics;
+using SwiftCollections;
+
+var positions = new SwiftSparseMap<Vector3>();
+
+positions[128] = new Vector3(10, 0, 4);
+
+if (positions.TryGetValue(128, out Vector3 position))
+{
+    positions[128] = position + new Vector3(1, 0, 0);
+}
 ```
 
-### SwiftSpatialHash for Broad-Phase Cell Queries
-
-```csharp
-var spatialHash = new SwiftSpatialHash<int>(64, 2f);
-spatialHash.Insert(1, new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1)));
-
-var nearby = new List<int>();
-spatialHash.QueryNeighborhood(
-    new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1)),
-    nearby);
-```
-
-### SwiftOctree for Hierarchical Region Queries
-
-```csharp
-var worldBounds = new BoundVolume(new Vector3(0, 0, 0), new Vector3(64, 64, 64));
-var octree = new SwiftOctree<int>(
-    worldBounds,
-    new SwiftOctreeOptions(maxDepth: 6, nodeCapacity: 8),
-    minNodeSize: 1f);
-
-octree.Insert(1, new BoundVolume(new Vector3(2, 2, 2), new Vector3(4, 4, 4)));
-
-var visible = new List<int>();
-octree.Query(new BoundVolume(new Vector3(0, 0, 0), new Vector3(8, 8, 8)), visible);
-```
-
-### Fixed-Point SwiftBVH (Companion Package)
-
-```csharp
-var fixedBvh = new SwiftFixedBVH<int>(100);
-fixedBvh.Insert(1, new FixedBoundVolume(new Vector3d(0, 0, 0), new Vector3d(1, 1, 1)));
-```
-
-### SwiftArray2D
-
-```csharp
-var array2D = new SwiftArray2D<int>(10, 10);
-array2D[3, 4] = 42;
-Console.WriteLine(array2D[3, 4]); // Output: 42
-```
-
-### SwiftQueue
-
-```csharp
-var queue = new SwiftQueue<int>(10);
-queue.Enqueue(5);
-Console.WriteLine(queue.Dequeue()); // Output: 5
-```
-
-### Populating Arrays
-
-```csharp
-var array = new int[10].Populate(() => new Random().Next(1, 100));
-```
-
-### Diagnostic Example
+### Stable Handles
 
 ```csharp
 using System;
-using SwiftCollections.Diagnostics;
+using SwiftCollections;
 
-DiagnosticChannel diagnostics = SwiftCollectionDiagnostics.Shared;
-diagnostics.MinimumLevel = DiagnosticLevel.Warning;
-diagnostics.Sink = static (in DiagnosticEvent diagnostic) =>
+var bodies = new SwiftGenerationalBucket<string>();
+
+SwiftHandle handle = bodies.Add("player");
+
+if (bodies.TryGet(handle, out string body))
 {
-    Console.WriteLine($"[{diagnostic.Channel}] {diagnostic.Level}: {diagnostic.Message} ({diagnostic.Source})");
-};
+    Console.WriteLine(body);
+}
 
-diagnostics.Write(DiagnosticLevel.Info, "Skipped because the minimum level is Warning.", "Bootstrap");
-diagnostics.Write(DiagnosticLevel.Error, "Pool allocation failed.", "Bootstrap");
-diagnostics.Write(DiagnosticLevel.Warning, $"Pool usage is {0.42:P0}.", "Bootstrap");
+bodies.Remove(handle);
 ```
 
-## 🧪 Development
+### Spatial Queries
+
+```csharp
+using System.Numerics;
+using SwiftCollections;
+using SwiftCollections.Query;
+
+var bvh = new SwiftBVH<int>(capacity: 128);
+
+bvh.Insert(
+    1,
+    new BoundVolume(
+        new Vector3(0, 0, 0),
+        new Vector3(1, 1, 1)));
+
+var results = new SwiftList<int>();
+bvh.Query(
+    new BoundVolume(
+        new Vector3(-1, -1, -1),
+        new Vector3(2, 2, 2)),
+    results);
+```
+
+## Serialization And Diagnostics
+
+Most core types expose state-backed serialization support. Standard packages include MemoryPack support; lean packages compile the same public collection surface without taking a MemoryPack dependency. `net8.0` builds use System.Text.Json converter implementations where supported, while older targets use compatibility shims.
+
+Diagnostics are opt-in through `SwiftCollections.Diagnostics`. Disabled diagnostic writes are designed to avoid doing formatting work when the requested level is below the channel minimum.
+
+## Development
 
 Build the solution:
 
@@ -269,67 +160,34 @@ Run the unit tests:
 
 ```bash
 dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c Debug --no-build
+dotnet test tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMathSharp.Tests.csproj -c Debug --no-build
+```
+
+Run coverage with the shared runsettings:
+
+```bash
+dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c Debug --no-build --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.Tests/coverlet.runsettings
+dotnet test tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMathSharp.Tests.csproj -c Debug --no-build --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.Tests/coverlet.runsettings
 ```
 
 Run benchmarks:
 
 ```bash
-dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8
-```
-
-Useful benchmark runner commands:
-
-```bash
 dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- list
 dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- dictionary
 dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- query --list flat
-dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- hashset --filter "*Contains*"
 dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- all --list flat
 ```
 
-With no extra arguments, BenchmarkDotNet's default switcher behavior is used. Leading non-option arguments are treated as benchmark selection aliases, and any remaining arguments are forwarded to BenchmarkDotNet.
+## Compatibility
 
-## 🛠️ Compatibility
+- Library targets: `netstandard2.1` and `net8.0`
+- Test target: `net8.0`
+- Benchmark target: `net8`
+- CI covers `Release` and `ReleaseLean` on Windows and Linux
 
-- `netstandard2.1`
-- `net8.0`
-- Windows, Linux, and macOS
+## Community And License
 
-Fixed-point BVH support is provided by the separate `SwiftCollections.FixedMathSharp` companion package.
+Questions and discussion are welcome in the [Discord community](https://discord.gg/mhwK2QFNBA). Bug reports and feature requests should be opened as GitHub issues.
 
----
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [CONTRIBUTING](https://github.com/mrdav30/SwiftCollections/blob/main/CONTRIBUTING.md) guide for details on how to propose changes, report issues, and interact with the community.
-
----
-
-## 👥 Contributors
-
-- **mrdav30** - Lead Developer
-- Contributions are welcome! Feel free to submit pull requests or report issues.
-
----
-
-## 💬 Community & Support
-
-For questions, discussions, or general support, join the official Discord community:
-
-👉 **[Join the Discord Server](https://discord.gg/mhwK2QFNBA)**
-
-For bug reports or feature requests, please open an issue in this repository.
-
-We welcome feedback, contributors, and community discussion across all projects.
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
-See the following files for details:
-
-- LICENSE – standard MIT license
-- NOTICE – additional terms regarding project branding and redistribution
-- COPYRIGHT – authorship information
+SwiftCollections is licensed under the MIT License. See `LICENSE`, `NOTICE`, and `COPYRIGHT` for license, branding, and authorship details.
