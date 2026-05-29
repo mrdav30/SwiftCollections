@@ -99,14 +99,10 @@ internal class SwiftIntStack
     public int Peek() => Array[Count - 1];
 
     /// <summary>
-    /// Resets the stack to it's initial state.
+    /// Resets the stack while preserving its current capacity.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Reset()
-    {
-        Array = new int[DefaultCapacity];
-        Count = 0;
-    }
+    public void Reset() => Count = 0;
 
     /// <summary>
     /// Removes all elements from the stack.
@@ -122,12 +118,19 @@ internal class SwiftIntStack
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void EnsureCapacity(int capacity)
     {
-        if (capacity >= Array.Length)
-        {
-            int[] newArray = new int[Array.Length * 2];
-            System.Array.Copy(Array, 0, newArray, 0, Count);
-            Array = newArray;
-        }
+        if (capacity <= Array.Length)
+            return;
+
+        int newCapacity = SwiftHashTools.NextPowerOfTwo(capacity);
+        int doubledCapacity = Array.Length > int.MaxValue / 2
+            ? int.MaxValue
+            : Array.Length * 2;
+        if (newCapacity < doubledCapacity)
+            newCapacity = doubledCapacity;
+
+        int[] newArray = new int[newCapacity];
+        System.Array.Copy(Array, 0, newArray, 0, Count);
+        Array = newArray;
     }
 
     #endregion

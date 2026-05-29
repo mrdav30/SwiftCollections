@@ -636,6 +636,55 @@ public class SwiftBucketTests
     }
 
     [Fact]
+    public void RemoveAt_WithinConstructorCapacity_ShouldNotAllocate()
+    {
+        const int Capacity = 64;
+        var bucket = new SwiftBucket<int>(Capacity);
+        var indices = new int[Capacity];
+
+        for (int i = 0; i < Capacity; i++)
+            indices[i] = bucket.Add(i);
+
+        for (int i = 0; i < Capacity; i++)
+            bucket.TryRemoveAt(indices[i]).Should().BeTrue();
+
+        for (int i = 0; i < Capacity; i++)
+            indices[i] = bucket.Add(i);
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int i = 0; i < Capacity; i++)
+            bucket.TryRemoveAt(indices[i]);
+
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        allocated.Should().Be(0);
+    }
+
+    [Fact]
+    public void RemoveAt_WithinEnsuredCapacity_ShouldNotAllocate()
+    {
+        const int Capacity = 64;
+        var bucket = new SwiftBucket<int>();
+        var indices = new int[Capacity];
+
+        bucket.EnsureCapacity(Capacity);
+        for (int i = 0; i < Capacity; i++)
+            indices[i] = bucket.Add(i);
+
+        for (int i = 0; i < Capacity; i++)
+            bucket.TryRemoveAt(indices[i]).Should().BeTrue();
+
+        for (int i = 0; i < Capacity; i++)
+            indices[i] = bucket.Add(i);
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int i = 0; i < Capacity; i++)
+            bucket.TryRemoveAt(indices[i]);
+
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        allocated.Should().Be(0);
+    }
+
+    [Fact]
     public void TrimExcessCapacity_ShouldShrinkDenseBucketAndPreserveEntries()
     {
         var bucket = new SwiftBucket<int>(64)

@@ -97,7 +97,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     {
         capacity = capacity <= DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(capacity);
         _innerArray = new Entry[capacity];
-        _freeIndices = new SwiftIntStack(SwiftIntStack.DefaultCapacity);
+        _freeIndices = new SwiftIntStack(capacity);
     }
 
     ///  <summary>
@@ -224,7 +224,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
             int capacity = sourceLength < DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(sourceLength);
 
             _innerArray = new Entry[capacity];
-            _freeIndices = new SwiftIntStack(Math.Max(SwiftIntStack.DefaultCapacity, freeIndices.Length));
+            _freeIndices = new SwiftIntStack(capacity);
 
             _count = 0;
             int maxReferencedIndex = RestoreAllocatedEntries(items, allocated, sourceLength);
@@ -403,6 +403,8 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
         capacity = SwiftHashTools.NextPowerOfTwo(capacity);
         if (capacity > _innerArray.Length)
             Resize(capacity);
+        else
+            _freeIndices.EnsureCapacity(capacity);
     }
 
     private void Resize(int newSize)
@@ -414,6 +416,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
         if (copyLength > 0)
             Array.Copy(_innerArray, 0, newArray, 0, copyLength);
         _innerArray = newArray;
+        _freeIndices.EnsureCapacity(newCapacity);
 
         _version++;
     }
@@ -449,7 +452,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
 
     private void RebuildFreeIndices()
     {
-        _freeIndices = new SwiftIntStack(Math.Max(SwiftIntStack.DefaultCapacity, _peakCount - _count));
+        _freeIndices = new SwiftIntStack(_innerArray.Length);
 
         for (int i = 0; i < _peakCount; i++)
         {
