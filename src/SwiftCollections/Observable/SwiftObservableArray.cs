@@ -7,6 +7,7 @@
 
 using Chronicler;
 using MemoryPack;
+using SwiftCollections.Utility;
 using System;
 using System.ComponentModel;
 using System.Text.Json.Serialization;

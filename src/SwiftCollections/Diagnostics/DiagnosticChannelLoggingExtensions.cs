@@ -7,6 +7,7 @@
 
 namespace SwiftCollections.Diagnostics;
 
+using SwiftCollections.Utility;
 using System.IO;
 using System.Runtime.CompilerServices;
 

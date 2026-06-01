@@ -1,3 +1,4 @@
+using SwiftCollections.Lazy;
 using System.Threading;
 using Xunit;
 

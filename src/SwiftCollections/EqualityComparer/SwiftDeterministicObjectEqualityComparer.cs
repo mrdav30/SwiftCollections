@@ -9,6 +9,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
+using SwiftCollections.Utility;
 
 namespace SwiftCollections;
 

@@ -13,7 +13,7 @@ using System.Runtime.Serialization;
 using System.Security.Cryptography;
 using System.Threading;
 
-namespace SwiftCollections;
+namespace SwiftCollections.Utility;
 
 /// <summary>
 /// Provides utility functions for generating, combining, and working with hash codes.

@@ -8,6 +8,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using SwiftCollections.Utility;
 
 namespace SwiftCollections.Query;
 

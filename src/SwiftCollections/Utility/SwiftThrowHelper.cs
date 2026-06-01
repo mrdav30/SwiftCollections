@@ -10,7 +10,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
-namespace SwiftCollections;
+namespace SwiftCollections.Utility;
 
 /// <summary>
 /// Provides helper methods for throwing common exceptions in a consistent and efficient manner. 

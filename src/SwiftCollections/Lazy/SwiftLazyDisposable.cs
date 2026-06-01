@@ -8,7 +8,7 @@
 using System;
 using System.Threading;
 
-namespace SwiftCollections;
+namespace SwiftCollections.Lazy;
 
 /// <summary>
 /// A lazily initialized disposable object.
