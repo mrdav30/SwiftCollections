@@ -1,11 +1,18 @@
-﻿using System;
+﻿//=======================================================================
+// SwiftIntStack.cs
+//=======================================================================
+// MIT License, Copyright (c) 2024–present David Oravsky (mrdav30)
+// See LICENSE file in the project root for full license information.
+//=======================================================================
+
+using System;
 using System.Runtime.CompilerServices;
 
 namespace SwiftCollections;
 
 /// <summary>
 /// A minimal and efficient stack implementation for integers.
-/// Optimized for internal use in within the SwiftCollections library.
+/// Optimized for internal use within the SwiftCollections library.
 /// </summary>
 [Serializable]
 internal class SwiftIntStack
@@ -51,7 +58,7 @@ internal class SwiftIntStack
     }
 
     /// <summary>
-    /// Initializes a new instance of the IntStack class using the specified array as the underlying storage and sets
+    /// Initializes a new instance of the <see cref="SwiftIntStack"/> class using the specified array as the underlying storage and sets
     /// the initial number of elements in the stack.
     /// </summary>
     /// <remarks>This constructor allows advanced scenarios where the stack is initialized with a pre-existing

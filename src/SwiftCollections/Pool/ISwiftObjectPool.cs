@@ -1,4 +1,11 @@
-﻿namespace SwiftCollections.Pool;
+﻿//=======================================================================
+// ISwiftObjectPool.cs
+//=======================================================================
+// MIT License, Copyright (c) 2024–present David Oravsky (mrdav30)
+// See LICENSE file in the project root for full license information.
+//=======================================================================
+
+namespace SwiftCollections.Pool;
 
 /// <summary>
 /// Defines a contract for an object pool that manages reusable instances of type T. 
