@@ -5,6 +5,7 @@
 // See LICENSE file in the project root for full license information.
 //=======================================================================
 
+using SwiftCollections.Diagnostics;
 using SwiftCollections.Utility;
 using System;
 using System.Collections.Generic;
@@ -460,7 +461,7 @@ public class SwiftBVH<TKey, TVolume>
         _nodePool = newArray;
 
         ResizeBuckets(newSize);
-        QueryCollectionDiagnostics.WriteInfo(_diagnosticSource, $"Resized BVH storage to {newSize} nodes.");
+        SwiftCollectionDiagnostics.Shared.Info($"Resized BVH storage to {newSize} nodes.", _diagnosticSource);
     }
 
     /// <summary>
@@ -541,9 +542,7 @@ public class SwiftBVH<TKey, TVolume>
         if (node.IsAllocated)
             return;
 
-        QueryCollectionDiagnostics.WriteError(
-            _diagnosticSource,
-            $"Encountered an unallocated node at index {index} during query traversal.");
+        SwiftCollectionDiagnostics.Shared.Error($"Encountered an unallocated node at index {index} during query traversal.", _diagnosticSource);
         throw new InvalidOperationException($"Encountered an unallocated node at index {index} during query traversal.");
     }
 

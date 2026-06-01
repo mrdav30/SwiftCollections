@@ -5,6 +5,7 @@
 // See LICENSE file in the project root for full license information.
 //=======================================================================
 
+using SwiftCollections.Diagnostics;
 using SwiftCollections.Utility;
 using System;
 using System.Collections.Generic;
@@ -372,7 +373,7 @@ public class SwiftSpatialHash<TKey, TVolume>
         Array.Resize(ref _entries, newCapacity);
         _cells.EnsureCapacity(newCapacity);
         _keyToEntryIndex.ResizeAndRehash(newCapacity, _peakCount, IsAllocatedEntry, GetEntryKey);
-        QueryCollectionDiagnostics.WriteInfo(_diagnosticSource, $"Resized spatial hash entry storage to {newCapacity} entries.");
+        SwiftCollectionDiagnostics.Shared.Info($"Resized spatial hash entry storage to {newCapacity} entries.", _diagnosticSource);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -384,7 +385,7 @@ public class SwiftSpatialHash<TKey, TVolume>
                 _entries[i].QueryStamp = 0;
 
             _queryStamp = 0;
-            QueryCollectionDiagnostics.WriteWarning(_diagnosticSource, "Query stamp overflow detected. Spatial hash query stamps were reset.");
+            SwiftCollectionDiagnostics.Shared.Warn($"Query stamp overflow detected. Spatial hash query stamps were reset.", _diagnosticSource);
         }
 
         return ++_queryStamp;

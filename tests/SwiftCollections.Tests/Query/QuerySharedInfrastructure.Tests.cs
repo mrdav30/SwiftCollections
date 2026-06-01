@@ -103,7 +103,7 @@ public class QuerySharedInfrastructureTests
                     events.Add(diagnostic);
             };
 
-            QueryCollectionDiagnostics.WriteInfo("QueryTests", "diagnostic message");
+            SwiftCollectionDiagnostics.Shared.Info($"diagnostic message", "QueryTests");
 
             DiagnosticEvent matched = default;
             int matchCount = 0;

@@ -5,6 +5,7 @@
 // See LICENSE file in the project root for full license information.
 //=======================================================================
 
+using SwiftCollections.Diagnostics;
 using SwiftCollections.Utility;
 using System;
 using System.Collections.Generic;
@@ -425,7 +426,7 @@ public class SwiftOctree<TKey, TVolume>
         int newCapacity = SwiftHashTools.NextPowerOfTwo(capacity);
         Array.Resize(ref _entries, newCapacity);
         _keyToEntryIndex.ResizeAndRehash(newCapacity, _peakCount, IsAllocatedEntry, GetEntryKey);
-        QueryCollectionDiagnostics.WriteInfo(_diagnosticSource, $"Resized octree entry storage to {newCapacity} entries.");
+        SwiftCollectionDiagnostics.Shared.Info($"Resized octree entry storage to {newCapacity} entries.", _diagnosticSource);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
