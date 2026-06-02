@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: use coverage-analysis before updating this plan from fresh report data. Use test-driven-development before adding or changing behavior tests, and verification-before-completion before claiming a phase is complete.
 
+**Status:** Done
+
 **Goal:** Bring SwiftCollections to 100% line coverage and 100% branch coverage without papering over real behavior gaps or adding hollow tests.
 
 **Architecture:** Treat coverage misses as design feedback. Add focused behavior tests for public/API-reachable branches, remove or simplify truly unreachable defensive code, and keep hot-path collection/query code direct and benchmarkable.

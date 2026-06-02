@@ -775,6 +775,21 @@ public class SwiftDictionaryTests
     }
 
     [Fact]
+    public void TrimExcess_WhenCapacityIsAlreadyMinimal_IsNoOp()
+    {
+        var dictionary = new SwiftDictionary<int, string>
+        {
+            [1] = "One"
+        };
+        int originalCapacity = dictionary.Capacity;
+
+        dictionary.TrimExcess();
+
+        Assert.Equal(originalCapacity, dictionary.Capacity);
+        Assert.Equal("One", dictionary[1]);
+    }
+
+    [Fact]
     public void Remove_ProbesPastDeletedEntriesInCollisionChain()
     {
         var comparer = new SelectiveIntHashComparer((1, 0), (9, 0), (17, 0));

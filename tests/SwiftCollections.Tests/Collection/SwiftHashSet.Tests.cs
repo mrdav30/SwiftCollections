@@ -651,6 +651,18 @@ public class SwiftHashSetTests
     }
 
     [Fact]
+    public void TrimExcess_WhenCapacityIsAlreadyMinimal_IsNoOp()
+    {
+        var set = new SwiftHashSet<int> { 1 };
+        int originalCapacity = GetCapacity(set);
+
+        set.TrimExcess();
+
+        Assert.Equal(originalCapacity, GetCapacity(set));
+        Assert.Contains(1, set);
+    }
+
+    [Fact]
     public void TryGetValue_ReturnsStoredEquivalentValue()
     {
         var set = new SwiftHashSet<string>(StringComparer.OrdinalIgnoreCase)

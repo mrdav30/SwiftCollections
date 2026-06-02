@@ -716,7 +716,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
             return;
         }
 
-        SwiftThrowHelper.ThrowIfArgument(true, nameof(array), "Invalid array type.");
+        throw new ArgumentException("Invalid array type.", nameof(array));
     }
 
     /// <inheritdoc/>

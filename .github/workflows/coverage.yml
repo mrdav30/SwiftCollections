@@ -1,13 +1,13 @@
 name: Coverage
 
 on:
-  push:
+  workflow_run:
+    workflows:
+      - build-and-test
+    types:
+      - completed
     branches:
       - main
-  pull_request:
-    branches:
-      - main
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -46,7 +46,7 @@ jobs:
       run: dotnet build tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj --configuration Release --no-restore
 
     - name: Run tests with coverage
-      run: dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory artifacts/coverage
+      run: dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj --configuration Release --no-build --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.Tests/coverlet.runsettings --results-directory artifacts/coverage
 
     - name: Install ReportGenerator
       run: dotnet tool install --global dotnet-reportgenerator-globaltool
@@ -59,7 +59,8 @@ jobs:
         reportgenerator \
           "-reports:artifacts/coverage/**/coverage.cobertura.xml" \
           "-targetdir:artifacts/coverage-report" \
-          "-reporttypes:Html;MarkdownSummaryGithub;Badges;JsonSummary"
+          "-reporttypes:Html;MarkdownSummaryGithub;Badges;JsonSummary" \
+          "-filefilters:-**/MemoryPack.Generator/**;-**/*.g.cs;-**/obj/**"
 
     - name: Add coverage summary to job
       run: cat artifacts/coverage-report/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
@@ -71,7 +72,6 @@ jobs:
         path: artifacts/coverage-report
 
   deploy:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: coverage
     runs-on: ubuntu-latest
     environment:

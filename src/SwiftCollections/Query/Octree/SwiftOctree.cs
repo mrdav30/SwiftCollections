@@ -386,15 +386,9 @@ public class SwiftOctree<TKey, TVolume>
 
     private void RemoveEntryFromNode(OctreeNode node, int entryIndex)
     {
-        for (int i = 0; i < node.EntryIndices.Count; i++)
-        {
-            if (node.EntryIndices[i] != entryIndex)
-                continue;
-
-            node.EntryIndices.RemoveAt(i);
-            _entries[entryIndex].Node = null;
-            return;
-        }
+        int index = node.EntryIndices.IndexOf(entryIndex);
+        node.EntryIndices.RemoveAt(index);
+        _entries[entryIndex].Node = null;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

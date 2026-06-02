@@ -91,6 +91,29 @@ namespace SwiftCollections.Query.Tests
         }
 
         [Fact]
+        public void Clear_WhenEmpty_IsNoOp()
+        {
+            var bvh = new SwiftBVH<int>(10);
+
+            bvh.Clear();
+
+            Assert.Equal(0, bvh.Count);
+            Assert.Equal(-1, bvh.RootNodeIndex);
+        }
+
+        [Fact]
+        public void UpdateEntryBounds_WhenKeyIsMissing_IsNoOp()
+        {
+            var bvh = new SwiftBVH<int>(10);
+            var volume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+
+            bvh.UpdateEntryBounds(99, volume);
+
+            Assert.Equal(0, bvh.Count);
+            Assert.Equal(-1, bvh.FindEntry(99));
+        }
+
+        [Fact]
         public void Insert_LargeNumberOfVolumes_PerformsEfficiently()
         {
             var bvh = new SwiftBVH<int>(10000);

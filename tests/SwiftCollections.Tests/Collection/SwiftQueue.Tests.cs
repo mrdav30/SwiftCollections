@@ -769,6 +769,28 @@ public class SwiftQueueTests
     }
 
     [Fact]
+    public void TrimExcessCapacity_WhenEmptyAndAlreadyMinimal_IsNoOp()
+    {
+        var queue = new SwiftQueue<int>();
+
+        queue.TrimExcessCapacity();
+
+        Assert.Empty(queue);
+        Assert.Equal(0, queue.Capacity);
+    }
+
+    [Fact]
+    public void CopyTo_GenericArray_WhenQueueIsEmpty_LeavesDestinationUnchanged()
+    {
+        var queue = new SwiftQueue<int>();
+        int[] destination = { 7, 8, 9 };
+
+        queue.CopyTo(destination, 1);
+
+        Assert.Equal(new[] { 7, 8, 9 }, destination);
+    }
+
+    [Fact]
     public void CopyTo_ArrayValidation_ThrowsForInvalidShapeOrType()
     {
         var queue = new SwiftQueue<int>();

@@ -198,6 +198,19 @@ public class SwiftBucketTests
     }
 
     [Fact]
+    public void Clear_WhenEmpty_IsNoOpAndBucketRemainsReusable()
+    {
+        var bucket = new SwiftBucket<int>();
+
+        bucket.Clear();
+        int index = bucket.Add(42);
+
+        bucket.Count.Should().Be(1);
+        index.Should().Be(0);
+        bucket[index].Should().Be(42);
+    }
+
+    [Fact]
     public void Add_ShouldExpandCapacityWhenNeeded()
     {
         // Arrange

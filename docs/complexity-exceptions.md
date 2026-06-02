@@ -6,12 +6,8 @@ This document records methods that intentionally exceed the current cyclomatic c
 
 - Review threshold: cyclomatic complexity greater than 10.
 - Risk threshold: CRAP score greater than 30 requires immediate test hardening or refactoring.
-- Current status: the fresh coverage/CRAP report generated on 2026-06-02 has no methods above CRAP 30.
-- Source report: `tests/TestResults/coverage-analysis/2026-06-02-phase3f/reports/Summary.txt`.
-- Raw coverage inputs:
-  - `tests/SwiftCollections.Tests/TestResults/921ee8f4-2771-4968-86fb-71326398dfeb/coverage.cobertura.xml`
-  - `tests/SwiftCollections.FixedMathSharp.Tests/TestResults/fb559497-ec18-455c-be57-38f73b5a2a7b/coverage.cobertura.xml`
-  - `tests/TestResults/coverage-analysis/2026-06-02-phase3f/fixed-filtered/Cobertura.xml`
+- Current status: the fresh workflow-shaped core plus filtered FixedMathSharp coverage/CRAP report generated on 2026-06-02 has no methods above CRAP 30.
+- Coverage evidence is generated output and is not checked in. Recreate it with the repository coverage commands and filter the FixedMathSharp companion report to include only `SwiftCollections.FixedMathSharp` before merging so duplicate core assembly rows do not dilute the combined report.
 
 Complexity exceptions are acceptable when the method is a hot hash-table probe path, an allocation-sensitive sparse collection routine, or fixed-shape spatial partitioning code where decomposition would add indirection without reducing real maintenance risk. These exceptions should be revisited when coverage drops, behavior changes, or a shared zero-allocation helper can reduce duplicated logic without slowing the hot path.
 
@@ -38,7 +34,8 @@ Complexity exceptions are acceptable when the method is a hot hash-table probe p
 ## Review Notes
 
 - The coverage pass reduced methods above the complexity threshold from 16 to 15.
-- The fresh report has 100% line coverage and 100% branch coverage across the two covered assemblies.
+- The fresh combined report has 100% line coverage and 100% branch coverage across the two covered assemblies.
+- The `coverage.yml`-shaped core report also has 100% line coverage and 100% branch coverage.
 - `SwiftBVH<TKey, TVolume>.UpdateEntryBounds(TKey, TVolume)` dropped to complexity 10 after unreachable child-sentinel branches were removed, so it no longer needs an exception entry.
 - Methods below the complexity threshold can still appear high in CRAP ranking if coverage is low. Those should be handled with focused tests, not complexity exceptions.
 - Re-run coverage and CRAP analysis after touching any method listed here, then update this register.

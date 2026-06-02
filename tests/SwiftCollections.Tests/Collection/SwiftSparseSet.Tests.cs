@@ -145,6 +145,18 @@ public class SwiftSparseSetTests
     }
 
     [Fact]
+    public void Clear_WhenEmpty_IsNoOpAndSetRemainsReusable()
+    {
+        var set = new SwiftSparseSet();
+
+        set.Clear();
+        set.Add(4);
+
+        Assert.Single(set);
+        Assert.Contains(4, set);
+    }
+
+    [Fact]
     public void TrimExcess_ShrinksDenseAndSparseStorageWhilePreservingIds()
     {
         var set = new SwiftSparseSet();
@@ -366,6 +378,16 @@ public class SwiftSparseSetTests
     }
 
     [Fact]
+    public void ExceptWith_WhenEmpty_IsNoOp()
+    {
+        var set = new SwiftSparseSet();
+
+        set.ExceptWith(new[] { 1, 2, 3 });
+
+        Assert.Empty(set);
+    }
+
+    [Fact]
     public void TrimExcess_WhenEmpty_UsesDefaultSparseCapacity()
     {
         var set = new SwiftSparseSet(64, 64);
@@ -373,6 +395,18 @@ public class SwiftSparseSetTests
         set.TrimExcess();
 
         Assert.Empty(set);
+        Assert.Equal(SwiftSparseSet.DefaultSparseCapacity, set.SparseCapacity);
+    }
+
+    [Fact]
+    public void TrimExcess_WhenAlreadyAtDefaultCapacity_IsNoOp()
+    {
+        var set = new SwiftSparseSet();
+
+        set.TrimExcess();
+
+        Assert.Empty(set);
+        Assert.Equal(SwiftSparseSet.DefaultDenseCapacity, set.DenseCapacity);
         Assert.Equal(SwiftSparseSet.DefaultSparseCapacity, set.SparseCapacity);
     }
 

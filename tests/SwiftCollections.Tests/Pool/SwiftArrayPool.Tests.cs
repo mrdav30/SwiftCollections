@@ -178,6 +178,20 @@ namespace SwiftCollections.Pool.Tests
             // Assert
             Assert.True(onDestroyCalled);
         }
+
+        [Fact]
+        public void ClearAndDispose_AfterDispose_AreNoOps()
+        {
+            var pool = new SwiftArrayPool<int>();
+            int[] array = pool.Rent(4);
+            pool.Release(array);
+
+            pool.Dispose();
+            pool.Clear();
+            pool.Dispose();
+
+            Assert.Throws<ObjectDisposedException>(() => pool.Rent(4));
+        }
     }
 
 }

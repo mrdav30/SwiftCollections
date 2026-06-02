@@ -346,14 +346,7 @@ public class SwiftSpatialHash<TKey, TVolume>
 
     private static void RemoveEntryIndex(SwiftList<int> entryIndices, int entryIndex)
     {
-        for (int i = 0; i < entryIndices.Count; i++)
-        {
-            if (entryIndices[i] != entryIndex)
-                continue;
-
-            entryIndices.RemoveAt(i);
-            return;
-        }
+        entryIndices.RemoveAt(entryIndices.IndexOf(entryIndex));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

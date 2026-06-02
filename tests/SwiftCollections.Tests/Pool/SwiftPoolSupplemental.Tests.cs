@@ -188,6 +188,46 @@ public class SwiftPoolSupplementalTests
             useAfterDispose: pool => pool.Rent());
     }
 
+    [Fact]
+    public void CollectionPoolWrappers_NullReleaseAndClearAfterDisposeAreNoOps()
+    {
+        var dictionaryPool = new SwiftDictionaryPool<int, int>();
+        dictionaryPool.Release(null);
+        dictionaryPool.Dispose();
+        dictionaryPool.Clear();
+        Assert.Throws<ObjectDisposedException>(() => dictionaryPool.Release(new SwiftDictionary<int, int>()));
+
+        var hashSetPool = new SwiftHashSetPool<int>();
+        hashSetPool.Release(null);
+        hashSetPool.Dispose();
+        hashSetPool.Clear();
+        Assert.Throws<ObjectDisposedException>(() => hashSetPool.Release(new SwiftHashSet<int>()));
+
+        var listPool = new SwiftListPool<int>();
+        listPool.Release(null);
+        listPool.Dispose();
+        listPool.Clear();
+        Assert.Throws<ObjectDisposedException>(() => listPool.Release(new SwiftList<int>()));
+
+        var packedSetPool = new SwiftPackedSetPool<int>();
+        packedSetPool.Release(null);
+        packedSetPool.Dispose();
+        packedSetPool.Clear();
+        Assert.Throws<ObjectDisposedException>(() => packedSetPool.Release(new SwiftPackedSet<int>()));
+
+        var sparseMapPool = new SwiftSparseMapPool<int>();
+        sparseMapPool.Release(null);
+        sparseMapPool.Dispose();
+        sparseMapPool.Clear();
+        Assert.Throws<ObjectDisposedException>(() => sparseMapPool.Release(new SwiftSparseMap<int>()));
+
+        var stackPool = new SwiftStackPool<int>();
+        stackPool.Release(null);
+        stackPool.Dispose();
+        stackPool.Clear();
+        Assert.Throws<ObjectDisposedException>(() => stackPool.Release(new SwiftStack<int>()));
+    }
+
     private static void AssertDisposed<TPool, TValue>(TPool pool, Action<TPool> prime, Action<TPool> dispose, Func<TPool, TValue> useAfterDispose)
     {
         prime(pool);
