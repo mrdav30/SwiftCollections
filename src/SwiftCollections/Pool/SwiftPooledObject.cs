@@ -73,8 +73,7 @@ public sealed class SwiftPooledObject<T> : IDisposable where T : class
         _pool = null;
         _value = null;
 
-        if (pool != null && value != null)
-            pool.Release(value);
+        pool!.Release(value!);
     }
 
     #endregion

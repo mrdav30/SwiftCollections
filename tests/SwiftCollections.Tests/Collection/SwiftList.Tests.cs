@@ -130,12 +130,15 @@ public class SwiftListTests
     [Fact]
     public void AddRange_ICollection_WithInsufficientCapacity_ResizesAndAppends()
     {
-        var list = new SwiftList<int>(1) { 1, 2, 3, 4 };
+        var list = new SwiftList<int>(SwiftList<int>.DefaultCapacity);
 
-        list.AddRange(new List<int> { 5, 6, 7 });
+        for (int i = 1; i <= SwiftList<int>.DefaultCapacity; i++)
+            list.Add(i);
 
-        Assert.Equal(new[] { 1, 2, 3, 4, 5, 6, 7 }, list.ToArray());
-        Assert.True(list.Capacity >= list.Count);
+        list.AddRange(new List<int> { 9, 10 });
+
+        Assert.Equal(new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }, list.ToArray());
+        Assert.True(list.Capacity > SwiftList<int>.DefaultCapacity);
     }
 
     [Fact]
@@ -285,12 +288,13 @@ public class SwiftListTests
     [Fact]
     public void Insert_WhenBackingArrayIsFull_ResizesAndShiftsItems()
     {
-        var list = new SwiftList<int>(1) { 1, 2, 4, 5 };
+        var list = new SwiftList<int>(SwiftList<int>.DefaultCapacity);
+        list.AddRange(new[] { 1, 2, 4, 5, 6, 7, 8, 9 });
 
         list.Insert(2, 3);
 
-        Assert.Equal(new[] { 1, 2, 3, 4, 5 }, list.ToArray());
-        Assert.True(list.Capacity > 4);
+        Assert.Equal(new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 }, list.ToArray());
+        Assert.True(list.Capacity > SwiftList<int>.DefaultCapacity);
     }
 
     [Fact]
@@ -689,6 +693,17 @@ public class SwiftListTests
         Assert.Equal(2, nongeneric[1]);
         Assert.NotNull(collection.SyncRoot);
         Assert.Contains("1, 2, 3", list.ToString());
+    }
+
+    [Fact]
+    public void IListIndexer_WithNullReferenceValue_ReturnsNull()
+    {
+        IList list = new SwiftList<string>
+        {
+            null
+        };
+
+        Assert.Null(list[0]);
     }
 
     [Fact]

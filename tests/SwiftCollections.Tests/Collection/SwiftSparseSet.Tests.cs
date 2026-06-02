@@ -350,7 +350,30 @@ public class SwiftSparseSetTests
         Assert.False(set.SetEquals(sparseEqualSizeMismatch));
         Assert.False(set.SetEquals(hashEqualSizeMismatch));
         Assert.False(set.SetEquals(enumerableEqualSizeMismatch));
+        Assert.False(set.SetEquals(new SwiftSparseSet { 1 }));
+        Assert.False(set.SetEquals(new HashSet<int> { 1 }));
         Assert.True(new SwiftSparseSet().IsSubsetOf(Array.Empty<int>()));
+    }
+
+    [Fact]
+    public void IntersectWith_WhenEmpty_IsNoOp()
+    {
+        var set = new SwiftSparseSet();
+
+        set.IntersectWith(new[] { 1, 2, 3 });
+
+        Assert.Empty(set);
+    }
+
+    [Fact]
+    public void TrimExcess_WhenEmpty_UsesDefaultSparseCapacity()
+    {
+        var set = new SwiftSparseSet(64, 64);
+
+        set.TrimExcess();
+
+        Assert.Empty(set);
+        Assert.Equal(SwiftSparseSet.DefaultSparseCapacity, set.SparseCapacity);
     }
 
     [Fact]
@@ -412,6 +435,7 @@ public class SwiftSparseSetTests
         Assert.Throws<ArgumentOutOfRangeException>(() => collection.CopyTo(new int[2], -1));
         Assert.Throws<ArgumentException>(() => collection.CopyTo(new int[1], 0));
         Assert.Throws<ArgumentException>(() => collection.CopyTo(new string[2], 0));
+        Assert.Throws<ArgumentException>(() => collection.CopyTo(new long[2], 0));
     }
 
     [Fact]

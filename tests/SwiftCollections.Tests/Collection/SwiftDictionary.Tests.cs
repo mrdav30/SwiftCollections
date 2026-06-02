@@ -95,6 +95,22 @@ public class SwiftDictionaryTests
     }
 
     [Fact]
+    public void Constructor_WithNonCollectionEnumerable_CopiesElements()
+    {
+        var dictionary = new SwiftDictionary<int, string>(GetItems());
+
+        Assert.Equal(2, dictionary.Count);
+        Assert.Equal("One", dictionary[1]);
+        Assert.Equal("Two", dictionary[2]);
+
+        static IEnumerable<KeyValuePair<int, string>> GetItems()
+        {
+            yield return new KeyValuePair<int, string>(1, "One");
+            yield return new KeyValuePair<int, string>(2, "Two");
+        }
+    }
+
+    [Fact]
     public void Constructor_WithNullIDictionary_ThrowsArgumentNullException()
     {
         Assert.Throws<ArgumentNullException>(() => new SwiftDictionary<int, string>((IDictionary<int, string>)null));
@@ -379,6 +395,14 @@ public class SwiftDictionaryTests
         bool contains = dictionary.ContainsKey(1);
 
         Assert.False(contains);
+    }
+
+    [Fact]
+    public void ContainsKey_NullStringKey_ReturnsFalse()
+    {
+        var dictionary = new SwiftDictionary<string, int>();
+
+        Assert.False(dictionary.ContainsKey(null));
     }
 
     [Fact]
@@ -698,9 +722,11 @@ public class SwiftDictionaryTests
         Assert.False(dictionary.Contains("1"));
 
         dictionary.Remove(1);
+        dictionary.Remove("2");
 
         Assert.False(dictionary.Contains(1));
         Assert.Single(dictionary);
+        Assert.True(dictionary.Contains(2));
     }
 
     [Fact]
@@ -781,6 +807,34 @@ public class SwiftDictionaryTests
     }
 
     [Fact]
+    public void Add_WhenQuadraticProbeCycleIsExhausted_ResizesAndRetries()
+    {
+        var comparer = new SelectiveIntHashComparer(
+            (1, 0), (17, 0), (33, 0), (49, 0), (65, 0),
+            (81, 0), (97, 0), (113, 0), (129, 0), (145, 0),
+            (161, 0), (177, 0));
+        var dictionary = new SwiftDictionary<int, string>(16, comparer)
+        {
+            [1] = "One",
+            [17] = "Seventeen",
+            [33] = "Thirty-three",
+            [49] = "Forty-nine",
+            [65] = "Sixty-five",
+            [81] = "Eighty-one",
+            [97] = "Ninety-seven",
+            [113] = "One-thirteen",
+            [129] = "One-twenty-nine",
+            [145] = "One-forty-five",
+            [161] = "One-sixty-one"
+        };
+
+        dictionary.Add(177, "One-seventy-seven");
+
+        Assert.Equal(12, dictionary.Count);
+        Assert.Equal("One-seventy-seven", dictionary[177]);
+    }
+
+    [Fact]
     public void ICollectionOfKeyValuePair_Remove_ReturnsFalseWhenValueDoesNotMatch()
     {
         var dictionary = new SwiftDictionary<int, string>
@@ -789,6 +843,20 @@ public class SwiftDictionaryTests
         };
 
         bool removed = ((ICollection<KeyValuePair<int, string>>)dictionary).Remove(new KeyValuePair<int, string>(1, "Uno"));
+
+        Assert.False(removed);
+        Assert.Equal("One", dictionary[1]);
+    }
+
+    [Fact]
+    public void ICollectionOfKeyValuePair_Remove_ReturnsFalseWhenKeyDoesNotExist()
+    {
+        var dictionary = new SwiftDictionary<int, string>
+        {
+            [1] = "One"
+        };
+
+        bool removed = ((ICollection<KeyValuePair<int, string>>)dictionary).Remove(new KeyValuePair<int, string>(2, "Two"));
 
         Assert.False(removed);
         Assert.Equal("One", dictionary[1]);
@@ -979,6 +1047,22 @@ public class SwiftDictionaryTests
     }
 
     [Fact]
+    public void SwitchToRandomizedComparer_WithCustomComparerLeavesComparerUnchanged()
+    {
+        var comparer = new NonWellKnownStringComparer(StringComparer.Ordinal);
+        var dictionary = new SwiftDictionary<string, int>(256, comparer);
+        string[] keys = CollisionStringFactory.CreateMaskedCollisions(comparer, dictionary.Capacity - 1, 110);
+
+        for (int i = 0; i < keys.Length; i++)
+            dictionary.Add(keys[i], i);
+
+        Assert.Same(comparer, dictionary.Comparer);
+
+        for (int i = 0; i < keys.Length; i++)
+            Assert.Equal(i, dictionary[keys[i]]);
+    }
+
+    [Fact]
     public void DictionaryAndCollectionAdapterMembers_ExposeExpectedState()
     {
         var dictionary = new SwiftDictionary<int, string>();
@@ -1047,12 +1131,123 @@ public class SwiftDictionaryTests
     }
 
     [Fact]
-    public void SwiftDictionary_CanHandle_LargeInserts()
+    public void NonGenericDictionaryAdapter_CopyTo_CoversSupportedAndInvalidArrayShapes()
+    {
+        var dictionary = new SwiftDictionary<int, string>
+        {
+            [1] = "One",
+            [2] = "Two"
+        };
+        ICollection collection = dictionary;
+
+        var pairs = new KeyValuePair<int, string>[2];
+        collection.CopyTo(pairs, 0);
+
+        Assert.Contains(new KeyValuePair<int, string>(1, "One"), pairs);
+        Assert.Contains(new KeyValuePair<int, string>(2, "Two"), pairs);
+
+        var entries = new DictionaryEntry[2];
+        collection.CopyTo(entries, 0);
+
+        Assert.Contains(entries, entry => (int)entry.Key == 1 && (string)entry.Value == "One");
+        Assert.Contains(entries, entry => (int)entry.Key == 2 && (string)entry.Value == "Two");
+
+        var objects = new object[2];
+        collection.CopyTo(objects, 0);
+
+        Assert.Contains(objects, item => item is KeyValuePair<int, string> pair && pair.Key == 1 && pair.Value == "One");
+        Assert.Contains(objects, item => item is KeyValuePair<int, string> pair && pair.Key == 2 && pair.Value == "Two");
+
+        Assert.Throws<ArgumentException>(() => collection.CopyTo(new string[2], 0));
+    }
+
+    [Fact]
+    public void NonGenericDictionaryAdapter_AddAndSetItem_ValidateKeyAndValueTypes()
+    {
+        IDictionary dictionary = new SwiftDictionary<int, string>();
+
+        dictionary.Add(1, "One");
+        dictionary[2] = "Two";
+
+        Assert.Equal("One", dictionary[1]);
+        Assert.Equal("Two", dictionary[2]);
+        Assert.Throws<ArgumentException>(() => dictionary.Add("bad-key", "Three"));
+        Assert.Throws<ArgumentException>(() => dictionary.Add(3, 4));
+        Assert.Throws<ArgumentException>(() => dictionary["bad-key"] = "Three");
+        Assert.Throws<ArgumentException>(() => dictionary[3] = 4);
+    }
+
+    [Fact]
+    public void KeyAndValueCollectionAdapters_CopyTo_CoverTypedObjectAndInvalidArrays()
+    {
+        var dictionary = new SwiftDictionary<int, string>
+        {
+            [1] = "One",
+            [2] = "Two"
+        };
+
+        ICollection keyCollection = (ICollection)dictionary.Keys;
+        var keyArray = new int[2];
+        keyCollection.CopyTo(keyArray, 0);
+
+        Assert.Contains(1, keyArray);
+        Assert.Contains(2, keyArray);
+
+        var keyObjects = new object[2];
+        keyCollection.CopyTo(keyObjects, 0);
+
+        Assert.Contains(1, keyObjects);
+        Assert.Contains(2, keyObjects);
+        Assert.Throws<ArgumentException>(() => keyCollection.CopyTo(new double[2], 0));
+
+        ICollection valueCollection = (ICollection)dictionary.Values;
+        var valueArray = new string[2];
+        valueCollection.CopyTo(valueArray, 0);
+
+        Assert.Contains("One", valueArray);
+        Assert.Contains("Two", valueArray);
+
+        var valueObjects = new object[2];
+        valueCollection.CopyTo(valueObjects, 0);
+
+        Assert.Contains("One", valueObjects);
+        Assert.Contains("Two", valueObjects);
+        Assert.Throws<ArgumentException>(() => valueCollection.CopyTo(new Uri[2], 0));
+    }
+
+    [Fact]
+    public void ValueCollection_ContainsMissingValueAndEnumeratorReachesEnd()
+    {
+        var dictionary = new SwiftDictionary<int, string>
+        {
+            [1] = "One",
+            [2] = "Two"
+        };
+
+        ICollection<string> values = dictionary.Values;
+
+        Assert.False(values.Contains("Missing"));
+
+        using IEnumerator<string> enumerator = values.GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+        Assert.True(enumerator.MoveNext());
+        Assert.False(enumerator.MoveNext());
+        Assert.Null(enumerator.Current);
+    }
+
+    [Fact]
+    public void SwiftDictionary_CanHandle_DeterministicBulkInserts()
     {
         var swiftDictionary = new SwiftDictionary<string, int>();
-        for (int i = 0; i < 100000; i++)
-            swiftDictionary.Add(TestHelper.GenerateRandomString(10), i);
-        return;
+        const int itemCount = 4096;
+
+        for (int i = 0; i < itemCount; i++)
+            swiftDictionary.Add($"key-{i:0000}", i);
+
+        Assert.Equal(itemCount, swiftDictionary.Count);
+        Assert.Equal(0, swiftDictionary["key-0000"]);
+        Assert.Equal(2048, swiftDictionary["key-2048"]);
+        Assert.Equal(4095, swiftDictionary["key-4095"]);
     }
 
     [Fact]
@@ -1245,6 +1440,23 @@ public class SwiftDictionaryTests
 
         Assert.True(result.ContainsKey(15));
         Assert.Equal("Target", result[15]);
+    }
+
+    [Fact]
+    public void Dictionary_SetComparer_WithSameComparer_IsNoOp()
+    {
+        var comparer = new SelectiveIntHashComparer((1, 0), (9, 0));
+        var dictionary = new SwiftDictionary<int, string>(8, comparer)
+        {
+            [1] = "One",
+            [9] = "Nine"
+        };
+
+        dictionary.SetComparer(comparer);
+
+        Assert.Equal(2, dictionary.Count);
+        Assert.Equal("One", dictionary[1]);
+        Assert.Equal("Nine", dictionary[9]);
     }
 
     private static Array GetEntries<TKey, TValue>(SwiftDictionary<TKey, TValue> dictionary)

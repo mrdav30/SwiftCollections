@@ -774,6 +774,27 @@ namespace SwiftCollections.Query.Tests
         }
 
         [Fact]
+        public void UpdateEntryBounds_WhenSiblingStillContainsNewBounds_StopsParentPropagation()
+        {
+            var bvh = new SwiftBVH<int>(4);
+            var containedBounds = new BoundVolume(new Vector3(1, 1, 1), new Vector3(2, 2, 2));
+            var siblingBounds = new BoundVolume(new Vector3(0, 0, 0), new Vector3(10, 10, 10));
+            var movedContainedBounds = new BoundVolume(new Vector3(3, 3, 3), new Vector3(4, 4, 4));
+
+            bvh.Insert(1, containedBounds);
+            bvh.Insert(2, siblingBounds);
+
+            bvh.UpdateEntryBounds(1, movedContainedBounds);
+
+            var results = new List<int>();
+            bvh.Query(new BoundVolume(new Vector3(3, 3, 3), new Vector3(4, 4, 4)), results);
+
+            Assert.Equal(2, results.Count);
+            Assert.Contains(1, results);
+            Assert.Contains(2, results);
+        }
+
+        [Fact]
         public void UpdateEntryBounds_DoesNothingWhenNodeHasBeenMarkedUnallocated()
         {
             var bvh = new SwiftBVH<int>(4);

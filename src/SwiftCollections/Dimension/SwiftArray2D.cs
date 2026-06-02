@@ -346,8 +346,6 @@ public partial class SwiftArray2D<T> : IStateBacked<Array2DState<T>>, IEnumerabl
 
         start = (int)Math.Min(startValue, length);
         end = (int)Math.Max(0L, Math.Min(endValue, length));
-        if (end < start)
-            end = start;
     }
 
     /// <summary>

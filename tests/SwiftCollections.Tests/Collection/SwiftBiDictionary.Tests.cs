@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Xunit;
@@ -26,6 +27,8 @@ public class SwiftBiDictionaryTests
 
         // Assert
         Assert.True(containsKeyOne);
+        Assert.Single(biDict);
+        Assert.False(biDict.ContainsKey("Two"));
     }
 
     [Fact]
@@ -240,6 +243,25 @@ public class SwiftBiDictionaryTests
         Assert.Equal("One", key);
     }
 
+    [Fact]
+    public void BiDictionary_StateConstructor_IgnoresDuplicateValues()
+    {
+        var state = new SwiftDictionaryState<string, int>(
+            new[]
+            {
+                new KeyValuePair<string, int>("One", 1),
+                new KeyValuePair<string, int>("Two", 1)
+            });
+
+        var dictionary = new SwiftBiDictionary<string, int>(state);
+
+        Assert.Single(dictionary);
+        Assert.True(dictionary.ContainsKey("One"));
+        Assert.False(dictionary.ContainsKey("Two"));
+        Assert.True(dictionary.TryGetKey(1, out string key));
+        Assert.Equal("One", key);
+    }
+
 #if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
     [Fact]
     public void SwiftBiDictionary_MemoryPackSerialization_RoundTripMaintainsData()
@@ -306,6 +328,23 @@ public class SwiftBiDictionaryTests
         Assert.True(result.ContainsValue(115));
         Assert.True(result.TryGetKey(115, out int key));
         Assert.Equal(15, key);
+    }
+
+    [Fact]
+    public void BiDictionary_SetComparer_WithSameComparers_IsNoOp()
+    {
+        var keyComparer = StringComparer.OrdinalIgnoreCase;
+        var valueComparer = StringComparer.OrdinalIgnoreCase;
+        var dictionary = new SwiftBiDictionary<string, string>(keyComparer, valueComparer)
+        {
+            ["Key"] = "Value"
+        };
+
+        dictionary.SetComparer(keyComparer, valueComparer);
+
+        Assert.True(dictionary.ContainsKey("key"));
+        Assert.True(dictionary.ContainsValue("value"));
+        Assert.Equal("Value", dictionary["key"]);
     }
 
     [Fact]

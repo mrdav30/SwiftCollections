@@ -417,7 +417,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
 
     private void Resize(int newSize)
     {
-        int newCapacity = newSize <= DefaultCapacity ? DefaultCapacity : newSize;
+        int newCapacity = newSize;
         int copyLength = Math.Min(_peakCount, _innerArray.Length);
 
         Entry[] newArray = new Entry[newCapacity];
@@ -646,10 +646,6 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
                     count++;
                 }
             }
-        }
-        catch (ArrayTypeMismatchException)
-        {
-            throw new ArgumentException("Invalid array type.");
         }
         catch (InvalidCastException)
         {

@@ -132,7 +132,7 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     public SwiftStack(SwiftArrayState<T> state)
     {
         State = state;
-        _innerArray ??= _emptyArray; // Ensure _innerArray is not null after deserialization
+        SwiftThrowHelper.ThrowIfNull(_innerArray, nameof(_innerArray));
     }
 
     #endregion
@@ -451,7 +451,7 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
             for (int i = 0; (uint)i < (uint)_count; i++)
                 array.SetValue(_innerArray[i], arrayIndex++);
         }
-        catch (ArrayTypeMismatchException)
+        catch (InvalidCastException)
         {
             throw new ArgumentException("Invalid array type.");
         }

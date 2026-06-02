@@ -99,6 +99,17 @@ public class SwiftHashSetTests
     }
 
     [Fact]
+    public void Remove_OnlyItem_ResetsProbeWindowForReuse()
+    {
+        var set = new SwiftHashSet<int> { 1 };
+
+        Assert.True(set.Remove(1));
+        Assert.Empty(set);
+        Assert.True(set.Add(9));
+        Assert.Contains(9, set);
+    }
+
+    [Fact]
     public void Remove_NonExistingItem_ReturnsFalse()
     {
         var set = new SwiftHashSet<int> { 1, 2, 3 };
@@ -253,6 +264,21 @@ public class SwiftHashSetTests
         Assert.Contains(1, set);
         Assert.Contains(2, set);
         Assert.Contains(3, set);
+    }
+
+    [Fact]
+    public void Constructor_WithNonCollectionEnumerable_AddsItems()
+    {
+        var set = new SwiftHashSet<int>(GetItems());
+
+        Assert.True(set.SetEquals(new[] { 1, 2, 3 }));
+
+        static IEnumerable<int> GetItems()
+        {
+            yield return 1;
+            yield return 2;
+            yield return 3;
+        }
     }
 
     [Fact]
@@ -662,6 +688,60 @@ public class SwiftHashSetTests
     }
 
     [Fact]
+    public void Add_WhenQuadraticProbeCycleIsExhausted_ResizesAndRetries()
+    {
+        var comparer = new SelectiveIntHashComparer(
+            (1, 0), (17, 0), (33, 0), (49, 0), (65, 0),
+            (81, 0), (97, 0), (113, 0), (129, 0), (145, 0),
+            (161, 0), (177, 0));
+        var set = new SwiftHashSet<int>(16, comparer)
+        {
+            1,
+            17,
+            33,
+            49,
+            65,
+            81,
+            97,
+            113,
+            129,
+            145,
+            161
+        };
+
+        Assert.True(set.Add(177));
+
+        Assert.Equal(12, set.Count);
+        Assert.Contains(177, set);
+    }
+
+    [Fact]
+    public void Contains_WhenQuadraticProbeWindowIsExhausted_ReturnsFalse()
+    {
+        var comparer = new SelectiveIntHashComparer(
+            (1, 0), (17, 0), (33, 0), (49, 0), (65, 0),
+            (81, 0), (97, 0), (113, 0), (129, 0), (145, 0),
+            (177, 0));
+        var set = new SwiftHashSet<int>(16, comparer)
+        {
+            1,
+            17,
+            33,
+            49,
+            65,
+            81,
+            97,
+            113,
+            129,
+            145
+        };
+
+        bool contains = set.Contains(177);
+
+        Assert.False(contains);
+    }
+
+    [Fact]
     public void ExceptWith_RemovesIntersectingItems()
     {
         var set = new SwiftHashSet<int> { 1, 2, 3, 4 };
@@ -721,6 +801,22 @@ public class SwiftHashSetTests
             set.Add(values[i]);
 
         Assert.IsAssignableFrom<IRandomedEqualityComparer>(set.Comparer);
+
+        foreach (string value in values)
+            Assert.Contains(value, set);
+    }
+
+    [Fact]
+    public void SwitchToRandomizedComparer_WithCustomComparerLeavesComparerUnchanged()
+    {
+        var comparer = new NonWellKnownStringComparer(StringComparer.Ordinal);
+        var set = new SwiftHashSet<string>(256, comparer);
+        string[] values = CollisionStringFactory.CreateMaskedCollisions(comparer, 255, 110);
+
+        for (int i = 0; i < values.Length; i++)
+            set.Add(values[i]);
+
+        Assert.Same(comparer, set.Comparer);
 
         foreach (string value in values)
             Assert.Contains(value, set);
@@ -895,6 +991,27 @@ public class SwiftHashSetTests
     }
 
     [Fact]
+    public void HashSet_SetComparer_WithSameComparer_IsNoOp()
+    {
+        var comparer = new SelectiveIntHashComparer((1, 0), (9, 0));
+        var set = new SwiftHashSet<int>(8, comparer) { 1, 9 };
+
+        set.SetComparer(comparer);
+
+        Assert.Equal(2, set.Count);
+        Assert.Contains(1, set);
+        Assert.Contains(9, set);
+    }
+
+    [Fact]
+    public void HashSet_SetComparer_ThrowsForNullComparer()
+    {
+        var set = new SwiftHashSet<int>();
+
+        Assert.Throws<ArgumentNullException>(() => set.SetComparer(null));
+    }
+
+    [Fact]
     public void HashSet_IsSubsetOf_IgnoresDuplicatesInOther()
     {
         var set = new SwiftHashSet<int> { 1, 2 };
@@ -911,7 +1028,19 @@ public class SwiftHashSetTests
         Assert.False(set.IsProperSubsetOf(new[] { 1, 2, 3 }));
         Assert.False(set.IsProperSupersetOf(new[] { 1, 2, 3 }));
         Assert.False(set.IsSubsetOf(new[] { 1, 2 }));
+        Assert.False(set.SetEquals(new[] { 1, 2 }));
         Assert.False(set.SetEquals(new[] { 1, 2, 4 }));
+    }
+
+    [Fact]
+    public void HashSet_SetRelationshipMethods_ReportFalseForMembershipMismatches()
+    {
+        var set = new SwiftHashSet<int> { 1, 2 };
+
+        Assert.False(set.IsProperSubsetOf(new[] { 1, 3, 4 }));
+        Assert.False(new SwiftHashSet<int> { 1, 2, 3 }.IsProperSupersetOf(new[] { 1, 4 }));
+        Assert.False(set.IsSubsetOf(new[] { 1, 3, 4 }));
+        Assert.False(new SwiftHashSet<int> { 1, 2, 3 }.SetEquals(new[] { 1, 2, 4 }));
     }
 
     [Fact]
@@ -920,6 +1049,26 @@ public class SwiftHashSetTests
         var set = new SwiftHashSet<int> { 1, 2 };
 
         Assert.True(set.IsProperSupersetOf(new[] { 1, 1 }));
+    }
+
+    [Fact]
+    public void HashSet_ExceptWith_Self_ClearsSet()
+    {
+        var set = new SwiftHashSet<int> { 1, 2, 3 };
+
+        set.ExceptWith(set);
+
+        Assert.Empty(set);
+    }
+
+    [Fact]
+    public void HashSet_IntersectWith_Self_IsNoOp()
+    {
+        var set = new SwiftHashSet<int> { 1, 2, 3 };
+
+        set.IntersectWith(set);
+
+        Assert.True(set.SetEquals(new[] { 1, 2, 3 }));
     }
 
     [Fact]

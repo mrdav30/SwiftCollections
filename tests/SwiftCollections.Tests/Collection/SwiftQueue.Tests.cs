@@ -37,12 +37,39 @@ public class SwiftQueueTests
     }
 
     [Fact]
+    public void Constructor_WithLargeCollectionEnumerable_UsesExpandedCapacity()
+    {
+        var queue = new SwiftQueue<int>(new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9 });
+
+        Assert.Equal(new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 }, queue.ToArray());
+        Assert.Equal(16, queue.Capacity);
+    }
+
+    [Fact]
     public void Constructor_WithEmptyState_InitializesEmptyQueue()
     {
         var queue = new SwiftQueue<int>(new SwiftArrayState<int>(Array.Empty<int>()));
 
         Assert.Empty(queue);
         Assert.Equal(0, queue.Capacity);
+    }
+
+    [Fact]
+    public void Constructor_WithLargeState_UsesExpandedCapacity()
+    {
+        var queue = new SwiftQueue<int>(new SwiftArrayState<int>(new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 }));
+
+        Assert.Equal(new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 }, queue.ToArray());
+        Assert.Equal(16, queue.Capacity);
+    }
+
+    [Fact]
+    public void Constructor_WithSmallState_UsesDefaultCapacity()
+    {
+        var queue = new SwiftQueue<int>(new SwiftArrayState<int>(new[] { 1, 2, 3 }));
+
+        Assert.Equal(new[] { 1, 2, 3 }, queue.ToArray());
+        Assert.Equal(SwiftQueue<int>.DefaultCapacity, queue.Capacity);
     }
 
     [Fact]
@@ -220,6 +247,27 @@ public class SwiftQueueTests
     }
 
     [Fact]
+    public void EnqueueRange_CollectionEnumerable_EnsuresCapacityBeforeAppending()
+    {
+        var queue = new SwiftQueue<int>();
+        IEnumerable<int> items = new List<int> { 1, 2, 3 };
+
+        queue.EnqueueRange(items);
+
+        Assert.Equal(new[] { 1, 2, 3 }, queue.ToArray());
+    }
+
+    [Fact]
+    public void EnqueueRange_EmptyArray_IsNoOp()
+    {
+        var queue = new SwiftQueue<int>();
+
+        queue.EnqueueRange(Array.Empty<int>());
+
+        Assert.Empty(queue);
+    }
+
+    [Fact]
     public void EnqueueRange_NonCollectionEnumerable_PreservesNullItems()
     {
         var queue = new SwiftQueue<string>();
@@ -248,6 +296,14 @@ public class SwiftQueueTests
         Assert.Equal(5, array.Length);
         Assert.Equal(0, array[0]);
         Assert.Equal(4, array[4]);
+    }
+
+    [Fact]
+    public void ToArray_WhenEmpty_ReturnsEmptyArray()
+    {
+        var queue = new SwiftQueue<int>();
+
+        Assert.Empty(queue.ToArray());
     }
 
     [Fact]
@@ -399,6 +455,16 @@ public class SwiftQueueTests
     }
 
     [Fact]
+    public void Contains_WhenEmpty_ReturnsFalse()
+    {
+        var queue = new SwiftQueue<int>();
+
+        bool contains = queue.Contains(42);
+
+        Assert.False(contains);
+    }
+
+    [Fact]
     public void EnqueueRange_ArrayAndIndexerSet_UpdateQueueInPlace()
     {
         var queue = new SwiftQueue<int>();
@@ -520,6 +586,12 @@ public class SwiftQueueTests
         Assert.Equal(4, enumerator.Current);
         Assert.True(enumerator.MoveNext());
         Assert.Equal(5, enumerator.Current);
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal(6, enumerator.Current);
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal(7, enumerator.Current);
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal(8, enumerator.Current);
     }
 
     [Fact]

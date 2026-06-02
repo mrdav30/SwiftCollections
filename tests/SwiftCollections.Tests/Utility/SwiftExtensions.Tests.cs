@@ -84,6 +84,7 @@ public class SwiftExtensionsTests
         Assert.False(SwiftExtensions.IsPopulatedSafe<int>(null));
         Assert.True(new[] { 1 }.IsPopulatedSafe());
         Assert.Equal(40, swiftList.FromEnd(1));
+        Assert.Equal(40, SwiftExtensions.FromEnd((IEnumerable<int>)swiftList, 1));
         Assert.Equal(30, queue.FromEnd(2));
         Assert.Equal(40, queue.PopLast());
         Assert.Equal(30, queue.SecondToLast());

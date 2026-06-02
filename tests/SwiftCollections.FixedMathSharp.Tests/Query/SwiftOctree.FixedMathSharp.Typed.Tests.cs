@@ -120,6 +120,29 @@ public class SwiftOctreeFixedMathSharpTypedTests
         Assert.Throws<ArgumentOutOfRangeException>(() => new SwiftFixedOctree<int>(worldBounds, new SwiftOctreeOptions(4, 1), (Fixed64)minNodeSize));
     }
 
+    [Theory]
+    [InlineData(-1, 1, 1, 2, 2, 2)]
+    [InlineData(1, -1, 1, 2, 2, 2)]
+    [InlineData(1, 1, -1, 2, 2, 2)]
+    [InlineData(1, 1, 1, 17, 2, 2)]
+    [InlineData(1, 1, 1, 2, 17, 2)]
+    [InlineData(1, 1, 1, 2, 2, 17)]
+    public void FixedOctree_InsertRejectsBoundsOutsideWorld(
+        int minX,
+        int minY,
+        int minZ,
+        int maxX,
+        int maxY,
+        int maxZ)
+    {
+        var worldBounds = new FixedBoundVolume(new Vector3d(0, 0, 0), new Vector3d(16, 16, 16));
+        var octree = new SwiftFixedOctree<int>(worldBounds, new SwiftOctreeOptions(4, 1), (Fixed64)1);
+        var bounds = new FixedBoundVolume(new Vector3d(minX, minY, minZ), new Vector3d(maxX, maxY, maxZ));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => octree.Insert(1, bounds));
+        Assert.Equal(0, octree.Count);
+    }
+
     private static FixedBoundVolume CreateOctantVolume(int childIndex)
     {
         int minX = (childIndex & 1) == 0 ? 1 : 10;

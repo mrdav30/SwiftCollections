@@ -24,6 +24,9 @@ public class SwiftEqualityComparerTests
         Assert.True(nonGeneric.Equals(5, 5));
         Assert.False(nonGeneric.Equals(null, "alpha"));
         Assert.False(nonGeneric.Equals("alpha", 5));
+        Assert.True(comparer.Equals((object)"alpha", (object)"alpha"));
+        Assert.False(comparer.Equals((object)"alpha", (object)"beta"));
+        Assert.False(comparer.Equals((object)"alpha", (object)5));
 
         Assert.Equal(0, comparer.GetHashCode((string)null));
         Assert.Equal(0, nonGeneric.GetHashCode(null));
@@ -84,6 +87,9 @@ public class SwiftEqualityComparerTests
         Assert.True(nonGeneric.Equals(5, 5));
         Assert.False(nonGeneric.Equals(null, "alpha"));
         Assert.False(nonGeneric.Equals("alpha", 5));
+        Assert.True(comparer.Equals((object)"alpha", (object)"alpha"));
+        Assert.False(comparer.Equals((object)"alpha", (object)"beta"));
+        Assert.False(comparer.Equals((object)"alpha", (object)5));
 
         Assert.Equal(0, comparer.GetHashCode((string)null));
         Assert.Equal(0, nonGeneric.GetHashCode(null));

@@ -50,6 +50,16 @@ public class SwiftPackedSetTests
     }
 
     [Fact]
+    public void ICollectionAdd_InsertsItem()
+    {
+        ICollection<int> set = new SwiftPackedSet<int>();
+
+        set.Add(42);
+
+        Assert.Contains(42, set);
+    }
+
+    [Fact]
     public void Constructor_WithEmptyState_InitializesEmptyPackedSet()
     {
         var set = new SwiftPackedSet<int>(new SwiftArrayState<int>(Array.Empty<int>()));
@@ -542,6 +552,7 @@ public class SwiftPackedSetTests
     {
         var set = new SwiftPackedSet<int> { 1, 2, 3 };
 
+        Assert.False(set.IsProperSubsetOf(new[] { 1, 2, 4, 5 }));
         Assert.False(set.IsProperSupersetOf(new[] { 1, 4 }));
         Assert.False(set.IsSubsetOf(new[] { 1, 2, 4 }));
         Assert.False(set.SetEquals(new[] { 1, 2, 4 }));

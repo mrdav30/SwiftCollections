@@ -105,13 +105,10 @@ public partial class SwiftObservableDictionary<TKey, TValue> : SwiftDictionary<T
     {
         if (TryGetValue(key, out TValue value))
         {
-            bool removed = base.Remove(key);
-            if (removed)
-            {
-                OnCollectionChanged(NotifyCollectionChangedAction.Remove, key, value);
-                OnPropertyChanged("Entries[]"); // Notify that the dictionary contents have changed
-                return true;
-            }
+            base.Remove(key);
+            OnCollectionChanged(NotifyCollectionChangedAction.Remove, key, value);
+            OnPropertyChanged("Entries[]"); // Notify that the dictionary contents have changed
+            return true;
         }
         return false;
     }

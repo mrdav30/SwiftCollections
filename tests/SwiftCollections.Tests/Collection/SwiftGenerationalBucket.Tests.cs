@@ -53,6 +53,7 @@ public class SwiftGenerationalBucketTests
 
         var handle = bucket.Add("test");
 
+        Assert.True(bucket.IsValid(handle));
         Assert.True(bucket.Remove(handle));
 
         Assert.False(bucket.TryGet(handle, out _));
@@ -117,6 +118,30 @@ public class SwiftGenerationalBucketTests
     }
 
     [Fact]
+    public void Enumerator_SkipsRemovedSlots()
+    {
+        var bucket = new SwiftGenerationalBucket<int>();
+        SwiftHandle first = bucket.Add(1);
+        bucket.Add(2);
+
+        bucket.Remove(first);
+
+        var values = new List<int>();
+        foreach (int value in bucket)
+            values.Add(value);
+
+        Assert.Equal(new[] { 2 }, values);
+    }
+
+    [Fact]
+    public void NonGenericEnumerator_CurrentBeforeMoveNext_ThrowsForReferenceTypes()
+    {
+        IEnumerator enumerator = ((IEnumerable)new SwiftGenerationalBucket<string> { "value" }).GetEnumerator();
+
+        Assert.Throws<InvalidOperationException>(() => _ = enumerator.Current);
+    }
+
+    [Fact]
     public void Enumerator_ThrowsIfModified()
     {
         var bucket = new SwiftGenerationalBucket<int>
@@ -153,6 +178,22 @@ public class SwiftGenerationalBucketTests
         }
     }
 
+    [Fact]
+    public void Constructor_WithSmallCapacity_UsesDefaultCapacity()
+    {
+        var bucket = new SwiftGenerationalBucket<int>(1);
+
+        Assert.Equal(SwiftGenerationalBucket<int>.DefaultCapacity, bucket.Capacity);
+    }
+
+    [Fact]
+    public void Constructor_WithLargeCapacity_UsesNextPowerOfTwo()
+    {
+        var bucket = new SwiftGenerationalBucket<int>(9);
+
+        Assert.Equal(16, bucket.Capacity);
+    }
+
     #endregion
 
     #region Clone
@@ -186,6 +227,18 @@ public class SwiftGenerationalBucketTests
         };
 
         Assert.True(bucket.Exists(i => i == 2));
+    }
+
+    [Fact]
+    public void Exists_SkipsRemovedSlotsBeforeMatchingLaterValue()
+    {
+        var bucket = new SwiftGenerationalBucket<int>();
+        SwiftHandle removed = bucket.Add(1);
+        bucket.Add(2);
+
+        Assert.True(bucket.Remove(removed));
+
+        Assert.True(bucket.Exists(static value => value == 2));
     }
 
     [Fact]
@@ -442,11 +495,16 @@ public class SwiftGenerationalBucketTests
         var bucket = new SwiftGenerationalBucket<int> { 10 };
         var stale = new SwiftHandle(0, 1);
         var outOfRange = new SwiftHandle(bucket.Capacity, 0);
+        var removed = new SwiftHandle(0, 0);
 
         Assert.False(bucket.Remove(stale));
+        Assert.True(bucket.Remove(removed));
+        Assert.False(bucket.Remove(removed));
         Assert.False(bucket.IsValid(stale));
         Assert.False(bucket.IsValid(outOfRange));
+        Assert.False(bucket.IsValid(new SwiftHandle(0, stale.Generation + 1)));
         Assert.Throws<InvalidOperationException>(() => bucket.GetRef(stale));
+        Assert.Throws<InvalidOperationException>(() => bucket.GetRef(removed));
         Assert.False(bucket.Exists(static value => value == 99));
     }
 

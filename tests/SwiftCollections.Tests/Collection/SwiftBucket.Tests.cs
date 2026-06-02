@@ -313,6 +313,42 @@ public class SwiftBucketTests
     }
 
     [Fact]
+    public void NonGenericCopyTo_WithInvalidReferenceArray_ThrowsArgumentException()
+    {
+        ICollection bucket = new SwiftBucket<string>
+        {
+            "one",
+            "two"
+        };
+
+        Assert.Throws<ArgumentException>(() => bucket.CopyTo(new Uri[2], 0));
+    }
+
+    [Fact]
+    public void IndexOf_NullWhenOnlyNonNullValuesExist_ReturnsMinusOne()
+    {
+        var bucket = new SwiftBucket<string>
+        {
+            "one",
+            "two"
+        };
+
+        Assert.Equal(-1, bucket.IndexOf(null));
+    }
+
+    [Fact]
+    public void TrimExcessCapacity_WhenBucketIsEmpty_ShrinksToDefaultCapacity()
+    {
+        var bucket = new SwiftBucket<int>(64);
+
+        bucket.TrimExcessCapacity();
+
+        Assert.Empty(bucket);
+        Assert.True(bucket.Capacity >= SwiftBucket<int>.DefaultCapacity);
+        Assert.True(bucket.Capacity < 64);
+    }
+
+    [Fact]
     public void Enumerator_Reset_ShouldRestartEnumeration()
     {
         // Arrange
@@ -514,6 +550,23 @@ public class SwiftBucketTests
     }
 
     [Fact]
+    public void SwiftBucket_StateConstructor_TreatsMissingAllocationFlagsAsUnallocated()
+    {
+        var state = new SwiftBucketState<int>(
+            new[] { 10, 20 },
+            new[] { true },
+            Array.Empty<int>(),
+            2);
+
+        var bucket = new SwiftBucket<int>(state);
+
+        bucket.Count.Should().Be(1);
+        bucket.PeakCount.Should().Be(2);
+        bucket[0].Should().Be(10);
+        bucket.TryGetValue(1, out _).Should().BeFalse();
+    }
+
+    [Fact]
     public void SwiftBucketState_Constructor_NormalizesNullArraysToEmptyArrays()
     {
         var state = new SwiftBucketState<int>(null, null, null, 5);
@@ -623,6 +676,17 @@ public class SwiftBucketTests
     }
 
     [Fact]
+    public void EnsureCapacity_WhenCapacityAlreadyExists_DoesNotGrow()
+    {
+        var bucket = new SwiftBucket<int>();
+        int capacityBefore = bucket.Capacity;
+
+        bucket.EnsureCapacity(capacityBefore);
+
+        bucket.Capacity.Should().Be(capacityBefore);
+    }
+
+    [Fact]
     public void EnsureCapacity_ShouldPreserveSparseEntriesAtHighIndices()
     {
         var bucket = new SwiftBucket<string>(8);
@@ -700,6 +764,20 @@ public class SwiftBucketTests
         bucket[0].Should().Be(10);
         bucket[1].Should().Be(20);
         bucket[2].Should().Be(30);
+    }
+
+    [Fact]
+    public void TrimExcessCapacity_AfterRemovingAllItems_DropsUnusedPeak()
+    {
+        var bucket = new SwiftBucket<int>(64);
+        int index = bucket.Add(1);
+
+        bucket.RemoveAt(index);
+        bucket.TrimExcessCapacity();
+
+        bucket.Should().BeEmpty();
+        bucket.PeakCount.Should().Be(0);
+        bucket.Capacity.Should().Be(SwiftBucket<int>.DefaultCapacity);
     }
 
     [Fact]

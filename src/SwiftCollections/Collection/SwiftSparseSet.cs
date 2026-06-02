@@ -708,8 +708,8 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
             return;
         }
 
-        Type? elementType = array.GetType().GetElementType();
-        if (array is object[] objects && elementType != null && elementType.IsAssignableFrom(typeof(int)))
+        Type elementType = array.GetType().GetElementType()!;
+        if (array is object[] objects && elementType.IsAssignableFrom(typeof(int)))
         {
             for (int i = 0; i < _count; i++)
                 objects[index + i] = _denseKeys[i];

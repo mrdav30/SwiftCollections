@@ -123,6 +123,29 @@ public class SwiftOctreeNumericsTests
         Assert.Throws<ArgumentOutOfRangeException>(() => new SwiftOctree<int>(worldBounds, new SwiftOctreeOptions(4, 1), minNodeSize));
     }
 
+    [Theory]
+    [InlineData(-1f, 1f, 1f, 2f, 2f, 2f)]
+    [InlineData(1f, -1f, 1f, 2f, 2f, 2f)]
+    [InlineData(1f, 1f, -1f, 2f, 2f, 2f)]
+    [InlineData(1f, 1f, 1f, 17f, 2f, 2f)]
+    [InlineData(1f, 1f, 1f, 2f, 17f, 2f)]
+    [InlineData(1f, 1f, 1f, 2f, 2f, 17f)]
+    public void NumericsWrapper_InsertRejectsBoundsOutsideWorld(
+        float minX,
+        float minY,
+        float minZ,
+        float maxX,
+        float maxY,
+        float maxZ)
+    {
+        var worldBounds = new BoundVolume(new Vector3(0, 0, 0), new Vector3(16, 16, 16));
+        var octree = new SwiftOctree<int>(worldBounds, new SwiftOctreeOptions(4, 1), 1f);
+        var bounds = new BoundVolume(new Vector3(minX, minY, minZ), new Vector3(maxX, maxY, maxZ));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => octree.Insert(1, bounds));
+        Assert.Equal(0, octree.Count);
+    }
+
     private static BoundVolume CreateOctantVolume(int childIndex)
     {
         float minX = (childIndex & 1) == 0 ? 1f : 10f;

@@ -6,6 +6,7 @@ using Xunit;
 
 namespace SwiftCollections.Query.Tests;
 
+[Collection("SharedDiagnostics")]
 public class QuerySharedInfrastructureTests
 {
     [Fact]
@@ -68,6 +69,27 @@ public class QuerySharedInfrastructureTests
         Assert.Equal(-1, map.Find(entries[0].Key, (index, key) => entries[index].Active && entries[index].Key.Equals(key)));
         Assert.Equal(1, map.Find(entries[1].Key, (index, key) => entries[index].Active && entries[index].Key.Equals(key)));
         Assert.Equal(2, map.Find(entries[2].Key, (index, key) => entries[index].Active && entries[index].Key.Equals(key)));
+    }
+
+    [Fact]
+    public void QueryKeyIndexMap_Remove_MissingKey_ReturnsFalse()
+    {
+        var map = new QueryKeyIndexMap<CollidingKey>(4);
+        var entries = new[]
+        {
+            new Entry(new CollidingKey(1), true)
+        };
+
+        map.Insert(entries[0].Key, 0);
+
+        bool removed = map.Remove(
+            new CollidingKey(2),
+            (index, key) => entries[index].Active && entries[index].Key.Equals(key),
+            index => entries[index].Active,
+            index => entries[index].Key);
+
+        Assert.False(removed);
+        Assert.Equal(0, map.Find(entries[0].Key, (index, key) => entries[index].Active && entries[index].Key.Equals(key)));
     }
 
     [Fact]
@@ -135,6 +157,73 @@ public class QuerySharedInfrastructureTests
     }
 
     [Fact]
+    public void SwiftBvhDiagnostics_WhenResizeAndTraversalErrorOccur_EmitExpectedEvents()
+    {
+        DiagnosticLevel originalLevel = SwiftCollectionDiagnostics.Shared.MinimumLevel;
+        DiagnosticSink originalSink = SwiftCollectionDiagnostics.Shared.Sink;
+        var events = new List<DiagnosticEvent>();
+        var bounds = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+
+        try
+        {
+            SwiftCollectionDiagnostics.Shared.MinimumLevel = DiagnosticLevel.Info;
+            SwiftCollectionDiagnostics.Shared.Sink = (in DiagnosticEvent diagnostic) => events.Add(diagnostic);
+
+            var bvh = new SwiftBVH<int>(1);
+            bvh.Insert(1, bounds);
+            bvh.NodePool[bvh.RootNodeIndex].IsAllocated = false;
+
+            Assert.Throws<InvalidOperationException>(() => bvh.Query(bounds, new List<int>()));
+
+            Assert.Contains(events, diagnostic =>
+                diagnostic.Level == DiagnosticLevel.Info
+                && diagnostic.Source == "SwiftBVH"
+                && diagnostic.Message.Contains("Resized BVH storage"));
+            Assert.Contains(events, diagnostic =>
+                diagnostic.Level == DiagnosticLevel.Error
+                && diagnostic.Source == "SwiftBVH"
+                && diagnostic.Message.Contains("Encountered an unallocated node"));
+        }
+        finally
+        {
+            SwiftCollectionDiagnostics.Shared.MinimumLevel = originalLevel;
+            SwiftCollectionDiagnostics.Shared.Sink = originalSink;
+        }
+    }
+
+    [Fact]
+    public void SwiftOctreeDiagnostics_WhenEntryStorageResizes_EmitsExpectedEvent()
+    {
+        DiagnosticLevel originalLevel = SwiftCollectionDiagnostics.Shared.MinimumLevel;
+        DiagnosticSink originalSink = SwiftCollectionDiagnostics.Shared.Sink;
+        var events = new List<DiagnosticEvent>();
+        var world = new BoundVolume(new Vector3(0, 0, 0), new Vector3(32, 32, 32));
+
+        try
+        {
+            SwiftCollectionDiagnostics.Shared.MinimumLevel = DiagnosticLevel.Info;
+            SwiftCollectionDiagnostics.Shared.Sink = (in DiagnosticEvent diagnostic) => events.Add(diagnostic);
+
+            var octree = new SwiftOctree<int>(world, new SwiftOctreeOptions(4, 4), 1f);
+            for (int i = 0; i < 5; i++)
+            {
+                float min = i + 1;
+                octree.Insert(i, new BoundVolume(new Vector3(min, min, min), new Vector3(min + 0.25f, min + 0.25f, min + 0.25f)));
+            }
+
+            Assert.Contains(events, diagnostic =>
+                diagnostic.Level == DiagnosticLevel.Info
+                && diagnostic.Source == "SwiftOctree"
+                && diagnostic.Message.Contains("Resized octree entry storage"));
+        }
+        finally
+        {
+            SwiftCollectionDiagnostics.Shared.MinimumLevel = originalLevel;
+            SwiftCollectionDiagnostics.Shared.Sink = originalSink;
+        }
+    }
+
+    [Fact]
     public void DeterministicBoundVolumeDataset_Create_ReturnsStableSequenceForSharedFixtures()
     {
         IReadOnlyList<BoundVolume> first = DeterministicBoundVolumeDataset.Create(3, 9876);
@@ -143,6 +232,18 @@ public class QuerySharedInfrastructureTests
         Assert.Equal(first.Count, second.Count);
         for (int i = 0; i < first.Count; i++)
             Assert.True(first[i].BoundsEquals(second[i]));
+    }
+
+    [Fact]
+    public void BoundVolume_ObjectEquality_ComparesBounds()
+    {
+        var left = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+        var same = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
+        var different = new BoundVolume(new Vector3(1, 1, 1), new Vector3(2, 2, 2));
+
+        Assert.True(left.Equals((object)same));
+        Assert.False(left.Equals((object)different));
+        Assert.False(left.Equals((object)"not a volume"));
     }
 
     [Fact]

@@ -11,6 +11,16 @@ namespace SwiftCollections.Dimensions.Tests;
 public class SwiftShortArray2DTests
 {
     [Fact]
+    public void Constructor_Default_CreatesEmptyArray()
+    {
+        var shortArray = new SwiftShortArray2D();
+
+        Assert.Equal(0, shortArray.Width);
+        Assert.Equal(0, shortArray.Height);
+        Assert.Equal(0, shortArray.Length);
+    }
+
+    [Fact]
     public void Normalize_AdjustsValuesToRange()
     {
         var shortArray = new SwiftShortArray2D(2, 2);

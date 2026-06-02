@@ -137,6 +137,16 @@ public class SwiftHashToolsTests
         int oddHash = SwiftHashTools.MurmurHash3("abc", 17);
         int evenHash = SwiftHashTools.MurmurHash3("abcd", 17);
 
+        Assert.Throws<ArgumentNullException>(() => SwiftHashTools.MurmurHash3(null, 17));
+
+        for (int length = 0; length <= 7; length++)
+        {
+            string value = new('x', length);
+            Assert.Equal(
+                SwiftHashTools.MurmurHash3(value, 17),
+                SwiftHashTools.MurmurHash3(value, 17));
+        }
+
         Assert.Equal(oddHash, SwiftHashTools.MurmurHash3("abc", 17));
         Assert.Equal(evenHash, SwiftHashTools.MurmurHash3("abcd", 17));
         Assert.NotEqual(oddHash, SwiftHashTools.MurmurHash3("abc", 18));

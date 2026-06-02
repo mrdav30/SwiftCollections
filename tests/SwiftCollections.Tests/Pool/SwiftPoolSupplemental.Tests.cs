@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Xunit;
 
 namespace SwiftCollections.Pool.Tests;
@@ -79,6 +80,29 @@ public class SwiftPoolSupplementalTests
         pool.Dispose();
 
         Assert.Throws<ObjectDisposedException>(() => pool.Rent());
+    }
+
+    [Fact]
+    public void BaseCollectionPool_FlushAfterRentRecreatesPool()
+    {
+        var pool = new TestCollectionPool();
+        List<int> list = pool.Rent();
+        list.Add(1);
+        pool.Release(list);
+
+        pool.Flush();
+
+        List<int> fresh = pool.Rent();
+
+        Assert.Empty(fresh);
+        Assert.NotSame(list, fresh);
+
+        fresh.Add(2);
+        pool.Release(fresh);
+
+        List<int> reused = pool.Rent();
+
+        Assert.Empty(reused);
     }
 
     [Fact]
@@ -172,5 +196,9 @@ public class SwiftPoolSupplementalTests
         dispose(pool);
 
         Assert.Throws<ObjectDisposedException>(() => _ = useAfterDispose(pool));
+    }
+
+    private sealed class TestCollectionPool : SwiftCollectionPool<List<int>, int>
+    {
     }
 }

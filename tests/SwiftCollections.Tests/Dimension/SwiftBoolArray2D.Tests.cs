@@ -11,6 +11,32 @@ namespace SwiftCollections.Dimensions.Tests;
 public class SwiftBoolArray2DTests
 {
     [Fact]
+    public void Constructor_Default_CreatesEmptyArray()
+    {
+        var boolArray = new SwiftBoolArray2D();
+
+        Assert.Equal(0, boolArray.Width);
+        Assert.Equal(0, boolArray.Height);
+        Assert.Equal(0, boolArray.Length);
+        Assert.Equal(0, boolArray.CountTrue());
+    }
+
+    [Fact]
+    public void Constructor_FromSource_CopiesValues()
+    {
+        var boolArray = new SwiftBoolArray2D(new[,]
+        {
+            { true, false },
+            { false, true }
+        });
+
+        Assert.True(boolArray[0, 0]);
+        Assert.False(boolArray[0, 1]);
+        Assert.False(boolArray[1, 0]);
+        Assert.True(boolArray[1, 1]);
+    }
+
+    [Fact]
     public void Toggle_FlipsValue()
     {
         var boolArray = new SwiftBoolArray2D(3, 3, false);

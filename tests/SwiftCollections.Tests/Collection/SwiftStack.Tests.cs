@@ -418,6 +418,16 @@ public class SwiftStackTests
     }
 
     [Fact]
+    public void NonGenericCopyTo_WithInvalidReferenceArray_ThrowsArgumentException()
+    {
+        var stack = new SwiftStack<string>();
+        stack.Push("one");
+        stack.Push("two");
+
+        Assert.Throws<ArgumentException>(() => stack.CopyTo(new Uri[2], 0));
+    }
+
+    [Fact]
     public void CopyTo_WithNullArray_ShouldThrowArgumentNullException()
     {
         // Arrange
@@ -618,6 +628,36 @@ public class SwiftStackTests
     }
 
     [Fact]
+    public void Constructor_WithLargeEnumerableCollection_ShouldUseExpandedCapacity()
+    {
+        var stack = new SwiftStack<int>(new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 });
+
+        stack.Count.Should().Be(9);
+        stack.Capacity.Should().Be(16);
+        stack.AsReadOnlySpan().ToArray().Should().Equal(1, 2, 3, 4, 5, 6, 7, 8, 9);
+    }
+
+    [Fact]
+    public void Constructor_WithLargeState_ShouldUseExpandedCapacity()
+    {
+        var stack = new SwiftStack<int>(new SwiftArrayState<int>(new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 }));
+
+        stack.Count.Should().Be(9);
+        stack.Capacity.Should().Be(16);
+        stack.AsReadOnlySpan().ToArray().Should().Equal(1, 2, 3, 4, 5, 6, 7, 8, 9);
+    }
+
+    [Fact]
+    public void Constructor_WithSmallState_ShouldUseDefaultCapacity()
+    {
+        var stack = new SwiftStack<int>(new SwiftArrayState<int>(new[] { 1, 2, 3 }));
+
+        stack.Count.Should().Be(3);
+        stack.Capacity.Should().Be(SwiftStack<int>.DefaultCapacity);
+        stack.AsReadOnlySpan().ToArray().Should().Equal(1, 2, 3);
+    }
+
+    [Fact]
     public void Constructor_WithNonCollectionEnumerable_ShouldPushItemsInOrder()
     {
         var stack = new SwiftStack<int>(GetItems());
@@ -657,6 +697,20 @@ public class SwiftStackTests
 
         stack.Capacity.Should().Be(SwiftStack<int>.DefaultCapacity);
         stack.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void TrimCapacity_WhenCountExceedsDefault_ShouldUseNextPowerOfTwo()
+    {
+        var stack = new SwiftStack<int>(64);
+
+        for (int i = 1; i <= 9; i++)
+            stack.Push(i);
+
+        stack.TrimCapacity();
+
+        stack.Capacity.Should().Be(16);
+        stack.AsReadOnlySpan().ToArray().Should().Equal(1, 2, 3, 4, 5, 6, 7, 8, 9);
     }
 
     [Fact]

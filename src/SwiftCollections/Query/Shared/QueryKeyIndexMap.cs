@@ -26,8 +26,6 @@ internal sealed class QueryKeyIndexMap<TKey> where TKey : notnull
         _bucketMask = capacity - 1;
     }
 
-    public int Capacity => _buckets.Length;
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Insert(TKey key, int index)
     {

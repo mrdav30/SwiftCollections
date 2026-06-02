@@ -620,7 +620,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// <returns>A comma-separated list of the collection's elements, or the default string representation if the collection is empty.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override string ToString() => _count == 0
-        ? base.ToString() ?? string.Empty
+        ? base.ToString()!
         : string.Join(", ", this);
 
     /// <summary>

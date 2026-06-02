@@ -464,9 +464,7 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
 
     private void Resize(int newSize)
     {
-        int newCapacity = newSize <= DefaultCapacity ? DefaultCapacity : newSize;
-
-        Entry[] newArray = new Entry[newCapacity];
+        Entry[] newArray = new Entry[newSize];
         Array.Copy(_entries, newArray, _entries.Length);
         _entries = newArray;
     }
@@ -507,8 +505,11 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
         uint count = 0;
         uint peak = (uint)_peak;
 
-        for (uint i = 0; i < peak && count < (uint)_count; i++)
+        for (uint i = 0; i < peak; i++)
         {
+            if (count >= (uint)_count)
+                break;
+
             if (_entries[i].IsUsed)
             {
                 if (match(_entries[i].Value))

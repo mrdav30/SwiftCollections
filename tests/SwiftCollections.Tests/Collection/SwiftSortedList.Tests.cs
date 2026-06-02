@@ -49,6 +49,16 @@ public class SwiftSortedListTests
     }
 
     [Fact]
+    public void Constructor_WithSmallCapacity_ShouldUseDefaultCapacity()
+    {
+        var sorter = new SwiftSortedList<int>(1);
+
+        Assert.Empty(sorter);
+        Assert.Equal(SwiftSortedList<int>.DefaultCapacity, sorter.Capacity);
+        Assert.Equal(SwiftSortedList<int>.DefaultCapacity >> 1, sorter.Offset);
+    }
+
+    [Fact]
     public void Constructor_WithEnumerable_ShouldInitializeCountAndSortedValues()
     {
         var sorter = new SwiftSortedList<int>(new[] { 7, 3, 9, 1 });
@@ -187,6 +197,26 @@ public class SwiftSortedListTests
             modifiers: null);
 
         Assert.Null(insert);
+    }
+
+    [Fact]
+    public void Add_WhenHeadSpaceIsExhaustedAndTailShiftIsCheaper_RecentersBeforeInsert()
+    {
+        var sorter = new SwiftSortedList<int>();
+
+        sorter.Add(100);
+        sorter.Add(200);
+        sorter.Add(190);
+        sorter.Add(180);
+        sorter.Add(185);
+        sorter.Add(187);
+
+        Assert.Equal(0, sorter.Offset);
+
+        sorter.Add(188);
+
+        Assert.Equal(new[] { 100, 180, 185, 187, 188, 190, 200 }, sorter.AsReadOnlySpan().ToArray());
+        Assert.True(sorter.Offset > 0);
     }
 
     #endregion
@@ -454,6 +484,15 @@ public class SwiftSortedListTests
     }
 
     [Fact]
+    public void InsertionPoint_ExistingElement_ShouldReturnElementIndex()
+    {
+        var sorter = new SwiftSortedList<int>();
+        sorter.AddRange(new List<int> { 1, 3, 5, 7, 9 });
+
+        Assert.Equal(2, sorter.InsertionPoint(5));
+    }
+
+    [Fact]
     public void CopyTo_ArrayOverloads_CopySortedWindowAtOffset()
     {
         var sorter = new SwiftSortedList<int>();
@@ -499,6 +538,59 @@ public class SwiftSortedListTests
 
         Assert.Equal((sorter.Capacity - sorter.Count) >> 1, sorter.Offset);
         Assert.Equal(new[] { 3, 4, 5, 6, 7, 8, 9 }, sorter.AsReadOnlySpan().ToArray());
+    }
+
+    [Fact]
+    public void RemoveAt_WhenRemovingOnlyItem_ResetsOffset()
+    {
+        var sorter = new SwiftSortedList<int> { 42 };
+        int expectedOffset = sorter.Capacity >> 1;
+
+        sorter.RemoveAt(0);
+
+        Assert.Empty(sorter);
+        Assert.Equal(expectedOffset, sorter.Offset);
+    }
+
+    [Fact]
+    public void RemoveAt_WhenCountStaysAboveQuarter_DoesNotRecenter()
+    {
+        var sorter = new SwiftSortedList<int>();
+
+        sorter.Add(100);
+        sorter.Add(200);
+        sorter.Add(190);
+        sorter.Add(180);
+        sorter.Add(185);
+        sorter.Add(187);
+
+        Assert.Equal(0, sorter.Offset);
+
+        sorter.RemoveAt(0);
+
+        Assert.Equal(1, sorter.Offset);
+        Assert.Equal(new[] { 180, 185, 187, 190, 200 }, sorter.AsReadOnlySpan().ToArray());
+    }
+
+    [Fact]
+    public void RemoveAt_WhenOffsetIsZeroAndCountDropsBelowQuarter_DoesNotRecenter()
+    {
+        var sorter = new SwiftSortedList<int>();
+
+        sorter.Add(100);
+        sorter.Add(200);
+        sorter.Add(190);
+        sorter.Add(180);
+        sorter.Add(185);
+        sorter.Add(187);
+
+        Assert.Equal(0, sorter.Offset);
+
+        while (sorter.Count > 1)
+            sorter.RemoveAt(sorter.Count - 1);
+
+        Assert.Equal(0, sorter.Offset);
+        Assert.Equal(new[] { 100 }, sorter.AsReadOnlySpan().ToArray());
     }
 
     [Fact]
@@ -583,6 +675,21 @@ public class SwiftSortedListTests
         Assert.Empty(sorter);
         Assert.Equal(0, sorter.Capacity);
         Assert.Equal(0, sorter.Offset);
+    }
+
+    [Fact]
+    public void Constructor_WithNonEmptyState_ShouldCenterItems()
+    {
+        var small = new SwiftSortedList<int>(new SwiftArrayState<int>(new[] { 3, 1, 2 }));
+        var large = new SwiftSortedList<int>(new SwiftArrayState<int>(new[] { 9, 8, 7, 6, 5, 4, 3, 2, 1 }));
+
+        Assert.Equal(new[] { 3, 1, 2 }, small.AsReadOnlySpan().ToArray());
+        Assert.Equal(SwiftSortedList<int>.DefaultCapacity, small.Capacity);
+        Assert.Equal((small.Capacity - small.Count) >> 1, small.Offset);
+
+        Assert.Equal(new[] { 9, 8, 7, 6, 5, 4, 3, 2, 1 }, large.AsReadOnlySpan().ToArray());
+        Assert.Equal(16, large.Capacity);
+        Assert.Equal((large.Capacity - large.Count) >> 1, large.Offset);
     }
 
     [Fact]

@@ -73,6 +73,7 @@ namespace SwiftCollections.Query.Tests
             Assert.False(left != same);
             Assert.False(left == different);
             Assert.True(left != different);
+            Assert.True(left.Equals((object)same));
             Assert.False(left.Equals((object)"not a volume"));
             Assert.Equal(left.GetHashCode(), same.GetHashCode());
             Assert.Contains("Min:", left.ToString());

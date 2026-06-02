@@ -7,6 +7,7 @@
 
 using Chronicler;
 using MemoryPack;
+using SwiftCollections.Utility;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -85,7 +86,7 @@ public partial class SwiftArray3D<T> : IStateBacked<Array3DState<T>>, IEnumerabl
     public SwiftArray3D(Array3DState<T> state)
     {
         State = state;
-        _innerArray ??= Array.Empty<T>(); // Ensure _innerArray is initialized to avoid null reference issues.
+        SwiftThrowHelper.ThrowIfNull(_innerArray, nameof(_innerArray));
     }
 
     #endregion
@@ -351,8 +352,6 @@ public partial class SwiftArray3D<T> : IStateBacked<Array3DState<T>>, IEnumerabl
 
         start = (int)Math.Min(startValue, length);
         end = (int)Math.Max(0L, Math.Min(endValue, length));
-        if (end < start)
-            end = start;
     }
 
     /// <summary>

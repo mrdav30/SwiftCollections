@@ -394,13 +394,16 @@ public static class SwiftHashTools
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static unsafe int MurmurHash3(string key, int seed)
     {
+        SwiftThrowHelper.ThrowIfNull(key, nameof(key));
+
         const uint c1 = 0xcc9e2d51;
         const uint c2 = 0x1b873593;
         uint h1 = (uint)seed;
+        ReadOnlySpan<char> chars = key.AsSpan();
 
-        fixed (char* ptr = key)
+        fixed (char* ptr = chars)
         {
-            int length = key.Length;
+            int length = chars.Length;
             int blockCount = length / 2;
 
             unchecked

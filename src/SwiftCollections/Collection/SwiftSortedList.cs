@@ -551,7 +551,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         if ((uint)_count == 0) return;
         Array.Clear(_innerArray, _offset, _count);
         _count = 0;
-        _offset = _innerArray.Length == 0 ? 0 : _innerArray.Length >> 1; // Reset _offset to the middle of the array
+        _offset = _innerArray.Length >> 1; // Reset _offset to the middle of the array
 
         _version++;
     }
@@ -565,7 +565,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     {
         if ((uint)_count == 0) return;
         _count = 0;
-        _offset = _innerArray.Length == 0 ? 0 : _innerArray.Length >> 1; // Reset offset to middle
+        _offset = _innerArray.Length >> 1; // Reset offset to middle
 
         _version++;
     }

@@ -164,6 +164,72 @@ public class SwiftOctreeTypedVolumeTests
     }
 
     [Fact]
+    public void Remove_WithMergeEnabled_KeepsChildrenWhenRemainingEntryCountExceedsCapacity()
+    {
+        var octree = CreateTypedOctree(new SwiftOctreeOptions(4, 1, true), 1f);
+        octree.Insert(1, new TestBoundVolume(1, 1, 1, 2, 2, 2));
+        octree.Insert(2, new TestBoundVolume(20, 1, 1, 21, 2, 2));
+        octree.Insert(3, new TestBoundVolume(1, 20, 1, 2, 21, 2));
+
+        Assert.True(octree.DebugRootHasChildren);
+
+        Assert.True(octree.Remove(3));
+
+        Assert.True(octree.DebugRootHasChildren);
+        Assert.Equal(2, octree.Count);
+    }
+
+    [Fact]
+    public void Remove_WithMergeEnabled_KeepsParentWhenChildStillHasChildren()
+    {
+        var octree = CreateTypedOctree(new SwiftOctreeOptions(4, 1, true), 1f);
+        octree.Insert(1, new TestBoundVolume(1, 1, 1, 2, 2, 2));
+        octree.Insert(2, new TestBoundVolume(6, 6, 6, 7, 7, 7));
+        octree.Insert(3, new TestBoundVolume(10, 10, 10, 11, 11, 11));
+
+        Assert.True(octree.DebugRootHasChildren);
+        Assert.True(octree.DebugMaxDepth > 1);
+
+        Assert.True(octree.Remove(3));
+
+        Assert.True(octree.DebugRootHasChildren);
+        Assert.True(octree.DebugMaxDepth > 1);
+        Assert.Equal(2, octree.Count);
+    }
+
+    [Fact]
+    public void Remove_FromRootEntryList_SkipsEarlierEntriesAndLaterInsertReusesFreedSlot()
+    {
+        var octree = CreateTypedOctree(new SwiftOctreeOptions(4, 4), 1f);
+        var broadQuery = new TestBoundVolume(0, 0, 0, 32, 32, 32);
+
+        octree.Insert(1, new TestBoundVolume(1, 1, 1, 2, 2, 2));
+        octree.Insert(2, new TestBoundVolume(3, 3, 3, 4, 4, 4));
+
+        Assert.True(octree.Remove(2));
+        Assert.True(octree.Insert(3, new TestBoundVolume(5, 5, 5, 6, 6, 6)));
+
+        var results = new List<int>();
+        octree.Query(broadQuery, results);
+
+        Assert.Equal(2, results.Count);
+        Assert.Contains(1, results);
+        Assert.Contains(3, results);
+        Assert.DoesNotContain(2, results);
+    }
+
+    [Fact]
+    public void Clear_WhenEmpty_IsNoOp()
+    {
+        var octree = CreateTypedOctree(new SwiftOctreeOptions(4, 1), 1f);
+
+        octree.Clear();
+
+        Assert.Equal(0, octree.Count);
+        Assert.False(octree.DebugRootHasChildren);
+    }
+
+    [Fact]
     public void NonUniformDensityStress_PreservesClusterAndSparseLookups()
     {
         var octree = CreateTypedOctree(new SwiftOctreeOptions(6, 2), 0.5f);

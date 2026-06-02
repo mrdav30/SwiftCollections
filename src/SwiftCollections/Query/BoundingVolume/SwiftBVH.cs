@@ -193,8 +193,8 @@ public class SwiftBVH<TKey, TVolume>
     private bool ShouldInsertIntoLeftChild(int parentNodeIndex, int newNodeIndex)
     {
         SwiftBVHNode<TKey, TVolume> parentNode = _nodePool[parentNodeIndex];
-        SwiftBVHNode<TKey, TVolume> leftChild = GetNodeOrDefault(parentNode.LeftChildIndex);
-        SwiftBVHNode<TKey, TVolume> rightChild = GetNodeOrDefault(parentNode.RightChildIndex);
+        SwiftBVHNode<TKey, TVolume> leftChild = _nodePool[parentNode.LeftChildIndex];
+        SwiftBVHNode<TKey, TVolume> rightChild = _nodePool[parentNode.RightChildIndex];
         int leftSize = GetSubtreeSize(leftChild);
         int rightSize = GetSubtreeSize(rightChild);
 
@@ -202,7 +202,6 @@ public class SwiftBVH<TKey, TVolume>
             return leftSize <= rightSize;
 
         return ShouldInsertIntoLowerCostChild(
-            parentNode,
             leftChild,
             rightChild,
             leftSize,
@@ -218,15 +217,14 @@ public class SwiftBVH<TKey, TVolume>
     }
 
     private static bool ShouldInsertIntoLowerCostChild(
-        SwiftBVHNode<TKey, TVolume> parentNode,
         SwiftBVHNode<TKey, TVolume> leftChild,
         SwiftBVHNode<TKey, TVolume> rightChild,
         int leftSize,
         int rightSize,
         TVolume newBounds)
     {
-        long leftCost = GetInsertionCost(parentNode.LeftChildIndex, leftChild, newBounds);
-        long rightCost = GetInsertionCost(parentNode.RightChildIndex, rightChild, newBounds);
+        long leftCost = leftChild.Bounds.GetCost(newBounds);
+        long rightCost = rightChild.Bounds.GetCost(newBounds);
 
         if (leftCost == rightCost)
             return leftSize <= rightSize;
@@ -234,37 +232,18 @@ public class SwiftBVH<TKey, TVolume>
         return leftCost < rightCost;
     }
 
-    private static long GetInsertionCost(int childIndex, SwiftBVHNode<TKey, TVolume> child, TVolume newBounds)
-    {
-        if (childIndex == -1)
-            return 0L;
-
-        return child.Bounds.GetCost(newBounds);
-    }
-
     private void RefreshParentNode(int parentNodeIndex)
     {
         ref SwiftBVHNode<TKey, TVolume> parentNode = ref _nodePool[parentNodeIndex];
-        SwiftBVHNode<TKey, TVolume> leftChild = GetNodeOrDefault(parentNode.LeftChildIndex);
-        SwiftBVHNode<TKey, TVolume> rightChild = GetNodeOrDefault(parentNode.RightChildIndex);
+        SwiftBVHNode<TKey, TVolume> leftChild = _nodePool[parentNode.LeftChildIndex];
+        SwiftBVHNode<TKey, TVolume> rightChild = _nodePool[parentNode.RightChildIndex];
 
         parentNode.Bounds = GetCombinedBounds(leftChild, rightChild);
         parentNode.SubtreeSize = 1 + GetSubtreeSize(leftChild) + GetSubtreeSize(rightChild);
     }
 
-    private SwiftBVHNode<TKey, TVolume> GetNodeOrDefault(int nodeIndex)
-    {
-        if (nodeIndex == -1)
-            return SwiftBVHNode<TKey, TVolume>.Default;
-
-        return _nodePool[nodeIndex];
-    }
-
     private static int GetSubtreeSize(SwiftBVHNode<TKey, TVolume> node)
     {
-        if (!node.IsAllocated)
-            return 0;
-
         return node.SubtreeSize;
     }
 
@@ -303,12 +282,8 @@ public class SwiftBVH<TKey, TVolume>
         while (parentIndex != -1)
         {
             ref SwiftBVHNode<TKey, TVolume> parent = ref _nodePool[parentIndex];
-            SwiftBVHNode<TKey, TVolume> leftChild = parent.HasLeftChild
-                ? _nodePool[parent.LeftChildIndex]
-                : SwiftBVHNode<TKey, TVolume>.Default;
-            SwiftBVHNode<TKey, TVolume> rightChild = parent.HasRightChild
-                ? _nodePool[parent.RightChildIndex]
-                : SwiftBVHNode<TKey, TVolume>.Default;
+            SwiftBVHNode<TKey, TVolume> leftChild = _nodePool[parent.LeftChildIndex];
+            SwiftBVHNode<TKey, TVolume> rightChild = _nodePool[parent.RightChildIndex];
 
             TVolume newParentBounds = GetCombinedBounds(leftChild, rightChild);
             if (parent.Bounds.BoundsEquals(newParentBounds))
@@ -351,7 +326,7 @@ public class SwiftBVH<TKey, TVolume>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void RemoveFromBuckets(TKey value)
     {
-        _keyToNodeIndex.Remove(value, MatchesEntryKey, IsAllocatedLeafNode, GetNodeValue);
+        _keyToNodeIndex.Remove(value, MatchesEntryKey, IsLeafNode, GetNodeValue);
     }
 
     /// <summary>
@@ -364,24 +339,10 @@ public class SwiftBVH<TKey, TVolume>
     {
         int parentIndex = _nodePool[nodeIndex].ParentIndex;
 
-        if (parentIndex == -1)
-        {
-            RemoveRootLeaf(nodeIndex);
-            return;
-        }
-
         int siblingIndex = ReleaseLeafAndParent(nodeIndex, parentIndex, out int grandParentIndex);
         PromoteSiblingToGrandParent(siblingIndex, parentIndex, grandParentIndex);
         if (grandParentIndex != -1)
             RefreshAncestors(grandParentIndex);
-    }
-
-    private void RemoveRootLeaf(int nodeIndex)
-    {
-        _leafCount--;
-        _nodePool[nodeIndex].Reset();
-        _freeIndices.Push(nodeIndex);
-        _rootNodeIndex = -1;
     }
 
     private int ReleaseLeafAndParent(int nodeIndex, int parentIndex, out int grandParentIndex)
@@ -485,11 +446,7 @@ public class SwiftBVH<TKey, TVolume>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static TVolume GetCombinedBounds(SwiftBVHNode<TKey, TVolume> leftChild, SwiftBVHNode<TKey, TVolume> rightChild)
     {
-        if (leftChild.IsAllocated && rightChild.IsAllocated)
-            return leftChild.Bounds.Union(rightChild.Bounds);
-        if (leftChild.IsAllocated)
-            return leftChild.Bounds;
-        return rightChild.Bounds;
+        return leftChild.Bounds.Union(rightChild.Bounds);
     }
 
     /// <summary>
@@ -580,9 +537,6 @@ public class SwiftBVH<TKey, TVolume>
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool IsLeafNode(int index) => _nodePool[index].IsLeaf;
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private bool IsAllocatedLeafNode(int index) => _nodePool[index].IsLeaf && _nodePool[index].IsAllocated;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool MatchesEntryKey(int index, TKey value)

@@ -130,9 +130,7 @@ internal class SwiftIntStack
             return;
 
         int newCapacity = SwiftHashTools.NextPowerOfTwo(capacity);
-        int doubledCapacity = Array.Length > int.MaxValue / 2
-            ? int.MaxValue
-            : Array.Length * 2;
+        int doubledCapacity = (int)Math.Min((long)Array.Length * 2, int.MaxValue);
         if (newCapacity < doubledCapacity)
             newCapacity = doubledCapacity;
 

@@ -232,9 +232,6 @@ public class SwiftSpatialHash<TKey, TVolume>
 
     private bool UpdateEntryBounds(int entryIndex, TVolume newBounds)
     {
-        if (!_entries[entryIndex].IsAllocated)
-            return false;
-
         TVolume currentBounds = _entries[entryIndex].Bounds;
         if (currentBounds.BoundsEquals(newBounds))
             return true;
@@ -288,7 +285,7 @@ public class SwiftSpatialHash<TKey, TVolume>
         ICollection<TKey> results)
     {
         ref SpatialHashEntry entry = ref _entries[entryIndex];
-        if (!entry.IsAllocated || entry.QueryStamp == queryStamp)
+        if (entry.QueryStamp == queryStamp)
             return;
 
         entry.QueryStamp = queryStamp;
@@ -341,9 +338,7 @@ public class SwiftSpatialHash<TKey, TVolume>
 
     private void RemoveEntryFromCell(SwiftSpatialHashCellIndex cell, int entryIndex)
     {
-        if (!_cells.TryGetValue(cell, out SwiftList<int> entryIndices))
-            return;
-
+        SwiftList<int> entryIndices = _cells[cell];
         RemoveEntryIndex(entryIndices, entryIndex);
         if (entryIndices.Count == 0)
             _cells.Remove(cell);
@@ -394,7 +389,7 @@ public class SwiftSpatialHash<TKey, TVolume>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool MatchesEntryKey(int index, TKey key)
     {
-        return _entries[index].IsAllocated && EqualityComparer<TKey>.Default.Equals(_entries[index].Key, key);
+        return EqualityComparer<TKey>.Default.Equals(_entries[index].Key, key);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

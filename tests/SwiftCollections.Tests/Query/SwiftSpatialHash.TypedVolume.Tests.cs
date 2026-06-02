@@ -1,9 +1,11 @@
+using SwiftCollections.Diagnostics;
 using System.Collections.Generic;
 using System.Reflection;
 using Xunit;
 
 namespace SwiftCollections.Query.Tests;
 
+[Collection("SharedDiagnostics")]
 public class SwiftSpatialHashTypedVolumeTests
 {
     private static readonly ISpatialHashCellMapper<TestBoundVolume> s_unitCellMapper = new TestBoundVolumeCellMapper(1f);
@@ -192,6 +194,63 @@ public class SwiftSpatialHashTypedVolumeTests
 
         Assert.Single(results);
         Assert.Equal(2, results[0]);
+    }
+
+    [Fact]
+    public void Remove_WhenEntryIsNotFirstInCell_RemovesOnlyThatEntry()
+    {
+        var hash = new SwiftSpatialHash<int, TestBoundVolume>(2, s_unitCellMapper);
+        hash.Insert(1, new TestBoundVolume(0, 0, 0, 0.25f, 0.25f, 0.25f));
+        hash.Insert(2, new TestBoundVolume(0.1f, 0.1f, 0.1f, 0.3f, 0.3f, 0.3f));
+
+        Assert.True(hash.Remove(2));
+
+        var results = new List<int>();
+        hash.Query(new TestBoundVolume(0, 0, 0, 1, 1, 1), results);
+
+        Assert.Single(results);
+        Assert.Equal(1, results[0]);
+        Assert.True(hash.Contains(1));
+        Assert.False(hash.Contains(2));
+    }
+
+    [Fact]
+    public void Diagnostics_WhenResizeAndQueryStampOverflowOccur_EmitExpectedEvents()
+    {
+        DiagnosticLevel originalLevel = SwiftCollectionDiagnostics.Shared.MinimumLevel;
+        DiagnosticSink originalSink = SwiftCollectionDiagnostics.Shared.Sink;
+        var events = new List<DiagnosticEvent>();
+
+        try
+        {
+            SwiftCollectionDiagnostics.Shared.MinimumLevel = DiagnosticLevel.Info;
+            SwiftCollectionDiagnostics.Shared.Sink = (in DiagnosticEvent diagnostic) => events.Add(diagnostic);
+
+            var hash = new SwiftSpatialHash<int, TestBoundVolume>(1, s_unitCellMapper);
+            hash.Insert(1, new TestBoundVolume(0, 0, 0, 0.25f, 0.25f, 0.25f));
+            hash.Insert(2, new TestBoundVolume(1, 1, 1, 1.25f, 1.25f, 1.25f));
+            typeof(SwiftSpatialHash<int, TestBoundVolume>)
+                .GetField("_queryStamp", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(hash, int.MaxValue);
+
+            var results = new List<int>();
+            hash.Query(new TestBoundVolume(0, 0, 0, 2, 2, 2), results);
+
+            Assert.Equal(2, results.Count);
+            Assert.Contains(events, diagnostic =>
+                diagnostic.Level == DiagnosticLevel.Info
+                && diagnostic.Source == "SwiftSpatialHash"
+                && diagnostic.Message.Contains("Resized spatial hash entry storage"));
+            Assert.Contains(events, diagnostic =>
+                diagnostic.Level == DiagnosticLevel.Warning
+                && diagnostic.Source == "SwiftSpatialHash"
+                && diagnostic.Message.Contains("Query stamp overflow"));
+        }
+        finally
+        {
+            SwiftCollectionDiagnostics.Shared.MinimumLevel = originalLevel;
+            SwiftCollectionDiagnostics.Shared.Sink = originalSink;
+        }
     }
 
     [Fact]

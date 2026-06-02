@@ -209,7 +209,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     {
         SwiftThrowHelper.ThrowIfNull(collection, nameof(collection));
 
-        int count = (collection as ICollection<TKey>)?.Count ?? DefaultCapacity;
+        int count = (collection as ICollection<KeyValuePair<TKey, TValue>>)?.Count ?? DefaultCapacity;
         // Dynamic padding based on collision estimation
         int size = (int)(count / _LoadFactorThreshold);
         Initialize(size, comparer);

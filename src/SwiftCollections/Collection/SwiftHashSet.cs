@@ -473,7 +473,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
         SwiftThrowHelper.ThrowIfTrue(requiredCount > int.MaxValue, message: "The collection is too large.");
 
         double minimumCapacity = Math.Ceiling(requiredCount / (double)_LoadFactorThreshold);
-        EnsureCapacity(minimumCapacity >= int.MaxValue ? int.MaxValue : (int)minimumCapacity);
+        EnsureCapacity((int)Math.Min(minimumCapacity, int.MaxValue));
     }
 
     /// <summary>

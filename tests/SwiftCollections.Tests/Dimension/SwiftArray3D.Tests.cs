@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
@@ -12,6 +13,19 @@ namespace SwiftCollections.Dimensions.Tests;
 
 public class SwiftArray3DTests
 {
+    [Fact]
+    public void Constructor_Default_CreatesEmptyArray()
+    {
+        var array = new SwiftArray3D<int>();
+
+        Assert.Equal(0, array.Width);
+        Assert.Equal(0, array.Height);
+        Assert.Equal(0, array.Depth);
+        Assert.Equal(0, array.Size);
+        Assert.Equal(0, array.Length);
+        Assert.Empty(array);
+    }
+
     [Fact]
     public void Indexing_WorksAsExpected()
     {
@@ -180,19 +194,24 @@ public class SwiftArray3DTests
     {
         const int size = 50;
         var array = new SwiftArray3D<int>(size, size, size);
-        var random = new Random();
+        var expected = new int[size, size, size];
+        var random = new Random(12345);
 
         // Fill array with random data
         for (int x = 0; x < size; x++)
             for (int y = 0; y < size; y++)
                 for (int z = 0; z < size; z++)
-                    array[x, y, z] = random.Next();
+                {
+                    int value = random.Next();
+                    expected[x, y, z] = value;
+                    array[x, y, z] = value;
+                }
 
         // Verify data integrity
         for (int x = 0; x < size; x++)
             for (int y = 0; y < size; y++)
                 for (int z = 0; z < size; z++)
-                    Assert.Equal(array[x, y, z], array[x, y, z]);
+                    Assert.Equal(expected[x, y, z], array[x, y, z]);
     }
 
     [Fact]
@@ -229,6 +248,33 @@ public class SwiftArray3DTests
         Assert.Equal(0, array.Width);
         Assert.Equal(0, array.Height);
         Assert.Equal(0, array.Depth);
+    }
+
+    [Fact]
+    public void Shift_OnEmptyArray_IsNoOp()
+    {
+        var array = new SwiftArray3D<int>();
+
+        array.Shift(5, -7, 3);
+
+        Assert.Equal(0, array.Size);
+        Assert.Empty(array);
+    }
+
+    [Fact]
+    public void NonGenericEnumerator_EnumeratesValues()
+    {
+        var array = new SwiftArray3D<int>(1, 1, 2);
+        array[0, 0, 0] = 10;
+        array[0, 0, 1] = 20;
+
+        IEnumerator enumerator = ((IEnumerable)array).GetEnumerator();
+
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal(10, enumerator.Current);
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal(20, enumerator.Current);
+        Assert.False(enumerator.MoveNext());
     }
 
     [Fact]

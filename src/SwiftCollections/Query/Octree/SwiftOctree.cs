@@ -115,16 +115,15 @@ public class SwiftOctree<TKey, TVolume>
         if (entryIndex < 0)
             return false;
 
-        OctreeNode? node = _entries[entryIndex].Node;
-        if (node != null)
-            RemoveEntryFromNode(node, entryIndex);
+        OctreeNode node = _entries[entryIndex].Node!;
+        RemoveEntryFromNode(node, entryIndex);
 
         _keyToEntryIndex.Remove(key, MatchesEntryKey, IsAllocatedEntry, GetEntryKey);
         _entries[entryIndex].Reset();
         _freeEntries.Push(entryIndex);
         _count--;
 
-        if (Options.EnableMergeOnRemove && node != null)
+        if (Options.EnableMergeOnRemove)
             TryMergeUp(node);
 
         return true;
@@ -221,17 +220,18 @@ public class SwiftOctree<TKey, TVolume>
         {
             int entryIndex = node.EntryIndices[i];
             ref OctreeEntry entry = ref _entries[entryIndex];
-            if (entry.IsAllocated && entry.Bounds.Intersects(queryBounds))
+            if (entry.Bounds.Intersects(queryBounds))
                 results.Add(entry.Key);
         }
     }
 
     private void QueryIntersectingChildren(OctreeNode node, TVolume queryBounds, ICollection<TKey> results)
     {
-        for (int i = 0; i < node.Children?.Length; i++)
+        OctreeNode[] children = node.Children!;
+        for (int i = 0; i < children.Length; i++)
         {
-            OctreeNode? child = node.Children[i];
-            if (child != null && child.Bounds.Intersects(queryBounds))
+            OctreeNode child = children[i];
+            if (child.Bounds.Intersects(queryBounds))
                 QueryNode(child, queryBounds, results);
         }
     }
@@ -240,21 +240,17 @@ public class SwiftOctree<TKey, TVolume>
     {
         EnsureWithinWorldBounds(newBounds, nameof(newBounds));
 
-        if (!_entries[entryIndex].IsAllocated)
-            return false;
-
         TVolume currentBounds = _entries[entryIndex].Bounds;
         if (currentBounds.BoundsEquals(newBounds))
             return true;
 
-        OctreeNode? oldNode = _entries[entryIndex].Node;
-        if (oldNode != null)
-            RemoveEntryFromNode(oldNode, entryIndex);
+        OctreeNode oldNode = _entries[entryIndex].Node!;
+        RemoveEntryFromNode(oldNode, entryIndex);
 
         _entries[entryIndex].Bounds = newBounds;
         InsertIntoNode(_root, entryIndex);
 
-        if (Options.EnableMergeOnRemove && oldNode != null)
+        if (Options.EnableMergeOnRemove)
             TryMergeUp(oldNode);
 
         return true;
@@ -356,9 +352,10 @@ public class SwiftOctree<TKey, TVolume>
     private bool CanMerge(OctreeNode node)
     {
         int totalEntries = node.EntryIndices.Count;
-        for (int i = 0; i < node.Children?.Length; i++)
+        OctreeNode[] children = node.Children!;
+        for (int i = 0; i < children.Length; i++)
         {
-            OctreeNode child = node.Children[i];
+            OctreeNode child = children[i];
             if (child.HasChildren)
                 return false;
 
@@ -372,9 +369,10 @@ public class SwiftOctree<TKey, TVolume>
 
     private void CollapseChildrenInto(OctreeNode node)
     {
-        for (int i = 0; i < node.Children?.Length; i++)
+        OctreeNode[] children = node.Children!;
+        for (int i = 0; i < children.Length; i++)
         {
-            OctreeNode child = node.Children[i];
+            OctreeNode child = children[i];
             for (int j = 0; j < child.EntryIndices.Count; j++)
             {
                 int entryIndex = child.EntryIndices[j];
@@ -397,8 +395,6 @@ public class SwiftOctree<TKey, TVolume>
             _entries[entryIndex].Node = null;
             return;
         }
-
-        throw new InvalidOperationException("Octree entry was not found in its owning node.");
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -438,7 +434,7 @@ public class SwiftOctree<TKey, TVolume>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool MatchesEntryKey(int index, TKey key)
     {
-        return _entries[index].IsAllocated && EqualityComparer<TKey>.Default.Equals(_entries[index].Key, key);
+        return EqualityComparer<TKey>.Default.Equals(_entries[index].Key, key);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -460,8 +456,9 @@ public class SwiftOctree<TKey, TVolume>
         if (!node.HasChildren)
             return count;
 
-        for (int i = 0; i < node.Children?.Length; i++)
-            count += CountNodes(node.Children[i]);
+        OctreeNode[] children = node.Children!;
+        for (int i = 0; i < children.Length; i++)
+            count += CountNodes(children[i]);
 
         return count;
     }
@@ -472,8 +469,9 @@ public class SwiftOctree<TKey, TVolume>
         if (!node.HasChildren)
             return maxDepth;
 
-        for (int i = 0; i < node.Children?.Length; i++)
-            maxDepth = Math.Max(maxDepth, GetMaxDepth(node.Children[i]));
+        OctreeNode[] children = node.Children!;
+        for (int i = 0; i < children.Length; i++)
+            maxDepth = Math.Max(maxDepth, GetMaxDepth(children[i]));
 
         return maxDepth;
     }

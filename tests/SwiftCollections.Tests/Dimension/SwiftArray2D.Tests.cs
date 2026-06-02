@@ -25,6 +25,16 @@ public class SwiftArray2DTests
     }
 
     [Fact]
+    public void Shift_OnEmptyArray_IsNoOp()
+    {
+        var array = new SwiftArray2D<int>();
+
+        array.Shift(1, -1);
+
+        Assert.Empty(array.InnerArray);
+    }
+
+    [Fact]
     public void Indexing_WorksAsExpected()
     {
         var array = new SwiftArray2D<int>(3, 3);
