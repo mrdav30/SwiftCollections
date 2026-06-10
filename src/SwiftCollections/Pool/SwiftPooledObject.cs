@@ -5,7 +5,7 @@
 // See LICENSE file in the project root for full license information.
 //=======================================================================
 
-using SwiftCollections.Utility;
+using SwiftCollections.Diagnostics;
 using System;
 using System.Threading;
 

@@ -1,8 +1,8 @@
+using SwiftCollections.Utility;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
-using SwiftCollections.Utility;
 using Xunit;
 
 namespace SwiftCollections.Tests;

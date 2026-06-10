@@ -1,4 +1,4 @@
-using SwiftCollections.Utility;
+using SwiftCollections.Diagnostics;
 using System;
 using Xunit;
 

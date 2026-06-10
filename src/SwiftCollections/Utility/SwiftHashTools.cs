@@ -5,6 +5,7 @@
 // See LICENSE file in the project root for full license information.
 //=======================================================================
 
+using SwiftCollections.Diagnostics;
 using System;
 using System.Collections;
 using System.Collections.Generic;

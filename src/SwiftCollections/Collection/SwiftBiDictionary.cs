@@ -7,6 +7,7 @@
 
 using Chronicler;
 using MemoryPack;
+using SwiftCollections.Diagnostics;
 using SwiftCollections.Utility;
 using System;
 using System.Collections.Generic;
