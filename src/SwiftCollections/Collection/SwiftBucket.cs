@@ -614,7 +614,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     public void CopyTo(T[] array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
         SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "The array is not large enough to hold the elements.");
 
         uint count = 0;
@@ -633,7 +633,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         SwiftThrowHelper.ThrowIfArgument((uint)array.Rank != 1, nameof(array), "Array must be single dimensional.");
         SwiftThrowHelper.ThrowIfArgument((uint)array.GetLowerBound(0) != 0, nameof(array), "Array must have zero-based indexing.");
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
         SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "The array is not large enough to hold the elements.");
 
         try

@@ -191,13 +191,13 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count, message: "Index is out of range.");
+            SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count);
             return _innerArray[(_head + index) & _mask];
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set
         {
-            SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count, message: "Index is out of range.");
+            SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count);
             _innerArray[(_head + index) & _mask] = value;
         }
     }
@@ -646,7 +646,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         SwiftThrowHelper.ThrowIfArgument((uint)array.Rank != 1, nameof(array), "Array must be single dimensional.");
         SwiftThrowHelper.ThrowIfArgument((uint)array.GetLowerBound(0) != 0, nameof(array), "Array must have zero-based indexing.");
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
         SwiftThrowHelper.ThrowIfArgument((uint)(array.Length - arrayIndex) < _count, nameof(array), "Destination array is not long enough.");
 
         if ((uint)_count == 0)
@@ -668,7 +668,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         SwiftThrowHelper.ThrowIfArgument((uint)array.Rank != 1, nameof(array), "Array must be single dimensional.");
         SwiftThrowHelper.ThrowIfArgument((uint)array.GetLowerBound(0) != 0, nameof(array), "Array must have zero-based indexing.");
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
         SwiftThrowHelper.ThrowIfArgument((uint)(array.Length - arrayIndex) < _count, nameof(array), "Destination array is not long enough.");
 
         if ((uint)_count == 0) return;

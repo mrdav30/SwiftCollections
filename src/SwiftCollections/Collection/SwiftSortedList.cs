@@ -241,7 +241,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count, nameof(index));
+            SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count);
             return _innerArray[GetPhysicalIndex(index)];
         }
     }
@@ -508,7 +508,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <param name="index">The zero-based arrayIndex of the element to remove.</param>
     public void RemoveAt(int index)
     {
-        SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count, nameof(index));
+        SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count);
 
         int physicalIndex = GetPhysicalIndex(index);
 

@@ -146,7 +146,7 @@ bvh.Query(
 
 Most core types expose state-backed serialization support. Standard packages include MemoryPack support; lean packages compile the same public collection surface without taking a MemoryPack dependency. `net8.0` builds use System.Text.Json converter implementations where supported, while older targets use compatibility shims.
 
-Diagnostics are opt-in through `SwiftCollections.Diagnostics`. Disabled diagnostic writes are designed to avoid doing formatting work when the requested level is below the channel minimum.
+Diagnostics are opt-in through `SwiftCollections.Diagnostics`. Disabled diagnostic writes are designed to avoid doing formatting work when the requested level is below the channel minimum, and guard helpers use lazy exception-message formatting for condition-gated throws.
 
 ## Development
 

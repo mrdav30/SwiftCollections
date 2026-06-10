@@ -688,7 +688,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     public void CopyTo(int[] array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
         SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "The array is not large enough to hold the elements.");
 
         Array.Copy(_denseKeys, 0, array, arrayIndex, _count);
@@ -700,7 +700,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         SwiftThrowHelper.ThrowIfArgument(array.Rank != 1, nameof(array), "Only single dimensional arrays are supported.");
         SwiftThrowHelper.ThrowIfArgument(array.GetLowerBound(0) != 0, nameof(array), "Non-zero lower bound arrays are not supported.");
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(index, array.Length, nameof(index), "Array index is out of range.");
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(index, array.Length, nameof(index));
         SwiftThrowHelper.ThrowIfArgument(array.Length - index < _count, nameof(array), "The array is not large enough to hold the elements.");
 
         if (array is int[] intArray)

@@ -41,8 +41,17 @@ public ref struct DiagnosticInterpolatedStringHandler
         DiagnosticChannel channel,
         DiagnosticLevel level,
         out bool isEnabled)
+        : this(literalLength, formattedCount, channel != null && channel.IsEnabled(level), out isEnabled)
     {
-        isEnabled = channel != null && channel.IsEnabled(level);
+    }
+
+    internal DiagnosticInterpolatedStringHandler(
+        int literalLength,
+        int formattedCount,
+        bool shouldFormat,
+        out bool isEnabled)
+    {
+        isEnabled = shouldFormat;
         _isEnabled = isEnabled;
 #if NET6_0_OR_GREATER
         _builder = isEnabled ? new DefaultInterpolatedStringHandler(literalLength, formattedCount) : default;

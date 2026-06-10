@@ -214,13 +214,13 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count, message: "Index is out of range.");
+            SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count);
             return _innerArray[index];
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set
         {
-            SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count, message: "Index is out of range.");
+            SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count);
             _innerArray[index] = value;
         }
     }
@@ -383,7 +383,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// </summary>
     public virtual void RemoveAt(int index)
     {
-        SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count, message: "Index is out of range.");
+        SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count);
         Array.Copy(_innerArray, index + 1, _innerArray, index, _count - index - 1);
         _count--;
         if (_clearReleasedSlots)
@@ -442,7 +442,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// </summary>
     public virtual void Insert(int index, T item)
     {
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(index, _count, message: "Index is out of range.");
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(index, _count);
         if ((uint)_count == (uint)_innerArray.Length)
             Resize(_innerArray.Length * 2);
         if ((uint)index < (uint)_count)
@@ -707,7 +707,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     public void CopyTo(T[] array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
         SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "Destination array is not long enough.");
 
         Array.Copy(_innerArray, 0, array, arrayIndex, _count);
@@ -730,7 +730,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
         SwiftThrowHelper.ThrowIfArgument(array.Rank != 1, nameof(array), "Array must be single dimensional.");
         SwiftThrowHelper.ThrowIfArgument(array.GetLowerBound(0) != 0, nameof(array), "Array must have zero-based indexing.");
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
         SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "Destination array is not long enough.");
 
         Array.Copy(_innerArray, 0, array, arrayIndex, _count);

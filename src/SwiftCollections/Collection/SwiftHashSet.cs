@@ -678,7 +678,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     public void CopyTo(T[] array, int arrayIndex)
     {
         SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, message: "Array index is out of range.");
+        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
         SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "The array is not large enough to hold the elements.");
 
         for (uint i = 0; i <= (uint)_lastIndex; i++)

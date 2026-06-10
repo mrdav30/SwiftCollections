@@ -103,6 +103,7 @@ State-backed collection types expose explicit state structs such as `SwiftArrayS
 - `DiagnosticLevel`
 - `SwiftCollectionDiagnostics.Shared`
 - interpolated diagnostic handlers that avoid formatting when disabled
+- `SwiftThrowHelper` guard methods with caller-expression names, canonical default messages, and lazy interpolated exception messages for condition-gated throws
 
 Diagnostics are disabled by default until a minimum level and sink are configured.
 
