@@ -92,7 +92,7 @@ public struct FixedBoundVolume : IBoundVolume<FixedBoundVolume>, IEquatable<Fixe
     {
         _center = (_min + _max) * Fixed64.Half;
         _size = _max - _min;
-        _volume = _size.x * _size.y * _size.z;
+        _volume = _size.X * _size.Y * _size.Z;
         _isDirty = false;
     }
 
@@ -121,9 +121,9 @@ public struct FixedBoundVolume : IBoundVolume<FixedBoundVolume>, IEquatable<Fixe
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly bool Intersects(FixedBoundVolume other)
     {
-        return !(Min.x > other.Max.x || Max.x < other.Min.x ||
-                 Min.y > other.Max.y || Max.y < other.Min.y ||
-                 Min.z > other.Max.z || Max.z < other.Min.z);
+        return !(Min.X > other.Max.X || Max.X < other.Min.X ||
+                 Min.Y > other.Max.Y || Max.Y < other.Min.Y ||
+                 Min.Z > other.Max.Z || Max.Z < other.Min.Z);
     }
 
     /// <summary>

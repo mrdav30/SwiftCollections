@@ -42,14 +42,14 @@ public class SwiftFixedSpatialHash<T> : SwiftSpatialHash<T, FixedBoundVolume>
         public void GetCellRange(FixedBoundVolume bounds, out SwiftSpatialHashCellIndex minCell, out SwiftSpatialHashCellIndex maxCell)
         {
             minCell = new SwiftSpatialHashCellIndex(
-                ToCell(bounds.Min.x),
-                ToCell(bounds.Min.y),
-                ToCell(bounds.Min.z));
+                ToCell(bounds.Min.X),
+                ToCell(bounds.Min.Y),
+                ToCell(bounds.Min.Z));
 
             maxCell = new SwiftSpatialHashCellIndex(
-                ToCell(bounds.Max.x),
-                ToCell(bounds.Max.y),
-                ToCell(bounds.Max.z));
+                ToCell(bounds.Max.X),
+                ToCell(bounds.Max.Y),
+                ToCell(bounds.Max.Z));
         }
 
         private int ToCell(Fixed64 value)

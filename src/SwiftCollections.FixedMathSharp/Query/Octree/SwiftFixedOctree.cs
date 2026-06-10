@@ -39,20 +39,20 @@ public sealed class SwiftFixedOctree<T> : SwiftOctree<T, FixedBoundVolume>
 
         public bool ContainsBounds(FixedBoundVolume outer, FixedBoundVolume inner)
         {
-            return inner.Min.x >= outer.Min.x &&
-                   inner.Min.y >= outer.Min.y &&
-                   inner.Min.z >= outer.Min.z &&
-                   inner.Max.x <= outer.Max.x &&
-                   inner.Max.y <= outer.Max.y &&
-                   inner.Max.z <= outer.Max.z;
+            return inner.Min.X >= outer.Min.X &&
+                   inner.Min.Y >= outer.Min.Y &&
+                   inner.Min.Z >= outer.Min.Z &&
+                   inner.Max.X <= outer.Max.X &&
+                   inner.Max.Y <= outer.Max.Y &&
+                   inner.Max.Z <= outer.Max.Z;
         }
 
         public bool CanSubdivide(FixedBoundVolume bounds)
         {
             Vector3d childSize = bounds.Size * Fixed64.Half;
-            return childSize.x >= _minNodeSize &&
-                   childSize.y >= _minNodeSize &&
-                   childSize.z >= _minNodeSize;
+            return childSize.X >= _minNodeSize &&
+                   childSize.Y >= _minNodeSize &&
+                   childSize.Z >= _minNodeSize;
         }
 
         public bool TryGetContainingChildIndex(FixedBoundVolume nodeBounds, FixedBoundVolume entryBounds, out int childIndex)
@@ -60,9 +60,9 @@ public sealed class SwiftFixedOctree<T> : SwiftOctree<T, FixedBoundVolume>
             Vector3d midpoint = (nodeBounds.Min + nodeBounds.Max) * Fixed64.Half;
 
             int xBit;
-            if (entryBounds.Min.x >= midpoint.x)
+            if (entryBounds.Min.X >= midpoint.X)
                 xBit = 1;
-            else if (entryBounds.Max.x <= midpoint.x)
+            else if (entryBounds.Max.X <= midpoint.X)
                 xBit = 0;
             else
             {
@@ -71,9 +71,9 @@ public sealed class SwiftFixedOctree<T> : SwiftOctree<T, FixedBoundVolume>
             }
 
             int yBit;
-            if (entryBounds.Min.y >= midpoint.y)
+            if (entryBounds.Min.Y >= midpoint.Y)
                 yBit = 1;
-            else if (entryBounds.Max.y <= midpoint.y)
+            else if (entryBounds.Max.Y <= midpoint.Y)
                 yBit = 0;
             else
             {
@@ -82,9 +82,9 @@ public sealed class SwiftFixedOctree<T> : SwiftOctree<T, FixedBoundVolume>
             }
 
             int zBit;
-            if (entryBounds.Min.z >= midpoint.z)
+            if (entryBounds.Min.Z >= midpoint.Z)
                 zBit = 1;
-            else if (entryBounds.Max.z <= midpoint.z)
+            else if (entryBounds.Max.Z <= midpoint.Z)
                 zBit = 0;
             else
             {
@@ -105,13 +105,13 @@ public sealed class SwiftFixedOctree<T> : SwiftOctree<T, FixedBoundVolume>
 
             return new FixedBoundVolume(
                 new Vector3d(
-                    upperX ? midpoint.x : parentBounds.Min.x,
-                    upperY ? midpoint.y : parentBounds.Min.y,
-                    upperZ ? midpoint.z : parentBounds.Min.z),
+                    upperX ? midpoint.X : parentBounds.Min.X,
+                    upperY ? midpoint.Y : parentBounds.Min.Y,
+                    upperZ ? midpoint.Z : parentBounds.Min.Z),
                 new Vector3d(
-                    upperX ? parentBounds.Max.x : midpoint.x,
-                    upperY ? parentBounds.Max.y : midpoint.y,
-                    upperZ ? parentBounds.Max.z : midpoint.z));
+                    upperX ? parentBounds.Max.X : midpoint.X,
+                    upperY ? parentBounds.Max.Y : midpoint.Y,
+                    upperZ ? parentBounds.Max.Z : midpoint.Z));
         }
     }
 }

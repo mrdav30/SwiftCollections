@@ -81,8 +81,8 @@ public class SwiftOctreeFixedMathSharpTypedTests
         var worldBounds = new FixedBoundVolume(new Vector3d(0, 0, 0), new Vector3d(2, 2, 2));
         var octree = new SwiftFixedOctree<int>(worldBounds, new SwiftOctreeOptions(4, 1), (Fixed64)2);
 
-        octree.Insert(1, new FixedBoundVolume(new Vector3d(0, 0, 0), new Vector3d(0.25, 0.25, 0.25)));
-        octree.Insert(2, new FixedBoundVolume(new Vector3d(1.5, 1.5, 1.5), new Vector3d(1.75, 1.75, 1.75)));
+        octree.Insert(1, new FixedBoundVolume(new Vector3d(0, 0, 0), Vector3d.FromDouble(0.25, 0.25, 0.25)));
+        octree.Insert(2, new FixedBoundVolume(Vector3d.FromDouble(1.5, 1.5, 1.5), Vector3d.FromDouble(1.75, 1.75, 1.75)));
 
         var results = new List<int>();
         octree.Query(worldBounds, results);

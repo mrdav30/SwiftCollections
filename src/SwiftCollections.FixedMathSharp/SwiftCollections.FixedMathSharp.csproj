@@ -25,7 +25,7 @@
 		<AssemblyVersion>$(AssemblySemVer)</AssemblyVersion>
 		<FileVersion>$(AssemblySemFileVer)</FileVersion>
 	</PropertyGroup>
-	
+
 	<!-- Code Analysis and Documentation -->
 	<PropertyGroup>
 		<ImplicitUsings>disable</ImplicitUsings>
@@ -35,7 +35,7 @@
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<DocumentationFile>bin\$(Configuration)\$(TargetFramework)\SwiftCollections.FixedMathSharp.xml</DocumentationFile>
 	</PropertyGroup>
-	
+
 	<!-- Output Settings -->
 	<PropertyGroup>
 		<AssemblyName>SwiftCollections.FixedMathSharp</AssemblyName>
@@ -43,7 +43,7 @@
 		<ProjectGuid>{CB6B93CA-2A09-4500-9E45-4AF90D42E236}</ProjectGuid>
 		<OutputPath>bin\$(Configuration)</OutputPath>
 	</PropertyGroup>
-	
+
 	<!-- NuGet Packaging Metadata -->
 	<PropertyGroup>
 		<Authors>mrdav30</Authors>
@@ -57,13 +57,13 @@
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 	</PropertyGroup>
-	
+
 	<!-- Configurations Properties -->
 
 	<PropertyGroup Condition="'$(Configuration)' == 'ReleaseLean'">
 		<DisableMemoryPack>true</DisableMemoryPack>
 	</PropertyGroup>
-	
+
 	<PropertyGroup Condition="'$(DisableMemoryPack)' == 'true'">
 		<DefineConstants>$(DefineConstants);SWIFTCOLLECTIONS_DISABLE_MEMORYPACK</DefineConstants>
 		<PackageId>SwiftCollections.FixedMathSharp.Lean</PackageId>
@@ -72,7 +72,7 @@
 	<PropertyGroup Condition="'$(DisableMemoryPack)' != 'true'">
 		<PackageId>SwiftCollections.FixedMathSharp</PackageId>
 	</PropertyGroup>
-	
+
 	<PropertyGroup Condition="'$(Configuration)' == 'Debug'">
 		<DebugSymbols>true</DebugSymbols>
 		<Optimize>false</Optimize>
@@ -83,20 +83,20 @@
 		<Optimize>true</Optimize>
 		<DefineConstants>$(DefineConstants);TRACE</DefineConstants>
 	</PropertyGroup>
-	
+
 	<!-- Dependencies and Package References -->
 	<ItemGroup Condition="'$(DisableMemoryPack)' != 'true'">
-		<PackageReference Include="FixedMathSharp" Version="4.0.1" />
+		<PackageReference Include="FixedMathSharp" Version="5.0.0" />
 	</ItemGroup>
-	
+
 	<ItemGroup Condition="'$(DisableMemoryPack)' == 'true'">
-		<PackageReference Include="FixedMathSharp.Lean" Version="4.0.1" />
+		<PackageReference Include="FixedMathSharp.Lean" Version="5.0.0" />
 	</ItemGroup>
-	
+
 	<ItemGroup>
 		<ProjectReference Include="..\SwiftCollections\SwiftCollections.csproj" />
 	</ItemGroup>
-	
+
 	<!-- Ensure LICENSE, README, & icon files are included in the NuGet package -->
 	<ItemGroup>
 		<None Include="..\..\COPYRIGHT" Pack="true" PackagePath="\" Visible="false" />
@@ -106,5 +106,10 @@
 		<None Include="..\..\icon.png" Pack="true" PackagePath="\" Visible="false" />
 		<None Remove=".gitignore" />
 	</ItemGroup>
-	
+
+	<!-- Ensure MemoryPack files are excluded when disabled -->
+	<ItemGroup Condition="'$(DisableMemoryPack)' == 'true'">
+		<Compile Remove="**\*.MemoryPack.cs" />
+	</ItemGroup>
+
 </Project>

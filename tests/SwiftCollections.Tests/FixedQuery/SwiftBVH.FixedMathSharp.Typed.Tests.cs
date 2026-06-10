@@ -42,7 +42,7 @@ namespace SwiftCollections.Query.Tests
             var bvh = new SwiftBVH<int, FixedBoundVolume>(8);
             var left = new FixedBoundVolume(new Vector3d(0, 0, 0), new Vector3d(1, 1, 1));
             var right = new FixedBoundVolume(new Vector3d(10, 10, 10), new Vector3d(11, 11, 11));
-            var moved = new FixedBoundVolume(new Vector3d(0.5f, 0.5f, 0.5f), new Vector3d(1.5f, 1.5f, 1.5f));
+            var moved = new FixedBoundVolume(Vector3d.FromDouble(0.5f, 0.5f, 0.5f), Vector3d.FromDouble(1.5f, 1.5f, 1.5f));
 
             bvh.Insert(1, left);
             bvh.Insert(2, right);

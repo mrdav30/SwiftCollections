@@ -29,7 +29,9 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v5
       with:
-        dotnet-version: 8.0.x
+        dotnet-version: |
+          8.0.x
+          10.0.x
 
     - name: Cache NuGet packages
       uses: actions/cache@v5
@@ -40,7 +42,7 @@ jobs:
           ${{ runner.os }}-nuget-
 
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore SwiftCollections.slnx --property:Configuration=Release
 
     - name: Build tests
       run: dotnet build tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj --configuration Release --no-restore

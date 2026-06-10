@@ -23,7 +23,7 @@ Read these before making non-trivial changes:
 2. `docs/OVERVIEW.md` for the collection, spatial query, serialization, and diagnostics map.
 3. `SwiftCollections.slnx` and the relevant `*.csproj` files. They are the source of truth for compiled projects, package shape, and target frameworks.
 4. The source folder under `src/SwiftCollections` or `src/SwiftCollections.FixedMathSharp` that owns the change.
-5. The matching tests under `tests/SwiftCollections.Tests` or `tests/SwiftCollections.FixedMathSharp.Tests`.
+5. The matching tests under `tests/SwiftCollections.Tests`.
 6. Benchmarks under `tests/SwiftCollections.Benchmarks` when a change touches hot-path behavior or a performance claim.
 7. `docs/complexity-exceptions.md` before refactoring high-complexity methods or adding a new intentional exception.
 
@@ -38,7 +38,6 @@ Current compiled projects:
 | Core library | `src/SwiftCollections/SwiftCollections.csproj` | `netstandard2.1;net8.0` |
 | FixedMathSharp companion | `src/SwiftCollections.FixedMathSharp/SwiftCollections.FixedMathSharp.csproj` | `netstandard2.1;net8.0` |
 | Core tests | `tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj` | `net8.0` |
-| FixedMathSharp tests | `tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMathSharp.Tests.csproj` | `net8.0` |
 | Benchmarks | `tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj` | `net8` |
 
 Keep these aligned whenever behavior, public API, package variants, or workflow expectations change:
@@ -66,7 +65,6 @@ Keep these aligned whenever behavior, public API, package variants, or workflow 
 | `src/SwiftCollections/Utility` | Shared helpers, hashing, diagnostics, extensions | Preserve helper exception contracts. |
 | `src/SwiftCollections.FixedMathSharp` | Fixed-point spatial query companion | Depends on FixedMathSharp or FixedMathSharp.Lean based on package variant. |
 | `tests/SwiftCollections.Tests` | xUnit v3 core tests | Mirror source areas. |
-| `tests/SwiftCollections.FixedMathSharp.Tests` | FixedMathSharp companion tests | Uses the shared coverage runsettings from the core test project. |
 | `tests/SwiftCollections.Benchmarks` | BenchmarkDotNet benchmarks | Alias-based runner supports `list`, `dictionary`, `query`, `all`, and other selections. |
 | `.assets/scripts` | Windows-oriented release/version helpers | Assumes GitVersion tooling. |
 
@@ -158,7 +156,7 @@ Full coverage is an explicit repo priority.
 
 - If you change behavior in `src/SwiftCollections/Collection`, update matching tests under `tests/SwiftCollections.Tests/Collection`.
 - If you change `Dimension`, `Observable`, `Pool`, `Query`, `Serialization`, `Utility`, or diagnostics behavior, update the corresponding test area.
-- If you change `src/SwiftCollections.FixedMathSharp`, update `tests/SwiftCollections.FixedMathSharp.Tests`.
+- If you change `src/SwiftCollections.FixedMathSharp`, update `tests/SwiftCollections.Tests`.
 - New public APIs should have focused behavior, edge-case, serialization/state, and invalid-input tests where applicable.
 - Coverage should stay flat or improve. Prefer closing touched areas to full coverage when practical.
 - Use `tests/SwiftCollections.Tests/coverlet.runsettings` for coverage. The FixedMathSharp test project intentionally points at the same runsettings so generated MemoryPack files stay excluded.
@@ -177,14 +175,12 @@ Run unit tests:
 
 ```bash
 dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c Debug --no-build
-dotnet test tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMathSharp.Tests.csproj -c Debug --no-build
 ```
 
 Run coverage for both test projects:
 
 ```bash
 dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c Debug --no-build --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.Tests/coverlet.runsettings
-dotnet test tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMathSharp.Tests.csproj -c Debug --no-build --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.Tests/coverlet.runsettings
 ```
 
 Run benchmark selections:
