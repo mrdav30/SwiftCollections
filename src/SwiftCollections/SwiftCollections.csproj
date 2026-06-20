@@ -93,11 +93,11 @@
 	<!-- Dependencies and Package References -->
 	<ItemGroup Condition="'$(DisableMemoryPack)' != 'true'">
 		<PackageReference Include="MemoryPack" Version="1.21.4" />
-		<PackageReference Include="Chronicler.Core" Version="0.2.0" />
+		<PackageReference Include="Chronicler.Core" Version="0.2.1" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(DisableMemoryPack)' == 'true'">
-		<PackageReference Include="Chronicler.Core.Lean" Version="0.2.0" />
+		<PackageReference Include="Chronicler.Core.Lean" Version="0.2.1" />
 	</ItemGroup>
 	
 	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
