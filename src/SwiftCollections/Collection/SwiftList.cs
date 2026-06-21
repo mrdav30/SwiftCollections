@@ -475,23 +475,18 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     }
 
     /// <summary>
-    /// Sorts the elements in the <see cref="SwiftList{T}"/> using the <see cref="IComparable"/> interface implementation of each element of the _innerArray.
+    /// Sorts the populated elements of the <see cref="SwiftList{T}"/> in place.
     /// </summary>
+    /// <remarks>
+    /// The sort is performed over the active <c>[0..Count)</c> range of the backing array and does not
+    /// allocate additional collection storage. Pass a comparer to define a custom order; otherwise the
+    /// default comparer for <typeparamref name="T"/> is used.
+    /// </remarks>
+    /// <param name="comparer">The comparer to use, or <c>null</c> to use the default comparer.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Sort()
+    public void SortInPlace(IComparer<T>? comparer = null)
     {
-        Array.Sort(_innerArray, 0, _count, Comparer<T>.Default);
-        _version++;
-    }
-
-    /// <summary>
-    /// Sorts the elements in the entire <see cref="SwiftList{T}"/> using the specified comparer.
-    /// </summary>
-    /// <param name="comparer">The comparer to use for comparing elements.</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Sort(IComparer<T> comparer)
-    {
-        Array.Sort(_innerArray, 0, _count, comparer);
+        Array.Sort(_innerArray, 0, _count, comparer ?? Comparer<T>.Default);
         _version++;
     }
 

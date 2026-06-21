@@ -437,6 +437,67 @@ public class SwiftSparseSetTests
     }
 
     [Fact]
+    public void CopyKeysTo_SwiftList_ShouldReplaceDestinationWithDenseOrder()
+    {
+        var set = new SwiftSparseSet
+        {
+            10,
+            2,
+            7
+        };
+        set.Remove(2);
+
+        var destination = new SwiftList<int> { 99, 100 };
+        int capacityBefore = destination.Capacity;
+
+        set.CopyKeysTo(destination);
+
+        Assert.Equal(new[] { 10, 7 }, destination.ToArray());
+        Assert.Equal(capacityBefore, destination.Capacity);
+    }
+
+    [Fact]
+    public void CopySortedKeysTo_SwiftList_ShouldReplaceDestinationWithAscendingKeys()
+    {
+        var set = new SwiftSparseSet
+        {
+            10,
+            2,
+            7,
+            1
+        };
+        set.Remove(2);
+
+        var destination = new SwiftList<int> { 99, 100 };
+
+        set.CopySortedKeysTo(destination);
+
+        Assert.Equal(new[] { 1, 7, 10 }, destination.ToArray());
+    }
+
+    [Fact]
+    public void CopySortedKeysTo_SwiftList_ShouldNotAllocateWhenDestinationHasCapacity()
+    {
+        var set = new SwiftSparseSet
+        {
+            10,
+            2,
+            7,
+            1
+        };
+        var destination = new SwiftList<int>(set.Count);
+
+        set.CopySortedKeysTo(destination);
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        set.CopySortedKeysTo(destination);
+        long after = GC.GetAllocatedBytesForCurrentThread();
+
+        Assert.Equal(before, after);
+        Assert.Equal(new[] { 1, 2, 7, 10 }, destination.ToArray());
+    }
+
+    [Fact]
     public void ICollectionCopyTo_CopiesToSupportedArrayShapes()
     {
         ICollection collection = new SwiftSparseSet

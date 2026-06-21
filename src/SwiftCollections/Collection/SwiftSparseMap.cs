@@ -676,6 +676,37 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
         count = _count;
     }
 
+    /// <summary>
+    /// Replaces the destination list contents with this map's keys in dense iteration order.
+    /// </summary>
+    /// <remarks>
+    /// The destination list is reused and only grows when its current capacity is smaller than
+    /// <see cref="Count"/>. Use <see cref="CopySortedKeysTo(SwiftList{int})"/> when stable ascending
+    /// key order is required.
+    /// </remarks>
+    /// <param name="destination">The caller-owned list that receives the keys.</param>
+    public void CopyKeysTo(SwiftList<int> destination)
+    {
+        SwiftThrowHelper.ThrowIfNull(destination, nameof(destination));
+
+        destination.FastClear();
+        destination.AddRange(_denseKeys.AsSpan(0, _count));
+    }
+
+    /// <summary>
+    /// Replaces the destination list contents with this map's keys sorted in ascending order.
+    /// </summary>
+    /// <remarks>
+    /// This method is intended for reusable hot-path scratch buffers that need deterministic key order
+    /// without constructing a persistent sorted collection.
+    /// </remarks>
+    /// <param name="destination">The caller-owned list that receives the sorted keys.</param>
+    public void CopySortedKeysTo(SwiftList<int> destination)
+    {
+        CopyKeysTo(destination);
+        destination.SortInPlace();
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int GetRequiredSparseCapacity(int key)
     {

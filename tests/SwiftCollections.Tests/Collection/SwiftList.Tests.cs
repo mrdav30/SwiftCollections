@@ -473,11 +473,44 @@ public class SwiftListTests
     }
 
     [Fact]
-    public void Sort_ShouldSortElementsInAscendingOrder()
+    public void SortInPlace_DefaultComparerArgument_ShouldSortElementsInAscendingOrder()
     {
         var list = new SwiftList<int> { 3, 1, 2 };
-        list.Sort(Comparer<int>.Default);
+        list.SortInPlace(Comparer<int>.Default);
         Assert.Equal(new[] { 1, 2, 3 }, list.ToArray());
+    }
+
+    [Fact]
+    public void SortInPlace_DefaultComparer_ShouldSortWithoutChangingCapacity()
+    {
+        var list = new SwiftList<int>(16) { 5, 1, 3, 2, 4 };
+        int capacityBefore = list.Capacity;
+
+        list.SortInPlace();
+
+        Assert.Equal(new[] { 1, 2, 3, 4, 5 }, list.ToArray());
+        Assert.Equal(capacityBefore, list.Capacity);
+    }
+
+    [Fact]
+    public void SortInPlace_CustomComparer_ShouldSortWithoutAllocatingComparerState()
+    {
+        var list = new SwiftList<int> { 1, 3, 2 };
+
+        list.SortInPlace(DescendingIntComparer.Instance);
+
+        Assert.Equal(new[] { 3, 2, 1 }, list.ToArray());
+    }
+
+    [Fact]
+    public void SortInPlace_ShouldInvalidateExistingEnumerator()
+    {
+        var list = new SwiftList<int> { 3, 1, 2 };
+        var enumerator = list.GetEnumerator();
+
+        list.SortInPlace();
+
+        Assert.Throws<InvalidOperationException>(() => enumerator.MoveNext());
     }
 
     [Fact]
@@ -629,19 +662,19 @@ public class SwiftListTests
     }
 
     [Fact]
-    public void Sort_ShouldWorkWithCustomComparer()
+    public void SortInPlace_ShouldWorkWithCustomComparer()
     {
         var list = new SwiftList<int> { 1, 3, 2 };
-        list.Sort(Comparer<int>.Create((x, y) => y - x));  // Sort in descending order
+        list.SortInPlace(Comparer<int>.Create((x, y) => y - x));  // Sort in descending order
         Assert.Equal(new[] { 3, 2, 1 }, list.ToArray());
     }
 
     [Fact]
-    public void Sort_DefaultComparer_ShouldSortAscending()
+    public void SortInPlace_DefaultComparer_ShouldSortAscending()
     {
         var list = new SwiftList<int> { 3, 1, 2 };
 
-        list.Sort();
+        list.SortInPlace();
 
         Assert.Equal(new[] { 1, 2, 3 }, list.ToArray());
     }
@@ -776,4 +809,15 @@ public class SwiftListTests
         Assert.Equal(originalValue, deserializedValue);
     }
 #endif
+
+    private sealed class DescendingIntComparer : IComparer<int>
+    {
+        public static readonly DescendingIntComparer Instance = new();
+
+        private DescendingIntComparer()
+        {
+        }
+
+        public int Compare(int x, int y) => y.CompareTo(x);
+    }
 }

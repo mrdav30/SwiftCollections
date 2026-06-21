@@ -84,7 +84,7 @@ public class ListParityIntegerBenchmarks
         nameof(SwiftList_IndexerEnumerate),
         nameof(SwiftList_InsertMiddle),
         nameof(SwiftList_RemoveByValue),
-        nameof(SwiftList_Sort),
+        nameof(SwiftList_SortInPlace),
         nameof(SwiftList_CopyTo),
         nameof(SwiftList_Clear)
     })]
@@ -175,9 +175,9 @@ public class ListParityIntegerBenchmarks
 
     [Benchmark]
     [BenchmarkCategory("Sort")]
-    public int SwiftList_Sort()
+    public int SwiftList_SortInPlace()
     {
-        _swiftList.Sort();
+        _swiftList.SortInPlace();
         return _swiftList[0] + _swiftList[_swiftList.Count - 1];
     }
 

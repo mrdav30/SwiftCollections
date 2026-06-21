@@ -83,6 +83,9 @@ foreach (int bodyId in activeBodies)
 {
     // Dense iteration over active IDs.
 }
+
+var sortedBodyIds = new SwiftList<int>(activeBodies.Count);
+activeBodies.CopySortedKeysTo(sortedBodyIds);
 ```
 
 ### Sparse Values For External IDs
@@ -99,6 +102,20 @@ if (positions.TryGetValue(128, out Vector3 position))
 {
     positions[128] = position + new Vector3(1, 0, 0);
 }
+
+var sortedPositionIds = new SwiftList<int>(positions.Count);
+positions.CopySortedKeysTo(sortedPositionIds);
+```
+
+### Scratch List Sorting
+
+```csharp
+using SwiftCollections;
+
+var keys = new SwiftList<int> { 12, 4, 8 };
+keys.SortInPlace();
+
+// keys: 4, 8, 12
 ```
 
 ### Stable Handles

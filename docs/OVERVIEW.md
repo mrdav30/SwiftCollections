@@ -17,7 +17,7 @@ Use the standard .NET collections first when the workload is ordinary. Reach for
 
 | Type | Primary Role | Notes |
 | --- | --- | --- |
-| `SwiftList<T>` | Dynamic contiguous list | Familiar list shape with SwiftCollections growth and helper behavior. |
+| `SwiftList<T>` | Dynamic contiguous list | Familiar list shape with SwiftCollections growth, span helpers, and explicit `SortInPlace` scratch-buffer sorting. |
 | `SwiftQueue<T>` | Circular-buffer queue | Suited for repeated enqueue/dequeue workloads. |
 | `SwiftStack<T>` | Array-backed stack | Simple LIFO storage for low-overhead stack workloads. |
 | `SwiftSortedList<T>` | Sorted dynamic collection | Keeps values ordered for search and ordered iteration. |
@@ -39,6 +39,8 @@ Use the standard .NET collections first when the workload is ordinary. Reach for
 | IDs are arbitrary, huge, or widely sparse | `SwiftHashSet<int>` / `SwiftDictionary<int, T>` | Hash tables avoid allocating sparse arrays up to the highest ID. |
 
 Sparse containers are strongest when IDs are compact, non-negative, and externally owned by a simulation, ECS, partition, or handle system. Their memory usage scales with the highest stored ID, not only with the number of live IDs.
+
+`SwiftSparseSet` and `SwiftSparseMap<T>` can copy dense keys into caller-owned `SwiftList<int>` buffers, including sorted ascending export through `CopySortedKeysTo(...)`. Use that path for deterministic per-frame scratch ordering instead of building a persistent `SwiftSortedList<T>` solely to sort transient keys.
 
 ## Spatial Query Structures
 

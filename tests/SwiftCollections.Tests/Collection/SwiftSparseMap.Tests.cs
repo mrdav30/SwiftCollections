@@ -382,6 +382,67 @@ public class SwiftSparseMapTests
     }
 
     [Fact]
+    public void CopyKeysTo_SwiftList_ShouldReplaceDestinationWithDenseOrder()
+    {
+        var map = new SwiftSparseMap<int>
+        {
+            { 10, 100 },
+            { 2, 20 },
+            { 7, 70 }
+        };
+        map.Remove(2);
+
+        var destination = new SwiftList<int> { 99, 100 };
+        int capacityBefore = destination.Capacity;
+
+        map.CopyKeysTo(destination);
+
+        Assert.Equal(new[] { 10, 7 }, destination.ToArray());
+        Assert.Equal(capacityBefore, destination.Capacity);
+    }
+
+    [Fact]
+    public void CopySortedKeysTo_SwiftList_ShouldReplaceDestinationWithAscendingKeys()
+    {
+        var map = new SwiftSparseMap<int>
+        {
+            { 10, 100 },
+            { 2, 20 },
+            { 7, 70 },
+            { 1, 10 }
+        };
+        map.Remove(2);
+
+        var destination = new SwiftList<int> { 99, 100 };
+
+        map.CopySortedKeysTo(destination);
+
+        Assert.Equal(new[] { 1, 7, 10 }, destination.ToArray());
+    }
+
+    [Fact]
+    public void CopySortedKeysTo_SwiftList_ShouldNotAllocateWhenDestinationHasCapacity()
+    {
+        var map = new SwiftSparseMap<int>
+        {
+            { 10, 100 },
+            { 2, 20 },
+            { 7, 70 },
+            { 1, 10 }
+        };
+        var destination = new SwiftList<int>(map.Count);
+
+        map.CopySortedKeysTo(destination);
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        map.CopySortedKeysTo(destination);
+        long after = GC.GetAllocatedBytesForCurrentThread();
+
+        Assert.Equal(before, after);
+        Assert.Equal(new[] { 1, 2, 7, 10 }, destination.ToArray());
+    }
+
+    [Fact]
     public void Constructor_WithState_MismatchedDenseLengths_Throws()
     {
         Assert.Throws<ArgumentException>(() =>
