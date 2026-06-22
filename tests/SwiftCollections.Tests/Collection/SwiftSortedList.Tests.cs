@@ -162,6 +162,55 @@ public class SwiftSortedListTests
     }
 
     [Fact]
+    public void AddRange_WhenEmptyAndCapacityIsAvailable_ShouldNotAllocate()
+    {
+        var sorter = new SwiftSortedList<int>(16);
+        int[] items = { 7, 3, 9, 1 };
+
+        sorter.AddRange(items);
+        sorter.FastClear();
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        sorter.AddRange(items);
+        long after = GC.GetAllocatedBytesForCurrentThread();
+
+        Assert.Equal(before, after);
+        Assert.Equal(new[] { 1, 3, 7, 9 }, sorter.AsReadOnlySpan().ToArray());
+    }
+
+    [Fact]
+    public void AddRange_WhenEmptyWithCustomComparer_ShouldSortIntoExistingStorage()
+    {
+        var sorter = new SwiftSortedList<int>(16, DescendingIntComparer.Instance);
+        int[] items = { 7, 3, 9, 1 };
+
+        sorter.AddRange(items);
+
+        Assert.Equal(new[] { 9, 7, 3, 1 }, sorter.AsReadOnlySpan().ToArray());
+    }
+
+    [Fact]
+    public void AddRange_WhenPopulatedAndCapacityIsAvailable_ShouldMergeWithoutAllocating()
+    {
+        var warmup = new SwiftSortedList<int>(16);
+        warmup.AddRange(new[] { 2, 6 });
+        warmup.AddRange(new[] { 5, 1, 4 });
+
+        var sorter = new SwiftSortedList<int>(16);
+        sorter.AddRange(new[] { 2, 6 });
+        int[] items = { 5, 1, 4 };
+        int capacityBefore = sorter.Capacity;
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        sorter.AddRange(items);
+        long after = GC.GetAllocatedBytesForCurrentThread();
+
+        Assert.Equal(before, after);
+        Assert.Equal(capacityBefore, sorter.Capacity);
+        Assert.Equal(new[] { 1, 2, 4, 5, 6 }, sorter.AsReadOnlySpan().ToArray());
+    }
+
+    [Fact]
     public void Add_WithUniquenessNotEnforced_AddsDuplicates()
     {
         var sorter = new SwiftSortedList<int>
@@ -885,4 +934,15 @@ public class SwiftSortedListTests
     }
 
     #endregion
+
+    private sealed class DescendingIntComparer : IComparer<int>
+    {
+        public static readonly DescendingIntComparer Instance = new();
+
+        private DescendingIntComparer()
+        {
+        }
+
+        public int Compare(int x, int y) => y.CompareTo(x);
+    }
 }

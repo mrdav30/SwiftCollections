@@ -298,30 +298,48 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// <summary>
     /// Adds the elements of the specified collection to the end of the SwiftList.
     /// </summary>
+    /// <remarks>
+    /// Known-count sources reserve capacity before enumeration to avoid repeated growth.
+    /// </remarks>
     public virtual void AddRange(IEnumerable<T> items)
     {
         SwiftThrowHelper.ThrowIfNull(items, nameof(items));
 
         if (items is ICollection<T> collection)
         {
-            // Ensure capacity to fit all new items
-            if (_count + collection.Count > _innerArray.Length)
-            {
-                int newCapacity = SwiftHashTools.NextPowerOfTwo(_count + collection.Count);
-                Resize(newCapacity);
-            }
+            int count = collection.Count;
+            if (count == 0)
+                return;
 
-            // Copy new items directly into the internal array
+            EnsureAdditionalCapacity(count);
             collection.CopyTo(_innerArray, _count);
-            _count += collection.Count;
+            _count += count;
             _version++;
 
             return;
         }
 
-        // Fallback for non-ICollection, adding each item individually
+        if (items is IReadOnlyCollection<T> readOnlyCollection)
+        {
+            AddKnownCountRange(readOnlyCollection, readOnlyCollection.Count);
+            return;
+        }
+
         foreach (T item in items)
             Add(item);
+    }
+
+    private void AddKnownCountRange(IEnumerable<T> items, int count)
+    {
+        if (count == 0)
+            return;
+
+        EnsureAdditionalCapacity(count);
+
+        foreach (T item in items)
+            _innerArray[_count++] = item;
+
+        _version++;
     }
 
     /// <summary>
@@ -343,15 +361,18 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
         if (items.Length == 0)
             return;
 
-        if (_count + items.Length > _innerArray.Length)
-        {
-            int newCapacity = SwiftHashTools.NextPowerOfTwo(_count + items.Length);
-            Resize(newCapacity);
-        }
+        EnsureAdditionalCapacity(items.Length);
 
         items.CopyTo(_innerArray.AsSpan(_count, items.Length));
         _count += items.Length;
         _version++;
+    }
+
+    private void EnsureAdditionalCapacity(int additionalCount)
+    {
+        long requiredCount = (long)_count + additionalCount;
+        SwiftThrowHelper.ThrowIfTrue(requiredCount > int.MaxValue, message: "The collection is too large.");
+        EnsureCapacity((int)requiredCount);
     }
 
     /// <summary>

@@ -164,6 +164,22 @@ public class SwiftArray2DTests
     }
 
     [Fact]
+    public void AddRange_OverwritesBackingStorageWithoutPerCellVirtualValidation()
+    {
+        var array = new ValidationCountingArray2D<int>(1, 1);
+        int[,] source =
+        {
+            { 1, 2 },
+            { 3, 4 }
+        };
+
+        array.AddRange(source);
+
+        Assert.Equal(0, array.ValidationCount);
+        Assert.Equal(new[] { 1, 2, 3, 4 }, array.InnerArray);
+    }
+
+    [Fact]
     public void Clear_ResetsAllElementsToDefault()
     {
         var array = new SwiftArray2D<int>(2, 2, 7);
@@ -285,4 +301,20 @@ public class SwiftArray2DTests
         Assert.Equal(originalValue, deserializedValue);
     }
 #endif
+
+    private sealed class ValidationCountingArray2D<T> : SwiftArray2D<T>
+    {
+        public ValidationCountingArray2D(int width, int height)
+            : base(width, height)
+        {
+        }
+
+        public int ValidationCount { get; private set; }
+
+        public override void ValidateIndex(int x, int y)
+        {
+            ValidationCount++;
+            base.ValidateIndex(x, y);
+        }
+    }
 }

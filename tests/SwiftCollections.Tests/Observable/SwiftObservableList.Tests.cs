@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Text.Json;
+using SwiftCollections.Tests;
 using Xunit;
 
 #if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
@@ -274,6 +275,24 @@ public class SwiftObservableListTests
 
         Assert.Equal(new[] { 1, 2, 3 }, list.ToArray());
         Assert.Equal(3, list.Count);
+    }
+
+    [Fact]
+    public void AddRange_IReadOnlyCollection_EnsuresCapacityBeforeNotifications()
+    {
+        var list = new SwiftObservableList<int>();
+        var source = new CapacityObservingReadOnlyCollection<int>(
+            new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 },
+            () => list.Capacity);
+        int notificationCount = 0;
+
+        list.CollectionChanged += (sender, e) => notificationCount++;
+
+        list.AddRange(source);
+
+        Assert.True(source.ObservedCapacity >= source.Count);
+        Assert.Equal(source.Count, notificationCount);
+        Assert.Equal(new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 }, list.ToArray());
     }
 
     [Fact]

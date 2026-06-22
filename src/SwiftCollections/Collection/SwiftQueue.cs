@@ -119,17 +119,44 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     public SwiftQueue(IEnumerable<T> items)
     {
         SwiftThrowHelper.ThrowIfNull(items, nameof(items));
+        _innerArray = _emptyArray;
+
         if (items is ICollection<T> collection)
         {
-            int capacity = collection.Count < DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(collection.Count);
-            _innerArray = new T[capacity];
+            InitializeFromKnownCountRange(collection, collection.Count);
+            return;
         }
-        else
-            _innerArray = new T[DefaultCapacity];
 
+        if (items is IReadOnlyCollection<T> readOnlyCollection)
+        {
+            InitializeFromKnownCountRange(readOnlyCollection, readOnlyCollection.Count);
+            return;
+        }
+
+        _innerArray = new T[DefaultCapacity];
         _mask = _innerArray.Length - 1;
+
         foreach (T item in items)
             Enqueue(item);
+    }
+
+    private void InitializeFromKnownCountRange(IEnumerable<T> items, int count)
+    {
+        if (count == 0)
+        {
+            _innerArray = _emptyArray;
+            _mask = 0;
+            return;
+        }
+
+        int capacity = count < DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(count);
+        _innerArray = new T[capacity];
+        _mask = _innerArray.Length - 1;
+
+        foreach (T item in items)
+            _innerArray[_count++] = item;
+
+        _tail = _count & _mask;
     }
 
     ///  <summary>
@@ -280,8 +307,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// Adds the elements of the specified collection to the end of the queue.
     /// </summary>
     /// <remarks>
-    /// If the specified collection implements <see cref="ICollection{T}"/>, the queue's capacity is increased once to accommodate the new elements, 
-    /// improving performance for large collections.
+    /// Known-count sources reserve capacity before enumeration to avoid repeated growth.
     /// </remarks>
     /// <param name="items">The collection of elements to add to the queue. Cannot be null.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -290,10 +316,38 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
         SwiftThrowHelper.ThrowIfNull(items, nameof(items));
 
         if (items is ICollection<T> collection)
-            EnsureCapacity(_count + collection.Count);
+        {
+            EnqueueKnownCountRange(collection, collection.Count);
+            return;
+        }
+
+        if (items is IReadOnlyCollection<T> readOnlyCollection)
+        {
+            EnqueueKnownCountRange(readOnlyCollection, readOnlyCollection.Count);
+            return;
+        }
 
         foreach (T item in items)
             Enqueue(item);
+    }
+
+    private void EnqueueKnownCountRange(IEnumerable<T> items, int count)
+    {
+        if (count == 0)
+            return;
+
+        EnsureAdditionalCapacity(count);
+
+        int appendedCount = 0;
+        foreach (T item in items)
+        {
+            _innerArray[_tail] = item;
+            _tail = (_tail + 1) & _mask;
+            appendedCount++;
+        }
+
+        _count += appendedCount;
+        _version++;
     }
 
     /// <summary>
@@ -315,7 +369,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
         if (items.Length == 0)
             return;
 
-        EnsureCapacity(_count + items.Length);
+        EnsureAdditionalCapacity(items.Length);
 
         for (int i = 0; i < items.Length; i++)
         {
@@ -325,6 +379,13 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
 
         _count += items.Length;
         _version++;
+    }
+
+    private void EnsureAdditionalCapacity(int additionalCount)
+    {
+        long requiredCount = (long)_count + additionalCount;
+        SwiftThrowHelper.ThrowIfTrue(requiredCount > int.MaxValue, message: "The collection is too large.");
+        EnsureCapacity((int)requiredCount);
     }
 
     /// <summary>

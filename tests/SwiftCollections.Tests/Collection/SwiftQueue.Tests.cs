@@ -258,6 +258,20 @@ public class SwiftQueueTests
     }
 
     [Fact]
+    public void EnqueueRange_IReadOnlyCollection_EnsuresCapacityBeforeEnumeration()
+    {
+        var queue = new SwiftQueue<int>();
+        var source = new CapacityObservingReadOnlyCollection<int>(
+            new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 },
+            () => queue.Capacity);
+
+        queue.EnqueueRange(source);
+
+        Assert.True(source.ObservedCapacity >= source.Count);
+        Assert.Equal(new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 }, queue.ToArray());
+    }
+
+    [Fact]
     public void EnqueueRange_EmptyArray_IsNoOp()
     {
         var queue = new SwiftQueue<int>();

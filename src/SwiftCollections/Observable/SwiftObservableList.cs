@@ -107,10 +107,36 @@ public partial class SwiftObservableList<T> : SwiftList<T>, IStateBacked<SwiftAr
     /// <summary>
     /// Adds the elements of the specified collection to the end of the current collection.
     /// </summary>
+    /// <remarks>
+    /// Known-count sources reserve capacity before enumeration while preserving per-item notifications.
+    /// </remarks>
     /// <param name="items">The collection whose elements should be added to the end of the collection. Cannot be null.</param>
     public override void AddRange(IEnumerable<T> items)
     {
         SwiftThrowHelper.ThrowIfNull(items, nameof(items));
+
+        if (items is ICollection<T> collection)
+        {
+            AddKnownCountRange(collection, collection.Count);
+            return;
+        }
+
+        if (items is IReadOnlyCollection<T> readOnlyCollection)
+        {
+            AddKnownCountRange(readOnlyCollection, readOnlyCollection.Count);
+            return;
+        }
+
+        foreach (T item in items)
+            Add(item);
+    }
+
+    private void AddKnownCountRange(IEnumerable<T> items, int count)
+    {
+        if (count == 0)
+            return;
+
+        EnsureAdditionalCapacity(count);
 
         foreach (T item in items)
             Add(item);
@@ -132,8 +158,20 @@ public partial class SwiftObservableList<T> : SwiftList<T>, IStateBacked<SwiftAr
     /// </summary>
     public override void AddRange(ReadOnlySpan<T> items)
     {
+        EnsureAdditionalCapacity(items.Length);
+
         for (int i = 0; i < items.Length; i++)
             Add(items[i]);
+    }
+
+    private void EnsureAdditionalCapacity(int additionalCount)
+    {
+        if (additionalCount == 0)
+            return;
+
+        long requiredCount = (long)_count + additionalCount;
+        SwiftThrowHelper.ThrowIfTrue(requiredCount > int.MaxValue, message: "The collection is too large.");
+        EnsureCapacity((int)requiredCount);
     }
 
     /// <summary>

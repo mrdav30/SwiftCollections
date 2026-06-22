@@ -195,19 +195,31 @@ public partial class SwiftArray2D<T> : IStateBacked<Array2DState<T>>, IEnumerabl
     #region Collection Management
 
     /// <summary>
-    /// Adds the provides source into the current 2D Array.
+    /// Overwrites the current 2D array with the provided source.
     /// </summary>
     /// <remarks>
-    /// Will overwrite current values.
+    /// Existing backing storage is reused when the flattened source length matches.
     /// </remarks>
-    /// <param name="source"></param>
+    /// <param name="source">The source values to copy.</param>
     public void AddRange(T[,] source)
     {
-        Resize(source.GetLength(0), source.GetLength(1));
-        for (int i = 0; i < Width; i++)
+        SwiftThrowHelper.ThrowIfNull(source, nameof(source));
+
+        int width = source.GetLength(0);
+        int height = source.GetLength(1);
+        int length = source.Length;
+
+        if (_innerArray.Length != length)
+            _innerArray = new T[length];
+
+        _width = width;
+        _height = height;
+
+        int index = 0;
+        for (int x = 0; x < width; x++)
         {
-            for (int j = 0; j < Height; j++)
-                this[i, j] = source[i, j];
+            for (int y = 0; y < height; y++)
+                _innerArray[index++] = source[x, y];
         }
     }
 

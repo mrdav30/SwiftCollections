@@ -142,6 +142,20 @@ public class SwiftListTests
     }
 
     [Fact]
+    public void AddRange_IReadOnlyCollection_EnsuresCapacityBeforeEnumeration()
+    {
+        var list = new SwiftList<int>();
+        var source = new CapacityObservingReadOnlyCollection<int>(
+            new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 },
+            () => list.Capacity);
+
+        list.AddRange(source);
+
+        Assert.True(source.ObservedCapacity >= source.Count);
+        Assert.Equal(new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 }, list.ToArray());
+    }
+
+    [Fact]
     public void AddRange_EmptySpan_ShouldDoNothing()
     {
         var list = new SwiftList<int> { 1, 2, 3 };
