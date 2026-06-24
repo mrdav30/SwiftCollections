@@ -84,12 +84,32 @@ public class SortedListWorkloadBenchmarks
         return list.Count;
     }
 
+    [Benchmark(Baseline = true)]
+    [BenchmarkCategory("BulkLoadCustomComparer")]
+    public int ManualSortedList_BulkLoadCustomComparer()
+    {
+        var list = new List<int>(N);
+        list.AddRange(_data);
+        list.Sort(DescendingIntComparer.Instance);
+        return list.Count;
+    }
+
+    [Benchmark]
+    [BenchmarkCategory("BulkLoadCustomComparer")]
+    public int SwiftSortedList_BulkLoadCustomComparer()
+    {
+        var list = new SwiftSortedList<int>(N, DescendingIntComparer.Instance);
+        list.AddRange(_data);
+        return list.Count;
+    }
+
     [IterationSetup(Targets = new[] {
         nameof(ManualSortedList_Search),
         nameof(ManualSortedList_Enumerate),
         nameof(ManualSortedList_RemoveByValue),
         nameof(ManualSortedList_ChurnSubset),
-        nameof(ManualSortedList_PopMin)
+        nameof(ManualSortedList_PopMin),
+        nameof(ManualSortedList_SetComparerDescending)
     })]
     public void IterationSetup_ManualSortedList()
     {
@@ -103,7 +123,8 @@ public class SortedListWorkloadBenchmarks
         nameof(SwiftSortedList_Enumerate),
         nameof(SwiftSortedList_RemoveByValue),
         nameof(SwiftSortedList_ChurnSubset),
-        nameof(SwiftSortedList_PopMin)
+        nameof(SwiftSortedList_PopMin),
+        nameof(SwiftSortedList_SetComparerDescending)
     })]
     public void IterationSetup_SwiftSortedList()
     {
@@ -237,11 +258,38 @@ public class SortedListWorkloadBenchmarks
         return sum;
     }
 
+    [Benchmark(Baseline = true)]
+    [BenchmarkCategory("SetComparer")]
+    public int ManualSortedList_SetComparerDescending()
+    {
+        _manualSortedList.Sort(DescendingIntComparer.Instance);
+        return _manualSortedList[0] + _manualSortedList[_manualSortedList.Count - 1];
+    }
+
+    [Benchmark]
+    [BenchmarkCategory("SetComparer")]
+    public int SwiftSortedList_SetComparerDescending()
+    {
+        _swiftSortedList.SetComparer(DescendingIntComparer.Instance);
+        return _swiftSortedList.PeekMin() + _swiftSortedList.PeekMax();
+    }
+
     private static void InsertSorted(List<int> list, int value)
     {
         int index = list.BinarySearch(value);
         if (index < 0)
             index = ~index;
         list.Insert(index, value);
+    }
+
+    private sealed class DescendingIntComparer : IComparer<int>
+    {
+        public static readonly DescendingIntComparer Instance = new();
+
+        private DescendingIntComparer()
+        {
+        }
+
+        public int Compare(int x, int y) => y.CompareTo(x);
     }
 }

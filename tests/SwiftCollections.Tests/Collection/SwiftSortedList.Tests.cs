@@ -179,6 +179,21 @@ public class SwiftSortedListTests
     }
 
     [Fact]
+    public void AddRange_IReadOnlyCollection_WhenEmpty_ShouldEnsureCapacityBeforeEnumeration()
+    {
+        var sorter = new SwiftSortedList<int>();
+        var source = new CapacityObservingReadOnlyCollection<int>(
+            CreateDescendingRange(32),
+            () => sorter.Capacity);
+
+        sorter.AddRange(source);
+
+        Assert.True(source.ObservedCapacity >= source.Count);
+        Assert.Equal(0, sorter.PeekMin());
+        Assert.Equal(31, sorter.PeekMax());
+    }
+
+    [Fact]
     public void AddRange_WhenEmptyWithCustomComparer_ShouldSortIntoExistingStorage()
     {
         var sorter = new SwiftSortedList<int>(16, DescendingIntComparer.Instance);
@@ -187,6 +202,24 @@ public class SwiftSortedListTests
         sorter.AddRange(items);
 
         Assert.Equal(new[] { 9, 7, 3, 1 }, sorter.AsReadOnlySpan().ToArray());
+    }
+
+    [Fact]
+    public void AddRange_WhenEmptyWithCustomComparer_ShouldNotAllocateWhenCapacityIsAvailable()
+    {
+        var sorter = new SwiftSortedList<int>(1024, DescendingIntComparer.Instance);
+        int[] items = CreateAscendingRange(1024);
+
+        sorter.AddRange(items);
+        sorter.FastClear();
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        sorter.AddRange(items);
+        long after = GC.GetAllocatedBytesForCurrentThread();
+
+        Assert.Equal(before, after);
+        Assert.Equal(1023, sorter.PeekMin());
+        Assert.Equal(0, sorter.PeekMax());
     }
 
     [Fact]
@@ -208,6 +241,43 @@ public class SwiftSortedListTests
         Assert.Equal(before, after);
         Assert.Equal(capacityBefore, sorter.Capacity);
         Assert.Equal(new[] { 1, 2, 4, 5, 6 }, sorter.AsReadOnlySpan().ToArray());
+    }
+
+    [Fact]
+    public void AddRange_IReadOnlyCollection_WhenPopulated_ShouldMergeKnownCountSource()
+    {
+        var sorter = new SwiftSortedList<int> { 64 };
+        var source = new CapacityObservingReadOnlyCollection<int>(
+            CreateDescendingRange(32),
+            () => sorter.Capacity);
+
+        sorter.AddRange(source);
+
+        Assert.True(source.ObservedCapacity >= 0);
+        Assert.True(sorter.Capacity >= source.Count + 1);
+        Assert.Equal(0, sorter.PeekMin());
+        Assert.Equal(64, sorter.PeekMax());
+    }
+
+    [Fact]
+    public void AddRange_WhenPopulatedWithCustomComparerAndCapacityIsAvailable_ShouldMergeWithoutAllocating()
+    {
+        var warmup = new SwiftSortedList<int>(16, DescendingIntComparer.Instance);
+        warmup.AddRange(new[] { 6, 2 });
+        warmup.AddRange(new[] { 5, 1, 4 });
+
+        var sorter = new SwiftSortedList<int>(16, DescendingIntComparer.Instance);
+        sorter.AddRange(new[] { 6, 2 });
+        int[] items = { 5, 1, 4 };
+        int capacityBefore = sorter.Capacity;
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        sorter.AddRange(items);
+        long after = GC.GetAllocatedBytesForCurrentThread();
+
+        Assert.Equal(before, after);
+        Assert.Equal(capacityBefore, sorter.Capacity);
+        Assert.Equal(new[] { 6, 5, 4, 2, 1 }, sorter.AsReadOnlySpan().ToArray());
     }
 
     [Fact]
@@ -792,6 +862,26 @@ public class SwiftSortedListTests
     }
 
     [Fact]
+    public void SetComparer_CustomComparer_ShouldNotAllocateAfterWarmup()
+    {
+        const int Count = 1024;
+        var sorter = new SwiftSortedList<int>(Count);
+        sorter.AddRange(CreateAscendingRange(Count));
+
+        sorter.SetComparer(DescendingIntComparer.Instance);
+        sorter.SetComparer(Comparer<int>.Default);
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        sorter.SetComparer(DescendingIntComparer.Instance);
+        sorter.SetComparer(Comparer<int>.Default);
+        long after = GC.GetAllocatedBytesForCurrentThread();
+
+        Assert.Equal(before, after);
+        Assert.Equal(0, sorter.PeekMin());
+        Assert.Equal(1023, sorter.PeekMax());
+    }
+
+    [Fact]
     public void PopMinAndPopMax_OnSingleItem_RecenterOffset()
     {
         var minSorter = new SwiftSortedList<int> { 5 };
@@ -944,5 +1034,23 @@ public class SwiftSortedListTests
         }
 
         public int Compare(int x, int y) => y.CompareTo(x);
+    }
+
+    private static int[] CreateAscendingRange(int count)
+    {
+        var values = new int[count];
+        for (int i = 0; i < values.Length; i++)
+            values[i] = i;
+
+        return values;
+    }
+
+    private static int[] CreateDescendingRange(int count)
+    {
+        var values = new int[count];
+        for (int i = 0; i < values.Length; i++)
+            values[i] = values.Length - i - 1;
+
+        return values;
     }
 }

@@ -517,6 +517,69 @@ public class SwiftListTests
     }
 
     [Fact]
+    public void SortInPlace_CustomComparer_ShouldHandleDuplicateHeavyInput()
+    {
+        var list = new SwiftList<int> { 4, 1, 4, 3, 2, 3, 1, 0, 4, 2, 0, 3, 1, 2, 4 };
+
+        list.SortInPlace(DescendingIntComparer.Instance);
+
+        for (int i = 1; i < list.Count; i++)
+            Assert.True(list[i - 1] >= list[i]);
+    }
+
+    [Fact]
+    public void SortInPlace_DefaultComparer_ShouldNotAllocateAfterWarmup()
+    {
+        const int Count = 1024;
+        int[] source = CreateDescendingRange(Count);
+        var list = new SwiftList<int>(Count);
+
+        RefillAndSort(list, source);
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        RefillAndSort(list, source);
+        long after = GC.GetAllocatedBytesForCurrentThread();
+
+        Assert.Equal(before, after);
+        AssertSortedAscending(list);
+    }
+
+    [Fact]
+    public void SortInPlace_CustomComparer_ShouldNotAllocateAfterWarmup()
+    {
+        const int Count = 1024;
+        int[] source = CreateAscendingRange(Count);
+        var list = new SwiftList<int>(Count);
+
+        RefillAndSort(list, source, DescendingIntComparer.Instance);
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        RefillAndSort(list, source, DescendingIntComparer.Instance);
+        long after = GC.GetAllocatedBytesForCurrentThread();
+
+        Assert.Equal(before, after);
+        AssertSortedDescending(list);
+    }
+
+    [Fact]
+    public void SortInPlace_StructCustomComparer_ShouldNotAllocateAfterWarmup()
+    {
+        const int Count = 1024;
+        int[] source = CreateAscendingRange(Count);
+        var list = new SwiftList<int>(Count);
+        var comparer = new DescendingIntStructComparer();
+
+        RefillAndSort(list, source, comparer);
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        RefillAndSort(list, source, comparer);
+        long after = GC.GetAllocatedBytesForCurrentThread();
+
+        Assert.Equal(before, after);
+        AssertSortedDescending(list);
+    }
+
+    [Fact]
     public void SortInPlace_ShouldInvalidateExistingEnumerator()
     {
         var list = new SwiftList<int> { 3, 1, 2 };
@@ -832,6 +895,63 @@ public class SwiftListTests
         {
         }
 
+        public int Compare(int x, int y) => y.CompareTo(x);
+    }
+
+    private static int[] CreateAscendingRange(int count)
+    {
+        var values = new int[count];
+        for (int i = 0; i < values.Length; i++)
+            values[i] = i;
+
+        return values;
+    }
+
+    private static int[] CreateDescendingRange(int count)
+    {
+        var values = new int[count];
+        for (int i = 0; i < values.Length; i++)
+            values[i] = values.Length - i - 1;
+
+        return values;
+    }
+
+    private static void RefillAndSort(SwiftList<int> list, int[] source)
+    {
+        list.FastClear();
+        list.AddRange(source.AsSpan());
+        list.SortInPlace();
+    }
+
+    private static void RefillAndSort(SwiftList<int> list, int[] source, IComparer<int> comparer)
+    {
+        list.FastClear();
+        list.AddRange(source.AsSpan());
+        list.SortInPlace(comparer);
+    }
+
+    private static void RefillAndSort<TComparer>(SwiftList<int> list, int[] source, TComparer comparer)
+        where TComparer : struct, IComparer<int>
+    {
+        list.FastClear();
+        list.AddRange(source.AsSpan());
+        list.SortInPlace(comparer);
+    }
+
+    private static void AssertSortedAscending(SwiftList<int> list)
+    {
+        for (int i = 0; i < list.Count; i++)
+            Assert.Equal(i, list[i]);
+    }
+
+    private static void AssertSortedDescending(SwiftList<int> list)
+    {
+        for (int i = 0; i < list.Count; i++)
+            Assert.Equal(list.Count - i - 1, list[i]);
+    }
+
+    private readonly struct DescendingIntStructComparer : IComparer<int>
+    {
         public int Compare(int x, int y) => y.CompareTo(x);
     }
 }

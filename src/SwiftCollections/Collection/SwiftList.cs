@@ -507,7 +507,22 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SortInPlace(IComparer<T>? comparer = null)
     {
-        Array.Sort(_innerArray, 0, _count, comparer ?? Comparer<T>.Default);
+        SwiftArraySortHelper.Sort(_innerArray, 0, _count, comparer);
+        _version++;
+    }
+
+    /// <summary>
+    /// Sorts the populated elements of the <see cref="SwiftList{T}"/> in place using a struct comparer.
+    /// </summary>
+    /// <remarks>
+    /// This overload avoids boxing struct comparers and lets the JIT devirtualize comparer calls in hot paths.
+    /// </remarks>
+    /// <param name="comparer">The comparer to use.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void SortInPlace<TComparer>(TComparer comparer)
+        where TComparer : struct, IComparer<T>
+    {
+        SwiftArraySortHelper.Sort(_innerArray, 0, _count, comparer);
         _version++;
     }
 

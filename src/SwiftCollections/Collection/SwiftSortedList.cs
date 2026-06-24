@@ -27,7 +27,7 @@ namespace SwiftCollections;
 /// <see cref="Comparer{T}.Default"/>. 
 /// 
 /// If a custom comparer is required it can be reapplied using
-/// <see cref="SetComparer(IComparer{T})"/>.
+    /// <see cref="SetComparer(IComparer{T})"/>.
 /// </remarks>
 /// <typeparam name="T">The type of elements in the collection.</typeparam>
 [Serializable]
@@ -149,7 +149,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
                 _innerArray = new T[capacity];
                 _offset = (capacity - count) >> 1;
                 collection.CopyTo(_innerArray, _offset);
-                Array.Sort(_innerArray, _offset, count, _comparer);
+                SwiftArraySortHelper.Sort(_innerArray, _offset, count, _comparer);
                 _count = count;
             }
         }
@@ -364,6 +364,12 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
             return;
         }
 
+        if (items is IReadOnlyCollection<T> readOnlyCollection)
+        {
+            AddRange(readOnlyCollection);
+            return;
+        }
+
         T[] sortedItems = CopyToSortedArray(items);
         if (sortedItems.Length == 0)
             return;
@@ -386,7 +392,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         if (ShouldUseTemporaryCopy(collection))
         {
             T[] sortedItems = CopyCollectionToArray(collection);
-            Array.Sort(sortedItems, 0, sortedItems.Length, _comparer);
+            SwiftArraySortHelper.Sort(sortedItems, 0, sortedItems.Length, _comparer);
             MergeSortedItems(sortedItems);
             return;
         }
@@ -398,6 +404,21 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         }
 
         MergeCollectionItems(collection, count);
+    }
+
+    private void AddRange(IReadOnlyCollection<T> collection)
+    {
+        int count = collection.Count;
+        if (count == 0)
+            return;
+
+        if ((uint)_count == 0)
+        {
+            InitializeFromEnumerable(collection, count);
+            return;
+        }
+
+        MergeEnumerableItems(collection, count);
     }
 
     private bool ShouldUseTemporaryCopy(ICollection<T> collection) =>
@@ -414,7 +435,25 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
 
         _offset = (_innerArray.Length - count) >> 1;
         collection.CopyTo(_innerArray, _offset);
-        Array.Sort(_innerArray, _offset, count, _comparer);
+        SwiftArraySortHelper.Sort(_innerArray, _offset, count, _comparer);
+
+        _count = count;
+        _version++;
+    }
+
+    private void InitializeFromEnumerable(IEnumerable<T> items, int count)
+    {
+        if (count == 0)
+            return;
+
+        EnsureCapacity(count);
+
+        _offset = (_innerArray.Length - count) >> 1;
+        int index = _offset;
+        foreach (T item in items)
+            _innerArray[index++] = item;
+
+        SwiftArraySortHelper.Sort(_innerArray, _offset, count, _comparer);
 
         _count = count;
         _version++;
@@ -425,7 +464,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         T[] sortedItems = items.ToArray();
 
         if (sortedItems.Length > 0)
-            Array.Sort(sortedItems, 0, sortedItems.Length, _comparer);
+            SwiftArraySortHelper.Sort(sortedItems, 0, sortedItems.Length, _comparer);
 
         return sortedItems;
     }
@@ -521,7 +560,42 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
 
         int collectionOffset = mergedOffset + existingCount;
         collection.CopyTo(target, collectionOffset);
-        Array.Sort(target, mergedOffset, newCount, _comparer);
+        SwiftArraySortHelper.Sort(target, mergedOffset, newCount, _comparer);
+
+        _innerArray = target;
+        _offset = mergedOffset;
+        _count = newCount;
+
+        _version++;
+    }
+
+    private void MergeEnumerableItems(IEnumerable<T> items, int itemCount)
+    {
+        int existingCount = _count;
+        int newCount = existingCount + itemCount;
+        T[] target;
+        int mergedOffset;
+
+        if (_innerArray.Length >= newCount)
+        {
+            target = _innerArray;
+            mergedOffset = (_innerArray.Length - newCount) >> 1;
+            if (mergedOffset != _offset)
+                Array.Copy(_innerArray, _offset, target, mergedOffset, existingCount);
+        }
+        else
+        {
+            int newCapacity = SwiftHashTools.NextPowerOfTwo(newCount <= DefaultCapacity ? DefaultCapacity : newCount);
+            target = new T[newCapacity];
+            mergedOffset = (newCapacity - newCount) >> 1;
+            Array.Copy(_innerArray, _offset, target, mergedOffset, existingCount);
+        }
+
+        int index = mergedOffset + existingCount;
+        foreach (T item in items)
+            target[index++] = item;
+
+        SwiftArraySortHelper.Sort(target, mergedOffset, newCount, _comparer);
 
         _innerArray = target;
         _offset = mergedOffset;
@@ -715,7 +789,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
             return;
 
         _comparer = comparer;
-        Array.Sort(_innerArray, _offset, _count, _comparer);
+        SwiftArraySortHelper.Sort(_innerArray, _offset, _count, _comparer);
         _version++;
     }
 

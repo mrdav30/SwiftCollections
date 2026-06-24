@@ -71,6 +71,8 @@ public class ListParityIntegerBenchmarks
         nameof(List_InsertMiddle),
         nameof(List_RemoveByValue),
         nameof(List_Sort),
+        nameof(List_SortCustomComparer),
+        nameof(List_SortStructComparer),
         nameof(List_CopyTo),
         nameof(List_Clear)
     })]
@@ -85,6 +87,8 @@ public class ListParityIntegerBenchmarks
         nameof(SwiftList_InsertMiddle),
         nameof(SwiftList_RemoveByValue),
         nameof(SwiftList_SortInPlace),
+        nameof(SwiftList_SortInPlaceCustomComparer),
+        nameof(SwiftList_SortInPlaceStructComparer),
         nameof(SwiftList_CopyTo),
         nameof(SwiftList_Clear)
     })]
@@ -182,6 +186,38 @@ public class ListParityIntegerBenchmarks
     }
 
     [Benchmark(Baseline = true)]
+    [BenchmarkCategory("SortCustomComparer")]
+    public int List_SortCustomComparer()
+    {
+        _list.Sort(DescendingIntComparer.Instance);
+        return _list[0] + _list[_list.Count - 1];
+    }
+
+    [Benchmark]
+    [BenchmarkCategory("SortCustomComparer")]
+    public int SwiftList_SortInPlaceCustomComparer()
+    {
+        _swiftList.SortInPlace(DescendingIntComparer.Instance);
+        return _swiftList[0] + _swiftList[_swiftList.Count - 1];
+    }
+
+    [Benchmark(Baseline = true)]
+    [BenchmarkCategory("SortStructComparer")]
+    public int List_SortStructComparer()
+    {
+        _list.Sort(DescendingIntStructComparer.Instance);
+        return _list[0] + _list[_list.Count - 1];
+    }
+
+    [Benchmark]
+    [BenchmarkCategory("SortStructComparer")]
+    public int SwiftList_SortInPlaceStructComparer()
+    {
+        _swiftList.SortInPlace(DescendingIntStructComparer.Instance);
+        return _swiftList[0] + _swiftList[_swiftList.Count - 1];
+    }
+
+    [Benchmark(Baseline = true)]
     [BenchmarkCategory("CopyTo")]
     public int List_CopyTo()
     {
@@ -215,5 +251,23 @@ public class ListParityIntegerBenchmarks
         int count = _swiftList.Count;
         _swiftList.Clear();
         return count;
+    }
+
+    private sealed class DescendingIntComparer : IComparer<int>
+    {
+        public static readonly DescendingIntComparer Instance = new();
+
+        private DescendingIntComparer()
+        {
+        }
+
+        public int Compare(int x, int y) => y.CompareTo(x);
+    }
+
+    private readonly struct DescendingIntStructComparer : IComparer<int>
+    {
+        public static readonly DescendingIntStructComparer Instance = new();
+
+        public int Compare(int x, int y) => y.CompareTo(x);
     }
 }
