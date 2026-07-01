@@ -443,6 +443,28 @@ public class SwiftSparseMapTests
     }
 
     [Fact]
+    public void CopySortedKeysTo_SwiftList_ShouldNotAllocateAfterKeyCopyWarmup()
+    {
+        var map = new SwiftSparseMap<int>
+        {
+            { 10, 100 },
+            { 2, 20 },
+            { 7, 70 },
+            { 1, 10 }
+        };
+        var destination = new SwiftList<int>(map.Count);
+
+        map.CopyKeysTo(destination);
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        map.CopySortedKeysTo(destination);
+        long after = GC.GetAllocatedBytesForCurrentThread();
+
+        Assert.Equal(before, after);
+        Assert.Equal(new[] { 1, 2, 7, 10 }, destination.ToArray());
+    }
+
+    [Fact]
     public void Constructor_WithState_MismatchedDenseLengths_Throws()
     {
         Assert.Throws<ArgumentException>(() =>

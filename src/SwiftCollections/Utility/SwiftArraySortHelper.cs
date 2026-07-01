@@ -314,3 +314,12 @@ internal static class SwiftArraySortHelper
         return result;
     }
 }
+
+internal readonly struct SwiftIntAscendingComparer : IComparer<int>
+{
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public int Compare(int x, int y)
+    {
+        return x.CompareTo(y);
+    }
+}

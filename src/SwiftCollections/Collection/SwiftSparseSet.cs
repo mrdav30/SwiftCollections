@@ -712,7 +712,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     public void CopySortedKeysTo(SwiftList<int> destination)
     {
         CopyKeysTo(destination);
-        destination.SortInPlace();
+        destination.SortInPlace(default(SwiftIntAscendingComparer));
     }
 
     /// <inheritdoc/>

@@ -704,7 +704,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     public void CopySortedKeysTo(SwiftList<int> destination)
     {
         CopyKeysTo(destination);
-        destination.SortInPlace();
+        destination.SortInPlace(default(SwiftIntAscendingComparer));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
