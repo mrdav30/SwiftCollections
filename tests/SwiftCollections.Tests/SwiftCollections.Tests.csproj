@@ -34,10 +34,10 @@
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(DisableMemoryPack)' != 'true'">
-		<PackageReference Include="FixedMathSharp.FluentAssertions" Version="5.0.2" />
+		<PackageReference Include="FixedMathSharp.FluentAssertions" Version="6.0.0" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(DisableMemoryPack)' == 'true'">
-		<PackageReference Include="FixedMathSharp.FluentAssertions.Lean" Version="5.0.2" />
+		<PackageReference Include="FixedMathSharp.FluentAssertions.Lean" Version="6.0.0" />
 	</ItemGroup>
 </Project>

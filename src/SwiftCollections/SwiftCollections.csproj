@@ -9,7 +9,7 @@
 		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
 		<Deterministic>true</Deterministic>
 	</PropertyGroup>
-	
+
 	<!-- Git Versioning -->
 	<PropertyGroup>
 		<SemVer Condition="'$(GitVersion_FullSemVer)' != ''">$(GitVersion_FullSemVer)</SemVer>
@@ -25,7 +25,7 @@
 		<AssemblyVersion>$(AssemblySemVer)</AssemblyVersion>
 		<FileVersion>$(AssemblySemFileVer)</FileVersion>
 	</PropertyGroup>
-	
+
 	<!-- Code Analysis and Documentation -->
 	<PropertyGroup>
 		<ImplicitUsings>disable</ImplicitUsings>
@@ -44,7 +44,7 @@
 		<ProjectGuid>{009CBC1E-B915-476D-98D6-1081526F7A9E}</ProjectGuid>
 		<OutputPath>bin\$(Configuration)\</OutputPath>
 	</PropertyGroup>
-	
+
 	<!-- NuGet Packaging Metadata -->
 	<PropertyGroup>
 		<Authors>mrdav30</Authors>
@@ -58,13 +58,13 @@
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 	</PropertyGroup>
-	
+
 	<!-- Configurations Properties -->
 
 	<PropertyGroup Condition="'$(Configuration)' == 'ReleaseLean'">
 		<DisableMemoryPack>true</DisableMemoryPack>
 	</PropertyGroup>
-	
+
 	<PropertyGroup Condition="'$(DisableMemoryPack)' == 'true'">
 		<DefineConstants>$(DefineConstants);SWIFTCOLLECTIONS_DISABLE_MEMORYPACK</DefineConstants>
 		<PackageId>SwiftCollections.Lean</PackageId>
@@ -73,7 +73,7 @@
 	<PropertyGroup Condition="'$(DisableMemoryPack)' != 'true'">
 		<PackageId>SwiftCollections</PackageId>
 	</PropertyGroup>
-	
+
 	<PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 		<IncludeTransitiveProjectReferences>false</IncludeTransitiveProjectReferences>
@@ -93,17 +93,18 @@
 	<!-- Dependencies and Package References -->
 	<ItemGroup Condition="'$(DisableMemoryPack)' != 'true'">
 		<PackageReference Include="MemoryPack" Version="1.21.4" />
-		<PackageReference Include="Chronicler.Core" Version="0.2.1" />
+		<PackageReference Include="Chronicler.Core" Version="0.3.0" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(DisableMemoryPack)' == 'true'">
-		<PackageReference Include="Chronicler.Core.Lean" Version="0.2.1" />
+		<PackageReference Include="Chronicler.Core.Lean" Version="0.3.0" />
+		<PackageReference Include="Chronicler.MemoryPackShim" Version="0.3.0" PrivateAssets="all" />
 	</ItemGroup>
-	
+
 	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
 		<PackageReference Include="System.Text.Json" Version="10.0.9" />
 	</ItemGroup>
-	
+
 	<!-- Ensure LICENSE, README, & icon files are included in the NuGet package -->
 	<ItemGroup>
 		<None Include="..\..\COPYRIGHT" Pack="true" PackagePath="\" Visible="false" />
@@ -113,10 +114,10 @@
 		<None Include="..\..\icon.png" Pack="true" PackagePath="\" Visible="false" />
 		<None Remove=".gitignore" />
 	</ItemGroup>
-	
+
 	<!-- Ensure MemoryPack files are excluded when disabled -->
 	<ItemGroup Condition="'$(DisableMemoryPack)' == 'true'">
 		<Compile Remove="**\*.MemoryPack.cs" />
 	</ItemGroup>
-	
+
 </Project>

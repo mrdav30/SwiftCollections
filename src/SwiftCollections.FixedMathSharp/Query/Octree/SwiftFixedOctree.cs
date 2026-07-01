@@ -22,8 +22,7 @@ public sealed class SwiftFixedOctree<T> : SwiftOctree<T, FixedBoundVolume>
     /// <param name="minNodeSize">The minimum child-node axis length allowed for fixed-point subdivision.</param>
     public SwiftFixedOctree(FixedBoundVolume worldBounds, SwiftOctreeOptions options, Fixed64 minNodeSize)
         : base(worldBounds, options, new FixedBoundVolumeOctreePartitioner(minNodeSize))
-    {
-    }
+    { }
 
     private sealed class FixedBoundVolumeOctreePartitioner : IOctreeBoundsPartitioner<FixedBoundVolume>
     {

@@ -24,14 +24,6 @@ public static class FixedBoundVolumeFactory
     public static FixedBoundVolume Create(FixedBoundBox bounds) => new(bounds.Min, bounds.Max);
 
     /// <summary>
-    /// Creates a fixed query volume from a FixedMathSharp bounding area.
-    /// </summary>
-    /// <param name="bounds">The source bounding area.</param>
-    /// <returns>A query volume using the source bounds minimum and maximum corners.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static FixedBoundVolume Create(FixedBoundArea bounds) => new(bounds.Min, bounds.Max);
-
-    /// <summary>
     /// Creates a fixed query volume from a FixedMathSharp bounding sphere.
     /// </summary>
     /// <param name="bounds">The source bounding sphere.</param>

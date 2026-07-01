@@ -9,17 +9,7 @@ public class FixedBoundVolumeFactoryTests
     [Fact]
     public void Create_FromFixedBoundBox_UsesBoxMinAndMax()
     {
-        var bounds = new FixedBoundBox(new Vector3d(4, 5, 6), new Vector3d(2, 4, 6));
-
-        FixedBoundVolume volume = FixedBoundVolumeFactory.Create(bounds);
-
-        AssertVolume(bounds.Min, bounds.Max, volume);
-    }
-
-    [Fact]
-    public void Create_FromFixedBoundArea_UsesNormalizedAreaMinAndMax()
-    {
-        var bounds = new FixedBoundArea(new Vector3d(6, 5, 4), new Vector3d(-2, -3, -4));
+        var bounds = FixedBoundBox.FromCenterAndSize(new Vector3d(4, 5, 6), new Vector3d(2, 4, 6));
 
         FixedBoundVolume volume = FixedBoundVolumeFactory.Create(bounds);
 
