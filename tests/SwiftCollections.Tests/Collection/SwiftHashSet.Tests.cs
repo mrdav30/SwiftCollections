@@ -88,6 +88,33 @@ public class SwiftHashSetTests
 #endif
 
     [Fact]
+    public void Add_WithCustomValueTypeItem_DoesNotAllocateSteadyState()
+    {
+        var set = new SwiftHashSet<AllocationKey>(4);
+
+        for (int i = 0; i < 16; i++)
+        {
+            Assert.True(set.Add(new AllocationKey(i)));
+            set.Clear();
+        }
+
+        int additions = 0;
+        long allocated = MeasureAllocatedBytes(() =>
+        {
+            for (int i = 0; i < 1_024; i++)
+            {
+                if (set.Add(new AllocationKey(7)))
+                    additions++;
+
+                set.Clear();
+            }
+        });
+
+        Assert.Equal(1_024, additions);
+        Assert.True(allocated < 128, $"Expected custom value-type add/clear reuse to avoid allocation, but allocated {allocated} bytes.");
+    }
+
+    [Fact]
     public void Remove_ExistingItem_ReturnsTrue()
     {
         var set = new SwiftHashSet<int> { 1, 2, 3 };
@@ -1182,4 +1209,6 @@ public class SwiftHashSetTests
         action();
         return GC.GetAllocatedBytesForCurrentThread() - before;
     }
+
+    private readonly record struct AllocationKey(int Value);
 }

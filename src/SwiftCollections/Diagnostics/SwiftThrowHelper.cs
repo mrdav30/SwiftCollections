@@ -21,6 +21,11 @@ using System.Runtime.CompilerServices;
 /// </remarks>
 public static class SwiftThrowHelper
 {
+    private static class GenericNullability<T>
+    {
+        internal static readonly bool CanBeNull = default(T) is null;
+    }
+
     #region Null Argument Validation
 
     /// <summary>
@@ -45,14 +50,16 @@ public static class SwiftThrowHelper
     /// <param name="argument">The argument to check for null.</param>
     /// <param name="paramName">The name of the parameter that caused the exception.</param>
     /// <exception cref="ArgumentNullException">Thrown when the argument is null.</exception>
+#pragma warning disable CS8777 // Cached generic nullability avoids boxing non-nullable value types.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void ThrowIfNullGeneric<T>(
         [NotNull] T argument,
         [CallerArgumentExpression(nameof(argument))] string? paramName = null)
     {
-        if (argument is null)
+        if (GenericNullability<T>.CanBeNull && argument is null)
             ThrowArgumentNullException(paramName);
     }
+#pragma warning restore CS8777
 
     /// <summary>
     /// Throws an <see cref="ArgumentNullException"/> if the specified value is null and nulls are not legal for <typeparamref name="TValue"/>.

@@ -18,6 +18,17 @@ public class SwiftThrowHelperTests
     }
 
     [Fact]
+    public void ThrowIfNullGeneric_PreservesReferenceAndNullableValueContracts()
+    {
+        string reference = null;
+        int? nullableValue = null;
+
+        Assert.Throws<ArgumentNullException>(() => SwiftThrowHelper.ThrowIfNullGeneric(reference));
+        Assert.Throws<ArgumentNullException>(() => SwiftThrowHelper.ThrowIfNullGeneric(nullableValue));
+        SwiftThrowHelper.ThrowIfNullGeneric(0);
+    }
+
+    [Fact]
     public void ThrowIfNullAndNullsAreIllegal_OnlyThrowsForNonNullableDefaults()
     {
         SwiftThrowHelper.ThrowIfNullAndNullsAreIllegal("value", default(int));
