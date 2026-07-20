@@ -37,6 +37,36 @@ namespace SwiftCollections.Query.Tests
         }
 
         [Fact]
+        public void Insert_WithFullDomainUnions_UsesClampedExactCostWithoutThrowing()
+        {
+            var bvh = new SwiftFixedBVH<int>(4);
+            Fixed64 low = Fixed64.MinValue;
+            Fixed64 high = Fixed64.MaxValue;
+
+            bvh.Insert(1, new FixedBoundVolume(
+                new Vector3d(low, low, low),
+                new Vector3d(low + Fixed64.One, low + Fixed64.One, low + Fixed64.One)));
+            bvh.Insert(2, new FixedBoundVolume(
+                new Vector3d(high - Fixed64.One, high - Fixed64.One, high - Fixed64.One),
+                new Vector3d(high, high, high)));
+            bvh.Insert(3, new FixedBoundVolume(
+                new Vector3d(-Fixed64.One, -Fixed64.One, -Fixed64.One),
+                new Vector3d(Fixed64.One, Fixed64.One, Fixed64.One)));
+
+            var results = new List<int>();
+            bvh.Query(
+                new FixedBoundVolume(
+                    new Vector3d(low, low, low),
+                    new Vector3d(high, high, high)),
+                results);
+
+            Assert.Equal(3, results.Count);
+            Assert.Contains(1, results);
+            Assert.Contains(2, results);
+            Assert.Contains(3, results);
+        }
+
+        [Fact]
         public void UpdateEntryBounds_WithFixedBoundVolume_UpdatesTraversalResults()
         {
             var bvh = new SwiftBVH<int, FixedBoundVolume>(8);

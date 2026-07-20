@@ -92,6 +92,34 @@ public class SwiftOctreeFixedMathSharpTypedTests
     }
 
     [Fact]
+    public void FixedOctree_FullScalarDomain_AllowsSubdivisionWithoutMaterializingSize()
+    {
+        var worldBounds = new FixedBoundVolume(
+            new Vector3d(Fixed64.MinValue, Fixed64.MinValue, Fixed64.MinValue),
+            new Vector3d(Fixed64.MaxValue, Fixed64.MaxValue, Fixed64.MaxValue));
+        var octree = new SwiftFixedOctree<int>(
+            worldBounds,
+            new SwiftOctreeOptions(2, 1),
+            Fixed64.MaxValue);
+
+        Assert.True(octree.Insert(1, new FixedBoundVolume(
+            new Vector3d(Fixed64.MinValue, Fixed64.MinValue, Fixed64.MinValue),
+            new Vector3d(
+                Fixed64.MinValue + Fixed64.One,
+                Fixed64.MinValue + Fixed64.One,
+                Fixed64.MinValue + Fixed64.One))));
+        Assert.True(octree.Insert(2, new FixedBoundVolume(
+            new Vector3d(
+                Fixed64.MaxValue - Fixed64.One,
+                Fixed64.MaxValue - Fixed64.One,
+                Fixed64.MaxValue - Fixed64.One),
+            new Vector3d(Fixed64.MaxValue, Fixed64.MaxValue, Fixed64.MaxValue))));
+
+        Assert.True(octree.DebugRootHasChildren);
+        Assert.Throws<System.OverflowException>(() => _ = worldBounds.Size);
+    }
+
+    [Fact]
     public void FixedOctree_ClearRemovesEntriesAndResetsTreeShape()
     {
         var worldBounds = new FixedBoundVolume(new Vector3d(0, 0, 0), new Vector3d(16, 16, 16));

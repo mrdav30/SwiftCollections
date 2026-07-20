@@ -80,6 +80,19 @@ deterministic simulations:
 - `SwiftFixedOctree<TKey>`
 - `FixedBoundVolume`
 
+`FixedBoundVolume` normalizes its two supplied endpoints and delegates derived
+metadata to `FixedBoundBox`. Centers therefore use a full-domain nearest-even
+midpoint. Fixed octree subdivision compares each prospective child span in raw
+unsigned space, so even the complete scalar domain can be partitioned without
+materializing an unrepresentable full size. Reading `Size` or `Volume` throws
+`OverflowException` when an exact positive component span cannot fit in
+`Fixed64`; it never substitutes a saturated under-size.
+
+Fixed BVH insertion does not materialize `Volume`. Its insertion cost delegates to
+FixedMathSharp's exact 192-bit union-volume growth metric and clamps only the
+final public `long` cost, so third and later insertions remain deterministic
+across full-domain unions.
+
 Query structures are mutable runtime indexes. Treat them as single-owner
 structures unless you add synchronization externally.
 

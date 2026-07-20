@@ -6,6 +6,7 @@
 //=======================================================================
 
 using FixedMathSharp;
+using System.Runtime.CompilerServices;
 
 namespace SwiftCollections.Query;
 
@@ -48,15 +49,32 @@ public sealed class SwiftFixedOctree<T> : SwiftOctree<T, FixedBoundVolume>
 
         public bool CanSubdivide(FixedBoundVolume bounds)
         {
-            Vector3d childSize = bounds.Size * Fixed64.Half;
-            return childSize.X >= _minNodeSize &&
-                   childSize.Y >= _minNodeSize &&
-                   childSize.Z >= _minNodeSize;
+            Vector3d min = bounds.Min;
+            Vector3d midpoint = bounds.Center;
+            Vector3d max = bounds.Max;
+            ulong requiredRawSpan = (ulong)_minNodeSize.m_rawValue;
+            return HasMinimumChildSpan(min.X, midpoint.X, max.X, requiredRawSpan)
+                 & HasMinimumChildSpan(min.Y, midpoint.Y, max.Y, requiredRawSpan)
+                 & HasMinimumChildSpan(min.Z, midpoint.Z, max.Z, requiredRawSpan);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool HasMinimumChildSpan(
+            Fixed64 min,
+            Fixed64 midpoint,
+            Fixed64 max,
+            ulong requiredRawSpan)
+        {
+            // Ordered raw endpoints can span the complete signed scalar domain;
+            // unsigned subtraction preserves that exact non-negative distance.
+            ulong lowerRawSpan = unchecked((ulong)midpoint.m_rawValue - (ulong)min.m_rawValue);
+            ulong upperRawSpan = unchecked((ulong)max.m_rawValue - (ulong)midpoint.m_rawValue);
+            return lowerRawSpan >= requiredRawSpan & upperRawSpan >= requiredRawSpan;
         }
 
         public bool TryGetContainingChildIndex(FixedBoundVolume nodeBounds, FixedBoundVolume entryBounds, out int childIndex)
         {
-            Vector3d midpoint = (nodeBounds.Min + nodeBounds.Max) * Fixed64.Half;
+            Vector3d midpoint = nodeBounds.Center;
 
             int xBit;
             if (entryBounds.Min.X >= midpoint.X)
@@ -97,7 +115,7 @@ public sealed class SwiftFixedOctree<T> : SwiftOctree<T, FixedBoundVolume>
 
         public FixedBoundVolume CreateChildBounds(FixedBoundVolume parentBounds, int childIndex)
         {
-            Vector3d midpoint = (parentBounds.Min + parentBounds.Max) * Fixed64.Half;
+            Vector3d midpoint = parentBounds.Center;
             bool upperX = (childIndex & 1) != 0;
             bool upperY = (childIndex & 2) != 0;
             bool upperZ = (childIndex & 4) != 0;

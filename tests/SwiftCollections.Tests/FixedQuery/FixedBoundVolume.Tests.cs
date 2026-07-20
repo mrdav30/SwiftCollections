@@ -1,10 +1,20 @@
 using FixedMathSharp;
+using System;
 using Xunit;
 
 namespace SwiftCollections.Query.Tests
 {
     public class FixedBoundVolumeTests
     {
+        [Fact]
+        public void Constructor_NormalizesSwappedBounds()
+        {
+            var volume = new FixedBoundVolume(new Vector3d(4, -2, 6), new Vector3d(-4, 2, -6));
+
+            Assert.Equal(new Vector3d(-4, -2, -6), volume.Min);
+            Assert.Equal(new Vector3d(4, 2, 6), volume.Max);
+        }
+
         [Fact]
         public void Union_CombinesBounds()
         {
@@ -18,25 +28,31 @@ namespace SwiftCollections.Query.Tests
         }
 
         [Fact]
-        public void BoundsEquals_IgnoresMetadataMaterialization()
-        {
-            var untouched = new FixedBoundVolume(new Vector3d(0, 0, 0), new Vector3d(2, 2, 2));
-            var materialized = new FixedBoundVolume(new Vector3d(0, 0, 0), new Vector3d(2, 2, 2));
-
-            _ = materialized.Center;
-
-            Assert.True(untouched.BoundsEquals(materialized));
-            Assert.True(untouched.Equals(materialized));
-        }
-
-        [Fact]
-        public void MetadataProperties_MaterializeCenterSizeAndVolume()
+        public void MetadataProperties_ReturnCenterSizeAndVolume()
         {
             var volume = new FixedBoundVolume(new Vector3d(1, 2, 3), new Vector3d(5, 8, 13));
 
             Assert.Equal(new Vector3d(3, 5, 8), volume.Center);
             Assert.Equal(new Vector3d(4, 6, 10), volume.Size);
             Assert.Equal((Fixed64)240, volume.Volume);
+        }
+
+        [Fact]
+        public void MetadataProperties_FullDomainCenterIsExactAndUnrepresentableSizeThrows()
+        {
+            var sameSign = new FixedBoundVolume(
+                new Vector3d(Fixed64.FromRaw(long.MaxValue - 3), Fixed64.Zero, Fixed64.Zero),
+                new Vector3d(Fixed64.FromRaw(long.MaxValue - 1), Fixed64.One, Fixed64.One));
+
+            Assert.Equal(Fixed64.FromRaw(long.MaxValue - 2), sameSign.Center.X);
+
+            Fixed64 quarterDomain = Fixed64.FromRaw(1L << 62);
+            var wide = new FixedBoundVolume(
+                new Vector3d(-quarterDomain, Fixed64.Zero, Fixed64.Zero),
+                new Vector3d(quarterDomain, Fixed64.One, Fixed64.One));
+
+            Assert.Equal(new Vector3d(Fixed64.Zero, Fixed64.Half, Fixed64.Half), wide.Center);
+            Assert.Throws<OverflowException>(() => _ = wide.Size);
         }
 
         [Fact]

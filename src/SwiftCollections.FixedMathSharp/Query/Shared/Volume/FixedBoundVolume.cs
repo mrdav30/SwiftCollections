@@ -6,6 +6,7 @@
 //=======================================================================
 
 using FixedMathSharp;
+using FixedMathSharp.Bounds;
 using System;
 using System.Runtime.CompilerServices;
 
@@ -14,86 +15,60 @@ namespace SwiftCollections.Query;
 /// <summary>
 /// Represents an axis-aligned bounding box (AABB) in 3D space using fixed-point math.
 /// </summary>
+/// <remarks>
+/// Construction normalizes swapped endpoints. Derived center and size semantics
+/// are inherited from <see cref="FixedBoundBox"/>.
+/// </remarks>
 public struct FixedBoundVolume : IBoundVolume<FixedBoundVolume>, IEquatable<FixedBoundVolume>
 {
-    private Vector3d _min;
-    private Vector3d _max;
-    private Vector3d _center;
-    private Vector3d _size;
-    private Fixed64 _volume;
-    private bool _isDirty;
+    private FixedBoundBox _bounds;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FixedBoundVolume"/> struct.
     /// </summary>
-    /// <param name="min">The minimum point of the volume.</param>
-    /// <param name="max">The maximum point of the volume.</param>
+    /// <param name="min">One endpoint of the volume.</param>
+    /// <param name="max">The opposite endpoint of the volume.</param>
     public FixedBoundVolume(Vector3d min, Vector3d max)
     {
-        _min = min;
-        _max = max;
-        _center = default;
-        _size = default;
-        _volume = default;
-        _isDirty = true;
+        _bounds = FixedBoundBox.FromMinMax(min, max);
     }
 
     /// <summary>
     /// Gets the minimum point of the bounding volume.
     /// </summary>
-    public readonly Vector3d Min => _min;
+    public Vector3d Min => _bounds.Min;
 
     /// <summary>
     /// Gets the maximum point of the bounding volume.
     /// </summary>
-    public readonly Vector3d Max => _max;
+    public Vector3d Max => _bounds.Max;
 
     /// <summary>
-    /// Gets the center point of the bounding volume.
+    /// Gets the nearest-even Q32.32 center point of the bounding volume.
     /// </summary>
-    public Vector3d Center
-    {
-        get
-        {
-            if (_isDirty)
-                RecalculateMeta();
-            return _center;
-        }
-    }
+    public Vector3d Center => _bounds.Center;
 
     /// <summary>
-    /// Gets the axis-aligned size of the bounding volume.
+    /// Gets the exact axis-aligned size of the bounding volume.
     /// </summary>
-    public Vector3d Size
-    {
-        get
-        {
-            if (_isDirty)
-                RecalculateMeta();
-            return _size;
-        }
-    }
+    /// <exception cref="OverflowException">
+    /// A positive component span is outside the representable scalar domain.
+    /// </exception>
+    public Vector3d Size => _bounds.Proportions;
 
     /// <summary>
     /// Gets the volume of the bounding box.
     /// </summary>
+    /// <exception cref="OverflowException">
+    /// A positive component span is outside the representable scalar domain.
+    /// </exception>
     public Fixed64 Volume
     {
         get
         {
-            if (_isDirty)
-                RecalculateMeta();
-            return _volume;
+            Vector3d size = Size;
+            return size.X * size.Y * size.Z;
         }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void RecalculateMeta()
-    {
-        _center = (_min + _max) * Fixed64.Half;
-        _size = _max - _min;
-        _volume = _size.X * _size.Y * _size.Z;
-        _isDirty = false;
     }
 
     /// <summary>
@@ -108,7 +83,7 @@ public struct FixedBoundVolume : IBoundVolume<FixedBoundVolume>, IEquatable<Fixe
     /// </param>
     /// <returns>A new FixedBoundVolume that contains both this volume and the specified volume.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly FixedBoundVolume Union(FixedBoundVolume other)
+    public FixedBoundVolume Union(FixedBoundVolume other)
     {
         return new FixedBoundVolume(Vector3d.Min(Min, other.Min), Vector3d.Max(Max, other.Max));
     }
@@ -119,7 +94,7 @@ public struct FixedBoundVolume : IBoundVolume<FixedBoundVolume>, IEquatable<Fixe
     /// <param name="other">The volume to test for intersection with this volume.</param>
     /// <returns>true if the volumes intersect; otherwise, false.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly bool Intersects(FixedBoundVolume other)
+    public bool Intersects(FixedBoundVolume other)
     {
         return !(Min.X > other.Max.X || Max.X < other.Min.X ||
                  Min.Y > other.Max.Y || Max.Y < other.Min.Y ||
@@ -131,14 +106,14 @@ public struct FixedBoundVolume : IBoundVolume<FixedBoundVolume>, IEquatable<Fixe
     /// </summary>
     /// <param name="other">The volume to be encompassed by the current volume.</param>
     /// <returns>
-    /// The minimum additional volume needed to contain the specified volume. 
-    /// Returns 0 if the current volume already contains the specified volume.
+    /// The floored additional volume needed to contain the specified volume,
+    /// clamped to <see cref="long.MaxValue"/>. Returns 0 when the current volume
+    /// already contains the specified volume.
     /// </returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public long GetCost(FixedBoundVolume other)
     {
-        Fixed64 delta = Union(other).Volume - Volume;
-        return delta <= Fixed64.Zero ? 0L : (long)delta.FloorToInt();
+        return _bounds.GetVolumeExpansionCost(other._bounds);
     }
 
     /// <summary>
@@ -147,16 +122,16 @@ public struct FixedBoundVolume : IBoundVolume<FixedBoundVolume>, IEquatable<Fixe
     /// <param name="other">A <see cref="FixedBoundVolume"/> to compare with the current volume.</param>
     /// <returns>true if both the minimum and maximum bounds of the volumes are equal; otherwise, false.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly bool BoundsEquals(FixedBoundVolume other)
+    public bool BoundsEquals(FixedBoundVolume other)
     {
         return Min == other.Min && Max == other.Max;
     }
 
     /// <inheritdoc/>
-    public readonly bool Equals(FixedBoundVolume other) => BoundsEquals(other);
+    public bool Equals(FixedBoundVolume other) => BoundsEquals(other);
 
     /// <inheritdoc/>
-    public override readonly bool Equals(object obj) => obj is FixedBoundVolume other && BoundsEquals(other);
+    public override bool Equals(object obj) => obj is FixedBoundVolume other && BoundsEquals(other);
 
     /// <summary>
     /// Determines whether two BoundVolume instances are equal.
@@ -169,11 +144,11 @@ public struct FixedBoundVolume : IBoundVolume<FixedBoundVolume>, IEquatable<Fixe
     public static bool operator !=(FixedBoundVolume left, FixedBoundVolume right) => !(left == right);
 
     /// <inheritdoc/>
-    public override readonly int GetHashCode() => HashCode.Combine(Min, Max);
+    public override int GetHashCode() => HashCode.Combine(Min, Max);
 
     /// <summary>
     /// Returns a string that represents the current object, including the minimum and maximum values.
     /// </summary>
     /// <returns>A string in the format "Min: {Min}, Max: {Max}" that displays the minimum and maximum values of the object.</returns>
-    public override readonly string ToString() => $"Min: {Min}, Max: {Max}";
+    public override string ToString() => $"Min: {Min}, Max: {Max}";
 }
