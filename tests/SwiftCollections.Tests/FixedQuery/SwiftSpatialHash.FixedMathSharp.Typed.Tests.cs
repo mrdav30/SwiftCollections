@@ -34,6 +34,32 @@ public class SwiftSpatialHashFixedMathSharpTypedTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FixedSpatialHash_AtSignedCellBoundary_ShouldCompleteInsertQueryAndRemove(bool maximum)
+    {
+        var hash = new SwiftFixedSpatialHash<int>(4, Fixed64.One);
+        Fixed64 coordinate = maximum ? Fixed64.MaxValue : Fixed64.MinValue;
+        var bounds = new FixedBoundVolume(
+            new Vector3d(coordinate, coordinate, coordinate),
+            new Vector3d(coordinate, coordinate, coordinate));
+        var results = new List<int>();
+
+        Assert.True(hash.Insert(1, bounds));
+        hash.Query(bounds, results);
+        Assert.Equal(new[] { 1 }, results);
+
+        results.Clear();
+        hash.QueryNeighborhood(bounds, results);
+        Assert.Equal(new[] { 1 }, results);
+
+        Assert.True(hash.Remove(1));
+        results.Clear();
+        hash.Query(bounds, results);
+        Assert.Empty(results);
+    }
+
+    [Theory]
     [InlineData(0)]
     [InlineData(-1)]
     public void SwiftFixedSpatialHash_RejectsInvalidCellSizes(int cellSize)

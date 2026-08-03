@@ -250,13 +250,20 @@ public class SwiftSpatialHash<TKey, TVolume>
         int queryStamp = RentQueryStamp();
         _cellMapper.GetCellRange(queryBounds, out SwiftSpatialHashCellIndex minCell, out SwiftSpatialHashCellIndex maxCell);
 
-        for (int x = minCell.X - padding; x <= maxCell.X + padding; x++)
+        long minX = Math.Max(int.MinValue, (long)minCell.X - padding);
+        long minY = Math.Max(int.MinValue, (long)minCell.Y - padding);
+        long minZ = Math.Max(int.MinValue, (long)minCell.Z - padding);
+        long maxX = Math.Min(int.MaxValue, (long)maxCell.X + padding);
+        long maxY = Math.Min(int.MaxValue, (long)maxCell.Y + padding);
+        long maxZ = Math.Min(int.MaxValue, (long)maxCell.Z + padding);
+
+        for (long x = minX; x <= maxX; x++)
         {
-            for (int y = minCell.Y - padding; y <= maxCell.Y + padding; y++)
+            for (long y = minY; y <= maxY; y++)
             {
-                for (int z = minCell.Z - padding; z <= maxCell.Z + padding; z++)
+                for (long z = minZ; z <= maxZ; z++)
                 {
-                    var cell = new SwiftSpatialHashCellIndex(x, y, z);
+                    var cell = new SwiftSpatialHashCellIndex((int)x, (int)y, (int)z);
                     ProcessQueryCell(cell, queryBounds, queryStamp, requireIntersection, results);
                 }
             }
@@ -300,13 +307,13 @@ public class SwiftSpatialHash<TKey, TVolume>
     {
         _cellMapper.GetCellRange(bounds, out SwiftSpatialHashCellIndex minCell, out SwiftSpatialHashCellIndex maxCell);
 
-        for (int x = minCell.X; x <= maxCell.X; x++)
+        for (long x = minCell.X; x <= maxCell.X; x++)
         {
-            for (int y = minCell.Y; y <= maxCell.Y; y++)
+            for (long y = minCell.Y; y <= maxCell.Y; y++)
             {
-                for (int z = minCell.Z; z <= maxCell.Z; z++)
+                for (long z = minCell.Z; z <= maxCell.Z; z++)
                 {
-                    var cell = new SwiftSpatialHashCellIndex(x, y, z);
+                    var cell = new SwiftSpatialHashCellIndex((int)x, (int)y, (int)z);
                     if (!_cells.TryGetValue(cell, out SwiftList<int> entryIndices))
                     {
                         entryIndices = new SwiftList<int>(1);
@@ -323,13 +330,13 @@ public class SwiftSpatialHash<TKey, TVolume>
     {
         _cellMapper.GetCellRange(bounds, out SwiftSpatialHashCellIndex minCell, out SwiftSpatialHashCellIndex maxCell);
 
-        for (int x = minCell.X; x <= maxCell.X; x++)
+        for (long x = minCell.X; x <= maxCell.X; x++)
         {
-            for (int y = minCell.Y; y <= maxCell.Y; y++)
+            for (long y = minCell.Y; y <= maxCell.Y; y++)
             {
-                for (int z = minCell.Z; z <= maxCell.Z; z++)
+                for (long z = minCell.Z; z <= maxCell.Z; z++)
                 {
-                    var cell = new SwiftSpatialHashCellIndex(x, y, z);
+                    var cell = new SwiftSpatialHashCellIndex((int)x, (int)y, (int)z);
                     RemoveEntryFromCell(cell, entryIndex);
                 }
             }
