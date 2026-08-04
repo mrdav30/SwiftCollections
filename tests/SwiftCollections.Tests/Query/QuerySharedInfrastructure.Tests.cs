@@ -1,8 +1,8 @@
-using SwiftCollections.Diagnostics;
-using SwiftCollections.Utility;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using SwiftCollections.Diagnostics;
+using SwiftCollections.Utility;
 using Xunit;
 
 namespace SwiftCollections.Query.Tests;

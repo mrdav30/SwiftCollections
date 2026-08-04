@@ -1,19 +1,19 @@
-﻿//=======================================================================
+//=======================================================================
 // SwiftPackedSet.cs
 //=======================================================================
 // MIT License, Copyright (c) 2024–present David Oravsky (mrdav30)
 // See LICENSE file in the project root for full license information.
 //=======================================================================
 
-using Chronicler;
-using MemoryPack;
-using SwiftCollections.Diagnostics;
-using SwiftCollections.Utility;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
+using Chronicler;
+using MemoryPack;
+using SwiftCollections.Diagnostics;
+using SwiftCollections.Utility;
 
 namespace SwiftCollections;
 

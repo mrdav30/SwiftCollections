@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using Xunit;
 
 namespace SwiftCollections.Pool.Tests

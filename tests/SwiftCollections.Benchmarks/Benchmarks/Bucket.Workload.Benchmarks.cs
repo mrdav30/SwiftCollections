@@ -1,6 +1,6 @@
-﻿using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Configs;
 using System.Collections.Generic;
+using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Configs;
 
 namespace SwiftCollections.Benchmarks;
 

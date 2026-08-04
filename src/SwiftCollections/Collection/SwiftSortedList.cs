@@ -1,20 +1,20 @@
-﻿//=======================================================================
+//=======================================================================
 // SwiftSortedList.cs
 //=======================================================================
 // MIT License, Copyright (c) 2024–present David Oravsky (mrdav30)
 // See LICENSE file in the project root for full license information.
 //=======================================================================
 
-using Chronicler;
-using MemoryPack;
-using SwiftCollections.Diagnostics;
-using SwiftCollections.Utility;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
+using Chronicler;
+using MemoryPack;
+using SwiftCollections.Diagnostics;
+using SwiftCollections.Utility;
 
 namespace SwiftCollections;
 
@@ -27,7 +27,7 @@ namespace SwiftCollections;
 /// <see cref="Comparer{T}.Default"/>. 
 /// 
 /// If a custom comparer is required it can be reapplied using
-    /// <see cref="SetComparer(IComparer{T})"/>.
+/// <see cref="SetComparer(IComparer{T})"/>.
 /// </remarks>
 /// <typeparam name="T">The type of elements in the collection.</typeparam>
 [Serializable]

@@ -1,11 +1,11 @@
-using Chronicler;
-using SwiftCollections.Dimensions;
-using SwiftCollections.Observable;
 using System;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Chronicler;
+using SwiftCollections.Dimensions;
+using SwiftCollections.Observable;
 using Xunit;
 
 namespace SwiftCollections.Tests;

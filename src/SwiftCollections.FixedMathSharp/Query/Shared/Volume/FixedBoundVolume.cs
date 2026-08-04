@@ -5,10 +5,10 @@
 // See LICENSE file in the project root for full license information.
 //=======================================================================
 
-using FixedMathSharp;
-using FixedMathSharp.Geometry;
 using System;
 using System.Runtime.CompilerServices;
+using FixedMathSharp;
+using FixedMathSharp.Geometry;
 
 namespace SwiftCollections.Query;
 

@@ -1,6 +1,6 @@
-using FixedMathSharp;
 using System;
 using System.Collections.Generic;
+using FixedMathSharp;
 using Xunit;
 
 namespace SwiftCollections.Query.Tests;

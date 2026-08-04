@@ -1,7 +1,7 @@
-using SwiftCollections.Diagnostics;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using SwiftCollections.Diagnostics;
 using Xunit;
 
 namespace SwiftCollections.Tests.Utility.Diagnostics;

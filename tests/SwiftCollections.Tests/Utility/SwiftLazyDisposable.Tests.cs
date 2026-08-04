@@ -1,5 +1,5 @@
-using SwiftCollections.Lazy;
 using System.Threading;
+using SwiftCollections.Lazy;
 using Xunit;
 
 namespace SwiftCollections.Tests;

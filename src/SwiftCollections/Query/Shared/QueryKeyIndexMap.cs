@@ -5,10 +5,10 @@
 // See LICENSE file in the project root for full license information.
 //=======================================================================
 
-using SwiftCollections.Utility;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using SwiftCollections.Utility;
 
 namespace SwiftCollections.Query;
 

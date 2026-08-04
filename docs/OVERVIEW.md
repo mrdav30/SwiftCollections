@@ -89,13 +89,13 @@ materializing an unrepresentable full size. Reading `Size` or `Volume` throws
 `Fixed64`; it never substitutes a saturated under-size.
 
 `SwiftFixedSpatialHash<TKey>.GetCellIndex(...)` exposes the hash's exact Q32.32
-floor mapping for callers that must classify bounds with the same cell
-contract. `CollectPointCandidates(...)` appends every entry from that mapped
-cell into caller-owned storage without exact-bound filtering; use `Query(...)`
-when exact intersection results are required.
+floor mapping for callers that must classify bounds with the same cell contract.
+`CollectPointCandidates(...)` appends every entry from that mapped cell into
+caller-owned storage without exact-bound filtering; use `Query(...)` when exact
+intersection results are required.
 
-Fixed BVH insertion does not materialize `Volume`. Its insertion cost delegates to
-FixedMathSharp's exact 192-bit union-volume growth metric and clamps only the
+Fixed BVH insertion does not materialize `Volume`. Its insertion cost delegates
+to FixedMathSharp's exact 192-bit union-volume growth metric and clamps only the
 final public `long` cost, so third and later insertions remain deterministic
 across full-domain unions.
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text.Json;
@@ -340,7 +340,7 @@ public class SwiftSortedListTests
 
     #endregion
 
-    #region Test: PopMin and PopMax 
+    #region Test: PopMin and PopMax
 
     [Fact]
     public void PopMin_ShouldRemoveAndReturnSmallestElement()
@@ -426,7 +426,7 @@ public class SwiftSortedListTests
 
     #endregion
 
-    #region Test: Contains 
+    #region Test: Contains
 
     [Fact]
     public void Contains_ElementExists_ShouldReturnTrue()
@@ -570,7 +570,7 @@ public class SwiftSortedListTests
 
     #endregion
 
-    #region Test: CloneTo 
+    #region Test: CloneTo
 
     [Fact]
     public void CloneTo_ShouldCloneElementsToNewCollection()

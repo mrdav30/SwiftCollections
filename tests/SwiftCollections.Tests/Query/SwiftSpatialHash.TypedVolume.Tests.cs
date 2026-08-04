@@ -1,6 +1,6 @@
-using SwiftCollections.Diagnostics;
 using System.Collections.Generic;
 using System.Reflection;
+using SwiftCollections.Diagnostics;
 using Xunit;
 
 namespace SwiftCollections.Query.Tests;

@@ -1,9 +1,9 @@
-﻿using FluentAssertions;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using FluentAssertions;
 using Xunit;
 
 #if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK

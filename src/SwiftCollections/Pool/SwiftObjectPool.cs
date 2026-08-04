@@ -1,15 +1,15 @@
-﻿//=======================================================================
+//=======================================================================
 // SwiftObjectPool.cs
 //=======================================================================
 // MIT License, Copyright (c) 2024–present David Oravsky (mrdav30)
 // See LICENSE file in the project root for full license information.
 //=======================================================================
 
-using SwiftCollections.Diagnostics;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using SwiftCollections.Diagnostics;
 
 namespace SwiftCollections.Pool;
 
