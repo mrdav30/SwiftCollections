@@ -86,11 +86,11 @@
 
 	<!-- Dependencies and Package References -->
 	<ItemGroup Condition="'$(DisableMemoryPack)' != 'true'">
-		<PackageReference Include="FixedMathSharp" Version="6.0.0" />
+		<PackageReference Include="FixedMathSharp" Version="7.0.0" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(DisableMemoryPack)' == 'true'">
-		<PackageReference Include="FixedMathSharp.Lean" Version="6.0.0" />
+		<PackageReference Include="FixedMathSharp.Lean" Version="7.0.0" />
 	</ItemGroup>
 
 	<ItemGroup>
