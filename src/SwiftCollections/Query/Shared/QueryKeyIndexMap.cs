@@ -15,12 +15,22 @@ namespace SwiftCollections.Query;
 internal sealed class QueryKeyIndexMap<TKey> where TKey : notnull
 {
     private readonly IEqualityComparer<TKey> _comparer;
+    private readonly Func<int, TKey, bool> _isMatch;
+    private readonly Func<int, bool> _canRehash;
+    private readonly Func<int, TKey> _getKey;
     private int[] _buckets;
     private int _bucketMask;
 
-    public QueryKeyIndexMap(int capacity, IEqualityComparer<TKey>? comparer = null)
+    public QueryKeyIndexMap(
+        int capacity,
+        Func<int, TKey, bool> isMatch,
+        Func<int, bool> canRehash,
+        Func<int, TKey> getKey)
     {
-        _comparer = comparer ?? SwiftHashTools.GetDeterministicEqualityComparer<TKey>();
+        _comparer = SwiftHashTools.GetDeterministicEqualityComparer<TKey>();
+        _isMatch = isMatch;
+        _canRehash = canRehash;
+        _getKey = getKey;
         capacity = NormalizeBucketCapacity(capacity);
         _buckets = new int[capacity].Populate(() => -1);
         _bucketMask = capacity - 1;
@@ -38,14 +48,14 @@ internal sealed class QueryKeyIndexMap<TKey> where TKey : notnull
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public int Find(TKey key, Func<int, TKey, bool> isMatch)
+    public int Find(TKey key)
     {
         int bucketIndex = GetStartBucket(key);
 
         while (_buckets[bucketIndex] != -1)
         {
             int candidate = _buckets[bucketIndex];
-            if (isMatch(candidate, key))
+            if (_isMatch(candidate, key))
                 return candidate;
 
             bucketIndex = (bucketIndex + 1) & _bucketMask;
@@ -55,21 +65,17 @@ internal sealed class QueryKeyIndexMap<TKey> where TKey : notnull
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool Remove(
-        TKey key,
-        Func<int, TKey, bool> isMatch,
-        Func<int, bool> canRehash,
-        Func<int, TKey> getKey)
+    public bool Remove(TKey key)
     {
         int bucketIndex = GetStartBucket(key);
 
         while (_buckets[bucketIndex] != -1)
         {
             int candidate = _buckets[bucketIndex];
-            if (isMatch(candidate, key))
+            if (_isMatch(candidate, key))
             {
                 _buckets[bucketIndex] = -1;
-                RehashBucketCluster((bucketIndex + 1) & _bucketMask, canRehash, getKey);
+                RehashBucketCluster((bucketIndex + 1) & _bucketMask);
                 return true;
             }
 
@@ -79,7 +85,7 @@ internal sealed class QueryKeyIndexMap<TKey> where TKey : notnull
         return false;
     }
 
-    public void ResizeAndRehash(int capacity, int entryCount, Func<int, bool> shouldRehash, Func<int, TKey> getKey)
+    public void ResizeAndRehash(int capacity, int entryCount)
     {
         capacity = NormalizeBucketCapacity(capacity);
         _buckets = new int[capacity].Populate(() => -1);
@@ -87,10 +93,10 @@ internal sealed class QueryKeyIndexMap<TKey> where TKey : notnull
 
         for (int i = 0; i < entryCount; i++)
         {
-            if (!shouldRehash(i))
+            if (!_canRehash(i))
                 continue;
 
-            Insert(getKey(i), i);
+            Insert(_getKey(i), i);
         }
     }
 
@@ -115,7 +121,7 @@ internal sealed class QueryKeyIndexMap<TKey> where TKey : notnull
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void RehashBucketCluster(int startIndex, Func<int, bool> canRehash, Func<int, TKey> getKey)
+    private void RehashBucketCluster(int startIndex)
     {
         int bucketIndex = startIndex;
 
@@ -124,8 +130,7 @@ internal sealed class QueryKeyIndexMap<TKey> where TKey : notnull
             int candidate = _buckets[bucketIndex];
             _buckets[bucketIndex] = -1;
 
-            if (canRehash(candidate))
-                Insert(getKey(candidate), candidate);
+            Insert(_getKey(candidate), candidate);
 
             bucketIndex = (bucketIndex + 1) & _bucketMask;
         }

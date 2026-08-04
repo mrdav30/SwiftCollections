@@ -48,49 +48,80 @@ public class QuerySharedInfrastructureTests
     [Fact]
     public void QueryKeyIndexMap_Remove_RehashesCollidingEntries()
     {
-        var map = new QueryKeyIndexMap<CollidingKey>(4);
         var entries = new[]
         {
             new Entry(new CollidingKey(1), true),
             new Entry(new CollidingKey(2), true),
             new Entry(new CollidingKey(3), true)
         };
+        var map = new QueryKeyIndexMap<CollidingKey>(
+            4,
+            (index, key) => entries[index].Active && entries[index].Key.Equals(key),
+            index => entries[index].Active,
+            index => entries[index].Key);
 
         map.Insert(entries[0].Key, 0);
         map.Insert(entries[1].Key, 1);
         map.Insert(entries[2].Key, 2);
 
-        bool removed = map.Remove(
-            entries[0].Key,
-            (index, key) => entries[index].Active && entries[index].Key.Equals(key),
-            index => entries[index].Active,
-            index => entries[index].Key);
+        bool removed = map.Remove(entries[0].Key);
 
         Assert.True(removed);
-        Assert.Equal(-1, map.Find(entries[0].Key, (index, key) => entries[index].Active && entries[index].Key.Equals(key)));
-        Assert.Equal(1, map.Find(entries[1].Key, (index, key) => entries[index].Active && entries[index].Key.Equals(key)));
-        Assert.Equal(2, map.Find(entries[2].Key, (index, key) => entries[index].Active && entries[index].Key.Equals(key)));
+        Assert.Equal(-1, map.Find(entries[0].Key));
+        Assert.Equal(1, map.Find(entries[1].Key));
+        Assert.Equal(2, map.Find(entries[2].Key));
     }
 
     [Fact]
     public void QueryKeyIndexMap_Remove_MissingKey_ReturnsFalse()
     {
-        var map = new QueryKeyIndexMap<CollidingKey>(4);
         var entries = new[]
         {
             new Entry(new CollidingKey(1), true)
         };
-
-        map.Insert(entries[0].Key, 0);
-
-        bool removed = map.Remove(
-            new CollidingKey(2),
+        var map = new QueryKeyIndexMap<CollidingKey>(
+            4,
             (index, key) => entries[index].Active && entries[index].Key.Equals(key),
             index => entries[index].Active,
             index => entries[index].Key);
 
+        map.Insert(entries[0].Key, 0);
+
+        bool removed = map.Remove(new CollidingKey(2));
+
         Assert.False(removed);
-        Assert.Equal(0, map.Find(entries[0].Key, (index, key) => entries[index].Active && entries[index].Key.Equals(key)));
+        Assert.Equal(0, map.Find(entries[0].Key));
+    }
+
+    [Fact]
+    public void QueryKeyIndexMap_Remove_AfterWarmup_DoesNotAllocate()
+    {
+        const int EntryCount = 64;
+        var keys = new int[EntryCount];
+        var map = new QueryKeyIndexMap<int>(
+            EntryCount,
+            (index, key) => keys[index] == key,
+            _ => true,
+            index => keys[index]);
+
+        for (int i = 0; i < EntryCount; i++)
+        {
+            keys[i] = i;
+            map.Insert(i, i);
+        }
+        for (int i = 0; i < EntryCount; i++)
+            Assert.True(map.Remove(i));
+        for (int i = 0; i < EntryCount; i++)
+            map.Insert(i, i);
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        bool removed = true;
+        for (int i = 0; i < EntryCount; i++)
+            removed &= map.Remove(i);
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.True(removed);
+        Assert.Equal(0, allocated);
     }
 
     [Fact]

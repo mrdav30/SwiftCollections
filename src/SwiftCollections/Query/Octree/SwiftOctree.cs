@@ -48,7 +48,7 @@ public class SwiftOctree<TKey, TVolume>
         _boundsPartitioner = boundsPartitioner;
 
         int capacity = SwiftHashTools.NextPowerOfTwo(Math.Max(4, options.NodeCapacity));
-        _keyToEntryIndex = new QueryKeyIndexMap<TKey>(capacity);
+        _keyToEntryIndex = new QueryKeyIndexMap<TKey>(capacity, MatchesEntryKey, IsAllocatedEntry, GetEntryKey);
         _freeEntries = new SwiftIntStack();
         _entries = new OctreeEntry[capacity];
         _root = new OctreeNode(worldBounds, 0, null);
@@ -118,7 +118,7 @@ public class SwiftOctree<TKey, TVolume>
         OctreeNode node = _entries[entryIndex].Node!;
         RemoveEntryFromNode(node, entryIndex);
 
-        _keyToEntryIndex.Remove(key, MatchesEntryKey, IsAllocatedEntry, GetEntryKey);
+        _keyToEntryIndex.Remove(key);
         _entries[entryIndex].Reset();
         _freeEntries.Push(entryIndex);
         _count--;
@@ -415,14 +415,14 @@ public class SwiftOctree<TKey, TVolume>
 
         int newCapacity = SwiftHashTools.NextPowerOfTwo(capacity);
         Array.Resize(ref _entries, newCapacity);
-        _keyToEntryIndex.ResizeAndRehash(newCapacity, _peakCount, IsAllocatedEntry, GetEntryKey);
+        _keyToEntryIndex.ResizeAndRehash(newCapacity, _peakCount);
         SwiftCollectionDiagnostics.Shared.Info($"Resized octree entry storage to {newCapacity} entries.", _diagnosticSource);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int FindEntryIndex(TKey key)
     {
-        return _keyToEntryIndex.Find(key, MatchesEntryKey);
+        return _keyToEntryIndex.Find(key);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

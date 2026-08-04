@@ -57,7 +57,7 @@ public class SwiftBVH<TKey, TVolume>
         capacity = SwiftHashTools.NextPowerOfTwo(capacity);
         _nodePool = new SwiftBVHNode<TKey, TVolume>[capacity].Populate(() =>
             new SwiftBVHNode<TKey, TVolume>() { ParentIndex = -1, LeftChildIndex = -1, RightChildIndex = -1 });
-        _keyToNodeIndex = new QueryKeyIndexMap<TKey>(capacity);
+        _keyToNodeIndex = new QueryKeyIndexMap<TKey>(capacity, MatchesEntryKey, IsLeafNode, GetNodeValue);
 
         _rootNodeIndex = -1;
 
@@ -265,7 +265,7 @@ public class SwiftBVH<TKey, TVolume>
     {
         SwiftThrowHelper.ThrowIfNullGeneric(value, nameof(value));
 
-        int index = _keyToNodeIndex.Find(value, MatchesEntryKey);
+        int index = _keyToNodeIndex.Find(value);
         if (index == -1) return;
 
         ref SwiftBVHNode<TKey, TVolume> node = ref _nodePool[index];
@@ -302,7 +302,7 @@ public class SwiftBVH<TKey, TVolume>
     {
         SwiftThrowHelper.ThrowIfNullGeneric(value, nameof(value));
 
-        int nodeIndex = _keyToNodeIndex.Find(value, MatchesEntryKey);
+        int nodeIndex = _keyToNodeIndex.Find(value);
         if (nodeIndex == -1) return false;
 
         // If the node is the root and the only node, reset the BVH
@@ -326,7 +326,7 @@ public class SwiftBVH<TKey, TVolume>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void RemoveFromBuckets(TKey value)
     {
-        _keyToNodeIndex.Remove(value, MatchesEntryKey, IsLeafNode, GetNodeValue);
+        _keyToNodeIndex.Remove(value);
     }
 
     /// <summary>
@@ -432,7 +432,7 @@ public class SwiftBVH<TKey, TVolume>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void ResizeBuckets(int newSize)
     {
-        _keyToNodeIndex.ResizeAndRehash(newSize, _peakIndex, IsLeafNode, GetNodeValue);
+        _keyToNodeIndex.ResizeAndRehash(newSize, _peakIndex);
     }
 
     #endregion
@@ -510,7 +510,7 @@ public class SwiftBVH<TKey, TVolume>
     public int FindEntry(TKey value)
     {
         SwiftThrowHelper.ThrowIfNullGeneric(value, nameof(value));
-        return _keyToNodeIndex.Find(value, MatchesEntryKey);
+        return _keyToNodeIndex.Find(value);
     }
 
     /// <summary>

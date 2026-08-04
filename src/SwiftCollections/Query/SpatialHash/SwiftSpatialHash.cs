@@ -57,7 +57,7 @@ public class SwiftSpatialHash<TKey, TVolume>
         capacity = SwiftHashTools.NextPowerOfTwo(capacity);
 
         _cellMapper = cellMapper;
-        _keyToEntryIndex = new QueryKeyIndexMap<TKey>(capacity);
+        _keyToEntryIndex = new QueryKeyIndexMap<TKey>(capacity, MatchesEntryKey, IsAllocatedEntry, GetEntryKey);
         _cells = new SwiftDictionary<SwiftSpatialHashCellIndex, SwiftList<int>>(capacity);
         _freeEntries = new SwiftIntStack();
         _entries = new SpatialHashEntry[capacity];
@@ -114,7 +114,7 @@ public class SwiftSpatialHash<TKey, TVolume>
             return false;
 
         RemoveEntryFromCells(entryIndex, _entries[entryIndex].Bounds);
-        _keyToEntryIndex.Remove(key, MatchesEntryKey, IsAllocatedEntry, GetEntryKey);
+        _keyToEntryIndex.Remove(key);
         _entries[entryIndex].Reset();
         _freeEntries.Push(entryIndex);
         _count--;
@@ -374,7 +374,7 @@ public class SwiftSpatialHash<TKey, TVolume>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int FindEntryIndex(TKey key)
     {
-        return _keyToEntryIndex.Find(key, MatchesEntryKey);
+        return _keyToEntryIndex.Find(key);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -382,7 +382,7 @@ public class SwiftSpatialHash<TKey, TVolume>
     {
         Array.Resize(ref _entries, newCapacity);
         _cells.EnsureCapacity(newCapacity);
-        _keyToEntryIndex.ResizeAndRehash(newCapacity, _peakCount, IsAllocatedEntry, GetEntryKey);
+        _keyToEntryIndex.ResizeAndRehash(newCapacity, _peakCount);
         SwiftCollectionDiagnostics.Shared.Info($"Resized spatial hash entry storage to {newCapacity} entries.", _diagnosticSource);
     }
 
