@@ -184,6 +184,21 @@ public class SwiftSpatialHash<TKey, TVolume>
     }
 
     /// <summary>
+    /// Collects every entry registered in one already-mapped spatial cell.
+    /// </summary>
+    protected void CollectCellCandidates(
+        SwiftSpatialHashCellIndex cell,
+        ICollection<TKey> results)
+    {
+        SwiftThrowHelper.ThrowIfNull(results, nameof(results));
+        if (!_cells.TryGetValue(cell, out SwiftList<int> entryIndices))
+            return;
+
+        for (int i = 0; i < entryIndices.Count; i++)
+            results.Add(_entries[entryIndices[i]].Key);
+    }
+
+    /// <summary>
     /// Ensures the spatial hash can store the specified number of entries without growing its entry storage.
     /// </summary>
     public void EnsureCapacity(int capacity)

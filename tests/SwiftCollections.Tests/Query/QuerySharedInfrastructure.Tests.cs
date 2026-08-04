@@ -1,4 +1,5 @@
 using SwiftCollections.Diagnostics;
+using SwiftCollections.Utility;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -308,6 +309,7 @@ public class QuerySharedInfrastructureTests
         Assert.True(cell != different);
         Assert.False(cell == different);
         Assert.Equal(cell.GetHashCode(), same.GetHashCode());
+        Assert.Equal(SwiftHashTools.CombineHashCodes(1, 2, 3), cell.GetHashCode());
         Assert.Equal("(1, 2, 3)", cell.ToString());
     }
 

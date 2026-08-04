@@ -5,6 +5,7 @@
 // See LICENSE file in the project root for full license information.
 //=======================================================================
 
+using SwiftCollections.Utility;
 using System;
 
 namespace SwiftCollections.Query;
@@ -59,7 +60,7 @@ public readonly struct SwiftSpatialHashCellIndex : IEquatable<SwiftSpatialHashCe
     public static bool operator !=(SwiftSpatialHashCellIndex left, SwiftSpatialHashCellIndex right) => !left.Equals(right);
 
     /// <inheritdoc />
-    public override int GetHashCode() => HashCode.Combine(X, Y, Z);
+    public override int GetHashCode() => SwiftHashTools.CombineHashCodes(X, Y, Z);
 
     /// <summary>
     /// Returns a string that represents the current object in the format "(X, Y, Z)".
