@@ -1,0 +1,12 @@
+items:
+  - name: Home
+    href: index.md
+  - name: API Reference
+    href: obj/api/
+    homepage: obj/api/SwiftCollections.yml
+  - name: Query API
+    href: obj/api/SwiftCollections.Query.yml
+  - name: Overview
+    href: https://github.com/mrdav30/SwiftCollections/blob/main/docs/OVERVIEW.md
+  - name: Coverage
+    href: https://mrdav30.github.io/SwiftCollections/coverage/

@@ -59,7 +59,7 @@ Keep these aligned whenever behavior, public API, package variants, or workflow
 expectations change:
 
 - `README.md`
-- `docs/OVERVIEW.md`
+- `docs/OVERVIEW.md` and the DocFX source and configuration under `docs/api`
 - `docs/complexity-exceptions.md`
 - relevant tests and benchmarks
 - `.github/workflows/build-and-test.yml`
@@ -82,6 +82,7 @@ expectations change:
 | `src/SwiftCollections.FixedMathSharp`   | Fixed-point spatial query companion                  | Depends on FixedMathSharp or FixedMathSharp.Lean based on package variant.                         |
 | `tests/SwiftCollections.Tests`          | xUnit v3 core tests                                  | Mirror source areas.                                                                               |
 | `tests/SwiftCollections.Benchmarks`     | BenchmarkDotNet benchmarks                           | Alias-based runner supports `list`, `dictionary`, `query`, `all`, and other selections.            |
+| `docs/api`                              | DocFX landing page, navigation, and configuration    | Publishes both runtime assemblies; generated `obj` output is ignored.                               |
 | `.assets/scripts`                       | Windows-oriented release/version helpers             | Assumes GitVersion tooling.                                                                        |
 
 Ignore generated output when reviewing structure:
@@ -252,8 +253,9 @@ dotnet test SwiftCollections.slnx -c ReleaseLean --no-build
 ## CI And Release Notes
 
 - `build-and-test.yml` runs `Release` and `ReleaseLean` on Ubuntu and Windows.
-- `coverage.yml` publishes the GitHub Pages coverage report from the core test
-  project.
+- `coverage.yml` publishes one GitHub Pages site after a successful `main`
+  push: DocFX at the root, both runtime assemblies under `/api`, and the core
+  coverage report under `/coverage`.
 - `publish-nuget.yml` runs on GitHub releases, validates the release tag against
   GitVersion, builds standard and lean packages, verifies all 8
   `.nupkg`/`.snupkg` artifacts, runs Release tests, and publishes to NuGet.

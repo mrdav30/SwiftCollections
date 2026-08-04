@@ -3,7 +3,7 @@
 ![SwiftCollections Icon](https://raw.githubusercontent.com/mrdav30/SwiftCollections/main/icon.png)
 
 [![Build](https://github.com/mrdav30/SwiftCollections/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/mrdav30/SwiftCollections/actions/workflows/build-and-test.yml)
-[![Branch Coverage](https://mrdav30.github.io/SwiftCollections/badge_branchcoverage.svg)](https://mrdav30.github.io/SwiftCollections/)
+[![Branch Coverage](https://mrdav30.github.io/SwiftCollections/coverage/badge_branchcoverage.svg)](https://mrdav30.github.io/SwiftCollections/coverage/)
 [![NuGet](https://img.shields.io/nuget/v/SwiftCollections.svg)](https://www.nuget.org/packages/SwiftCollections)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/SwiftCollections.svg)](https://www.nuget.org/packages/SwiftCollections)
 [![License](https://img.shields.io/github/license/mrdav30/SwiftCollections.svg)](https://github.com/mrdav30/SwiftCollections/blob/main/LICENSE)
@@ -61,6 +61,14 @@ AOT or already have a serializer pipeline, prefer the lean variants.
 
 Unity package support lives in a separate repository:
 [SwiftCollections-Unity](https://github.com/mrdav30/SwiftCollections-Unity).
+
+## Documentation
+
+- [Documentation site](https://mrdav30.github.io/SwiftCollections/)
+- [Core API reference](https://mrdav30.github.io/SwiftCollections/api/SwiftCollections.html)
+- [Spatial query API, including FixedMathSharp integrations](https://mrdav30.github.io/SwiftCollections/api/SwiftCollections.Query.html)
+- [Library overview](https://github.com/mrdav30/SwiftCollections/blob/main/docs/OVERVIEW.md)
+- [Coverage report](https://mrdav30.github.io/SwiftCollections/coverage/)
 
 ## Picking A Container
 

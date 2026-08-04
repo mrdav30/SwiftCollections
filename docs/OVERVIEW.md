@@ -10,6 +10,11 @@ SwiftCollections when the code is already performance-sensitive, when a
 benchmark points at collection cost, or when the data model naturally fits one
 of the specialized containers below.
 
+Browse the [documentation site](https://mrdav30.github.io/SwiftCollections/),
+[core API reference](https://mrdav30.github.io/SwiftCollections/api/SwiftCollections.html),
+[spatial query API, including FixedMathSharp integrations](https://mrdav30.github.io/SwiftCollections/api/SwiftCollections.Query.html),
+or [coverage report](https://mrdav30.github.io/SwiftCollections/coverage/).
+
 ## Design Goals
 
 - Keep common operations low time complexity.
