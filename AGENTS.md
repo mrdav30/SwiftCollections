@@ -12,7 +12,7 @@ code. This repository exists for the places where hot-path cost, storage layout,
 dense iteration, deterministic hashing, pooling, or specialized integer-ID
 ownership justify a sharper collection.
 
-Current priorities:
+Priorities:
 
 1. Prefer optimized, low time-complexity implementations. No band-aid solutions.
 2. Preserve public API behavior and exception contracts unless a breaking change
@@ -46,13 +46,13 @@ Read these before making non-trivial changes:
 When docs, workflows, and project files disagree, trust the project files and
 source code first, then update the docs.
 
-Current compiled projects:
+Compiled projects:
 
 | Project                  | Path                                                                         | Target Frameworks       |
 | ------------------------ | ---------------------------------------------------------------------------- | ----------------------- |
 | Core library             | `src/SwiftCollections/SwiftCollections.csproj`                               | `netstandard2.1;net8.0` |
 | FixedMathSharp companion | `src/SwiftCollections.FixedMathSharp/SwiftCollections.FixedMathSharp.csproj` | `netstandard2.1;net8.0` |
-| Core tests               | `tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj`                 | `net8.0`                |
+| Unit tests               | `tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj`                 | `net8.0`                |
 | Benchmarks               | `tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj`       | `net8`                  |
 
 Keep these aligned whenever behavior, public API, package variants, or workflow
@@ -80,10 +80,10 @@ expectations change:
 | `src/SwiftCollections/Support`          | Compatibility shims                                  | Includes MemoryPack and interpolated-string-handler shims for target/package variants.             |
 | `src/SwiftCollections/Utility`          | Shared helpers, hashing, diagnostics, extensions     | Preserve helper exception contracts.                                                               |
 | `src/SwiftCollections.FixedMathSharp`   | Fixed-point spatial query companion                  | Depends on FixedMathSharp or FixedMathSharp.Lean based on package variant.                         |
-| `tests/SwiftCollections.Tests`          | xUnit v3 core tests                                  | Mirror source areas.                                                                               |
+| `tests/SwiftCollections.Tests`          | xUnit v3 unit tests                                  | Covers both runtime assemblies and mirrors source areas.                                           |
 | `tests/SwiftCollections.Benchmarks`     | BenchmarkDotNet benchmarks                           | Alias-based runner supports `list`, `dictionary`, `query`, `all`, and other selections.            |
-| `docs/api`                              | DocFX landing page, navigation, and configuration    | Publishes both runtime assemblies; generated `obj` output is ignored.                               |
-| `.assets/scripts`                       | Windows-oriented release/version helpers             | Assumes GitVersion tooling.                                                                        |
+| `docs/api`                              | DocFX landing page, navigation, and configuration    | Publishes both runtime assemblies; generated `obj` output is ignored.                              |
+| `.assets/scripts`                       | PowerShell release/version helpers                   | Requires PowerShell and GitVersion.Tool.                                                           |
 
 Ignore generated output when reviewing structure:
 
@@ -205,13 +205,15 @@ Full coverage is an explicit repo priority.
   and invalid-input tests where applicable.
 - Coverage should stay flat or improve. Prefer closing touched areas to full
   coverage when practical.
-- Use `tests/SwiftCollections.Tests/coverlet.runsettings` for coverage. The
-  FixedMathSharp test project intentionally points at the same runsettings so
-  generated MemoryPack files stay excluded.
+- Use `tests/SwiftCollections.Tests/coverlet.runsettings` for coverage across
+  both runtime assemblies; generated MemoryPack files stay excluded.
 
 ## Validation Commands
 
 Use the solution root as the working directory.
+
+Install the SDK selected by `global.json` and the runtimes targeted by the test
+and benchmark projects. The CI setup lists the supported versions.
 
 Build everything:
 
@@ -225,7 +227,7 @@ Run unit tests:
 dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c Debug --no-build
 ```
 
-Run coverage for both test projects:
+Run coverage for both runtime assemblies:
 
 ```bash
 dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c Debug --no-build --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.Tests/coverlet.runsettings
@@ -253,17 +255,16 @@ dotnet test SwiftCollections.slnx -c ReleaseLean --no-build
 ## CI And Release Notes
 
 - `build-and-test.yml` runs `Release` and `ReleaseLean` on Ubuntu and Windows.
-- `coverage.yml` publishes one GitHub Pages site after a successful `main`
-  push: DocFX at the root, both runtime assemblies under `/api`, and the core
+- `coverage.yml` publishes one GitHub Pages site after a successful `main` push:
+  DocFX at the root, both runtime assemblies under `/api`, and the runtime
   coverage report under `/coverage`.
 - `publish-nuget.yml` runs on GitHub releases, validates the release tag against
   GitVersion, builds standard and lean packages, verifies all 8
   `.nupkg`/`.snupkg` artifacts, runs Release tests, and publishes to NuGet.
 - Package metadata lives in the project files. Packaging includes `README.md`,
   `LICENSE`, `NOTICE`, `COPYRIGHT`, and `icon.png` from the repo root.
-- The repository has limited ignore coverage. Build, test, coverage, and
-  benchmark output can dirty the working tree. Do not commit generated output
-  unless explicitly asked.
+- Generated build, test, coverage, package, and benchmark output must not be
+  committed.
 
 ## Quick Checklist
 

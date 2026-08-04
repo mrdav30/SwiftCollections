@@ -48,11 +48,18 @@ Choose the package that matches your runtime and serialization needs.
 | `SwiftCollections.FixedMathSharp`      | You need fixed-point BVH, octree, or spatial hash volume wrappers backed by FixedMathSharp. |
 | `SwiftCollections.FixedMathSharp.Lean` | You need the fixed-point companion without MemoryPack.                                      |
 
+Install the standard core, optionally with its fixed-point companion:
+
 ```bash
 dotnet add package SwiftCollections
+dotnet add package SwiftCollections.FixedMathSharp # optional
+```
+
+Or install the matching lean variants:
+
+```bash
 dotnet add package SwiftCollections.Lean
-dotnet add package SwiftCollections.FixedMathSharp
-dotnet add package SwiftCollections.FixedMathSharp.Lean
+dotnet add package SwiftCollections.FixedMathSharp.Lean # optional
 ```
 
 The standard and lean variants expose the same core collection APIs. The
@@ -189,9 +196,8 @@ bvh.Query(
 
 Most core types expose state-backed serialization support. Standard packages
 include MemoryPack support; lean packages compile the same public collection
-surface without taking a MemoryPack dependency. `net8.0` builds use
-System.Text.Json converter implementations where supported, while older targets
-use compatibility shims.
+surface without taking a MemoryPack dependency. State-backed System.Text.Json
+conversion is available across the supported target frameworks.
 
 Diagnostics are opt-in through `SwiftCollections.Diagnostics`. Disabled
 diagnostic writes are designed to avoid doing formatting work when the requested
