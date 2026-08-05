@@ -131,7 +131,9 @@ public class SwiftArray2DTests
     {
         var array = new SwiftArray2D<int>(3, 3);
         Assert.Throws<IndexOutOfRangeException>(() => array[-1, 0]);
-        Assert.Throws<IndexOutOfRangeException>(() => array[3, 3]);
+        Assert.Throws<IndexOutOfRangeException>(() => array[3, 0]);
+        Assert.Throws<IndexOutOfRangeException>(() => array[0, -1]);
+        Assert.Throws<IndexOutOfRangeException>(() => array[0, 3]);
     }
 
     [Fact]

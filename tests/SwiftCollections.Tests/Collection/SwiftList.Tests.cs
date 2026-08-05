@@ -156,14 +156,20 @@ public class SwiftListTests
     }
 
     [Fact]
-    public void AddRange_EmptyReadOnlyCollection_IsNoOp()
+    public void AddRange_EmptyKnownCountSources_AreNoOp()
     {
         var list = new SwiftList<int> { 1 };
-        var source = new CapacityObservingReadOnlyCollection<int>(Array.Empty<int>(), () => list.Capacity);
+        var enumerator = list.GetEnumerator();
+        IEnumerable<int> collection = Array.Empty<int>();
+        var readOnlyCollection = new CapacityObservingReadOnlyCollection<int>(Array.Empty<int>(), () => list.Capacity);
 
-        list.AddRange(source);
+        list.AddRange(collection);
+        list.AddRange(readOnlyCollection);
 
         Assert.Equal(new[] { 1 }, list.ToArray());
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal(1, enumerator.Current);
+        Assert.False(enumerator.MoveNext());
     }
 
     [Fact]

@@ -454,7 +454,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
 
     private void ClearReleasedSlots(int startIndex, int count)
     {
-        if (_clearReleasedSlots && count > 0)
+        if (_clearReleasedSlots)
             Array.Clear(_innerArray, startIndex, count);
     }
 
