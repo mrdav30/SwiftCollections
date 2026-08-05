@@ -146,17 +146,18 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
         {
             _innerArray = _emptyArray;
             _mask = 0;
-            return;
         }
+        else
+        {
+            int capacity = count < DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(count);
+            _innerArray = new T[capacity];
+            _mask = _innerArray.Length - 1;
 
-        int capacity = count < DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(count);
-        _innerArray = new T[capacity];
-        _mask = _innerArray.Length - 1;
+            foreach (T item in items)
+                _innerArray[_count++] = item;
 
-        foreach (T item in items)
-            _innerArray[_count++] = item;
-
-        _tail = _count & _mask;
+            _tail = _count & _mask;
+        }
     }
 
     ///  <summary>
@@ -333,21 +334,21 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
 
     private void EnqueueKnownCountRange(IEnumerable<T> items, int count)
     {
-        if (count == 0)
-            return;
-
-        EnsureAdditionalCapacity(count);
-
-        int appendedCount = 0;
-        foreach (T item in items)
+        if (count > 0)
         {
-            _innerArray[_tail] = item;
-            _tail = (_tail + 1) & _mask;
-            appendedCount++;
-        }
+            EnsureAdditionalCapacity(count);
 
-        _count += appendedCount;
-        _version++;
+            int appendedCount = 0;
+            foreach (T item in items)
+            {
+                _innerArray[_tail] = item;
+                _tail = (_tail + 1) & _mask;
+                appendedCount++;
+            }
+
+            _count += appendedCount;
+            _version++;
+        }
     }
 
     /// <summary>

@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Xunit;
@@ -208,15 +207,10 @@ public class SwiftHashSetTests
         set.Remove(17);
         set.Clear();
 
-        Array entries = GetEntries(set);
-        for (int i = 0; i < entries.Length; i++)
+        foreach (var entry in set._entries)
         {
-            object entry = entries.GetValue(i);
-            int hashCode = GetEntryHashCode(entry);
-            bool isUsed = GetEntryIsUsed(entry);
-
-            Assert.False(isUsed);
-            Assert.NotEqual(-1, hashCode);
+            Assert.False(entry.IsUsed);
+            Assert.NotEqual(-1, entry.HashCode);
         }
     }
 
@@ -226,6 +220,14 @@ public class SwiftHashSetTests
         var set = new SwiftHashSet<int>(new SwiftArrayState<int>(Array.Empty<int>()));
 
         Assert.Empty(set);
+    }
+
+    [Fact]
+    public void Constructor_WithState_SkipsNullItems()
+    {
+        var set = new SwiftHashSet<string>(new SwiftArrayState<string>(new[] { null, "value" }));
+
+        Assert.Equal(new[] { "value" }, set);
     }
 
     [Fact]
@@ -343,6 +345,20 @@ public class SwiftHashSetTests
         }
 
         Assert.Equal(1000, set.Count);
+    }
+
+    [Fact]
+    public void EnsureCapacity_WithIntermediateFillRate_PreservesItems()
+    {
+        var set = new SwiftHashSet<int>(16);
+        for (int i = 0; i < 9; i++)
+            set.Add(i);
+
+        set.EnsureCapacity(32);
+
+        Assert.Equal(9, set.Count);
+        for (int i = 0; i < 9; i++)
+            Assert.Contains(i, set);
     }
 
     [Fact]
@@ -654,11 +670,11 @@ public class SwiftHashSetTests
         for (int i = 0; i < 12; i++)
             set.Add(i);
 
-        int originalCapacity = GetCapacity(set);
+        int originalCapacity = set._entries.Length;
 
         set.TrimExcess();
 
-        Assert.True(GetCapacity(set) < originalCapacity);
+        Assert.True(set._entries.Length < originalCapacity);
 
         for (int i = 0; i < 12; i++)
             Assert.Contains(i, set);
@@ -681,11 +697,11 @@ public class SwiftHashSetTests
     public void TrimExcess_WhenCapacityIsAlreadyMinimal_IsNoOp()
     {
         var set = new SwiftHashSet<int> { 1 };
-        int originalCapacity = GetCapacity(set);
+        int originalCapacity = set._entries.Length;
 
         set.TrimExcess();
 
-        Assert.Equal(originalCapacity, GetCapacity(set));
+        Assert.Equal(originalCapacity, set._entries.Length);
         Assert.Contains(1, set);
     }
 
@@ -1169,34 +1185,6 @@ public class SwiftHashSetTests
         }
 
         IEnumerator IEnumerable.GetEnumerator() => _items.GetEnumerator();
-    }
-
-    private static int GetCapacity<T>(SwiftHashSet<T> set)
-    {
-        return GetEntries(set).Length;
-    }
-
-    private static Array GetEntries<T>(SwiftHashSet<T> set)
-    {
-        return (Array)typeof(SwiftHashSet<T>)
-            .GetField("_entries", BindingFlags.Instance | BindingFlags.NonPublic)
-            .GetValue(set);
-    }
-
-    private static int GetEntryHashCode(object entry)
-    {
-        return (int)entry
-            .GetType()
-            .GetField("HashCode")
-            .GetValue(entry);
-    }
-
-    private static bool GetEntryIsUsed(object entry)
-    {
-        return (bool)entry
-            .GetType()
-            .GetField("IsUsed")
-            .GetValue(entry);
     }
 
     private static long MeasureAllocatedBytes(Action action)

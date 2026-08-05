@@ -78,6 +78,10 @@ public partial class SwiftObservableDictionary<TKey, TValue> : SwiftDictionary<T
                     OnPropertyChanged("Entries[]");
                 }
             }
+            else
+            {
+                Add(key, value);
+            }
         }
     }
 

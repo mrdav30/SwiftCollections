@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Linq;
 using System.Text.Json;
 using Xunit;
@@ -11,6 +12,14 @@ namespace SwiftCollections.Observable.Tests;
 
 public class SwiftObservableArrayTests
 {
+    private sealed class TestObservableArray : SwiftObservableArray<int>
+    {
+        public TestObservableArray() : base(1) { }
+
+        public void RaiseItemChanged(object sender) =>
+            _itemChangedHandler(sender, new PropertyChangedEventArgs(nameof(SwiftObservableProperty<int>.Value)));
+    }
+
     [Fact]
     public void Constructor_Capacity_InitializesArray()
     {
@@ -143,6 +152,44 @@ public class SwiftObservableArrayTests
 
         array[1] = 100;
 
+        Assert.Equal("Items[]", propertyName);
+    }
+
+    [Fact]
+    public void ItemChangedHandler_AcceptsObservablePropertyAndIgnoresOtherSenders()
+    {
+        var array = new TestObservableArray();
+        var property = new SwiftObservableProperty<int>(42) { Index = 7 };
+        int eventCount = 0;
+        int eventIndex = -1;
+        int eventValue = -1;
+        int propertyChangedCount = 0;
+        string propertyName = null;
+
+        array.ElementChanged += (_, args) =>
+        {
+            eventCount++;
+            eventIndex = args.Index;
+            eventValue = args.NewValue;
+        };
+        array.PropertyChanged += (_, args) =>
+        {
+            propertyChangedCount++;
+            propertyName = args.PropertyName;
+        };
+
+        array.RaiseItemChanged(new object());
+        array.RaiseItemChanged(null);
+
+        Assert.Equal(0, eventCount);
+        Assert.Equal(0, propertyChangedCount);
+
+        array.RaiseItemChanged(property);
+
+        Assert.Equal(1, eventCount);
+        Assert.Equal(7, eventIndex);
+        Assert.Equal(42, eventValue);
+        Assert.Equal(1, propertyChangedCount);
         Assert.Equal("Items[]", propertyName);
     }
 

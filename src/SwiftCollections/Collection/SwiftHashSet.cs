@@ -61,7 +61,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <remarks>
     /// Capacity will always be a power of two for efficient pooling cache.
     /// </remarks>
-    private Entry[] _entries;
+    internal Entry[] _entries;
 
     /// <summary>
     /// The total number of entries in the hash set
@@ -111,7 +111,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <summary>
     /// Represents a single value in the set, including its hash code for quick access.
     /// </summary>
-    private struct Entry
+    internal struct Entry
     {
         public T Value;
         public int HashCode;    // Lower 31 bits of hash code, -1 if deleted probe tombstone
@@ -375,7 +375,9 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
         if ((uint)step > (uint)_maxStepCount)
         {
             _maxStepCount = step;
-            if (_comparer is not IRandomedEqualityComparer && _maxStepCount > 100)
+            if (_comparer is not IRandomedEqualityComparer &&
+                _maxStepCount > 100 &&
+                SwiftHashTools.IsWellKnownEqualityComparer(_comparer))
                 SwitchToRandomizedComparer();  // Attempt to recompute hash code with potential randomization for better distribution
         }
 
@@ -708,9 +710,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// </summary>
     private void SwitchToRandomizedComparer()
     {
-        if (SwiftHashTools.IsWellKnownEqualityComparer(_comparer))
-            _comparer = (IEqualityComparer<T>)SwiftHashTools.GetSwiftEqualityComparer(_comparer);
-        else return; // nothing to do here
+        _comparer = (IEqualityComparer<T>)SwiftHashTools.GetSwiftEqualityComparer(_comparer);
 
         RehashEntries();
         _maxStepCount = 0;

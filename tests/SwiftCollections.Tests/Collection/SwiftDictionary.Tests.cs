@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Xunit;
@@ -593,15 +592,10 @@ public class SwiftDictionaryTests
         dictionary.Remove(17);
         dictionary.Clear();
 
-        Array entries = GetEntries(dictionary);
-        for (int i = 0; i < entries.Length; i++)
+        foreach (var entry in dictionary._entries)
         {
-            object entry = entries.GetValue(i);
-            int hashCode = GetEntryHashCode(entry);
-            bool isUsed = GetEntryIsUsed(entry);
-
-            Assert.False(isUsed);
-            Assert.NotEqual(-1, hashCode);
+            Assert.False(entry.IsUsed);
+            Assert.NotEqual(-1, entry.HashCode);
         }
     }
 
@@ -615,6 +609,20 @@ public class SwiftDictionaryTests
 
         Assert.True(dictionary.Capacity >= 100);
         Assert.True(dictionary.Capacity > capacityBefore);
+    }
+
+    [Fact]
+    public void EnsureCapacity_WithIntermediateFillRate_PreservesEntries()
+    {
+        var dictionary = new SwiftDictionary<int, int>(16);
+        for (int i = 0; i < 9; i++)
+            dictionary.Add(i, i);
+
+        dictionary.EnsureCapacity(32);
+
+        Assert.Equal(9, dictionary.Count);
+        for (int i = 0; i < 9; i++)
+            Assert.Equal(i, dictionary[i]);
     }
 
     [Fact]
@@ -1112,11 +1120,22 @@ public class SwiftDictionaryTests
             [2] = "Two"
         };
 
-        var keys = (ICollection<int>)dictionary.Keys;
-        var values = (ICollection<string>)dictionary.Values;
-        var keyCollection = (ICollection)dictionary.Keys;
-        var valueCollection = (ICollection)dictionary.Values;
+        IDictionary nongeneric = dictionary;
+        ICollection<int> keys = dictionary.Keys;
+        ICollection<string> values = dictionary.Values;
+        ICollection keyCollection = nongeneric.Keys;
+        ICollection valueCollection = nongeneric.Values;
 
+        Assert.NotNull(keys);
+        Assert.NotNull(values);
+        Assert.NotNull(keyCollection);
+        Assert.NotNull(valueCollection);
+        Assert.Same(keys, dictionary.Keys);
+        Assert.Same(values, dictionary.Values);
+        Assert.Same(keyCollection, nongeneric.Keys);
+        Assert.Same(valueCollection, nongeneric.Values);
+        Assert.Same(keys, keyCollection);
+        Assert.Same(values, valueCollection);
         Assert.False(keyCollection.IsSynchronized);
         Assert.False(valueCollection.IsSynchronized);
         Assert.NotNull(keyCollection.SyncRoot);
@@ -1472,30 +1491,6 @@ public class SwiftDictionaryTests
         Assert.Equal(2, dictionary.Count);
         Assert.Equal("One", dictionary[1]);
         Assert.Equal("Nine", dictionary[9]);
-    }
-
-    private static Array GetEntries<TKey, TValue>(SwiftDictionary<TKey, TValue> dictionary)
-        where TKey : notnull
-    {
-        return (Array)typeof(SwiftDictionary<TKey, TValue>)
-            .GetField("_entries", BindingFlags.Instance | BindingFlags.NonPublic)
-            .GetValue(dictionary);
-    }
-
-    private static int GetEntryHashCode(object entry)
-    {
-        return (int)entry
-            .GetType()
-            .GetField("HashCode")
-            .GetValue(entry);
-    }
-
-    private static bool GetEntryIsUsed(object entry)
-    {
-        return (bool)entry
-            .GetType()
-            .GetField("IsUsed")
-            .GetValue(entry);
     }
 
     private static long MeasureAllocatedBytes(Action action)

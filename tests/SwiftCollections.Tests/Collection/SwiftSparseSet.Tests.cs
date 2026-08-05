@@ -177,6 +177,26 @@ public class SwiftSparseSetTests
     }
 
     [Fact]
+    public void TrimExcess_WithDescendingIds_IsIdempotent()
+    {
+        var set = new SwiftSparseSet(64, 64)
+        {
+            10,
+            5
+        };
+
+        set.TrimExcess();
+        int denseCapacity = set.DenseCapacity;
+        int sparseCapacity = set.SparseCapacity;
+        set.TrimExcess();
+
+        Assert.Equal(denseCapacity, set.DenseCapacity);
+        Assert.Equal(sparseCapacity, set.SparseCapacity);
+        Assert.Contains(10, set);
+        Assert.Contains(5, set);
+    }
+
+    [Fact]
     public void Enumerator_ReturnsAllIdsAndResetRestartsIteration()
     {
         var set = new SwiftSparseSet
@@ -430,6 +450,7 @@ public class SwiftSparseSetTests
         Assert.Equal(2, count);
         Assert.False(set.IsSynchronized);
         Assert.NotNull(set.SyncRoot);
+        Assert.Same(set.SyncRoot, set.SyncRoot);
         Assert.Equal(new[] { 1, 2 }, copied);
         Assert.Equal(new[] { 1, 2 }, target);
         Assert.True(enumerator.MoveNext());

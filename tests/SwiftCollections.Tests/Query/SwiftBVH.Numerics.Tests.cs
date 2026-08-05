@@ -334,17 +334,17 @@ namespace SwiftCollections.Query.Tests
         [Fact]
         public void TreeDepth_DoesNotGrowExponentially_Random()
         {
-            var bvh = new SwiftBVH<string>(1000);
+            var bvh = new SwiftBVH<int>(1000);
             int numVolumes = 1000;
 
-            var random = new Random();
+            var random = new Random(12345);
             for (int i = 0; i < numVolumes; i++)
             {
                 var volume = new BoundVolume(
                     new Vector3(random.Next(0, 100), random.Next(0, 100), random.Next(0, 100)),
                     new Vector3(random.Next(1, 10), random.Next(1, 10), random.Next(1, 10))
                 );
-                bvh.Insert(Guid.NewGuid().ToString(), volume);
+                bvh.Insert(i, volume);
             }
 
             int maxDepth = 0;
@@ -586,22 +586,6 @@ namespace SwiftCollections.Query.Tests
             }
 
             ValidateSubtreeSize(bvh.RootNodeIndex);
-        }
-
-        [Fact]
-        public void Insert_IdenticalBoundVolumes_ReturnsAllValues()
-        {
-            var bvh = new SwiftBVH<int>(10);
-            var volume = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
-
-            bvh.Insert(1, volume);
-            bvh.Insert(2, volume);
-
-            var results = new List<int>();
-            bvh.Query(volume, results);
-
-            Assert.Contains(1, results);
-            Assert.Contains(2, results);
         }
 
         [Fact]

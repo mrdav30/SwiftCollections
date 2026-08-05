@@ -71,6 +71,9 @@ public class SwiftBVH<TKey, TVolume>
     /// <summary>
     /// Gets the underlying pool of nodes used in the BVH.
     /// </summary>
+    /// <remarks>
+    /// Prefer BVH APIs. Direct structural mutation must preserve tree invariants; invalid edits may fail fast.
+    /// </remarks>
     public SwiftBVHNode<TKey, TVolume>[] NodePool => _nodePool;
 
     /// <summary>
@@ -367,8 +370,7 @@ public class SwiftBVH<TKey, TVolume>
 
     private void PromoteSiblingToGrandParent(int siblingIndex, int parentIndex, int grandParentIndex)
     {
-        if (siblingIndex != -1)
-            _nodePool[siblingIndex].ParentIndex = grandParentIndex;
+        _nodePool[siblingIndex].ParentIndex = grandParentIndex;
 
         if (grandParentIndex == -1)
         {
@@ -488,10 +490,8 @@ public class SwiftBVH<TKey, TVolume>
 
     private static void PushChildNodes(SwiftBVHNode<TKey, TVolume> node, SwiftIntStack nodeStack)
     {
-        if (node.HasLeftChild)
-            nodeStack.Push(node.LeftChildIndex);
-        if (node.HasRightChild)
-            nodeStack.Push(node.RightChildIndex);
+        nodeStack.Push(node.LeftChildIndex);
+        nodeStack.Push(node.RightChildIndex);
     }
 
     private static void ThrowIfQueryNodeIsUnallocated(int index, SwiftBVHNode<TKey, TVolume> node)

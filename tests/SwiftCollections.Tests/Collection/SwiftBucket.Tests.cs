@@ -608,6 +608,22 @@ public class SwiftBucketTests
     }
 
     [Fact]
+    public void StateConstructor_RestoresMissingItemsAndDescendingFreeIndices()
+    {
+        var state = new SwiftBucketState<int>(
+            Array.Empty<int>(),
+            new[] { true },
+            new[] { 2, 1 },
+            0);
+
+        var bucket = new SwiftBucket<int>(state);
+
+        bucket.Count.Should().Be(1);
+        bucket[0].Should().Be(0);
+        bucket.Add(42).Should().Be(1);
+    }
+
+    [Fact]
     public void SwiftBucket_StateConstructor_ClampsLargePeakAndRejectsOutOfRangeFreeIndex()
     {
         var largePeakState = new SwiftBucketState<int>(
@@ -853,6 +869,28 @@ public class SwiftBucketTests
     }
 
     [Fact]
+    public void SearchCopyAndClone_SkipFreedSlots()
+    {
+        var bucket = new SwiftBucket<string> { "remove", "keep" };
+        bucket.RemoveAt(0);
+
+        Assert.False(bucket.Exists(item => item == "missing"));
+        Assert.Equal("keep", bucket.Find(item => item == "keep"));
+        Assert.Equal(-1, bucket.IndexOf(null));
+
+        var copied = new string[1];
+        bucket.CopyTo(copied, 0);
+        var cloned = new List<string>();
+        bucket.CloneTo(cloned);
+
+        Assert.Equal(new[] { "keep" }, copied);
+        Assert.Equal(new[] { "keep" }, cloned);
+
+        bucket.InsertAt(0, "replacement");
+        Assert.Equal(2, bucket.Count);
+    }
+
+    [Fact]
     public void CollectionMembersAndNonGenericEnumerator_ExposeCurrentState()
     {
         ICollection<int> bucket = new SwiftBucket<int>
@@ -864,6 +902,7 @@ public class SwiftBucketTests
         Assert.False(bucket.IsReadOnly);
         Assert.False(((SwiftBucket<int>)bucket).IsSynchronized);
         Assert.NotNull(((SwiftBucket<int>)bucket).SyncRoot);
+        Assert.Same(((SwiftBucket<int>)bucket).SyncRoot, ((SwiftBucket<int>)bucket).SyncRoot);
         Assert.True(bucket.Remove(10));
 
         IEnumerator enumerator = ((IEnumerable)bucket).GetEnumerator();

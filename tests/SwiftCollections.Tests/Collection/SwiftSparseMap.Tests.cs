@@ -340,6 +340,26 @@ public class SwiftSparseMapTests
     }
 
     [Fact]
+    public void TrimExcess_WithDescendingKeys_IsIdempotent()
+    {
+        var map = new SwiftSparseMap<int>(64, 64)
+        {
+            { 10, 100 },
+            { 5, 50 }
+        };
+
+        map.TrimExcess();
+        int denseCapacity = map.DenseCapacity;
+        int sparseCapacity = map.SparseCapacity;
+        map.TrimExcess();
+
+        Assert.Equal(denseCapacity, map.DenseCapacity);
+        Assert.Equal(sparseCapacity, map.SparseCapacity);
+        Assert.Equal(100, map[10]);
+        Assert.Equal(50, map[5]);
+    }
+
+    [Fact]
     public void CloneTo_ClearsTargetAndCopiesValues()
     {
         var set = new SwiftSparseMap<int>
@@ -372,6 +392,7 @@ public class SwiftSparseMapTests
         Assert.Equal(set.DenseCapacity, keys.Length);
         Assert.False(set.IsSynchronized);
         Assert.NotNull(set.SyncRoot);
+        Assert.Same(set.SyncRoot, set.SyncRoot);
         Assert.Equal(new[] { 1, 2 }, set.Keys.ToArray());
         Assert.Equal(new[] { 10, 20 }, set.Values.ToArray());
         Assert.Equal(new[] { 1, 2 }, keys.AsSpan(0, count).ToArray());
@@ -433,28 +454,6 @@ public class SwiftSparseMapTests
         var destination = new SwiftList<int>(map.Count);
 
         map.CopySortedKeysTo(destination);
-
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        map.CopySortedKeysTo(destination);
-        long after = GC.GetAllocatedBytesForCurrentThread();
-
-        Assert.Equal(before, after);
-        Assert.Equal(new[] { 1, 2, 7, 10 }, destination.ToArray());
-    }
-
-    [Fact]
-    public void CopySortedKeysTo_SwiftList_ShouldNotAllocateAfterKeyCopyWarmup()
-    {
-        var map = new SwiftSparseMap<int>
-        {
-            { 10, 100 },
-            { 2, 20 },
-            { 7, 70 },
-            { 1, 10 }
-        };
-        var destination = new SwiftList<int>(map.Count);
-
-        map.CopyKeysTo(destination);
 
         long before = GC.GetAllocatedBytesForCurrentThread();
         map.CopySortedKeysTo(destination);

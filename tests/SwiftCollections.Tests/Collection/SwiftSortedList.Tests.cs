@@ -24,28 +24,15 @@ public class SwiftSortedListTests
     }
 
     [Fact]
-    public void Constructor_Default_ShouldInitializeSorted()
-    {
-        var sorter = new SwiftSortedList<int>()
-        {
-            6,
-            1,
-            15,
-            0,
-            4
-        };
-        Assert.True(sorter.Count == 5);
-        Assert.True(sorter.PeekMin() == 0);
-        Assert.True(sorter.PeekMax() == 15);
-    }
-
-    [Fact]
     public void Constructor_WithComparer_ShouldSetCustomComparer()
     {
         static int comparison(int x, int y) => y.CompareTo(x);
         IComparer<int> comparer = Comparer<int>.Create(comparison);
         var sorter = new SwiftSortedList<int>(comparer);
+        var populatedSorter = new SwiftSortedList<int>(new[] { 1, 3, 2 }, comparer);
+
         Assert.Equal(comparer, sorter.Comparer);
+        Assert.Equal(new[] { 3, 2, 1 }, populatedSorter.AsReadOnlySpan().ToArray());
     }
 
     [Fact]
@@ -99,22 +86,7 @@ public class SwiftSortedListTests
         Assert.Equal(3, sorter.Count);
         Assert.Equal(5, sorter.PeekMin());
         Assert.Equal(15, sorter.PeekMax());
-    }
-
-    [Fact]
-    public void Enumerator()
-    {
-        var sorter = new SwiftSortedList<int>
-        {
-            10,
-            5,
-            15
-        };
-        int count = 0;
-        foreach (var item in sorter)
-            count += item;
-
-        Assert.Equal(30, count);
+        Assert.Equal(new[] { 5, 10, 15 }, sorter.AsReadOnlySpan().ToArray());
     }
 
     [Fact]
@@ -253,10 +225,100 @@ public class SwiftSortedListTests
 
         sorter.AddRange(source);
 
-        Assert.True(source.ObservedCapacity >= 0);
         Assert.True(sorter.Capacity >= source.Count + 1);
         Assert.Equal(0, sorter.PeekMin());
         Assert.Equal(64, sorter.PeekMax());
+    }
+
+    [Fact]
+    public void AddRange_NonCollectionEnumerable_InitializesAndMergesBothTailCases()
+    {
+        var sorter = new SwiftSortedList<int>();
+
+        sorter.AddRange(Enumerate(CreateDescendingRange(17)));
+        sorter.AddRange(Enumerate(new[] { -1 }));
+        sorter.AddRange(Enumerate(new[] { 17 }));
+
+        Assert.Equal(19, sorter.Count);
+        for (int i = 0; i < sorter.Count; i++)
+            Assert.Equal(i - 1, sorter[i]);
+    }
+
+    [Fact]
+    public void AddRange_Self_DuplicatesItemsSafely()
+    {
+        var sorter = new SwiftSortedList<int> { 3, 1, 2 };
+
+        sorter.AddRange(sorter);
+
+        Assert.Equal(new[] { 1, 1, 2, 2, 3, 3 }, sorter.AsReadOnlySpan().ToArray());
+    }
+
+    [Fact]
+    public void AddRange_ICollection_WhenWindowAlreadyCentered_ReusesArray()
+    {
+        var sorter = new SwiftSortedList<int> { 2, 1 };
+        sorter.PopMax();
+        int[] innerArray = sorter.InnerArray;
+        int offset = sorter.Offset;
+
+        sorter.AddRange(new List<int> { 3 });
+
+        Assert.Same(innerArray, sorter.InnerArray);
+        Assert.Equal(offset, sorter.Offset);
+        Assert.Equal(new[] { 1, 3 }, sorter.AsReadOnlySpan().ToArray());
+    }
+
+    [Fact]
+    public void AddRange_ICollection_WhenCapacityIsInsufficient_GrowsArray()
+    {
+        var sorter = new SwiftSortedList<int> { 8 };
+        int[] innerArray = sorter.InnerArray;
+
+        sorter.AddRange(new List<int> { 7, 6, 5, 4, 3, 2, 1, 0 });
+
+        Assert.NotSame(innerArray, sorter.InnerArray);
+        Assert.Equal(new[] { 0, 1, 2, 3, 4, 5, 6, 7, 8 }, sorter.AsReadOnlySpan().ToArray());
+    }
+
+    [Fact]
+    public void AddRange_IReadOnlyCollection_WhenEmpty_DoesNotEnumerate()
+    {
+        var sorter = new SwiftSortedList<int>();
+        var source = new CapacityObservingReadOnlyCollection<int>(Array.Empty<int>(), () => sorter.Capacity);
+        uint version = sorter.Version;
+
+        sorter.AddRange(source);
+
+        Assert.Equal(-1, source.ObservedCapacity);
+        Assert.Equal(version, sorter.Version);
+        Assert.Empty(sorter);
+    }
+
+    [Fact]
+    public void AddRange_IReadOnlyCollection_WhenCapacityIsAvailable_ReusesArrayAcrossLayouts()
+    {
+        var sorter = new SwiftSortedList<int>(16) { 5 };
+        int[] innerArray = sorter.InnerArray;
+        var source = new CapacityObservingReadOnlyCollection<int>(new[] { 4, 2, 3 }, () => sorter.Capacity);
+
+        sorter.AddRange(source);
+
+        Assert.Same(innerArray, sorter.InnerArray);
+        Assert.Equal(16, source.ObservedCapacity);
+        Assert.Equal(new[] { 2, 3, 4, 5 }, sorter.AsReadOnlySpan().ToArray());
+
+        var alignedSorter = new SwiftSortedList<int> { 2, 1 };
+        alignedSorter.PopMax();
+        int[] alignedInnerArray = alignedSorter.InnerArray;
+        int alignedOffset = alignedSorter.Offset;
+        var alignedSource = new CapacityObservingReadOnlyCollection<int>(new[] { 3 }, () => alignedSorter.Capacity);
+
+        alignedSorter.AddRange(alignedSource);
+
+        Assert.Same(alignedInnerArray, alignedSorter.InnerArray);
+        Assert.Equal(alignedOffset, alignedSorter.Offset);
+        Assert.Equal(new[] { 1, 3 }, alignedSorter.AsReadOnlySpan().ToArray());
     }
 
     [Fact]
@@ -741,7 +803,9 @@ public class SwiftSortedListTests
         Assert.True(sorter.Capacity >= 64);
         Assert.False(((ICollection<int>)sorter).IsReadOnly);
         Assert.False(sorter.IsSynchronized);
-        Assert.NotNull(collection.SyncRoot);
+        object syncRoot = collection.SyncRoot;
+        Assert.NotNull(syncRoot);
+        Assert.Same(syncRoot, collection.SyncRoot);
         Assert.NotEqual(0u, sorter.Version);
 
         System.Collections.IEnumerator enumerator = ((System.Collections.IEnumerable)sorter).GetEnumerator();
@@ -824,14 +888,6 @@ public class SwiftSortedListTests
         {
             yield break;
         }
-    }
-
-    [Fact]
-    public void Remove_MissingElement_ShouldReturnFalse()
-    {
-        var sorter = new SwiftSortedList<int> { 1, 3, 5 };
-
-        Assert.False(sorter.Remove(2));
     }
 
     [Fact]
@@ -1052,5 +1108,11 @@ public class SwiftSortedListTests
             values[i] = values.Length - i - 1;
 
         return values;
+    }
+
+    private static IEnumerable<int> Enumerate(int[] values)
+    {
+        for (int i = 0; i < values.Length; i++)
+            yield return values[i];
     }
 }

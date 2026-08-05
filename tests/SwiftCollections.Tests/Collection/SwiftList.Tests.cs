@@ -156,6 +156,17 @@ public class SwiftListTests
     }
 
     [Fact]
+    public void AddRange_EmptyReadOnlyCollection_IsNoOp()
+    {
+        var list = new SwiftList<int> { 1 };
+        var source = new CapacityObservingReadOnlyCollection<int>(Array.Empty<int>(), () => list.Capacity);
+
+        list.AddRange(source);
+
+        Assert.Equal(new[] { 1 }, list.ToArray());
+    }
+
+    [Fact]
     public void AddRange_EmptySpan_ShouldDoNothing()
     {
         var list = new SwiftList<int> { 1, 2, 3 };
@@ -528,6 +539,51 @@ public class SwiftListTests
     }
 
     [Fact]
+    public void SortInPlace_OrganPipeInput_ShouldSortWithClassAndStructComparers()
+    {
+        int[] source = CreateOrganPipe(256);
+        int[] expected = (int[])source.Clone();
+        Array.Sort(expected);
+        var classComparerList = new SwiftList<int>(source);
+        var structComparerList = new SwiftList<int>(source);
+        IComparer<int> classComparer = Comparer<int>.Create(static (x, y) => x.CompareTo(y));
+
+        classComparerList.SortInPlace(classComparer);
+        structComparerList.SortInPlace(default(SwiftIntAscendingComparer));
+
+        Assert.Equal(expected, classComparerList.ToArray());
+        Assert.Equal(expected, structComparerList.ToArray());
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public void SortInPlace_SmallClassComparer_DoesNotCompare(int count)
+    {
+        var list = count == 0 ? new SwiftList<int>() : new SwiftList<int> { 42 };
+
+        list.SortInPlace(ThrowingIntComparer.Instance);
+
+        Assert.Equal(count, list.Count);
+        if (count == 1)
+            Assert.Equal(42, list[0]);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public void SortInPlace_SmallStructComparer_DoesNotCompare(int count)
+    {
+        var list = count == 0 ? new SwiftList<int>() : new SwiftList<int> { 42 };
+
+        list.SortInPlace(default(ThrowingIntStructComparer));
+
+        Assert.Equal(count, list.Count);
+        if (count == 1)
+            Assert.Equal(42, list[0]);
+    }
+
+    [Fact]
     public void SortInPlace_DefaultComparer_ShouldNotAllocateAfterWarmup()
     {
         const int Count = 1024;
@@ -802,6 +858,7 @@ public class SwiftListTests
         Assert.False(nongeneric.IsFixedSize);
         Assert.Equal(2, nongeneric[1]);
         Assert.NotNull(collection.SyncRoot);
+        Assert.Same(collection.SyncRoot, collection.SyncRoot);
         Assert.Contains("1, 2, 3", list.ToString());
     }
 
@@ -898,6 +955,17 @@ public class SwiftListTests
         public int Compare(int x, int y) => y.CompareTo(x);
     }
 
+    private sealed class ThrowingIntComparer : IComparer<int>
+    {
+        public static readonly ThrowingIntComparer Instance = new();
+
+        private ThrowingIntComparer()
+        {
+        }
+
+        public int Compare(int x, int y) => throw new InvalidOperationException();
+    }
+
     private static int[] CreateAscendingRange(int count)
     {
         var values = new int[count];
@@ -911,6 +979,20 @@ public class SwiftListTests
     {
         var values = new int[count];
         for (int i = 0; i < values.Length; i++)
+            values[i] = values.Length - i - 1;
+
+        return values;
+    }
+
+    private static int[] CreateOrganPipe(int count)
+    {
+        var values = new int[count];
+        int midpoint = (count + 1) >> 1;
+
+        for (int i = 0; i < midpoint; i++)
+            values[i] = i;
+
+        for (int i = midpoint; i < values.Length; i++)
             values[i] = values.Length - i - 1;
 
         return values;
@@ -953,5 +1035,10 @@ public class SwiftListTests
     private readonly struct DescendingIntStructComparer : IComparer<int>
     {
         public int Compare(int x, int y) => y.CompareTo(x);
+    }
+
+    private readonly struct ThrowingIntStructComparer : IComparer<int>
+    {
+        public int Compare(int x, int y) => throw new InvalidOperationException();
     }
 }

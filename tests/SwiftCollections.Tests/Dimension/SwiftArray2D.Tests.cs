@@ -164,6 +164,18 @@ public class SwiftArray2DTests
     }
 
     [Fact]
+    public void AddRange_WithEqualFlattenedLength_ReusesBackingArray()
+    {
+        var array = new SwiftArray2D<int>(2, 2);
+        int[] backing = array.InnerArray;
+
+        array.AddRange(new[,] { { 1, 2 }, { 3, 4 } });
+
+        Assert.Same(backing, array.InnerArray);
+        Assert.Equal(new[] { 1, 2, 3, 4 }, array.InnerArray);
+    }
+
+    [Fact]
     public void AddRange_OverwritesBackingStorageWithoutPerCellVirtualValidation()
     {
         var array = new ValidationCountingArray2D<int>(1, 1);

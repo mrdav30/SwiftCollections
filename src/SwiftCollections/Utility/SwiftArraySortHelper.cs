@@ -158,7 +158,7 @@ internal static class SwiftArraySortHelper
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void SwapIfGreater<T>(T[] array, IComparer<T> comparer, int left, int right)
     {
-        if (left != right && comparer.Compare(array[left], array[right]) > 0)
+        if (comparer.Compare(array[left], array[right]) > 0)
             Swap(array, left, right);
     }
 
@@ -287,7 +287,7 @@ internal static class SwiftArraySortHelper
     private static void SwapIfGreater<T, TComparer>(T[] array, TComparer comparer, int left, int right)
         where TComparer : struct, IComparer<T>
     {
-        if (left != right && comparer.Compare(array[left], array[right]) > 0)
+        if (comparer.Compare(array[left], array[right]) > 0)
             Swap(array, left, right);
     }
 

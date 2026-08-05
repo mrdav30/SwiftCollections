@@ -37,6 +37,17 @@ public class SwiftQueueTests
     }
 
     [Fact]
+    public void Constructor_WithEmptyReadOnlyCollection_UsesEmptyStorage()
+    {
+        var source = new CapacityObservingReadOnlyCollection<int>(Array.Empty<int>(), () => 0);
+
+        var queue = new SwiftQueue<int>(source);
+
+        Assert.Empty(queue);
+        Assert.Equal(0, queue.Capacity);
+    }
+
+    [Fact]
     public void Constructor_WithLargeCollectionEnumerable_UsesExpandedCapacity()
     {
         var queue = new SwiftQueue<int>(new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9 });
@@ -272,6 +283,17 @@ public class SwiftQueueTests
     }
 
     [Fact]
+    public void EnqueueRange_EmptyReadOnlyCollection_IsNoOp()
+    {
+        var queue = new SwiftQueue<int>();
+        var source = new CapacityObservingReadOnlyCollection<int>(Array.Empty<int>(), () => queue.Capacity);
+
+        queue.EnqueueRange(source);
+
+        Assert.Empty(queue);
+    }
+
+    [Fact]
     public void EnqueueRange_EmptyArray_IsNoOp()
     {
         var queue = new SwiftQueue<int>();
@@ -375,9 +397,14 @@ public class SwiftQueueTests
         queue.EnqueueRange(new[] { 6, 7, 8 }.AsSpan());
 
         var destination = new int[queue.Count];
-        queue.CopyTo(destination);
+        queue.CopyTo(destination.AsSpan());
 
         Assert.Equal(new[] { 4, 5, 6, 7, 8 }, destination);
+
+        var contiguous = new SwiftQueue<int>(new[] { 1, 2 });
+        var contiguousDestination = new int[2];
+        contiguous.CopyTo(contiguousDestination.AsSpan());
+        Assert.Equal(new[] { 1, 2 }, contiguousDestination);
     }
 
     [Fact]
@@ -521,6 +548,7 @@ public class SwiftQueueTests
         Assert.False(generic.IsReadOnly);
         Assert.False(((SwiftQueue<int>)generic).IsSynchronized);
         Assert.NotNull(nongeneric.SyncRoot);
+        Assert.Same(nongeneric.SyncRoot, nongeneric.SyncRoot);
         Assert.Throws<NotSupportedException>(() => generic.Remove(1));
     }
 

@@ -170,6 +170,9 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <summary>
     /// Returns the dense ID array. Only the range [0..Count) is populated.
     /// </summary>
+    /// <remarks>
+    /// Prefer collection APIs. Direct key mutation must preserve the dense/sparse lookup invariants; invalid edits may fail fast.
+    /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int[] DenseKeys => _denseKeys;
@@ -177,6 +180,9 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <summary>
     /// Gets a span containing the current IDs in dense iteration order.
     /// </summary>
+    /// <remarks>
+    /// Prefer collection APIs. Direct key mutation must preserve the dense/sparse lookup invariants; invalid edits may fail fast.
+    /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     public Span<int> Keys => _denseKeys.AsSpan(0, _count);

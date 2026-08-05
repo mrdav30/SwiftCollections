@@ -64,22 +64,40 @@ public class SwiftObservableDictionaryTests
     }
 
     [Fact]
-    public void Replace_RaisesCollectionChangedEvent()
+    public void Indexer_MissingKey_AddsAndRaisesOneNotificationPair()
     {
-        var dictionary = new SwiftObservableDictionary<string, int>
-        {
-            { "Key1", 100 }
-        };
-        NotifyCollectionChangedEventArgs eventArgs = null;
+        var dictionary = new SwiftObservableDictionary<string, int>();
+        var collectionEvents = new List<NotifyCollectionChangedEventArgs>();
+        var propertyNames = new List<string>();
+        dictionary.CollectionChanged += (_, e) => collectionEvents.Add(e);
+        dictionary.PropertyChanged += (_, e) => propertyNames.Add(e.PropertyName);
 
-        dictionary.CollectionChanged += (sender, e) => eventArgs = e;
+        dictionary["Key1"] = 100;
+
+        NotifyCollectionChangedEventArgs eventArgs = Assert.Single(collectionEvents);
+        Assert.Equal(NotifyCollectionChangedAction.Add, eventArgs.Action);
+        Assert.Single(eventArgs.NewItems.Cast<KeyValuePair<string, int>>(), pair => pair.Key == "Key1" && pair.Value == 100);
+        Assert.Equal(new[] { "Entries[]" }, propertyNames);
+        Assert.Equal(100, dictionary["Key1"]);
+    }
+
+    [Fact]
+    public void Indexer_Replacement_RaisesOneNotificationPair()
+    {
+        var dictionary = new SwiftObservableDictionary<string, int> { { "Key1", 100 } };
+        var collectionEvents = new List<NotifyCollectionChangedEventArgs>();
+        var propertyNames = new List<string>();
+        dictionary.CollectionChanged += (_, e) => collectionEvents.Add(e);
+        dictionary.PropertyChanged += (_, e) => propertyNames.Add(e.PropertyName);
 
         dictionary["Key1"] = 200;
 
-        Assert.NotNull(eventArgs);
+        NotifyCollectionChangedEventArgs eventArgs = Assert.Single(collectionEvents);
         Assert.Equal(NotifyCollectionChangedAction.Replace, eventArgs.Action);
-        Assert.Single(eventArgs.OldItems.Cast<KeyValuePair<string, int>>(), kvp => kvp.Key == "Key1" && kvp.Value == 100);
-        Assert.Single(eventArgs.NewItems.Cast<KeyValuePair<string, int>>(), kvp => kvp.Key == "Key1" && kvp.Value == 200);
+        Assert.Single(eventArgs.OldItems.Cast<KeyValuePair<string, int>>(), pair => pair.Key == "Key1" && pair.Value == 100);
+        Assert.Single(eventArgs.NewItems.Cast<KeyValuePair<string, int>>(), pair => pair.Key == "Key1" && pair.Value == 200);
+        Assert.Equal(new[] { "Entries[]" }, propertyNames);
+        Assert.Equal(200, dictionary["Key1"]);
     }
 
     [Fact]
@@ -98,6 +116,21 @@ public class SwiftObservableDictionaryTests
 
         Assert.NotNull(eventArgs);
         Assert.Equal(NotifyCollectionChangedAction.Reset, eventArgs.Action);
+    }
+
+    [Fact]
+    public void Clear_WhenEmpty_DoesNotNotify()
+    {
+        var dictionary = new SwiftObservableDictionary<string, int>();
+        bool collectionChanged = false;
+        bool propertyChanged = false;
+        dictionary.CollectionChanged += (_, _) => collectionChanged = true;
+        dictionary.PropertyChanged += (_, _) => propertyChanged = true;
+
+        dictionary.Clear();
+
+        Assert.False(collectionChanged);
+        Assert.False(propertyChanged);
     }
 
     [Fact]
@@ -152,26 +185,6 @@ public class SwiftObservableDictionaryTests
 
         Assert.False(eventRaised);
     }
-
-    [Fact]
-    public void CollectionChanged_RaisedOnActualValueChange()
-    {
-        var dictionary = new SwiftObservableDictionary<string, int>
-        {
-            { "Key1", 100 }
-        };
-        NotifyCollectionChangedEventArgs eventArgs = null;
-
-        dictionary.CollectionChanged += (sender, e) => eventArgs = e;
-
-        dictionary["Key1"] = 200; // Change the value
-
-        Assert.NotNull(eventArgs);
-        Assert.Equal(NotifyCollectionChangedAction.Replace, eventArgs.Action);
-        Assert.Single(eventArgs.OldItems.Cast<KeyValuePair<string, int>>(), kvp => kvp.Key == "Key1" && kvp.Value == 100);
-        Assert.Single(eventArgs.NewItems.Cast<KeyValuePair<string, int>>(), kvp => kvp.Key == "Key1" && kvp.Value == 200);
-    }
-
 
     [Fact]
     public void Count_ReflectsCorrectNumberOfItems()

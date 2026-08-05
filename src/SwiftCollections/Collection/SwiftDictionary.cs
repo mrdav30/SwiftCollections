@@ -84,7 +84,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// <summary>
     /// The array containing the entries of the dictionary.
     /// </summary>
-    protected Entry[] _entries;
+    protected internal Entry[] _entries;
 
     /// <summary>
     /// The total number of entries in the dictionary
@@ -147,7 +147,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// <summary>
     /// Represents a single key-value pair in the dictionary, including its hash code for quick access.
     /// </summary>
-    protected struct Entry
+    protected internal struct Entry
     {
         /// <summary>
         /// Gets or sets the key associated with this instance.
@@ -535,7 +535,9 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         if ((uint)step > (uint)_maxStepCount)
         {
             _maxStepCount = step;
-            if (_comparer is not IRandomedEqualityComparer && _maxStepCount > 100)
+            if (_comparer is not IRandomedEqualityComparer &&
+                _maxStepCount > 100 &&
+                SwiftHashTools.IsWellKnownEqualityComparer(_comparer))
                 SwitchToRandomizedComparer();  // Attempt to recompute hash code with potential randomization for better distribution
         }
 
@@ -909,9 +911,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void SwitchToRandomizedComparer()
     {
-        if (SwiftHashTools.IsWellKnownEqualityComparer(_comparer))
-            _comparer = (IEqualityComparer<TKey>)SwiftHashTools.GetSwiftEqualityComparer(_comparer);
-        else return; // nothing to do here
+        _comparer = (IEqualityComparer<TKey>)SwiftHashTools.GetSwiftEqualityComparer(_comparer);
 
         RehashEntries();
         _maxStepCount = 0;

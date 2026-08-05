@@ -43,10 +43,12 @@ public class SwiftBiDictionaryTests
         // Act
         bool removed = biDict.Remove("Two"); // Non-existent key
         bool removedValue = biDict.Remove("One", 2); // Non-existent value for existing key
+        bool removedPair = biDict.Remove("Two", 2); // Non-existent pair
 
         // Assert
         Assert.False(removed);
         Assert.False(removedValue);
+        Assert.False(removedPair);
     }
 
     [Fact]

@@ -308,13 +308,13 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
         if (items is ICollection<T> collection)
         {
             int count = collection.Count;
-            if (count == 0)
-                return;
-
-            EnsureAdditionalCapacity(count);
-            collection.CopyTo(_innerArray, _count);
-            _count += count;
-            _version++;
+            if (count > 0)
+            {
+                EnsureAdditionalCapacity(count);
+                collection.CopyTo(_innerArray, _count);
+                _count += count;
+                _version++;
+            }
 
             return;
         }
@@ -331,15 +331,15 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
 
     private void AddKnownCountRange(IEnumerable<T> items, int count)
     {
-        if (count == 0)
-            return;
+        if (count > 0)
+        {
+            EnsureAdditionalCapacity(count);
 
-        EnsureAdditionalCapacity(count);
+            foreach (T item in items)
+                _innerArray[_count++] = item;
 
-        foreach (T item in items)
-            _innerArray[_count++] = item;
-
-        _version++;
+            _version++;
+        }
     }
 
     /// <summary>

@@ -133,13 +133,13 @@ public partial class SwiftObservableList<T> : SwiftList<T>, IStateBacked<SwiftAr
 
     private void AddKnownCountRange(IEnumerable<T> items, int count)
     {
-        if (count == 0)
-            return;
+        if (count > 0)
+        {
+            EnsureAdditionalCapacity(count);
 
-        EnsureAdditionalCapacity(count);
-
-        foreach (T item in items)
-            Add(item);
+            foreach (T item in items)
+                Add(item);
+        }
     }
 
     /// <summary>
@@ -166,12 +166,12 @@ public partial class SwiftObservableList<T> : SwiftList<T>, IStateBacked<SwiftAr
 
     private void EnsureAdditionalCapacity(int additionalCount)
     {
-        if (additionalCount == 0)
-            return;
-
-        long requiredCount = (long)_count + additionalCount;
-        SwiftThrowHelper.ThrowIfTrue(requiredCount > int.MaxValue, message: "The collection is too large.");
-        EnsureCapacity((int)requiredCount);
+        if (additionalCount > 0)
+        {
+            long requiredCount = (long)_count + additionalCount;
+            SwiftThrowHelper.ThrowIfTrue(requiredCount > int.MaxValue, message: "The collection is too large.");
+            EnsureCapacity((int)requiredCount);
+        }
     }
 
     /// <summary>

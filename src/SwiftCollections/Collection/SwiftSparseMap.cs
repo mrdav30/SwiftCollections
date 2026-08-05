@@ -189,6 +189,9 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     /// <summary>
     /// Returns the dense keys array (valid range: [0..Count)).
     /// </summary>
+    /// <remarks>
+    /// Prefer collection APIs. Direct key mutation must preserve the dense/sparse lookup invariants; invalid edits may fail fast.
+    /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int[] DenseKeys => _denseKeys;
@@ -198,7 +201,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     /// </summary>
     /// <remarks>
     /// The returned span provides a view of the underlying key data and reflects the current state of the collection. 
-    /// Modifying the span will affect the collection's contents. 
+    /// Prefer collection APIs. Direct key mutation must preserve the dense/sparse lookup invariants; invalid edits may fail fast.
     /// The span is only valid as long as the underlying collection is not modified.
     /// </remarks>
     [JsonIgnore]
@@ -456,8 +459,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
         for (int i = 0; i < _count; i++)
         {
             int key = _denseKeys[i];
-            if ((uint)key < (uint)_sparse.Length)
-                _sparse[key] = NotPresent;
+            _sparse[key] = NotPresent;
         }
 
         Array.Clear(_denseKeys, 0, _count);

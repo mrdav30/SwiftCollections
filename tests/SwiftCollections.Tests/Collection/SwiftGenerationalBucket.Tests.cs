@@ -406,6 +406,23 @@ public class SwiftGenerationalBucketTests
     }
 
     [Fact]
+    public void StateConstructor_RestoresMissingItemsAndDescendingFreeIndices()
+    {
+        var state = new SwiftGenerationalBucketState<int>(
+            Array.Empty<int>(),
+            new[] { true },
+            new uint[] { 7 },
+            new[] { 2, 1 },
+            0);
+
+        var bucket = new SwiftGenerationalBucket<int>(state);
+
+        Assert.True(bucket.TryGet(new SwiftHandle(0, 7), out int restored));
+        Assert.Equal(0, restored);
+        Assert.Equal(1, bucket.Add(42).Index);
+    }
+
+    [Fact]
     public void StateConstructor_ClampsLargePeakAndRejectsOutOfRangeFreeIndex()
     {
         var largePeakState = new SwiftGenerationalBucketState<int>(
@@ -461,6 +478,7 @@ public class SwiftGenerationalBucketTests
         };
 
         bucket.EnsureCapacity(64);
+        bucket.EnsureCapacity(64);
 
         var left = new SwiftHandle(1, 2);
         var same = new SwiftHandle(1, 2);
@@ -487,6 +505,21 @@ public class SwiftGenerationalBucketTests
         nongeneric.Reset();
 
         Assert.True(nongeneric.MoveNext());
+    }
+
+    [Fact]
+    public void FindAndCloneTo_SkipFreedSlots()
+    {
+        var bucket = new SwiftGenerationalBucket<string>();
+        SwiftHandle removed = bucket.Add("remove");
+        bucket.Add("keep");
+        bucket.Remove(removed);
+
+        Assert.Equal("keep", bucket.Find(item => item == "keep"));
+
+        var clone = new List<string>();
+        bucket.CloneTo(clone);
+        Assert.Equal(new[] { "keep" }, clone);
     }
 
     [Fact]

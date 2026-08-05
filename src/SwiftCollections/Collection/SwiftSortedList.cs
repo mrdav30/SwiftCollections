@@ -391,7 +391,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
 
         if (ShouldUseTemporaryCopy(collection))
         {
-            T[] sortedItems = CopyCollectionToArray(collection);
+            T[] sortedItems = collection.ToArray();
             SwiftArraySortHelper.Sort(sortedItems, 0, sortedItems.Length, _comparer);
             MergeSortedItems(sortedItems);
             return;
@@ -428,9 +428,6 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     private void InitializeFromCollection(ICollection<T> collection)
     {
         int count = collection.Count;
-        if (count == 0)
-            return;
-
         EnsureCapacity(count);
 
         _offset = (_innerArray.Length - count) >> 1;
@@ -443,9 +440,6 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
 
     private void InitializeFromEnumerable(IEnumerable<T> items, int count)
     {
-        if (count == 0)
-            return;
-
         EnsureCapacity(count);
 
         _offset = (_innerArray.Length - count) >> 1;
@@ -467,16 +461,6 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
             SwiftArraySortHelper.Sort(sortedItems, 0, sortedItems.Length, _comparer);
 
         return sortedItems;
-    }
-
-    private static T[] CopyCollectionToArray(ICollection<T> collection)
-    {
-        if (collection.Count == 0)
-            return _emptyArray;
-
-        T[] items = new T[collection.Count];
-        collection.CopyTo(items, 0);
-        return items;
     }
 
     private void InitializeFromSortedItems(T[] sortedItems)
@@ -552,7 +536,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         }
         else
         {
-            int newCapacity = SwiftHashTools.NextPowerOfTwo(newCount <= DefaultCapacity ? DefaultCapacity : newCount);
+            int newCapacity = SwiftHashTools.NextPowerOfTwo(newCount);
             target = new T[newCapacity];
             mergedOffset = (newCapacity - newCount) >> 1;
             Array.Copy(_innerArray, _offset, target, mergedOffset, existingCount);
@@ -585,7 +569,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         }
         else
         {
-            int newCapacity = SwiftHashTools.NextPowerOfTwo(newCount <= DefaultCapacity ? DefaultCapacity : newCount);
+            int newCapacity = SwiftHashTools.NextPowerOfTwo(newCount);
             target = new T[newCapacity];
             mergedOffset = (newCapacity - newCount) >> 1;
             Array.Copy(_innerArray, _offset, target, mergedOffset, existingCount);

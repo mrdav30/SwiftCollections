@@ -164,6 +164,21 @@ public class SwiftOctreeTypedVolumeTests
     }
 
     [Fact]
+    public void RelocateAndRemove_WithMergeDisabled_PreserveRemainingEntries()
+    {
+        var octree = CreateTypedOctree(new SwiftOctreeOptions(4, 1, false), 1f);
+        octree.Insert(1, new TestBoundVolume(1, 1, 1, 2, 2, 2));
+        octree.Insert(2, new TestBoundVolume(12, 12, 12, 13, 13, 13));
+
+        Assert.True(octree.UpdateEntryBounds(1, new TestBoundVolume(20, 20, 20, 21, 21, 21)));
+        Assert.True(octree.Remove(2));
+
+        var results = new List<int>();
+        octree.Query(new TestBoundVolume(19, 19, 19, 22, 22, 22), results);
+        Assert.Equal(new[] { 1 }, results);
+    }
+
+    [Fact]
     public void Remove_WithMergeEnabled_KeepsChildrenWhenRemainingEntryCountExceedsCapacity()
     {
         var octree = CreateTypedOctree(new SwiftOctreeOptions(4, 1, true), 1f);

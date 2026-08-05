@@ -240,13 +240,10 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
         {
             if (_reverseComparer.Equals(existingValue, value))
             {
-                bool removed = base.Remove(key);
-                if (removed)
-                {
-                    lock (ReverseSyncRoot)
-                        _reverseMap.Remove(value);
-                }
-                return removed;
+                base.Remove(key);
+                lock (ReverseSyncRoot)
+                    _reverseMap.Remove(value);
+                return true;
             }
         }
         return false;
@@ -317,15 +314,10 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
 
         if (TryGetValue(key, out T2 value))
         {
-            bool removed = base.Remove(key);
-
-            if (removed)
-            {
-                lock (ReverseSyncRoot)
-                    _reverseMap.Remove(value);
-            }
-
-            return removed;
+            base.Remove(key);
+            lock (ReverseSyncRoot)
+                _reverseMap.Remove(value);
+            return true;
         }
 
         return false;

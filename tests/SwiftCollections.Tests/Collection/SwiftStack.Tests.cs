@@ -196,10 +196,13 @@ public class SwiftStackTests
 
         // Act
         stack.EnsureCapacity(10);
+        int capacityAfterGrowth = stack.Capacity;
+        stack.EnsureCapacity(capacityAfterGrowth);
 
         // Assert
         stack.Capacity.Should().BeGreaterThanOrEqualTo(10);
         stack.Capacity.Should().BeGreaterThan(capacityBefore);
+        stack.Capacity.Should().Be(capacityAfterGrowth);
     }
 
     [Fact]
@@ -741,6 +744,7 @@ public class SwiftStackTests
         Assert.False(stack.IsReadOnly);
         Assert.False(((SwiftStack<int>)stack).IsSynchronized);
         Assert.NotNull(((ICollection)stack).SyncRoot);
+        Assert.Same(((ICollection)stack).SyncRoot, ((ICollection)stack).SyncRoot);
         Assert.Throws<NotSupportedException>(() => stack.Remove(1));
         Assert.Equal(new[] { 1, 2 }, clone);
 

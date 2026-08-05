@@ -610,5 +610,17 @@ public class SwiftPackedSetTests
         Assert.True(((SwiftPackedSet<int>)set).SetEquals(new[] { 1, 2, 3, 4 }));
     }
 
+    [Fact]
+    public void SyncRoot_IsStable()
+    {
+        var collection = new SwiftPackedSet<int>();
+
+        object first = collection.SyncRoot;
+        object second = collection.SyncRoot;
+
+        Assert.NotNull(first);
+        Assert.Same(first, second);
+    }
+
     #endregion
 }

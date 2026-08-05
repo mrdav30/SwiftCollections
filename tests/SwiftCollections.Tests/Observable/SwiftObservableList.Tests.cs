@@ -278,6 +278,64 @@ public class SwiftObservableListTests
     }
 
     [Fact]
+    public void AddRange_NonCollectionEnumerable_AddsAndNotifies()
+    {
+        var list = new SwiftObservableList<int>();
+        var collectionChanges = new List<NotifyCollectionChangedEventArgs>();
+        var propertyChanges = new List<string>();
+        list.CollectionChanged += (_, args) => collectionChanges.Add(args);
+        list.PropertyChanged += (_, args) => propertyChanges.Add(args.PropertyName);
+
+        list.AddRange(GetItems());
+
+        Assert.Equal(new[] { 42 }, list.ToArray());
+        NotifyCollectionChangedEventArgs change = Assert.Single(collectionChanges);
+        Assert.Equal(NotifyCollectionChangedAction.Add, change.Action);
+        Assert.Equal(0, change.NewStartingIndex);
+        Assert.Equal(42, Assert.Single(change.NewItems.Cast<int>()));
+        Assert.Null(change.OldItems);
+        Assert.Equal(new[] { nameof(list.Count) }, propertyChanges);
+
+        static IEnumerable<int> GetItems()
+        {
+            yield return 42;
+        }
+    }
+
+    [Fact]
+    public void AddRange_EmptyKnownCountSources_DoNotNotify()
+    {
+        var list = new SwiftObservableList<int>();
+        var source = new CapacityObservingReadOnlyCollection<int>(Array.Empty<int>(), () => list.Capacity);
+        bool collectionChanged = false;
+        bool propertyChanged = false;
+        list.CollectionChanged += (_, _) => collectionChanged = true;
+        list.PropertyChanged += (_, _) => propertyChanged = true;
+
+        list.AddRange(source);
+        list.AddRange(ReadOnlySpan<int>.Empty);
+
+        Assert.Empty(list);
+        Assert.False(collectionChanged);
+        Assert.False(propertyChanged);
+    }
+
+    [Fact]
+    public void Clear_WhenEmpty_DoesNotNotify()
+    {
+        var list = new SwiftObservableList<int>();
+        bool collectionChanged = false;
+        bool propertyChanged = false;
+        list.CollectionChanged += (_, _) => collectionChanged = true;
+        list.PropertyChanged += (_, _) => propertyChanged = true;
+
+        list.Clear();
+
+        Assert.False(collectionChanged);
+        Assert.False(propertyChanged);
+    }
+
+    [Fact]
     public void AddRange_IReadOnlyCollection_EnsuresCapacityBeforeNotifications()
     {
         var list = new SwiftObservableList<int>();

@@ -104,14 +104,11 @@ public static class SwiftThrowHelper
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void ThrowIfNegative(
         int value,
-        [CallerArgumentExpression(nameof(value))] string? paramName = null)
-    {
-        if (value < 0)
-        {
-            paramName = NormalizeParamName(paramName);
-            ThrowArgumentOutOfRangeException(paramName, value, GetNonNegativeMessage(paramName));
-        }
-    }
+        [CallerArgumentExpression(nameof(value))] string? paramName = null) =>
+        _ = value < 0 && ThrowArgumentOutOfRangeException(
+            NormalizeParamName(paramName),
+            value,
+            GetNonNegativeMessage(NormalizeParamName(paramName)));
 
     /// <summary>
     /// Throws an <see cref="ArgumentOutOfRangeException"/> if the specified value is negative or zero.
@@ -122,14 +119,11 @@ public static class SwiftThrowHelper
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void ThrowIfNegativeOrZero(
         int value,
-        [CallerArgumentExpression(nameof(value))] string? paramName = null)
-    {
-        if (value <= 0)
-        {
-            paramName = NormalizeParamName(paramName);
-            ThrowArgumentOutOfRangeException(paramName, value, GetPositiveMessage(paramName));
-        }
-    }
+        [CallerArgumentExpression(nameof(value))] string? paramName = null) =>
+        _ = value <= 0 && ThrowArgumentOutOfRangeException(
+            NormalizeParamName(paramName),
+            value,
+            GetPositiveMessage(NormalizeParamName(paramName)));
 
     /// <summary>
     /// Throws an <see cref="ArgumentOutOfRangeException"/> if the specified condition is true.
@@ -144,14 +138,11 @@ public static class SwiftThrowHelper
         [DoesNotReturnIf(true)] bool condition,
         int? actualValue,
         [CallerArgumentExpression(nameof(actualValue))] string? paramName = null,
-        string? message = null)
-    {
-        if (condition)
-        {
-            paramName = NormalizeParamName(paramName);
-            ThrowArgumentOutOfRangeException(paramName, actualValue, message ?? GetArgumentOutOfRangeMessage(paramName));
-        }
-    }
+        string? message = null) =>
+        _ = condition && ThrowArgumentOutOfRangeException(
+            NormalizeParamName(paramName),
+            actualValue,
+            message ?? GetArgumentOutOfRangeMessage(NormalizeParamName(paramName)));
 
     /// <summary>
     /// Throws an <see cref="ArgumentOutOfRangeException"/> with a lazily formatted message if the specified condition is true.
@@ -183,14 +174,11 @@ public static class SwiftThrowHelper
         [DoesNotReturnIf(true)] bool condition,
         int? actualValue,
         string? paramName,
-        [InterpolatedStringHandlerArgument(nameof(condition))] SwiftThrowInterpolatedStringHandler message)
-    {
-        if (condition)
-        {
-            paramName = NormalizeParamName(paramName);
-            ThrowArgumentOutOfRangeException(paramName, actualValue, message.GetFormattedText());
-        }
-    }
+        [InterpolatedStringHandlerArgument(nameof(condition))] SwiftThrowInterpolatedStringHandler message) =>
+        _ = condition && ThrowArgumentOutOfRangeException(
+            NormalizeParamName(paramName),
+            actualValue,
+            message.GetFormattedText());
 
     /// <summary>
     /// Throws an <see cref="ArgumentOutOfRangeException"/> if a copy destination index is outside [0, length].
@@ -203,18 +191,15 @@ public static class SwiftThrowHelper
     public static void ThrowIfArrayIndexInvalid(
         int index,
         int length,
-        [CallerArgumentExpression(nameof(index))] string? paramName = null)
-    {
-        if ((uint)index > (uint)length)
-        {
-            paramName = NormalizeParamName(paramName);
-            ThrowArgumentOutOfRangeException(paramName, index, "Array index is out of range.");
-        }
-    }
+        [CallerArgumentExpression(nameof(index))] string? paramName = null) =>
+        _ = (uint)index > (uint)length && ThrowArgumentOutOfRangeException(
+            NormalizeParamName(paramName),
+            index,
+            "Array index is out of range.");
 
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowArgumentOutOfRangeException(string? paramName, object? actualValue, string message) =>
+    private static bool ThrowArgumentOutOfRangeException(string? paramName, object? actualValue, string message) =>
         throw new ArgumentOutOfRangeException(paramName, actualValue, message);
 
     #endregion
@@ -232,14 +217,10 @@ public static class SwiftThrowHelper
     public static void ThrowIfArgument(
         [DoesNotReturnIf(true)] bool condition,
         string? paramName = null,
-        string? message = null)
-    {
-        if (condition)
-        {
-            paramName = NormalizeParamName(paramName);
-            ThrowArgumentException(paramName, message ?? GetArgumentMessage(paramName));
-        }
-    }
+        string? message = null) =>
+        _ = condition && ThrowArgumentException(
+            NormalizeParamName(paramName),
+            message ?? GetArgumentMessage(NormalizeParamName(paramName)));
 
     /// <summary>
     /// Throws an <see cref="ArgumentException"/> with a lazily formatted message if the specified condition is true.
@@ -267,18 +248,14 @@ public static class SwiftThrowHelper
     public static void ThrowIfArgument(
         [DoesNotReturnIf(true)] bool condition,
         string? paramName,
-        [InterpolatedStringHandlerArgument(nameof(condition))] SwiftThrowInterpolatedStringHandler message)
-    {
-        if (condition)
-        {
-            paramName = NormalizeParamName(paramName);
-            ThrowArgumentException(paramName, message.GetFormattedText());
-        }
-    }
+        [InterpolatedStringHandlerArgument(nameof(condition))] SwiftThrowInterpolatedStringHandler message) =>
+        _ = condition && ThrowArgumentException(
+            NormalizeParamName(paramName),
+            message.GetFormattedText());
 
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowArgumentException(string? paramName, string message) =>
+    private static bool ThrowArgumentException(string? paramName, string message) =>
         throw new ArgumentException(message, paramName);
 
     /// <summary>
