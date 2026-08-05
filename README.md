@@ -3,11 +3,12 @@
 ![SwiftCollections Icon](https://raw.githubusercontent.com/mrdav30/SwiftCollections/main/icon.png)
 
 [![Build](https://github.com/mrdav30/SwiftCollections/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/mrdav30/SwiftCollections/actions/workflows/build-and-test.yml)
-[![Branch Coverage](https://mrdav30.github.io/SwiftCollections/coverage/badge_branchcoverage.svg)](https://mrdav30.github.io/SwiftCollections/coverage/)
+[![Branch Coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fmrdav30.github.io%2FSwiftCollections%2Fcoverage%2FSummary.json&query=%24.summary.branchcoverage&suffix=%25&label=branch%20coverage&color=brightgreen)](https://mrdav30.github.io/SwiftCollections/coverage/)
 [![NuGet](https://img.shields.io/nuget/v/SwiftCollections.svg)](https://www.nuget.org/packages/SwiftCollections)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/SwiftCollections.svg)](https://www.nuget.org/packages/SwiftCollections)
 [![License](https://img.shields.io/github/license/mrdav30/SwiftCollections.svg)](https://github.com/mrdav30/SwiftCollections/blob/main/LICENSE)
 [![Frameworks](https://img.shields.io/badge/frameworks-netstandard2.1%20%7C%20net8.0-512BD4.svg)](https://github.com/mrdav30/SwiftCollections)
+[![Discord](https://img.shields.io/badge/discord-join%20community-5865F2?logo=discord&logoColor=white)](https://discord.gg/mhwK2QFNBA)
 
 SwiftCollections is a performance-oriented collection library for .NET systems
 that care about hot-path cost: simulations, games, spatial queries,
