@@ -16,12 +16,26 @@
   "build": {
     "content": [
       { "files": ["index.md", "toc.yml"] },
+      { "files": ["OVERVIEW.md"], "src": "..", "dest": "guides" },
       { "files": ["**/*.yml"], "src": "obj/api", "dest": "api" }
     ],
+    "resource": [
+      {
+        "files": ["icon.png"],
+        "src": "../..",
+        "dest": "assets"
+      }
+    ],
+    "overwrite": [{ "files": ["overrides/*.md"] }],
     "output": "obj/_site",
-    "template": ["default", "modern"],
+    "template": ["default", "modern", "templates/swiftcollections"],
     "globalMetadata": {
-      "_appName": "SwiftCollections API"
+      "_appName": "SwiftCollections",
+      "_appTitle": "SwiftCollections API",
+      "_enableSearch": true,
+      "_enableNewTab": true,
+      "_appLogoPath": "assets/icon.png",
+      "_appFaviconPath": "assets/icon.png"
     }
   }
 }

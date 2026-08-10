@@ -1,25 +1,69 @@
 # Contributing
 
-When contributing to this repository, please first discuss the change you wish
-to make via issue, email, or any other method with the owners of this repository
-before making a change.
+Focused fixes and documentation improvements can go directly through a pull
+request. For substantial public API, architecture, serialization, or
+performance changes, open an issue or discussion first so the intended contract
+and evidence bar are clear.
 
-Please note we have a code of conduct, please follow it in all your interactions
-with the project.
+Please follow the code of conduct in all project interactions.
 
-## Pull Request Process
+## Source of truth
 
-1. Ensure any install or build dependencies are removed before the end of the
-   layer when doing a build.
-2. Update the README.md with details of changes to the interface, this includes
-   new environment variables, exposed ports, useful file locations and container
-   parameters.
-3. Increase the version numbers in any examples files and the README.md to the
-   new version that this Pull Request would represent. The versioning scheme we
-   use is [SemVer](http://semver.org/).
-4. You may merge the Pull Request in once you have the sign-off of two other
-   developers, or if you do not have permission to do that, you may request the
-   second reviewer to merge it for you.
+When generated docs, package metadata, examples, and behavior disagree, prefer
+the source projects, tests, benchmarks, and workflows. Keep user-facing
+documentation aligned when a change affects the public API, package variants,
+serialization, or development workflow.
+
+The package families must remain paired:
+
+- `SwiftCollections` with `SwiftCollections.FixedMathSharp`
+- `SwiftCollections.Lean` with `SwiftCollections.FixedMathSharp.Lean`
+
+Standard includes the MemoryPack runtime. Lean exposes the same collection
+surface without that runtime dependency.
+
+## Pull request checklist
+
+1. Keep the change focused and preserve public contracts unless the proposal
+   intentionally changes them.
+2. Add or update tests for behavior changes, including edge cases and
+   serialization state when relevant.
+3. Benchmark performance-sensitive changes against the current implementation.
+4. Add concise XML documentation for new public APIs and update the overview,
+   README, or generated API landing pages when behavior changes.
+5. Do not commit `bin/`, `obj/`, test results, coverage reports, NuGet packages,
+   or BenchmarkDotNet artifacts.
+
+Versions are derived through GitVersion during release packaging. Do not
+manually bump example or README versions for ordinary pull requests.
+
+## Local validation
+
+Restore and build both package variants:
+
+```bash
+dotnet restore SwiftCollections.slnx --property:Configuration=Release
+dotnet build SwiftCollections.slnx --configuration Release --no-restore
+dotnet restore SwiftCollections.slnx --property:Configuration=ReleaseLean
+dotnet build SwiftCollections.slnx --configuration ReleaseLean --no-restore
+```
+
+Run both test configurations:
+
+```bash
+dotnet test SwiftCollections.slnx --configuration Release --no-build
+dotnet test SwiftCollections.slnx --configuration ReleaseLean --no-build
+```
+
+Build the API site after a Release build:
+
+```bash
+dotnet tool restore
+dotnet tool run docfx docs/api/docfx.json --warningsAsErrors
+```
+
+See [AGENTS.md](AGENTS.md) for repository architecture, testing patterns,
+serialization boundaries, and benchmark guidance.
 
 ## Code of Conduct
 

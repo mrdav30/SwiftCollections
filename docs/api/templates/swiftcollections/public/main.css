@@ -1,0 +1,113 @@
+:root {
+  --sc-violet-rgb: 111, 78, 176;
+  --sc-coral-rgb: 203, 82, 96;
+}
+
+body {
+  --bs-primary-rgb: var(--sc-violet-rgb);
+  --bs-link-color-rgb: 83, 50, 151;
+  --bs-link-hover-color-rgb: 132, 63, 146;
+}
+
+[data-bs-theme="dark"] body {
+  --bs-link-color-rgb: 202, 169, 255;
+  --bs-link-hover-color-rgb: 255, 157, 171;
+}
+
+#logo {
+  width: 2rem;
+  height: 2rem;
+  margin-inline-end: 0.5rem;
+  object-fit: contain;
+}
+
+.sc-hero {
+  margin-block: 1rem 2.5rem;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  border: 1px solid rgba(var(--sc-violet-rgb), 0.35);
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 92% 8%, rgba(var(--sc-coral-rgb), 0.18), transparent 34%),
+    radial-gradient(circle at 78% 38%, rgba(var(--sc-violet-rgb), 0.19), transparent 46%),
+    var(--bs-tertiary-bg);
+}
+
+.sc-hero h1 {
+  max-width: 17ch;
+  margin-block: 0.2rem 0.75rem;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  line-height: 1.05;
+}
+
+.sc-hero > p:not(.sc-kicker) {
+  max-width: 62ch;
+  font-size: 1.08rem;
+}
+
+.sc-kicker {
+  margin: 0;
+  color: rgb(var(--sc-violet-rgb));
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+[data-bs-theme="dark"] .sc-kicker {
+  color: rgb(202, 169, 255);
+}
+
+.sc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.sc-actions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.4rem;
+  color: var(--bs-body-color);
+  font-weight: 600;
+  line-height: 1.25;
+  text-decoration: none;
+}
+
+.sc-actions a:first-child {
+  border-color: rgb(var(--sc-violet-rgb));
+  background: rgb(var(--sc-violet-rgb));
+  color: #fff;
+}
+
+.sc-actions a:hover,
+.sc-actions a:focus-visible {
+  border-color: rgb(var(--sc-coral-rgb));
+  box-shadow: 0 0 0 0.2rem rgba(var(--sc-violet-rgb), 0.2);
+}
+
+.sc-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 1rem;
+  margin-block: 1rem 2.5rem;
+}
+
+.sc-card {
+  padding: 1.25rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.75rem;
+  background: var(--bs-body-bg);
+  box-shadow: 0 0.35rem 1.1rem rgba(var(--sc-violet-rgb), 0.06);
+}
+
+.sc-card h3 {
+  margin-top: 0;
+  font-size: 1.05rem;
+}
+
+.sc-card p {
+  margin-bottom: 0;
+}

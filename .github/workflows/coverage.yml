@@ -67,10 +67,18 @@ jobs:
           test -f src/SwiftCollections/bin/Release/net8.0/SwiftCollections.xml
           test -f src/SwiftCollections.FixedMathSharp/bin/Release/net8.0/SwiftCollections.FixedMathSharp.dll
           test -f src/SwiftCollections.FixedMathSharp/bin/Release/net8.0/SwiftCollections.FixedMathSharp.xml
-          dotnet tool run docfx docs/api/docfx.json
+          dotnet tool run docfx docs/api/docfx.json --warningsAsErrors
           test -f docs/api/obj/_site/index.html
+          test -f docs/api/obj/_site/guides/OVERVIEW.html
           test -f docs/api/obj/_site/api/SwiftCollections.html
           test -f docs/api/obj/_site/api/SwiftCollections.Query.html
+          test -f docs/api/obj/_site/assets/icon.png
+          test -f docs/api/obj/_site/public/main.css
+          grep -Fq 'sc-hero' docs/api/obj/_site/index.html
+          grep -Fq -- '--sc-violet-rgb' docs/api/obj/_site/public/main.css
+          grep -Fq 'github.com/mrdav30/SwiftCollections' docs/api/obj/_site/public/main.js
+          grep -Fq 'SwiftCollections-Unity' docs/api/obj/_site/api/SwiftCollections.html
+          grep -Fq 'github.com/mrdav30/FixedMathSharp' docs/api/obj/_site/api/SwiftCollections.Query.html
 
       - name: Install ReportGenerator
         run: dotnet tool install --global dotnet-reportgenerator-globaltool
@@ -107,8 +115,10 @@ jobs:
           cp -a docs/api/obj/_site/. artifacts/pages/
           cp -a artifacts/coverage-report/. artifacts/pages/coverage/
           test -f artifacts/pages/index.html
+          test -f artifacts/pages/guides/OVERVIEW.html
           test -f artifacts/pages/api/SwiftCollections.html
           test -f artifacts/pages/api/SwiftCollections.Query.html
+          test -f artifacts/pages/assets/icon.png
           test -f artifacts/pages/coverage/Summary.json
           test -f artifacts/pages/coverage/badge_branchcoverage.svg
 

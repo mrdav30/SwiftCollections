@@ -82,7 +82,7 @@ expectations change:
 | `src/SwiftCollections.FixedMathSharp`   | Fixed-point spatial query companion                  | Depends on FixedMathSharp or FixedMathSharp.Lean based on package variant.                         |
 | `tests/SwiftCollections.Tests`          | xUnit v3 unit tests                                  | Covers both runtime assemblies and mirrors source areas.                                           |
 | `tests/SwiftCollections.Benchmarks`     | BenchmarkDotNet benchmarks                           | Alias-based runner supports `list`, `dictionary`, `query`, `all`, and other selections.            |
-| `docs/api`                              | DocFX landing page, navigation, and configuration    | Publishes both runtime assemblies; generated `obj` output is ignored.                              |
+| `docs/api`                              | Branded DocFX landing page, hosted overview, and API | Publishes both runtime assemblies; generated `obj` output is ignored.                              |
 | `.assets/scripts`                       | PowerShell release/version helpers                   | Requires PowerShell and GitVersion.Tool.                                                           |
 
 Ignore generated output when reviewing structure:

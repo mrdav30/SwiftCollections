@@ -51,7 +51,7 @@
 		<PackageTags>collections;spatial-queries;fixed-point;fixed-point-math;deterministic;bvh;bounding-volume-hierarchy;spatial-hash;octree;fixedmathsharp;companion;game-development;simulations;physics;dotnet;unity</PackageTags>
 		<RepositoryUrl>https://github.com/mrdav30/SwiftCollections</RepositoryUrl>
 		<PackageIcon>icon.png</PackageIcon>
-		<PackageIconUrl>https://raw.githubusercontent.com/mrdav30/fixedmathsharp/main/icon.png</PackageIconUrl>
+		<PackageIconUrl>https://raw.githubusercontent.com/mrdav30/SwiftCollections/main/icon.png</PackageIconUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
