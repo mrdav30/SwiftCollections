@@ -3,9 +3,8 @@
 ![SwiftCollections icon](https://raw.githubusercontent.com/mrdav30/SwiftCollections/main/icon.png)
 
 [![Build](https://github.com/mrdav30/SwiftCollections/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/mrdav30/SwiftCollections/actions/workflows/build-and-test.yml)
-[![Branch Coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fmrdav30.github.io%2FSwiftCollections%2Fcoverage%2FSummary.json&query=%24.summary.branchcoverage&suffix=%25&label=branch%20coverage&color=brightgreen)](https://mrdav30.github.io/SwiftCollections/coverage/)
+[![Core Branch Coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fmrdav30.github.io%2FSwiftCollections%2Fcoverage%2FSummary.json&query=%24.summary.branchcoverage&suffix=%25&label=core%20branch%20coverage&color=brightgreen)](https://mrdav30.github.io/SwiftCollections/coverage/)
 [![NuGet](https://img.shields.io/nuget/v/SwiftCollections.svg)](https://www.nuget.org/packages/SwiftCollections)
-[![NuGet Downloads](https://img.shields.io/nuget/dt/SwiftCollections.svg)](https://www.nuget.org/packages/SwiftCollections)
 [![License](https://img.shields.io/github/license/mrdav30/SwiftCollections.svg)](https://github.com/mrdav30/SwiftCollections/blob/main/LICENSE)
 [![API](https://img.shields.io/badge/docs-API-f4511e)](https://mrdav30.github.io/SwiftCollections/)
 [![Discord](https://img.shields.io/badge/discord-join%20community-5865F2?logo=discord&logoColor=white)](https://discord.gg/mhwK2QFNBA)
