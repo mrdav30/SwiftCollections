@@ -35,7 +35,8 @@ Read these before making non-trivial changes:
    source of truth for compiled projects, package shape, and target frameworks.
 4. The source folder under `src/SwiftCollections` or
    `src/SwiftCollections.FixedMathSharp` that owns the change.
-5. The matching tests under `tests/SwiftCollections.Tests`.
+5. The matching tests under `tests/SwiftCollections.Tests` or
+   `tests/SwiftCollections.FixedMathSharp.Tests`.
 6. Benchmarks under `tests/SwiftCollections.Benchmarks` when a change touches
    hot-path behavior or a performance claim.
 7. `docs/complexity-exceptions.md` before refactoring high-complexity methods or
@@ -52,7 +53,8 @@ Compiled projects:
 | ------------------------ | ---------------------------------------------------------------------------- | ----------------------- |
 | Core library             | `src/SwiftCollections/SwiftCollections.csproj`                               | `netstandard2.1;net8.0` |
 | FixedMathSharp companion | `src/SwiftCollections.FixedMathSharp/SwiftCollections.FixedMathSharp.csproj` | `netstandard2.1;net8.0` |
-| Unit tests               | `tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj`                 | `net8.0`                |
+| Core unit tests          | `tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj`                 | `net8.0`                |
+| FixedMathSharp tests     | `tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMathSharp.Tests.csproj` | `net8.0` |
 | Benchmarks               | `tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj`       | `net8`                  |
 
 Keep these aligned whenever behavior, public API, package variants, or workflow
@@ -80,7 +82,8 @@ expectations change:
 | `src/SwiftCollections/Support`          | Compatibility shims                                  | Includes MemoryPack and interpolated-string-handler shims for target/package variants.             |
 | `src/SwiftCollections/Utility`          | Shared helpers, hashing, diagnostics, extensions     | Preserve helper exception contracts.                                                               |
 | `src/SwiftCollections.FixedMathSharp`   | Fixed-point spatial query companion                  | Depends on FixedMathSharp or FixedMathSharp.Lean based on package variant.                         |
-| `tests/SwiftCollections.Tests`          | xUnit v3 unit tests                                  | Covers both runtime assemblies and mirrors source areas.                                           |
+| `tests/SwiftCollections.Tests`          | Core xUnit v3 tests                                  | References only the core runtime assembly and mirrors its source areas.                             |
+| `tests/SwiftCollections.FixedMathSharp.Tests` | Companion xUnit v3 tests                      | References the FixedMathSharp companion and can validate it against a published core package.       |
 | `tests/SwiftCollections.Benchmarks`     | BenchmarkDotNet benchmarks                           | Alias-based runner supports `list`, `dictionary`, `query`, `all`, and other selections.            |
 | `docs/api`                              | Branded DocFX landing page, hosted overview, and API | Publishes both runtime assemblies; generated `obj` output is ignored.                              |
 | `.assets/scripts`                       | PowerShell release/version helpers                   | Requires PowerShell and GitVersion.Tool.                                                           |
@@ -200,13 +203,13 @@ Full coverage is an explicit repo priority.
 - If you change `Dimension`, `Observable`, `Pool`, `Query`, `Serialization`,
   `Utility`, or diagnostics behavior, update the corresponding test area.
 - If you change `src/SwiftCollections.FixedMathSharp`, update
-  `tests/SwiftCollections.Tests`.
+  `tests/SwiftCollections.FixedMathSharp.Tests`.
 - New public APIs should have focused behavior, edge-case, serialization/state,
   and invalid-input tests where applicable.
 - Coverage should stay flat or improve. Prefer closing touched areas to full
   coverage when practical.
-- Use `tests/SwiftCollections.Tests/coverlet.runsettings` for coverage across
-  both runtime assemblies; generated MemoryPack files stay excluded.
+- Use each test project's `coverlet.runsettings` so core and companion coverage
+  are collected independently; generated MemoryPack files stay excluded.
 
 ## Validation Commands
 
@@ -221,16 +224,17 @@ Build everything:
 dotnet build SwiftCollections.slnx -c Debug
 ```
 
-Run unit tests:
+Run both unit-test projects:
 
 ```bash
-dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c Debug --no-build
+dotnet test SwiftCollections.slnx -c Debug --no-build
 ```
 
 Run coverage for both runtime assemblies:
 
 ```bash
 dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c Debug --no-build --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.Tests/coverlet.runsettings
+dotnet test tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMathSharp.Tests.csproj -c Debug --no-build --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.FixedMathSharp.Tests/coverlet.runsettings
 ```
 
 Run benchmark selections:
@@ -258,9 +262,11 @@ dotnet test SwiftCollections.slnx -c ReleaseLean --no-build
 - `coverage.yml` publishes one GitHub Pages site after a successful `main` push:
   DocFX at the root, both runtime assemblies under `/api`, and the runtime
   coverage report under `/coverage`.
-- `publish-nuget.yml` runs on GitHub releases, validates the release tag against
-  GitVersion, builds standard and lean packages, verifies all 8
-  `.nupkg`/`.snupkg` artifacts, runs Release tests, and publishes to NuGet.
+- `publish-nuget.yml` runs on GitHub releases, resolves legacy or package-family
+  tags, tests `Release` and `ReleaseLean`, packs and validates only the selected
+  package family, and publishes those `.nupkg` artifacts to NuGet. Scoped
+  companion releases run their tests against the configured published core
+  package version.
 - Package metadata lives in the project files. Packaging includes `README.md`,
   `LICENSE`, `NOTICE`, `COPYRIGHT`, and `icon.png` from the repo root.
 - Generated build, test, coverage, package, and benchmark output must not be

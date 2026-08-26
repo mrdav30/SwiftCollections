@@ -14,13 +14,17 @@ the source projects, tests, benchmarks, and workflows. Keep user-facing
 documentation aligned when a change affects the public API, package variants,
 serialization, or development workflow.
 
-The package families must remain paired:
+Standard and Lean variants must remain version-aligned within each package
+family:
 
-- `SwiftCollections` with `SwiftCollections.FixedMathSharp`
-- `SwiftCollections.Lean` with `SwiftCollections.FixedMathSharp.Lean`
+- `SwiftCollections` with `SwiftCollections.Lean`
+- `SwiftCollections.FixedMathSharp` with
+  `SwiftCollections.FixedMathSharp.Lean`
 
 Standard includes the MemoryPack runtime. Lean exposes the same collection
-surface without that runtime dependency.
+surface without that runtime dependency. The FixedMathSharp companion family
+declares its minimum compatible published SwiftCollections version separately,
+so the two families can be released independently.
 
 ## Pull request checklist
 
@@ -34,8 +38,45 @@ surface without that runtime dependency.
 5. Do not commit `bin/`, `obj/`, test results, coverage reports, NuGet packages,
    or BenchmarkDotNet artifacts.
 
-Versions are derived through GitVersion during release packaging. Do not
-manually bump example or README versions for ordinary pull requests.
+Default lockstep versions are derived through GitVersion; scoped releases take
+their version from an explicit argument or release tag. Do not manually bump
+example or README versions for ordinary pull requests.
+
+## Releases
+
+The existing local command builds all four packages with the version derived by
+GitVersion:
+
+```powershell
+.\.assets\scripts\set-version-and-build.ps1
+```
+
+For an independent package-family release, provide the family and stable
+three-part version explicitly:
+
+```powershell
+.\.assets\scripts\set-version-and-build.ps1 `
+    -PackageFamily SwiftCollections.FixedMathSharp `
+    -Version 7.1.0
+```
+
+GitHub release tags select the packages published to NuGet:
+
+| Tag | Packages |
+| --- | --- |
+| `SwiftCollections/v7.0.1` | `SwiftCollections` and `SwiftCollections.Lean` |
+| `SwiftCollections.FixedMathSharp/v7.1.0` | `SwiftCollections.FixedMathSharp` and `SwiftCollections.FixedMathSharp.Lean` |
+| `v7.1.0` | All four packages at one lockstep version |
+
+Scoped companion releases compile and pack against the published minimum core
+version in `SwiftCollectionsPackageVersion` in
+`src/SwiftCollections.FixedMathSharp/SwiftCollections.FixedMathSharp.csproj`.
+Bump that property only when the companion requires a newer core package.
+
+NuGet publication is not transactional across Standard and Lean. If a network
+failure publishes only part of a validated family, rerun the same GitHub
+release workflow; publication uses `--skip-duplicate` so already-published
+members are skipped while missing members are retried.
 
 ## Local validation
 

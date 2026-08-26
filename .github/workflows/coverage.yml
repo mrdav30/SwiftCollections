@@ -56,7 +56,9 @@ jobs:
         run: dotnet build SwiftCollections.slnx --configuration Release --no-restore
 
       - name: Run tests with coverage
-        run: dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj --configuration Release --no-build --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.Tests/coverlet.runsettings --results-directory artifacts/coverage
+        run: |
+          dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj --configuration Release --no-build --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.Tests/coverlet.runsettings --results-directory artifacts/coverage/core
+          dotnet test tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMathSharp.Tests.csproj --configuration Release --no-build --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.FixedMathSharp.Tests/coverlet.runsettings --results-directory artifacts/coverage/fixedmathsharp
 
       - name: Restore local tools
         run: dotnet tool restore

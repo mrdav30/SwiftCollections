@@ -1,69 +1,142 @@
-# Import shared functions
-Set-Location (Split-Path $MyInvocation.MyCommand.Path)
-. .\utilities.ps1
+<#
+.SYNOPSIS
+Builds release artifacts for all packages or one paired package family.
 
-# Locate solution directory and switch to it
-$solutionDir = Get-SolutionDirectory
-Set-Location $solutionDir
+.DESCRIPTION
+Builds the selected projects in Release and ReleaseLean, then creates one ZIP
+per target framework and configuration under artifacts/releases. With no
+arguments, all packages use the version reported by GitVersion. Scoped family
+builds require an explicit stable three-part version and companion builds use
+the published SwiftCollections dependency configured by the companion project.
 
-# Ensure GitVersion environment variables are set
-Ensure-GitVersion-Environment
+.PARAMETER PackageFamily
+Selects the release unit. Accepted values are All, SwiftCollections, and
+SwiftCollections.FixedMathSharp. Standard and Lean packages always release
+together within the selected family. The default is All.
 
-$archiveRoot = Join-Path $solutionDir "artifacts"
-$archiveOutputDir = Join-Path $archiveRoot "releases"
+.PARAMETER Version
+Sets an explicit stable version in X.Y.Z form. It is required for a scoped
+family and optional for All. When omitted for All, GitVersion supplies the
+version.
 
-if (-not (Test-Path $archiveOutputDir)) {
-    New-Item -ItemType Directory -Path $archiveOutputDir -Force | Out-Null
-}
+.EXAMPLE
+.\.assets\scripts\set-version-and-build.ps1
 
-Write-Host "Archives will be written to: $archiveOutputDir"
+Builds all four packages using GitVersion.
 
-# Build and package for each release configuration
-$configurations = @("Release", "ReleaseLean")
+.EXAMPLE
+.\.assets\scripts\set-version-and-build.ps1 -PackageFamily SwiftCollections.FixedMathSharp -Version 7.1.0
 
-# Library projects to bundle — add new packages here as needed
-$libraryProjects = @(
-    "SwiftCollections",
-    "SwiftCollections.FixedMathSharp"
+Builds only SwiftCollections.FixedMathSharp and its Lean variant at 7.1.0.
+
+.EXAMPLE
+.\.assets\scripts\set-version-and-build.ps1 -PackageFamily SwiftCollections -Version 7.1.0
+
+Builds only SwiftCollections and its Lean variant at 7.1.0.
+#>
+[CmdletBinding()]
+param (
+    [ValidateSet("All", "SwiftCollections", "SwiftCollections.FixedMathSharp")]
+    [string]$PackageFamily = "All",
+
+    [string]$Version
 )
 
-foreach ($config in $configurations){
-    # Build the project with the version information applied
-    Build-Project -Configuration $config
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
 
-    foreach ($projectName in $libraryProjects) {
-        # Output directory for this configuration and project
-        $releaseDir = Join-Path $solutionDir "src\$projectName\bin\$config"
+$startingLocation = Get-Location
+$stagingDir = $null
 
-        # Determine archive label suffix (lowercase, hyphen-separated)
-        $configLabel = $config.ToLower() -replace "release", "release" # keeps "release" / "releaselean"
+try {
+    . (Join-Path $PSScriptRoot "utilities.ps1")
 
-        if (-not (Test-Path $releaseDir)) {
-            Write-Warning "Release directory not found for configuration '$config': $releaseDir"
+    $releasePlan = Resolve-ReleasePlan -PackageFamily $PackageFamily -Version $Version
+    $solutionDir = Get-SolutionDirectory -StartPath $PSScriptRoot
+    Set-Location $solutionDir
+
+    if ($releasePlan.UseGitVersion) {
+        Ensure-GitVersion-Environment
+    } else {
+        Set-ReleaseVersionEnvironment -Version $releasePlan.Version
+    }
+
+    $configurations = @("Release", "ReleaseLean")
+    $buildProperties = @{}
+    if ($releasePlan.UsePublishedSwiftCollections) {
+        $buildProperties.UsePublishedSwiftCollections = "true"
+    }
+
+    foreach ($config in $configurations) {
+        foreach ($projectName in $releasePlan.Projects) {
+            $configurationOutput = Join-Path $solutionDir "src\$projectName\bin\$config"
+            if (Test-Path -LiteralPath $configurationOutput) {
+                Remove-Item -LiteralPath $configurationOutput -Recurse -Force
+            }
+        }
+
+        if ($releasePlan.PackageFamily -eq "All") {
+            Build-Project `
+                -ProjectPath (Join-Path $solutionDir "SwiftCollections.slnx") `
+                -Configuration $config `
+                -Properties $buildProperties
             continue
         }
 
-        Get-ChildItem -Path $releaseDir -Directory | ForEach-Object {
-            $targetDir = $_.FullName
-            $frameworkName = $_.Name
+        foreach ($projectName in $releasePlan.Projects) {
+            $projectPath = Join-Path $solutionDir "src\$projectName\$projectName.csproj"
+            Build-Project `
+                -ProjectPath $projectPath `
+                -Configuration $config `
+                -Properties $buildProperties
+        }
+    }
 
-            # Construct final archive name
-            $zipFileName = "${projectName}-v$($Env:GitVersion_FullSemVer)-${frameworkName}-${configLabel}.zip"
-            $zipPath = Join-Path $archiveOutputDir $zipFileName
+    $archiveRoot = Join-Path $solutionDir "artifacts"
+    $archiveOutputDir = Join-Path $archiveRoot "releases"
+    $stagingDir = Join-Path $archiveRoot ".release-staging-$([guid]::NewGuid().ToString('N'))"
+    New-Item -ItemType Directory -Path $stagingDir -Force | Out-Null
 
-            Write-Host "Creating archive: $zipPath"
+    foreach ($config in $configurations) {
+        $configLabel = $config.ToLowerInvariant()
 
-            if (Test-Path $zipPath) {
-                Remove-Item $zipPath -Force
+        foreach ($projectName in $releasePlan.Projects) {
+            $releaseDir = Join-Path $solutionDir "src\$projectName\bin\$config"
+            $frameworkDirs = @(Get-ChildItem -LiteralPath $releaseDir -Directory)
+            if ($frameworkDirs.Count -eq 0) {
+                throw "No target-framework output was produced: $releaseDir"
             }
 
-            Compress-Archive -Path "$targetDir\*" -DestinationPath $zipPath -Force
+            foreach ($frameworkDir in $frameworkDirs) {
+                $frameworkName = $frameworkDir.Name
+                $targetDir = $frameworkDir.FullName
+                $archiveItems = @(Get-ChildItem -LiteralPath $targetDir -Force)
+                if ($archiveItems.Count -eq 0) {
+                    throw "Release output is empty: $targetDir"
+                }
 
-            if (Test-Path $zipPath) {
-                Write-Host "Archive created for ${projectName} / $frameworkName / $config"
-            } else {
-                Write-Warning "Failed to create archive for ${projectName} / $frameworkName / $config"
+                $zipFileName = "${projectName}-v$($Env:GitVersion_FullSemVer)-${frameworkName}-${configLabel}.zip"
+                $stagedZipPath = Join-Path $stagingDir $zipFileName
+                Compress-Archive -LiteralPath $archiveItems.FullName -DestinationPath $stagedZipPath -Force
+
+                if (-not (Test-Path -LiteralPath $stagedZipPath -PathType Leaf)) {
+                    throw "Failed to create archive: $stagedZipPath"
+                }
             }
         }
     }
+
+    New-Item -ItemType Directory -Path $archiveOutputDir -Force | Out-Null
+    foreach ($stagedArchive in (Get-ChildItem -LiteralPath $stagingDir -File)) {
+        $destination = Join-Path $archiveOutputDir $stagedArchive.Name
+        Move-Item -LiteralPath $stagedArchive.FullName -Destination $destination -Force
+        Write-Host "Created archive: $destination"
+    }
+
+    Write-Host "Release family '$($releasePlan.PackageFamily)' $($Env:GitVersion_FullSemVer) built successfully." -ForegroundColor Green
+} finally {
+    if ($null -ne $stagingDir -and (Test-Path -LiteralPath $stagingDir)) {
+        Remove-Item -LiteralPath $stagingDir -Recurse -Force
+    }
+    Set-Location $startingLocation
 }

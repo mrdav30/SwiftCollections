@@ -180,13 +180,14 @@ dotnet build SwiftCollections.slnx -c Debug
 Run tests:
 
 ```bash
-dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c Debug --no-build
+dotnet test SwiftCollections.slnx -c Debug --no-build
 ```
 
 Run coverage:
 
 ```bash
 dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c Debug --no-build --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.Tests/coverlet.runsettings
+dotnet test tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMathSharp.Tests.csproj -c Debug --no-build --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.FixedMathSharp.Tests/coverlet.runsettings
 ```
 
 List benchmark aliases:

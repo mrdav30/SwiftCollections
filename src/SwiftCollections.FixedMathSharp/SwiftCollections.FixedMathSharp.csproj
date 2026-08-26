@@ -6,6 +6,8 @@
 		<TargetFrameworks>netstandard2.1;net8.0</TargetFrameworks>
 		<Configurations>Debug;Release;ReleaseLean</Configurations>
 		<DisableMemoryPack Condition="'$(DisableMemoryPack)' == ''">false</DisableMemoryPack>
+		<UsePublishedSwiftCollections Condition="'$(UsePublishedSwiftCollections)' == ''">false</UsePublishedSwiftCollections>
+		<SwiftCollectionsPackageVersion Condition="'$(SwiftCollectionsPackageVersion)' == ''">7.0.0</SwiftCollectionsPackageVersion>
 		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
 		<Deterministic>true</Deterministic>
 	</PropertyGroup>
@@ -86,15 +88,23 @@
 
 	<!-- Dependencies and Package References -->
 	<ItemGroup Condition="'$(DisableMemoryPack)' != 'true'">
-		<PackageReference Include="FixedMathSharp" Version="7.0.0" />
+		<PackageReference Include="FixedMathSharp" Version="7.1.0" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(DisableMemoryPack)' == 'true'">
-		<PackageReference Include="FixedMathSharp.Lean" Version="7.0.0" />
+		<PackageReference Include="FixedMathSharp.Lean" Version="7.1.0" />
 	</ItemGroup>
 
-	<ItemGroup>
+	<ItemGroup Condition="'$(UsePublishedSwiftCollections)' != 'true'">
 		<ProjectReference Include="..\SwiftCollections\SwiftCollections.csproj" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(UsePublishedSwiftCollections)' == 'true' And '$(DisableMemoryPack)' != 'true'">
+		<PackageReference Include="SwiftCollections" Version="$(SwiftCollectionsPackageVersion)" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(UsePublishedSwiftCollections)' == 'true' And '$(DisableMemoryPack)' == 'true'">
+		<PackageReference Include="SwiftCollections.Lean" Version="$(SwiftCollectionsPackageVersion)" />
 	</ItemGroup>
 
 	<!-- Ensure LICENSE, README, & icon files are included in the NuGet package -->

@@ -731,15 +731,16 @@ public class SwiftHashSetTests
     }
 
     [Fact]
-    public void Add_ProbesPastDeletedEntriesBeforeReusingTombstone()
+    public void Add_ProbesPastDeletedEntriesBeforeReusingFirstTombstone()
     {
-        var comparer = new SelectiveIntHashComparer((1, 0), (9, 0));
-        var set = new SwiftHashSet<int>(8, comparer) { 1, 9 };
+        var comparer = new SelectiveIntHashComparer((1, 0), (9, 0), (17, 0));
+        var set = new SwiftHashSet<int>(8, comparer) { 1, 9, 17 };
 
         Assert.True(set.Remove(1));
-        Assert.False(set.Add(9));
+        Assert.True(set.Remove(9));
+        Assert.False(set.Add(17));
         Assert.Single(set);
-        Assert.Contains(9, set);
+        Assert.Contains(17, set);
     }
 
     [Fact]

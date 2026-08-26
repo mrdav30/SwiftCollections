@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using FixedMathSharp;
 using Xunit;
 
@@ -115,7 +116,11 @@ public class SwiftOctreeFixedMathSharpTypedTests
                 Fixed64.MaxValue - Fixed64.One),
             new Vector3d(Fixed64.MaxValue, Fixed64.MaxValue, Fixed64.MaxValue))));
 
-        Assert.True(octree.DebugRootHasChildren);
+        PropertyInfo rootHasChildren = typeof(SwiftOctree<int, FixedBoundVolume>).GetProperty(
+            "DebugRootHasChildren",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(rootHasChildren);
+        Assert.True((bool)rootHasChildren.GetValue(octree));
         Assert.Throws<System.OverflowException>(() => _ = worldBounds.Size);
     }
 

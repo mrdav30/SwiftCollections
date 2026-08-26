@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using SwiftCollections.Diagnostics;
@@ -267,6 +268,39 @@ public class SwiftSpatialHashTypedVolumeTests
 
         Assert.Single(results);
         Assert.Equal(1, results[0]);
+    }
+
+    [Fact]
+    public void CollectCellCandidates_HandlesOccupiedMissingAndNullResults()
+    {
+        var hash = new TestSpatialHash(2, s_unitCellMapper);
+        hash.Insert(1, new TestBoundVolume(0, 0, 0, 0.25f, 0.25f, 0.25f));
+
+        var results = new List<int>();
+        hash.CollectCellCandidatesForTest(new SwiftSpatialHashCellIndex(0, 0, 0), results);
+
+        Assert.Single(results);
+        Assert.Equal(1, results[0]);
+
+        results.Clear();
+        hash.CollectCellCandidatesForTest(new SwiftSpatialHashCellIndex(10, 10, 10), results);
+
+        Assert.Empty(results);
+        Assert.Throws<ArgumentNullException>(() =>
+            hash.CollectCellCandidatesForTest(new SwiftSpatialHashCellIndex(0, 0, 0), null));
+    }
+
+    private sealed class TestSpatialHash : SwiftSpatialHash<int, TestBoundVolume>
+    {
+        public TestSpatialHash(int capacity, ISpatialHashCellMapper<TestBoundVolume> cellMapper)
+            : base(capacity, cellMapper)
+        {
+        }
+
+        public void CollectCellCandidatesForTest(
+            SwiftSpatialHashCellIndex cell,
+            ICollection<int> results) =>
+            CollectCellCandidates(cell, results);
     }
 
     private sealed class TestBoundVolumeCellMapper : ISpatialHashCellMapper<TestBoundVolume>

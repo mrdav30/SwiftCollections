@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<LangVersion>11.0</LangVersion>
-		<TargetFrameworks>net8.0</TargetFrameworks>
+		<TargetFramework>net8.0</TargetFramework>
 		<ImplicitUsings>disable</ImplicitUsings>
 		<Nullable>disable</Nullable>
 		<IsPackable>false</IsPackable>
@@ -10,17 +10,12 @@
 		<Configurations>Debug;Release;ReleaseLean</Configurations>
 		<OutputType>Exe</OutputType>
 	</PropertyGroup>
-	<PropertyGroup Condition="'$(Configuration)' == 'ReleaseLean'">
-		<DisableMemoryPack>true</DisableMemoryPack>
-		<DefineConstants>$(DefineConstants);SWIFTCOLLECTIONS_DISABLE_MEMORYPACK</DefineConstants>
-	</PropertyGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\SwiftCollections\SwiftCollections.csproj" />
+		<ProjectReference Include="..\..\src\SwiftCollections.FixedMathSharp\SwiftCollections.FixedMathSharp.csproj" />
 		<PackageReference Include="coverlet.collector" Version="10.0.1">
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 			<PrivateAssets>all</PrivateAssets>
 		</PackageReference>
-		<PackageReference Include="FluentAssertions" Version="8.10.0" />
 		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
 		<PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
 			<PrivateAssets>all</PrivateAssets>
