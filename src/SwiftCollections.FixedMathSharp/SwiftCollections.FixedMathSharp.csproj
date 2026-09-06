@@ -96,7 +96,9 @@
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UsePublishedSwiftCollections)' != 'true'">
-		<ProjectReference Include="..\SwiftCollections\SwiftCollections.csproj" />
+		<ProjectReference Include="..\SwiftCollections\SwiftCollections.csproj">
+			<AdditionalProperties Condition="'$(UseLocalLsfStack)' == 'true'">Configuration=$(Configuration);SemVer=7.0.0;AssemblySemVer=7.0.0.0</AdditionalProperties>
+		</ProjectReference>
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UsePublishedSwiftCollections)' == 'true' And '$(DisableMemoryPack)' != 'true'">
