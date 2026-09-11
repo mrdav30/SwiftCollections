@@ -81,6 +81,9 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
 
     #region Fields
 
+    // Skip per-operation boxing for non-nullable value keys, including in Debug builds.
+    private static readonly bool _KeyCanBeNull = default(TKey) is null;
+
     /// <summary>
     /// The array containing the entries of the dictionary.
     /// </summary>
@@ -275,7 +278,9 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         get
         {
             int index = FindEntry(key);
-            SwiftThrowHelper.ThrowIfKeyInvalid(index, key);
+            // The object-based error helper would box a value key even on a successful lookup.
+            if (index < 0)
+                SwiftThrowHelper.ThrowIfKeyInvalid(index, key);
             return _entries[index].Value;
         }
         set
@@ -548,7 +553,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// <inheritdoc/>
     public virtual bool Remove(TKey key)
     {
-        if (key == null) return false;
+        if (_KeyCanBeNull && key is null) return false;
 
         int hashCode = _comparer.GetHashCode(key) & 0x7FFFFFFF;
         int entryIndex = hashCode & _entryMask;
@@ -956,15 +961,14 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     }
 
     /// <summary>
-    /// Finds the arrayIndex of the entry with the specified key.
+    /// Finds the array index of the entry with the specified key.
     /// </summary>
     /// <param name="key">The key to locate in the dictionary.</param>
-    /// <returns>The arrayIndex of the entry if found; otherwise, -1.</returns>
-    /// <exception cref="ArgumentNullException">The key is null.</exception>
+    /// <returns>The array index of the entry if found; otherwise, -1, including for a null key.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected int FindEntry(TKey key)
     {
-        if (key == null) return -1;
+        if (_KeyCanBeNull && key is null) return -1;
 
         int hashCode = _comparer.GetHashCode(key) & 0x7FFFFFFF;
         int entryIndex = hashCode & _entryMask;

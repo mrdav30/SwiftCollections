@@ -28,10 +28,10 @@ without slowing the hot path.
 | `SwiftCollections`       | `SwiftHashSet<T>.InsertIfNotExists(T)`                                                                      |         26 | 100% line / 100% branch | Core quadratic-probing insert path with tombstone reuse, resize retry, and randomized-comparer escalation. Keeping the probe state local preserves the hot O(1)-expected path.         | Collision fixtures cover the randomized-comparer branch, insertion policy changes, or a benchmarked helper split is neutral. |
 | `SwiftCollections`       | `SwiftDictionary<TKey, TValue>.InsertIfNotExist(TKey, TValue)`                                              |         26 | 100% line / 100% branch | Dictionary insert mirrors the hash-set probe invariant while also storing key/value payloads. The branch count comes from collision, tombstone, resize, and comparer-escalation paths. | Hash probing is centralized with no delegate cost, or collision behavior changes.                                            |
 | `SwiftCollections`       | `SwiftBucket<T>.IndexOf(T)`                                                                                 |         18 | 100% line / 100% branch | Sparse bucket lookup scans allocated slots directly and avoids iterator allocation or dense side structures.                                                                           | The bucket gains a dense live-index view, or branch coverage reveals a reachable equality edge case.                         |
-| `SwiftCollections`       | `SwiftDictionary<TKey, TValue>.Remove(TKey)`                                                                |         16 | 100% line / 100% branch | Hot tombstone-removal path follows the same quadratic probe sequence as lookup and insertion; keeping delete, count, and last-index updates together makes the invariant auditable.    | Deletion semantics change, tombstone cleanup is introduced, or probing is safely shared.                                     |
+| `SwiftCollections`       | `SwiftDictionary<TKey, TValue>.Remove(TKey)`                                                                |         18 | 100% line / 100% branch | Type-aware null rejection avoids Debug value-key boxing. The hot tombstone-removal path follows the same quadratic probe sequence as lookup and insertion; keeping delete, count, and last-index updates together makes the invariant auditable.    | Null-key or deletion semantics change, tombstone cleanup is introduced, or probing is safely shared.                                     |
 | `SwiftCollections`       | `SwiftHashSet<T>.FindEntry(T)`                                                                              |         14 | 100% line / 100% branch | Hot lookup path terminates on either match, live miss, tombstone continuation, or full probe exhaustion. Splitting would obscure probe termination rules.                              | Additional collision tests expose uncovered reachable branches, or lookup probing is centralized.                            |
 | `SwiftCollections`       | `SwiftSparseMap<T>.TrimExcess()`                                                                            |         14 | 100% line / 100% branch | Compacts sparse and dense storage while preserving key-to-dense-index invariants without allocating an intermediate map.                                                               | Sparse/dense storage layout changes or trim logic is shared with resize.                                                     |
-| `SwiftCollections`       | `SwiftDictionary<TKey, TValue>.FindEntry(TKey)`                                                             |         14 | 100% line / 100% branch | Direct dictionary lookup keeps hash, tombstone, and quadratic-probe state in a compact hot path.                                                                                       | Probe behavior is unified with insert/remove without measurable overhead.                                                    |
+| `SwiftCollections`       | `SwiftDictionary<TKey, TValue>.FindEntry(TKey)`                                                             |         16 | 100% line / 100% branch | Type-aware null rejection avoids Debug value-key boxing. Direct dictionary lookup keeps hash, tombstone, and quadratic-probe state in a compact hot path.                                                                                       | Null-key behavior changes, or probing is unified with insert/remove without measurable overhead.                                                    |
 | `SwiftCollections`       | `SwiftSparseMap<T>.set_State(SwiftSparseMapState<T>)`                                                       |         14 | 100% line / 100% branch | State restore validates sparse/dense shape and reconstructs indexing invariants. Keeping the validation sequence local makes malformed state handling clear.                           | State format changes or validation helpers become shared with another sparse type.                                           |
 | `SwiftCollections`       | `SwiftHashSet<T>.Remove(T)`                                                                                 |         14 | 100% line / 100% branch | Hot tombstone-removal path keeps match detection, tombstone marking, and count/last-index updates together.                                                                            | Tombstone cleanup changes or probing is safely shared with dictionary removal.                                               |
 | `SwiftCollections`       | `SwiftDictionary<TKey, TValue>.TrimExcess()`                                                                |         12 | 100% line / 100% branch | Rehashes live entries into a smaller power-of-two table while preserving quadratic-probe placement and adaptive resize state.                                                          | Resize and trim can share a zero-overhead rehash helper.                                                                     |
@@ -42,6 +42,47 @@ without slowing the hot path.
 | `SwiftCollections`       | `SwiftHashSet<T>.TrimExcess()`                                                                              |         12 | 100% line / 100% branch | Rehashes live entries into a smaller power-of-two table while retaining quadratic-probe placement and adaptive resize state.                                                           | Resize and trim can share a zero-overhead rehash helper.                                                                     |
 
 ## Review Guidance
+
+### Dictionary Allocation Review (2026-09-10)
+
+`GF-Benchmark-003` is owned by the GridForge benchmark-signal backlog. Its
+upstream fix caches whether a key type can be null, so non-nullable value keys
+skip boxing in lookup/removal, and invokes the typed indexer's object-based
+error helper only on a miss. Probing, comparer dispatch for valid keys,
+exceptions, instance layout and serialized state are unchanged.
+
+The register retains Coverlet's exported `complexity` convention for comparison
+with its existing entries. That export is not the same as a source decision
+count. A fresh source-level review gives:
+
+| Method | Source decisions (plus base 1) | Source complexity / CRAP at 100% coverage | Coverlet export |
+| ------ | ----------------------------- | ---------------------------------------: | --------------: |
+| `Remove(TKey)` | 4 `if`, 1 `while`, 4 `&&` | 10 / 10 | 18 |
+| `FindEntry(TKey)` | 3 `if`, 1 `while`, 4 `&&` | 9 / 9 | 16 |
+| Typed indexer getter | 1 `if` | 2 / 2 | 2 |
+
+All three methods retain 100% line and branch coverage in Debug, Release and
+ReleaseLean. Using the register's exported values instead also leaves CRAP
+below its risk threshold (18, 16 and 2). Keep the probe state local; the added
+type guard does not justify decomposing the hash-table algorithm.
+
+Coverage was collected separately for both test projects in every configuration:
+
+```powershell
+dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c ReleaseLean --no-build -p:UseLocalLsfStack=true --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.Tests/coverlet.runsettings
+```
+
+Repeat for Debug/Release and the companion project's matching runsettings.
+The final combined core/companion totals are 7,527 lines / 2,530 branches /
+1,278 fully covered methods in Debug; 5,676 / 2,522 / 1,278 in Release; and
+5,664 / 2,522 / 1,272 in ReleaseLean, all exact 100%. Pre-existing Lean
+enumeration/state gaps (two lines and three branches) were reproduced on
+unchanged production source and closed with behavior tests independent of
+MemoryPack. No exclusions or
+allocation tolerances were added. Local evidence is retained in the Trailblazer
+checkout under `artifacts/gf-benchmark003`.
+
+### Ongoing Review
 
 - The exception register permits justified complexity; it does not waive the
   CRAP risk threshold or coverage requirement.

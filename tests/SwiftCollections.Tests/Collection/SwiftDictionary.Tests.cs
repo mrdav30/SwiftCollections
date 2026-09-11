@@ -173,32 +173,50 @@ public class SwiftDictionaryTests
         Assert.False(dictionary.Add(1, "One"));
     }
 
-#if !DEBUG
-    [Fact]
-    public void TryGetValue_WithValueTypeKey_DoesNotAllocateSteadyState()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ValueKeyLookup_ShouldAllocateZeroAfterWarmup(bool largeKey)
     {
-        var dictionary = new SwiftDictionary<int, string>(4)
-        {
-            { 1, "One" }
-        };
-
-        for (int i = 0; i < 16; i++)
-            Assert.True(dictionary.TryGetValue(1, out _));
-
-        int hits = 0;
-        long allocated = MeasureAllocatedBytes(() =>
-        {
-            for (int i = 0; i < 1_024; i++)
-            {
-                if (dictionary.TryGetValue(1, out string value) && value.Length == 3)
-                    hits++;
-            }
-        });
-
-        Assert.Equal(1_024, hits);
-        Assert.True(allocated < 128, $"Expected steady-state lookup to avoid allocation, but allocated {allocated} bytes.");
+        if (largeKey)
+            AssertValueKeyAllocation(new WideKey(1), new WideKey(2), KeyOperation.Lookup);
+        else
+            AssertValueKeyAllocation((ushort)1, (ushort)2, KeyOperation.Lookup);
     }
-#endif
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ValueKeyRemoval_ShouldAllocateZeroAfterWarmup(bool largeKey)
+    {
+        if (largeKey)
+            AssertValueKeyAllocation(new WideKey(1), new WideKey(2), KeyOperation.Remove);
+        else
+            AssertValueKeyAllocation((ushort)1, (ushort)2, KeyOperation.Remove);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ValueKeyIndexerHit_ShouldAllocateZeroAfterWarmup(bool largeKey)
+    {
+        if (largeKey)
+            AssertValueKeyAllocation(new WideKey(1), new WideKey(2), KeyOperation.Indexer);
+        else
+            AssertValueKeyAllocation((ushort)1, (ushort)2, KeyOperation.Indexer);
+    }
+
+    [Fact]
+    public void NullableKeyQueries_ShouldRejectEmptyKeysWithoutChangingEntries()
+    {
+        AssertNullKeyQueries<int?>(1);
+    }
+
+    [Fact]
+    public void ReferenceKeyQueries_ShouldRejectNullKeysWithoutChangingEntries()
+    {
+        AssertNullKeyQueries("present");
+    }
 
     [Fact]
     public void Add_NullKey_ThrowsArgumentNullException()
@@ -936,6 +954,24 @@ public class SwiftDictionaryTests
     }
 
     [Fact]
+    public void IDictionary_Keys_ReusesViewAndEnumeratesLiveKeysToCompletion()
+    {
+        IDictionary dictionary = new SwiftDictionary<int, string> { [1] = "One", [2] = "Two" };
+        dictionary.Remove(1);
+        ICollection keys = dictionary.Keys;
+        Assert.Same(keys, dictionary.Keys);
+
+        IEnumerator enumerator = keys.GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal(2, enumerator.Current);
+        Assert.False(enumerator.MoveNext());
+        enumerator.Reset();
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal(2, enumerator.Current);
+        Assert.False(enumerator.MoveNext());
+    }
+
+    [Fact]
     public void KeyAndValueCollections_ICollectionCopyTo_CopyProjectedItems()
     {
         var dictionary = new SwiftDictionary<int, string>
@@ -1491,6 +1527,114 @@ public class SwiftDictionaryTests
         Assert.Equal(2, dictionary.Count);
         Assert.Equal("One", dictionary[1]);
         Assert.Equal("Nine", dictionary[9]);
+    }
+
+    private enum KeyOperation { Lookup, Remove, Indexer }
+
+    private static void AssertValueKeyAllocation<TKey>(TKey present, TKey missing, KeyOperation operation)
+        where TKey : struct
+    {
+        var dictionary = new SwiftDictionary<TKey, int>(8) { { present, 17 } };
+        const int iterations = 256;
+        _ = MeasureValueKeyOperations(dictionary, present, missing, operation, iterations, out bool warmed);
+        Assert.True(warmed);
+
+        long allocated = MeasureValueKeyOperations(
+            dictionary, present, missing, operation, iterations, out bool succeeded);
+
+        Assert.True(succeeded);
+        Assert.Single(dictionary);
+        Assert.Equal(17, dictionary[present]);
+        Assert.Equal(0L, allocated);
+    }
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    private static long MeasureValueKeyOperations<TKey>(
+        SwiftDictionary<TKey, int> dictionary,
+        TKey present,
+        TKey missing,
+        KeyOperation operation,
+        int iterations,
+        out bool succeeded)
+        where TKey : struct
+    {
+        succeeded = true;
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int i = 0; i < iterations; i++)
+        {
+            switch (operation)
+            {
+                case KeyOperation.Lookup:
+                    succeeded &= dictionary.TryGetValue(present, out int value) && value == 17;
+                    succeeded &= !dictionary.TryGetValue(missing, out int absent) && absent == 0;
+                    break;
+                case KeyOperation.Remove:
+                    succeeded &= dictionary.Remove(present);
+                    succeeded &= !dictionary.Remove(missing);
+                    succeeded &= dictionary.Add(present, 17);
+                    break;
+                case KeyOperation.Indexer:
+                    succeeded &= dictionary[present] == 17;
+                    break;
+                default:
+                    succeeded = false;
+                    break;
+            }
+        }
+        return GC.GetAllocatedBytesForCurrentThread() - before;
+    }
+
+    private static void AssertNullKeyQueries<TKey>(TKey present)
+    {
+        var dictionary = new SwiftDictionary<TKey, int>(8, new NonNullKeyComparer<TKey>()) { { present, 17 } };
+        var enumerator = dictionary.GetEnumerator();
+
+        Assert.False(dictionary.TryGetValue(default(TKey), out int value));
+        Assert.Equal(0, value);
+        Assert.False(dictionary.ContainsKey(default(TKey)));
+        Assert.False(dictionary.Remove(default(TKey)));
+        var nullPair = new KeyValuePair<TKey, int>(default, 17);
+        bool containsNullPair = dictionary.Contains(nullPair);
+        Assert.False(containsNullPair);
+        Assert.False(dictionary.Remove(nullPair));
+        Assert.Throws<KeyNotFoundException>(() => dictionary[default(TKey)]);
+        Assert.Throws<ArgumentNullException>(() => dictionary.Add(default(TKey), 23));
+        Assert.Throws<ArgumentNullException>(() => dictionary[default(TKey)] = 23);
+        Assert.Single(dictionary);
+        Assert.Equal(17, dictionary[present]);
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal(present, enumerator.Current.Key);
+        Assert.False(enumerator.MoveNext());
+        Assert.True(dictionary.Remove(present));
+        Assert.Empty(dictionary);
+    }
+
+    private sealed class NonNullKeyComparer<TKey> : IEqualityComparer<TKey>
+    {
+        public bool Equals(TKey left, TKey right)
+        {
+            Assert.NotNull(left);
+            Assert.NotNull(right);
+            return EqualityComparer<TKey>.Default.Equals(left, right);
+        }
+
+        public int GetHashCode(TKey key)
+        {
+            Assert.NotNull(key);
+            return EqualityComparer<TKey>.Default.GetHashCode(key);
+        }
+    }
+
+    // Synthetic wide value key exercises boxing cost without taking a GridForge dependency.
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Size = 96)]
+    private readonly struct WideKey : IEquatable<WideKey>
+    {
+        private readonly long _value;
+
+        public WideKey(long value) => _value = value;
+        public bool Equals(WideKey other) => _value == other._value;
+        public override bool Equals(object obj) => obj is WideKey other && Equals(other);
+        public override int GetHashCode() => _value.GetHashCode();
     }
 
     private static long MeasureAllocatedBytes(Action action)

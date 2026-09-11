@@ -69,6 +69,25 @@ public class SwiftPackedSetTests
     }
 
     [Fact]
+    public void Constructor_WithLargeState_CopiesValuesAndRebuildsLookup()
+    {
+        int[] values = Enumerable.Range(1, SwiftPackedSet<int>.DefaultCapacity + 1).ToArray();
+        var set = new SwiftPackedSet<int>(new SwiftArrayState<int>(values));
+
+        Assert.Equal(values, set.ToArray());
+        Assert.True(set.Capacity >= values.Length);
+        values[0] = -1;
+        Assert.Contains(1, set);
+        Assert.DoesNotContain(-1, set);
+        Assert.False(set.Add(1));
+        Assert.True(set.Remove(1));
+        Assert.DoesNotContain(1, set);
+        Assert.Equal(values.Length - 1, set.Count);
+        Assert.True(set.Add(1));
+        Assert.Contains(1, set);
+    }
+
+    [Fact]
     public void Contains_ReturnsCorrectResult()
     {
         var set = new SwiftPackedSet<int>
