@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using Chronicler;
+using Chronicler.Serialization;
 using MemoryPack;
 using SwiftCollections.Diagnostics;
 using SwiftCollections.Utility;

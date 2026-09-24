@@ -13,10 +13,12 @@
 	<!-- Git Versioning -->
 	<PropertyGroup>
 		<SemVer Condition="'$(GitVersion_FullSemVer)' != ''">$(GitVersion_FullSemVer)</SemVer>
+		<SemVer Condition="'$(UseLocalLsfStack)' == 'true' And '$(SemVer)' == ''">7.0.0</SemVer>
 		<SemVer Condition="'$(SemVer)' == ''">0.0.0</SemVer>
 		<InfoVer Condition="'$(GitVersion_InformationalVersion)' != ''">$(GitVersion_InformationalVersion)</InfoVer>
 		<InfoVer Condition="'$(InfoVer)' == ''">$(SemVer)</InfoVer>
 		<AssemblySemVer Condition="'$(GitVersion_AssemblySemVer)' != ''">$(GitVersion_AssemblySemVer)</AssemblySemVer>
+		<AssemblySemVer Condition="'$(UseLocalLsfStack)' == 'true' And '$(AssemblySemVer)' == ''">7.0.0.0</AssemblySemVer>
 		<AssemblySemVer Condition="'$(AssemblySemVer)' == ''">$(SemVer).0</AssemblySemVer>
 		<AssemblySemFileVer Condition="'$(GitVersion_AssemblySemFileVer)' != ''">$(GitVersion_AssemblySemFileVer)</AssemblySemFileVer>
 		<AssemblySemFileVer Condition="'$(AssemblySemFileVer)' == ''">$(AssemblySemVer)</AssemblySemFileVer>
@@ -93,12 +95,22 @@
 	<!-- Dependencies and Package References -->
 	<ItemGroup Condition="'$(DisableMemoryPack)' != 'true'">
 		<PackageReference Include="MemoryPack" Version="1.21.4" />
-		<PackageReference Include="Chronicler.Core" Version="0.4.0" />
+		<PackageReference Include="Chronicler.Core" Version="0.4.0" Condition="'$(UseLocalLsfStack)' != 'true'" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(DisableMemoryPack)' == 'true'">
-		<PackageReference Include="Chronicler.Core.Lean" Version="0.4.0" />
-		<PackageReference Include="Chronicler.MemoryPackShim" Version="0.4.0" />
+		<PackageReference Include="Chronicler.Core.Lean" Version="0.4.0" Condition="'$(UseLocalLsfStack)' != 'true'" />
+		<PackageReference Include="Chronicler.MemoryPackShim" Version="0.4.0" Condition="'$(UseLocalLsfStack)' != 'true'" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(UseLocalLsfStack)' == 'true'">
+		<ProjectReference Include="..\..\..\Chronicler\src\Chronicler\Chronicler.csproj"
+			AdditionalProperties="Configuration=$(Configuration);SemVer=0.4.0;AssemblySemVer=0.4.0.0" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(UseLocalLsfStack)' == 'true' And '$(DisableMemoryPack)' == 'true'">
+		<ProjectReference Include="..\..\..\Chronicler\src\Chronicler.MemoryPackShim\Chronicler.MemoryPackShim.csproj"
+			AdditionalProperties="Configuration=$(Configuration);SemVer=0.4.0;AssemblySemVer=0.4.0.0" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">

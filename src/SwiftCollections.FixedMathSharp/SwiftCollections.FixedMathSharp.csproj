@@ -15,10 +15,12 @@
 	<!-- Git Versioning -->
 	<PropertyGroup>
 		<SemVer Condition="'$(GitVersion_FullSemVer)' != ''">$(GitVersion_FullSemVer)</SemVer>
+		<SemVer Condition="'$(UseLocalLsfStack)' == 'true' And '$(SemVer)' == ''">7.1.0</SemVer>
 		<SemVer Condition="'$(SemVer)' == ''">0.0.0</SemVer>
 		<InfoVer Condition="'$(GitVersion_InformationalVersion)' != ''">$(GitVersion_InformationalVersion)</InfoVer>
 		<InfoVer Condition="'$(InfoVer)' == ''">$(SemVer)</InfoVer>
 		<AssemblySemVer Condition="'$(GitVersion_AssemblySemVer)' != ''">$(GitVersion_AssemblySemVer)</AssemblySemVer>
+		<AssemblySemVer Condition="'$(UseLocalLsfStack)' == 'true' And '$(AssemblySemVer)' == ''">7.1.0.0</AssemblySemVer>
 		<AssemblySemVer Condition="'$(AssemblySemVer)' == ''">$(SemVer).0</AssemblySemVer>
 		<AssemblySemFileVer Condition="'$(GitVersion_AssemblySemFileVer)' != ''">$(GitVersion_AssemblySemFileVer)</AssemblySemFileVer>
 		<AssemblySemFileVer Condition="'$(AssemblySemFileVer)' == ''">$(AssemblySemVer)</AssemblySemFileVer>
@@ -87,12 +89,24 @@
 	</PropertyGroup>
 
 	<!-- Dependencies and Package References -->
-	<ItemGroup Condition="'$(DisableMemoryPack)' != 'true'">
+	<ItemGroup Condition="'$(DisableMemoryPack)' != 'true' And '$(UseLocalLsfStack)' != 'true'">
 		<PackageReference Include="FixedMathSharp" Version="7.1.0" />
 	</ItemGroup>
 
-	<ItemGroup Condition="'$(DisableMemoryPack)' == 'true'">
+	<ItemGroup Condition="'$(DisableMemoryPack)' == 'true' And '$(UseLocalLsfStack)' != 'true'">
 		<PackageReference Include="FixedMathSharp.Lean" Version="7.1.0" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(UseLocalLsfStack)' == 'true'">
+		<ProjectReference Include="..\..\..\Chronicler\src\Chronicler\Chronicler.csproj"
+			AdditionalProperties="Configuration=$(Configuration);SemVer=0.4.0;AssemblySemVer=0.4.0.0" />
+		<ProjectReference Include="..\..\..\FixedMathSharp\src\FixedMathSharp\FixedMathSharp.csproj"
+			AdditionalProperties="Configuration=$(Configuration);SemVer=7.1.0;AssemblySemVer=7.1.0.0" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(UseLocalLsfStack)' == 'true' And '$(DisableMemoryPack)' == 'true'">
+		<ProjectReference Include="..\..\..\Chronicler\src\Chronicler.MemoryPackShim\Chronicler.MemoryPackShim.csproj"
+			AdditionalProperties="Configuration=$(Configuration);SemVer=0.4.0;AssemblySemVer=0.4.0.0" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UsePublishedSwiftCollections)' != 'true'">

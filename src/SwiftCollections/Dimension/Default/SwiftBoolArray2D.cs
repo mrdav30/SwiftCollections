@@ -8,6 +8,7 @@
 using System;
 using System.Text.Json.Serialization;
 using Chronicler;
+using Chronicler.Serialization;
 using MemoryPack;
 
 namespace SwiftCollections.Dimensions;

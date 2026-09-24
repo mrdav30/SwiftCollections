@@ -42,6 +42,32 @@ Default lockstep versions are derived through GitVersion; scoped releases take
 their version from an explicit argument or release tag. Do not manually bump
 example or README versions for ordinary pull requests.
 
+## Coordinated source development
+
+Place Chronicler and FixedMathSharp checkouts beside SwiftCollections, then set
+`$env:UseLocalLsfStack='true'` in PowerShell before building or testing the
+solution. This selects source Chronicler and FixedMathSharp, including the Lean
+shim. Validate both configurations:
+
+```powershell
+$env:UseLocalLsfStack='true'
+dotnet build SwiftCollections.slnx -c Release -m:1
+dotnet test SwiftCollections.slnx -c Release --no-build
+dotnet build SwiftCollections.slnx -c ReleaseLean -m:1
+dotnet test SwiftCollections.slnx -c ReleaseLean --no-build
+```
+
+Use `-m:1` for builds, including `dotnet test` when it builds, to avoid overlapping
+writes to shared local project outputs. The local
+0.4.0 Chronicler/shim, 7.1.0 math/companion, and 7.0.0 collection identities coordinate
+assembly resolution; they are build fixtures, not release versions.
+Local builds use explicit references at library, test, and benchmark boundaries
+so inferred references cannot rebuild dependencies with different identities.
+
+Package mode remains the default release-validation path. Clear the environment
+variable before validating published dependencies; source-mode packages are not
+release artifacts.
+
 ## Releases
 
 The existing local command builds all four packages with the version derived by

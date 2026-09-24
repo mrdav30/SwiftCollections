@@ -153,6 +153,12 @@ State-backed collection types expose explicit state structs such as
 `SwiftDictionaryState<TKey, TValue>`, `SwiftGenerationalBucketState<T>`, and
 `SwiftSparseMapState<T>`.
 
+These types implement `Chronicler.IStateBacked<TState>` and use
+`Chronicler.Serialization.StateJsonConverterFactory` for JSON. When upgrading
+to Chronicler v1.0.0, add `using Chronicler.Serialization;` wherever you use the
+converter and rebuild dependent assemblies together. The collection and state
+type identities and JSON state shape remain unchanged.
+
 ## Diagnostics
 
 `SwiftCollections.Diagnostics` provides a small opt-in diagnostic surface:

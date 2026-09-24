@@ -122,6 +122,11 @@ Serialization guidance:
 - Build both standard and lean configurations after changing serialized fields,
   state structs, MemoryPack attributes, JSON converter behavior, or constructor
   signatures.
+- Chronicler recording contracts remain in `Chronicler`; JSON converter types
+  use `Chronicler.Serialization`. Preserve collection and state type identities.
+- `UseLocalLsfStack=true` selects sibling Chronicler and FixedMathSharp projects,
+  including the Lean shim. See `CONTRIBUTING.md` for coordinated source validation;
+  local assembly identities are build fixtures, not release decisions.
 
 ## Collection Design Rules
 

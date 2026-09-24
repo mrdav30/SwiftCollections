@@ -16,12 +16,22 @@
     <DisableMemoryPack>true</DisableMemoryPack>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\SwiftCollections\SwiftCollections.csproj" />
+    <ProjectReference Include="..\..\src\SwiftCollections\SwiftCollections.csproj">
+      <AdditionalProperties Condition="'$(UseLocalLsfStack)' == 'true'">Configuration=$(Configuration);SemVer=7.0.0;AssemblySemVer=7.0.0.0</AdditionalProperties>
+    </ProjectReference>
     <PackageReference Include="BenchmarkDotNet" Version="0.15.8" />
     <PackageReference Include="System.Text.Json" Version="10.0.9" />
     <!-- The Test SDK is required only for the VSTest Adapter to work -->
   </ItemGroup>
   <ItemGroup>
     <None Remove=".gitignore" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UseLocalLsfStack)' == 'true'">
+    <ProjectReference Include="..\..\..\Chronicler\src\Chronicler\Chronicler.csproj"
+                      AdditionalProperties="Configuration=$(Configuration);SemVer=0.4.0;AssemblySemVer=0.4.0.0" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UseLocalLsfStack)' == 'true' And ('$(Configuration)' == 'ReleaseLean' Or '$(DisableMemoryPack)' == 'true')">
+    <ProjectReference Include="..\..\..\Chronicler\src\Chronicler.MemoryPackShim\Chronicler.MemoryPackShim.csproj"
+                      AdditionalProperties="Configuration=$(Configuration);SemVer=0.4.0;AssemblySemVer=0.4.0.0" />
   </ItemGroup>
 </Project>

@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Chronicler;
+using Chronicler.Serialization;
 using SwiftCollections.Dimensions;
 using SwiftCollections.Observable;
 using Xunit;
