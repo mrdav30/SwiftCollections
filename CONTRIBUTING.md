@@ -26,6 +26,10 @@ surface without that runtime dependency. The FixedMathSharp companion family
 declares its minimum compatible published SwiftCollections version separately,
 so the two families can be released independently.
 
+Record reproducible concerns outside the current change in the
+[issue tracker](docs/feature-work/issue-tracker.md). Preserve issue IDs, source
+revisions and verification evidence; track each concern in its owning repository.
+
 ## Pull request checklist
 
 1. Keep the change focused and preserve public contracts unless the proposal

@@ -41,6 +41,8 @@ Read these before making non-trivial changes:
    hot-path behavior or a performance claim.
 7. `docs/complexity-exceptions.md` before refactoring high-complexity methods or
    adding a new intentional exception.
+8. [Issue tracker](docs/feature-work/issue-tracker.md) for active concerns,
+   resolved root causes and required verification in the owning repository.
 
 ## Source Of Truth
 
@@ -63,6 +65,7 @@ expectations change:
 - `README.md`
 - `docs/OVERVIEW.md` and the DocFX source and configuration under `docs/api`
 - `docs/complexity-exceptions.md`
+- `docs/feature-work/issue-tracker.md` for issue intake and resolution evidence
 - relevant tests and benchmarks
 - `.github/workflows/build-and-test.yml`
 - `.github/workflows/coverage.yml`

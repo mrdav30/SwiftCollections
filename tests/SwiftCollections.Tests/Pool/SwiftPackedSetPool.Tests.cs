@@ -1,13 +1,16 @@
+using System;
+using System.Runtime.CompilerServices;
 using Xunit;
 
 namespace SwiftCollections.Pool.Tests
 {
+    [Collection("PoolFinalization")]
     public class SwiftPackedSetPoolTests
     {
         [Fact]
         public void Rent_ShouldReturnPackedSetInstance()
         {
-            var pool = new SwiftPackedSetPool<int>();
+            using var pool = new SwiftPackedSetPool<int>();
 
             var set = pool.Rent();
 
@@ -18,7 +21,7 @@ namespace SwiftCollections.Pool.Tests
         [Fact]
         public void Release_ShouldClearPackedSetAndReturnToPool()
         {
-            var pool = new SwiftPackedSetPool<int>();
+            using var pool = new SwiftPackedSetPool<int>();
             var set = pool.Rent();
             set.Add(42);
 
@@ -32,7 +35,7 @@ namespace SwiftCollections.Pool.Tests
         [Fact]
         public void Clear_ShouldEmptyPool()
         {
-            var pool = new SwiftPackedSetPool<int>();
+            using var pool = new SwiftPackedSetPool<int>();
             var set = pool.Rent();
             pool.Release(set);
 
@@ -40,6 +43,41 @@ namespace SwiftCollections.Pool.Tests
 
             var newSet = pool.Rent();
             Assert.NotSame(set, newSet);
+        }
+
+        [Fact]
+        public void Finalizer_ShouldClearAndDisposeUnreleasedPool()
+        {
+            var reference = CreateUnreleasedPool(out var collectionPool);
+
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+
+            Assert.True(reference.TryGetTarget(out var pool));
+            Assert.Equal(0, collectionPool.CountInactive);
+            Assert.Throws<ObjectDisposedException>(() => collectionPool.Rent());
+            Assert.Equal(nameof(SwiftPackedSetPool<int>),
+                Assert.Throws<ObjectDisposedException>(() => pool.Rent()).ObjectName);
+            Assert.Equal(nameof(SwiftPackedSetPool<int>),
+                Assert.Throws<ObjectDisposedException>(() => pool.Release(new SwiftPackedSet<int>())).ObjectName);
+
+            pool.Dispose();
+            pool.Clear();
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static WeakReference<SwiftPackedSetPool<int>> CreateUnreleasedPool(
+            out SwiftObjectPool<SwiftPackedSet<int>> collectionPool)
+        {
+            var pool = new SwiftPackedSetPool<int>();
+            var set = pool.Rent();
+            set.Add(42);
+            pool.Release(set);
+            collectionPool = pool.CollectionPool;
+            Assert.Equal(1, collectionPool.CountInactive);
+
+            // Keep a weak reference through finalization so the wrapper's disposal can be asserted.
+            return new WeakReference<SwiftPackedSetPool<int>>(pool, trackResurrection: true);
         }
     }
 }
