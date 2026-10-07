@@ -13,6 +13,39 @@ namespace SwiftCollections.Tests;
 
 public class SwiftHashSetTests
 {
+
+    [Fact]
+    public void WrappedCollisionChain_LookupAndRemovalReachEveryEntry()
+    {
+        var comparer = new SelectiveIntHashComparer((0, 3), (1, 3), (2, 0), (3, 0), (4, 3));
+        var set = new SwiftHashSet<int>(8, comparer);
+        for (int key = 0; key < 5; key++) Assert.True(set.Add(key));
+
+        // The fifth key reaches bucket 2 after five collisions, beyond bucket 4's index.
+        Assert.Contains(4, set);
+        Assert.False(set.Add(4));
+        Assert.True(set.Remove(4));
+        Assert.DoesNotContain(4, set);
+        Assert.Equal(4, set.Count);
+    }
+
+    [Theory]
+    [InlineData(8)]
+    [InlineData(16)]
+    [InlineData(32)]
+    public void TrimExcess_FullCollisionTable_PreservesEveryEntry(int capacity)
+    {
+        var set = new SwiftHashSet<int>(capacity * 4);
+        for (int key = 0; key < capacity; key++) Assert.True(set.Add(key * capacity));
+        set.TrimExcess();
+
+        for (int key = 0; key < capacity; key++) Assert.Contains(key * capacity, set);
+        Assert.DoesNotContain(capacity * capacity, set);
+        Assert.False(set.Remove(capacity * capacity));
+        for (int key = 0; key < capacity; key++) Assert.True(set.Remove(key * capacity));
+        Assert.Empty(set);
+    }
+
     [Fact]
     public void Add_NewItem_ReturnsTrue()
     {
@@ -300,13 +333,14 @@ public class SwiftHashSetTests
     {
         var set = new SwiftHashSet<int>(GetItems());
 
-        Assert.True(set.SetEquals(new[] { 1, 2, 3 }));
+        Assert.Equal(32, set.Count);
+        for (int key = 0; key < 32; key++) Assert.Contains(key * 32, set);
 
+        // Unknown counts must grow when the complete collision table is exhausted.
         static IEnumerable<int> GetItems()
         {
-            yield return 1;
-            yield return 2;
-            yield return 3;
+            for (int key = 0; key < 32; key++) yield return key * 32;
+            yield return 31 * 32;
         }
     }
 

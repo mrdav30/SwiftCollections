@@ -499,8 +499,10 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
 
         int firstDeletedIndex = -1;
         int step = 1;
-        int probeLimit = _entries.Length;
-        while ((uint)step <= (uint)probeLimit)
+        // Cumulative square offsets repeat after 2 * capacity for power-of-two tables.
+        // One capacity can revisit buckets before reaching every slot, including after trim.
+        uint probeLimit = (uint)_entries.Length * 2;
+        while ((uint)step <= probeLimit)
         {
             ref Entry entry = ref _entries[entryIndex];
             if (entry.IsUsed)
@@ -523,7 +525,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
 
         if (firstDeletedIndex >= 0)
             entryIndex = firstDeletedIndex;
-        else if ((uint)step > (uint)probeLimit)
+        else if ((uint)step > probeLimit)
         {
             Resize(_entries.Length * _adaptiveResizeFactor);
             return InsertIfNotExist(key, value);
@@ -560,7 +562,9 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         int entryIndex = hashCode & _entryMask;
 
         int step = 0;
-        while ((uint)step <= (uint)_lastIndex)
+        // A bucket index is not a probe distance: wrapped chains can take more steps.
+        // Use the same complete cumulative-square period as insertion.
+        while ((uint)step < (uint)_entries.Length * 2)
         {
             ref Entry entry = ref _entries[entryIndex];
             // Stop probing if an unused entry is found (not deleted)
@@ -975,7 +979,9 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         int entryIndex = hashCode & _entryMask;
 
         int step = 0;
-        while ((uint)step <= (uint)_lastIndex)
+        // A bucket index is not a probe distance: wrapped chains can take more steps.
+        // Use the same complete cumulative-square period as insertion.
+        while ((uint)step < (uint)_entries.Length * 2)
         {
             ref Entry entry = ref _entries[entryIndex];
             // Stop probing if an unused entry is found (not deleted)

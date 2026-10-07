@@ -13,6 +13,42 @@ namespace SwiftCollections.Tests;
 
 public class SwiftDictionaryTests
 {
+
+    [Fact]
+    public void WrappedCollisionChain_LookupAndRemovalReachEveryEntry()
+    {
+        var comparer = new SelectiveIntHashComparer((0, 3), (1, 3), (2, 0), (3, 0), (4, 3));
+        var dictionary = new SwiftDictionary<int, int>(8, comparer);
+        for (int key = 0; key < 5; key++) dictionary.Add(key, key);
+
+        // The fifth key reaches bucket 2 after five collisions, beyond bucket 4's index.
+        Assert.Equal(4, dictionary[4]);
+        Assert.True(dictionary.TryGetValue(4, out int value));
+        Assert.Equal(4, value);
+        Assert.False(dictionary.Add(4, 99));
+        Assert.True(dictionary.Remove(4));
+        Assert.False(dictionary.ContainsKey(4));
+        Assert.Equal(4, dictionary.Count);
+    }
+
+    [Theory]
+    [InlineData(8)]
+    [InlineData(16)]
+    [InlineData(32)]
+    public void TrimExcess_FullCollisionTable_PreservesEveryEntry(int capacity)
+    {
+        var dictionary = new SwiftDictionary<int, int>(capacity * 4);
+        for (int key = 0; key < capacity; key++) dictionary.Add(key * capacity, key);
+        dictionary.TrimExcess();
+        Assert.Equal(capacity, dictionary.Capacity);
+
+        for (int key = 0; key < capacity; key++) Assert.Equal(key, dictionary[key * capacity]);
+        Assert.False(dictionary.ContainsKey(capacity * capacity));
+        Assert.False(dictionary.Remove(capacity * capacity));
+        for (int key = 0; key < capacity; key++) Assert.True(dictionary.Remove(key * capacity));
+        Assert.Empty(dictionary);
+    }
+
     [Fact]
     public void Constructor_Default_CreatesEmptyDictionary()
     {
@@ -98,14 +134,15 @@ public class SwiftDictionaryTests
     {
         var dictionary = new SwiftDictionary<int, string>(GetItems());
 
-        Assert.Equal(2, dictionary.Count);
-        Assert.Equal("One", dictionary[1]);
-        Assert.Equal("Two", dictionary[2]);
+        Assert.Equal(32, dictionary.Count);
+        for (int key = 0; key < 32; key++) Assert.Equal($"Value {key}", dictionary[key * 32]);
 
+        // Unknown counts must grow when the complete collision table is exhausted.
         static IEnumerable<KeyValuePair<int, string>> GetItems()
         {
-            yield return new KeyValuePair<int, string>(1, "One");
-            yield return new KeyValuePair<int, string>(2, "Two");
+            for (int key = 0; key < 32; key++)
+                yield return new KeyValuePair<int, string>(key * 32, $"Value {key}");
+            yield return new KeyValuePair<int, string>(31 * 32, "Duplicate");
         }
     }
 
