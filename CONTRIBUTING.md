@@ -132,6 +132,16 @@ dotnet tool run docfx docs/api/docfx.json --warningsAsErrors
 See [AGENTS.md](AGENTS.md) for repository architecture, testing patterns,
 serialization boundaries, and benchmark guidance.
 
+## Branch-Specific CI Dependencies
+
+Develop pushes and PRs targeting `develop` use `UseLocalLsfStack=true` and
+immutable sibling source revisions in `build-and-test.yml`. Main and other
+branches use released packages with no sibling checkouts; a `develop` -> `main`
+PR validates packages. Release upstream dependencies before promotion and update
+source pins deliberately as the coordinated stack changes. Source/package NuGet
+caches are separated, and source graphs build serially to avoid shared-output
+races. Both Release/Lean Windows/Linux validation lanes remain required.
+
 ## Code of Conduct
 
 ### Our Pledge
