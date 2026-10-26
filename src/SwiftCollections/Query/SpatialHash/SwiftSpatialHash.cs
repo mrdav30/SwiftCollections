@@ -8,6 +8,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using Chronicler.Diagnostics;
 using SwiftCollections.Diagnostics;
 using SwiftCollections.Utility;
 
@@ -52,7 +53,7 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// <param name="options">Spatial hash query options.</param>
     public SwiftSpatialHash(int capacity, ISpatialHashCellMapper<TVolume> cellMapper, SwiftSpatialHashOptions options)
     {
-        SwiftThrowHelper.ThrowIfNull(cellMapper, nameof(cellMapper));
+        ChronicleGuard.ThrowIfNull(cellMapper, nameof(cellMapper));
 
         capacity = SwiftHashTools.NextPowerOfTwo(capacity);
 
@@ -82,7 +83,7 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// <returns><c>true</c> when a new key was added; <c>false</c> when an existing key was replaced.</returns>
     public bool Insert(TKey key, TVolume bounds)
     {
-        SwiftThrowHelper.ThrowIfNull(key, nameof(key));
+        ChronicleGuard.ThrowIfNull(key, nameof(key));
 
         int existingIndex = FindEntryIndex(key);
         if (existingIndex >= 0)
@@ -107,7 +108,7 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// <returns><c>true</c> when the key existed and was removed; otherwise, <c>false</c>.</returns>
     public bool Remove(TKey key)
     {
-        SwiftThrowHelper.ThrowIfNullGeneric(key, nameof(key));
+        ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
 
         int entryIndex = FindEntryIndex(key);
         if (entryIndex < 0)
@@ -129,7 +130,7 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// <returns><c>true</c> when the key existed; otherwise, <c>false</c>.</returns>
     public bool UpdateEntryBounds(TKey key, TVolume newBounds)
     {
-        SwiftThrowHelper.ThrowIfNullGeneric(key, nameof(key));
+        ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
 
         int entryIndex = FindEntryIndex(key);
         if (entryIndex < 0)
@@ -143,7 +144,7 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// </summary>
     public bool Contains(TKey key)
     {
-        SwiftThrowHelper.ThrowIfNullGeneric(key, nameof(key));
+        ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
         return FindEntryIndex(key) >= 0;
     }
 
@@ -152,7 +153,7 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// </summary>
     public bool TryGetBounds(TKey key, out TVolume bounds)
     {
-        SwiftThrowHelper.ThrowIfNullGeneric(key, nameof(key));
+        ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
 
         int entryIndex = FindEntryIndex(key);
         if (entryIndex < 0)
@@ -170,7 +171,7 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// </summary>
     public void Query(TVolume queryBounds, ICollection<TKey> results)
     {
-        SwiftThrowHelper.ThrowIfNull(results, nameof(results));
+        ChronicleGuard.ThrowIfNull(results, nameof(results));
         ExecuteQuery(queryBounds, 0, true, results);
     }
 
@@ -179,7 +180,7 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// </summary>
     public void QueryNeighborhood(TVolume queryBounds, ICollection<TKey> results)
     {
-        SwiftThrowHelper.ThrowIfNull(results, nameof(results));
+        ChronicleGuard.ThrowIfNull(results, nameof(results));
         ExecuteQuery(queryBounds, Options.NeighborhoodPadding, false, results);
     }
 
@@ -190,7 +191,7 @@ public class SwiftSpatialHash<TKey, TVolume>
         SwiftSpatialHashCellIndex cell,
         ICollection<TKey> results)
     {
-        SwiftThrowHelper.ThrowIfNull(results, nameof(results));
+        ChronicleGuard.ThrowIfNull(results, nameof(results));
         if (!_cells.TryGetValue(cell, out SwiftList<int> entryIndices))
             return;
 

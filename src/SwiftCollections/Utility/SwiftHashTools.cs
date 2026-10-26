@@ -12,7 +12,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using System.Security.Cryptography;
 using System.Threading;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 
 namespace SwiftCollections.Utility;
 
@@ -395,7 +395,7 @@ public static class SwiftHashTools
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static unsafe int MurmurHash3(string key, int seed)
     {
-        SwiftThrowHelper.ThrowIfNull(key, nameof(key));
+        ChronicleGuard.ThrowIfNull(key, nameof(key));
 
         const uint c1 = 0xcc9e2d51;
         const uint c2 = 0x1b873593;

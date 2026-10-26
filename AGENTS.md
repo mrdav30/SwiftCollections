@@ -300,3 +300,11 @@ GitVersion's owning checkout path. See
   claim.
 - Update README, `docs/OVERVIEW.md`, package metadata, or complexity exceptions
   when the public API, package shape, workflow, or performance story changes.
+
+## Shared Diagnostics Ownership
+
+Use the independent `Chronicler.Diagnostics` package for diagnostic channels,
+lazy logging handlers, and `ChronicleGuard` guards. It does not depend on
+`Chronicler.Core`. Keep library-specific channels, formatters, and logger facades
+in their owning library. `UseLocalLsfStack=true` selects the sibling diagnostics
+project; standard and Lean builds use the same diagnostics package.

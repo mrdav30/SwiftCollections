@@ -13,7 +13,7 @@ using System.Text.Json.Serialization;
 using Chronicler;
 using Chronicler.Serialization;
 using MemoryPack;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 using SwiftCollections.Utility;
 
 namespace SwiftCollections;
@@ -95,8 +95,8 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <param name="denseCapacity">Initial dense storage capacity for IDs.</param>
     public SwiftSparseSet(int sparseCapacity, int denseCapacity)
     {
-        SwiftThrowHelper.ThrowIfNegative(sparseCapacity, nameof(sparseCapacity));
-        SwiftThrowHelper.ThrowIfNegative(denseCapacity, nameof(denseCapacity));
+        ChronicleGuard.ThrowIfNegative(sparseCapacity, nameof(sparseCapacity));
+        ChronicleGuard.ThrowIfNegative(denseCapacity, nameof(denseCapacity));
 
         int sparseSize = sparseCapacity == 0 ? 0 : SwiftHashTools.NextPowerOfTwo(sparseCapacity);
         _sparse = sparseCapacity == 0
@@ -203,7 +203,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
         }
         internal set
         {
-            SwiftThrowHelper.ThrowIfNull(value.Items, nameof(value.Items));
+            ChronicleGuard.ThrowIfNull(value.Items, nameof(value.Items));
 
             RestoreDenseKeys(value.Items);
             int maxKey = ValidateDenseKeys(nameof(value.Items));
@@ -232,8 +232,8 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
         for (int i = 0; i < _count; i++)
         {
             int key = _denseKeys[i];
-            SwiftThrowHelper.ThrowIfNegative(key, paramName);
-            SwiftThrowHelper.ThrowIfArgumentOutOfRange(key == int.MaxValue, key, paramName, "ID is too large for direct sparse indexing.");
+            ChronicleGuard.ThrowIfNegative(key, paramName);
+            ChronicleGuard.ThrowIfArgumentOutOfRange(key == int.MaxValue, key, paramName, "ID is too large for direct sparse indexing.");
 
             if (key > maxKey)
                 maxKey = key;
@@ -252,7 +252,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
         for (int i = 0; i < _count; i++)
         {
             int key = _denseKeys[i];
-            SwiftThrowHelper.ThrowIfArgument(_sparse[key] != NotPresent, paramName, "Duplicate ID in sparse set state.");
+            ChronicleGuard.ThrowIfArgument(_sparse[key] != NotPresent, paramName, "Duplicate ID in sparse set state.");
             _sparse[key] = i + 1;
         }
     }
@@ -357,7 +357,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <inheritdoc/>
     public void ExceptWith(IEnumerable<int> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         if (_count == 0) return;
         if (ReferenceEquals(other, this))
@@ -373,7 +373,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <inheritdoc/>
     public void IntersectWith(IEnumerable<int> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         if (_count == 0 || ReferenceEquals(other, this)) return;
 
@@ -395,7 +395,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <inheritdoc/>
     public bool IsProperSubsetOf(IEnumerable<int> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         if (other is SwiftSparseSet sparseSet)
             return _count < sparseSet._count && IsSubsetOf(sparseSet);
@@ -410,7 +410,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <inheritdoc/>
     public bool IsProperSupersetOf(IEnumerable<int> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         if (other is SwiftSparseSet sparseSet)
             return _count > sparseSet._count && IsSupersetOf(sparseSet);
@@ -425,7 +425,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <inheritdoc/>
     public bool IsSubsetOf(IEnumerable<int> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         if (_count == 0 || ReferenceEquals(other, this)) return true;
 
@@ -441,7 +441,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <inheritdoc/>
     public bool IsSupersetOf(IEnumerable<int> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         if (ReferenceEquals(other, this)) return true;
 
@@ -457,7 +457,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <inheritdoc/>
     public bool Overlaps(IEnumerable<int> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         foreach (int item in other)
         {
@@ -471,7 +471,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <inheritdoc/>
     public bool SetEquals(IEnumerable<int> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         if (ReferenceEquals(other, this)) return true;
 
@@ -487,7 +487,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <inheritdoc/>
     public void SymmetricExceptWith(IEnumerable<int> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         if (ReferenceEquals(other, this))
         {
@@ -513,7 +513,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <inheritdoc/>
     public void UnionWith(IEnumerable<int> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         foreach (int item in other)
             Add(item);
@@ -702,7 +702,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <param name="destination">The caller-owned list that receives the keys.</param>
     public void CopyKeysTo(SwiftList<int> destination)
     {
-        SwiftThrowHelper.ThrowIfNull(destination, nameof(destination));
+        ChronicleGuard.ThrowIfNull(destination, nameof(destination));
 
         destination.FastClear();
         destination.AddRange(_denseKeys.AsSpan(0, _count));
@@ -725,9 +725,9 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <inheritdoc/>
     public void CopyTo(int[] array, int arrayIndex)
     {
-        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
-        SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "The array is not large enough to hold the elements.");
+        ChronicleGuard.ThrowIfNull(array, nameof(array));
+        ChronicleGuard.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
+        ChronicleGuard.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "The array is not large enough to hold the elements.");
 
         Array.Copy(_denseKeys, 0, array, arrayIndex, _count);
     }
@@ -735,11 +735,11 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <inheritdoc/>
     void ICollection.CopyTo(Array array, int index)
     {
-        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfArgument(array.Rank != 1, nameof(array), "Only single dimensional arrays are supported.");
-        SwiftThrowHelper.ThrowIfArgument(array.GetLowerBound(0) != 0, nameof(array), "Non-zero lower bound arrays are not supported.");
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(index, array.Length, nameof(index));
-        SwiftThrowHelper.ThrowIfArgument(array.Length - index < _count, nameof(array), "The array is not large enough to hold the elements.");
+        ChronicleGuard.ThrowIfNull(array, nameof(array));
+        ChronicleGuard.ThrowIfArgument(array.Rank != 1, nameof(array), "Only single dimensional arrays are supported.");
+        ChronicleGuard.ThrowIfArgument(array.GetLowerBound(0) != 0, nameof(array), "Non-zero lower bound arrays are not supported.");
+        ChronicleGuard.ThrowIfArrayIndexInvalid(index, array.Length, nameof(index));
+        ChronicleGuard.ThrowIfArgument(array.Length - index < _count, nameof(array), "The array is not large enough to hold the elements.");
 
         if (array is int[] intArray)
         {
@@ -761,7 +761,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <inheritdoc/>
     public void CloneTo(ICollection<int> output)
     {
-        SwiftThrowHelper.ThrowIfNull(output, nameof(output));
+        ChronicleGuard.ThrowIfNull(output, nameof(output));
 
         output.Clear();
 
@@ -802,7 +802,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
         /// <inheritdoc/>
         public bool MoveNext()
         {
-            SwiftThrowHelper.ThrowIfTrue(_version != _set._version, message: "Collection was modified during enumeration.");
+            ChronicleGuard.ThrowIfTrue(_version != _set._version, message: "Collection was modified during enumeration.");
 
             int next = _index + 1;
             if (next >= _count)
@@ -819,7 +819,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
         /// <inheritdoc/>
         public void Reset()
         {
-            SwiftThrowHelper.ThrowIfTrue(_version != _set._version, message: "Collection was modified during enumeration.");
+            ChronicleGuard.ThrowIfTrue(_version != _set._version, message: "Collection was modified during enumeration.");
 
             _index = -1;
             Current = default;
@@ -836,8 +836,8 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int GetRequiredSparseCapacity(int key)
     {
-        SwiftThrowHelper.ThrowIfNegative(key, nameof(key));
-        SwiftThrowHelper.ThrowIfArgumentOutOfRange(key == int.MaxValue, key, nameof(key), "ID is too large for direct sparse indexing.");
+        ChronicleGuard.ThrowIfNegative(key, nameof(key));
+        ChronicleGuard.ThrowIfArgumentOutOfRange(key == int.MaxValue, key, nameof(key), "ID is too large for direct sparse indexing.");
 
         return key + 1;
     }

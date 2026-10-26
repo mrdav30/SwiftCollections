@@ -13,7 +13,7 @@ using System.Text.Json.Serialization;
 using Chronicler;
 using Chronicler.Serialization;
 using MemoryPack;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 using SwiftCollections.Utility;
 
 namespace SwiftCollections;
@@ -111,8 +111,8 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     /// <param name="denseCapacity">Initial dense storage capacity for values.</param>
     public SwiftSparseMap(int sparseCapacity, int denseCapacity)
     {
-        SwiftThrowHelper.ThrowIfNegative(sparseCapacity, nameof(sparseCapacity));
-        SwiftThrowHelper.ThrowIfNegative(denseCapacity, nameof(denseCapacity));
+        ChronicleGuard.ThrowIfNegative(sparseCapacity, nameof(sparseCapacity));
+        ChronicleGuard.ThrowIfNegative(denseCapacity, nameof(denseCapacity));
 
         int sparseSize = sparseCapacity == 0 ? 0 : SwiftHashTools.NextPowerOfTwo(sparseCapacity);
         _sparse = sparseCapacity == 0
@@ -293,12 +293,12 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
         }
         internal set
         {
-            SwiftThrowHelper.ThrowIfNull(value.DenseKeys);
-            SwiftThrowHelper.ThrowIfNull(value.DenseValues);
+            ChronicleGuard.ThrowIfNull(value.DenseKeys);
+            ChronicleGuard.ThrowIfNull(value.DenseValues);
 
             int n = value.DenseKeys.Length;
 
-            SwiftThrowHelper.ThrowIfArgument(n != value.DenseValues.Length, nameof(value), "DenseKeys and DenseValues length mismatch.");
+            ChronicleGuard.ThrowIfArgument(n != value.DenseValues.Length, nameof(value), "DenseKeys and DenseValues length mismatch.");
 
             // Allocate dense storage
             _denseKeys = n == 0 ? Array.Empty<int>() : new int[Math.Max(DefaultDenseCapacity, n)];
@@ -317,7 +317,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
             for (int i = 0; i < n; i++)
             {
                 int key = _denseKeys[i];
-                SwiftThrowHelper.ThrowIfArgument(key < 0, nameof(value), "Key cannot be negative.");
+                ChronicleGuard.ThrowIfArgument(key < 0, nameof(value), "Key cannot be negative.");
 
                 if (key > maxKey)
                     maxKey = key;
@@ -334,7 +334,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
             {
                 int key = _denseKeys[i];
 
-                SwiftThrowHelper.ThrowIfArgument(_sparse[key] != NotPresent, nameof(value), "Duplicate key in DenseKeys.");
+                ChronicleGuard.ThrowIfArgument(_sparse[key] != NotPresent, nameof(value), "Duplicate key in DenseKeys.");
 
                 _sparse[key] = i + 1;
             }
@@ -624,7 +624,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
         /// <inheritdoc/>
         public bool MoveNext()
         {
-            SwiftThrowHelper.ThrowIfTrue(_version != _map._version, message: "Collection was modified during enumeration.");
+            ChronicleGuard.ThrowIfTrue(_version != _map._version, message: "Collection was modified during enumeration.");
 
             int next = _index + 1;
             if (next >= _count)
@@ -641,7 +641,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
         /// <inheritdoc/>
         public void Reset()
         {
-            SwiftThrowHelper.ThrowIfTrue(_version != _map._version, message: "Collection was modified during enumeration.");
+            ChronicleGuard.ThrowIfTrue(_version != _map._version, message: "Collection was modified during enumeration.");
 
             _index = -1;
             Current = default;
@@ -690,7 +690,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     /// <param name="destination">The caller-owned list that receives the keys.</param>
     public void CopyKeysTo(SwiftList<int> destination)
     {
-        SwiftThrowHelper.ThrowIfNull(destination, nameof(destination));
+        ChronicleGuard.ThrowIfNull(destination, nameof(destination));
 
         destination.FastClear();
         destination.AddRange(_denseKeys.AsSpan(0, _count));
@@ -713,8 +713,8 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int GetRequiredSparseCapacity(int key)
     {
-        SwiftThrowHelper.ThrowIfNegative(key, nameof(key));
-        SwiftThrowHelper.ThrowIfArgumentOutOfRange(key == int.MaxValue, key, nameof(key), "Key is too large for direct sparse indexing.");
+        ChronicleGuard.ThrowIfNegative(key, nameof(key));
+        ChronicleGuard.ThrowIfArgumentOutOfRange(key == int.MaxValue, key, nameof(key), "Key is too large for direct sparse indexing.");
 
         return key + 1;
     }
@@ -722,11 +722,11 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int GetDenseIndexOrThrow(int key)
     {
-        SwiftThrowHelper.ThrowIfKeyNotFound((uint)key >= (uint)_sparse.Length, key);
+        ChronicleGuard.ThrowIfKeyNotFound((uint)key >= (uint)_sparse.Length, key);
 
         int slot = _sparse[key];
 
-        SwiftThrowHelper.ThrowIfKeyNotFound(slot == NotPresent, key);
+        ChronicleGuard.ThrowIfKeyNotFound(slot == NotPresent, key);
 
         return slot - 1;
     }
@@ -734,7 +734,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     /// <inheritdoc/>
     public void CloneTo(ICollection<T> output)
     {
-        SwiftThrowHelper.ThrowIfNull(output, nameof(output));
+        ChronicleGuard.ThrowIfNull(output, nameof(output));
 
         output.Clear();
 

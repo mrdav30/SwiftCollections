@@ -9,7 +9,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 
 namespace SwiftCollections.Pool;
 
@@ -52,8 +52,8 @@ public sealed class SwiftObjectPool<T> : IDisposable, ISwiftObjectPool<T> where 
         Action<T>? actionOnDestroy = null,
         int maxSize = 100)
     {
-        SwiftThrowHelper.ThrowIfNull(createFunc, nameof(createFunc));
-        SwiftThrowHelper.ThrowIfNegativeOrZero(maxSize, nameof(maxSize));
+        ChronicleGuard.ThrowIfNull(createFunc, nameof(createFunc));
+        ChronicleGuard.ThrowIfNegativeOrZero(maxSize, nameof(maxSize));
 
         _pool = new ConcurrentStack<T>();
         _createFunc = createFunc;
@@ -94,7 +94,7 @@ public sealed class SwiftObjectPool<T> : IDisposable, ISwiftObjectPool<T> where 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Rent()
     {
-        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftObjectPool<T>));
+        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftObjectPool<T>));
 
         if (_pool.TryPop(out var obj))
         {
@@ -103,7 +103,7 @@ public sealed class SwiftObjectPool<T> : IDisposable, ISwiftObjectPool<T> where 
         }
 
         var newObj = _createFunc();
-        SwiftThrowHelper.ThrowIfTrue(newObj is null, message: "Failed to create a new object.");
+        ChronicleGuard.ThrowIfTrue(newObj is null, message: "Failed to create a new object.");
         CountAll++;
         _actionOnGet?.Invoke(newObj);
         return newObj;
@@ -126,8 +126,8 @@ public sealed class SwiftObjectPool<T> : IDisposable, ISwiftObjectPool<T> where 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Release(T element)
     {
-        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftObjectPool<T>));
-        SwiftThrowHelper.ThrowIfNull(element, nameof(element));
+        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftObjectPool<T>));
+        ChronicleGuard.ThrowIfNull(element, nameof(element));
 
         _actionOnRelease?.Invoke(element);
 
@@ -149,7 +149,7 @@ public sealed class SwiftObjectPool<T> : IDisposable, ISwiftObjectPool<T> where 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Release(IEnumerable<T> elements)
     {
-        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftObjectPool<T>));
+        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftObjectPool<T>));
 
         foreach (T item in elements)
             Release(item);

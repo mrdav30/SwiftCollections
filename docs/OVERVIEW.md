@@ -161,14 +161,16 @@ type identities and JSON state shape remain unchanged.
 
 ## Diagnostics
 
-`SwiftCollections.Diagnostics` provides a small opt-in diagnostic surface:
+`Chronicler.Diagnostics` supplies the shared opt-in diagnostic APIs.
+SwiftCollections retains `SwiftCollectionDiagnostics.Shared` in
+`SwiftCollections.Diagnostics` for its own named channel:
 
 - `DiagnosticChannel`
 - `DiagnosticEvent`
 - `DiagnosticLevel`
 - `SwiftCollectionDiagnostics.Shared`
 - interpolated diagnostic handlers that avoid formatting when disabled
-- `SwiftThrowHelper` guard methods with caller-expression names, canonical
+- `ChronicleGuard` guard methods with caller-expression names, canonical
   default messages, and lazy interpolated exception messages for condition-gated
   throws
 

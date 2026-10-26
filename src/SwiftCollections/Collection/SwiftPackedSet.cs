@@ -13,7 +13,7 @@ using System.Text.Json.Serialization;
 using Chronicler;
 using Chronicler.Serialization;
 using MemoryPack;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 using SwiftCollections.Utility;
 
 namespace SwiftCollections;
@@ -107,8 +107,8 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     {
         State = state;
 
-        SwiftThrowHelper.ThrowIfNull(_dense, nameof(_dense));
-        SwiftThrowHelper.ThrowIfNull(_lookup, nameof(_lookup));
+        ChronicleGuard.ThrowIfNull(_dense, nameof(_dense));
+        ChronicleGuard.ThrowIfNull(_lookup, nameof(_lookup));
     }
 
     #endregion
@@ -173,7 +173,7 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
         }
         internal set
         {
-            SwiftThrowHelper.ThrowIfNull(value.Items, nameof(value.Items));
+            ChronicleGuard.ThrowIfNull(value.Items, nameof(value.Items));
 
             var values = value.Items;
 
@@ -218,7 +218,7 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <returns><c>true</c> if the <see cref="SwiftPackedSet{T}"/> contains one or more elements that match the specified predicate; otherwise, <c>false</c>.</returns>
     public bool Exists(Predicate<T> match)
     {
-        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+        ChronicleGuard.ThrowIfNull(match, nameof(match));
 
         for (int i = 0; i < _count; i++)
         {
@@ -236,7 +236,7 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <returns>The first element that matches the conditions defined by the specified predicate, if found; otherwise, the default value for type <typeparamref name="T"/>.</returns>
     public T Find(Predicate<T> match)
     {
-        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+        ChronicleGuard.ThrowIfNull(match, nameof(match));
 
         for (int i = 0; i < _count; i++)
         {
@@ -366,7 +366,7 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
         /// <inheritdoc/>
         public bool MoveNext()
         {
-            SwiftThrowHelper.ThrowIfTrue(_version != _set._version, message: "Collection was modified during enumeration.");
+            ChronicleGuard.ThrowIfTrue(_version != _set._version, message: "Collection was modified during enumeration.");
 
             int next = _index + 1;
             if (next >= _set._count)
@@ -383,7 +383,7 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
         /// <inheritdoc/>
         public void Reset()
         {
-            SwiftThrowHelper.ThrowIfTrue(_version != _set._version, message: "Collection was modified during enumeration.");
+            ChronicleGuard.ThrowIfTrue(_version != _set._version, message: "Collection was modified during enumeration.");
 
             _index = -1;
             Current = default!;
@@ -400,7 +400,7 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <inheritdoc/>
     public void CloneTo(ICollection<T> output)
     {
-        SwiftThrowHelper.ThrowIfNull(output, nameof(output));
+        ChronicleGuard.ThrowIfNull(output, nameof(output));
 
         output.Clear();
 
@@ -411,9 +411,9 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <inheritdoc/>
     public void CopyTo(T[] array, int arrayIndex)
     {
-        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
-        SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "Destination array is not long enough.");
+        ChronicleGuard.ThrowIfNull(array, nameof(array));
+        ChronicleGuard.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
+        ChronicleGuard.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "Destination array is not long enough.");
 
         Array.Copy(_dense, 0, array, arrayIndex, _count);
     }
@@ -425,7 +425,7 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <inheritdoc/>
     public void ExceptWith(IEnumerable<T> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         if (ReferenceEquals(this, other))
         {
@@ -442,7 +442,7 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <inheritdoc/>
     public void IntersectWith(IEnumerable<T> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         if (ReferenceEquals(this, other))
             return;
@@ -460,7 +460,7 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <inheritdoc/>
     public bool IsProperSubsetOf(IEnumerable<T> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         var set = new SwiftHashSet<T>(other);
 
@@ -477,7 +477,7 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <inheritdoc/>
     public bool IsProperSupersetOf(IEnumerable<T> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         var set = new SwiftHashSet<T>(other);
 
@@ -494,7 +494,7 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <inheritdoc/>
     public bool IsSubsetOf(IEnumerable<T> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         var set = new SwiftHashSet<T>(other);
 
@@ -511,7 +511,7 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <inheritdoc/>
     public bool IsSupersetOf(IEnumerable<T> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         foreach (var item in other)
             if (!Contains(item))
@@ -523,7 +523,7 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <inheritdoc/>
     public bool Overlaps(IEnumerable<T> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         foreach (var item in other)
             if (Contains(item))
@@ -535,7 +535,7 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <inheritdoc/>
     public bool SetEquals(IEnumerable<T> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         var set = new SwiftHashSet<T>(other);
 
@@ -552,7 +552,7 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <inheritdoc/>
     public void SymmetricExceptWith(IEnumerable<T> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         if (ReferenceEquals(this, other))
         {
@@ -572,7 +572,7 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <inheritdoc/>
     public void UnionWith(IEnumerable<T> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         foreach (var item in other)
             Add(item);

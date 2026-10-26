@@ -13,7 +13,7 @@ using System.Text.Json.Serialization;
 using Chronicler;
 using Chronicler.Serialization;
 using MemoryPack;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 
 namespace SwiftCollections.Observable;
 
@@ -114,7 +114,7 @@ public partial class SwiftObservableList<T> : SwiftList<T>, IStateBacked<SwiftAr
     /// <param name="items">The collection whose elements should be added to the end of the collection. Cannot be null.</param>
     public override void AddRange(IEnumerable<T> items)
     {
-        SwiftThrowHelper.ThrowIfNull(items, nameof(items));
+        ChronicleGuard.ThrowIfNull(items, nameof(items));
 
         if (items is ICollection<T> collection)
         {
@@ -149,7 +149,7 @@ public partial class SwiftObservableList<T> : SwiftList<T>, IStateBacked<SwiftAr
     /// </summary>
     public override void AddRange(T[] items)
     {
-        SwiftThrowHelper.ThrowIfNull(items, nameof(items));
+        ChronicleGuard.ThrowIfNull(items, nameof(items));
         AddRange(items.AsSpan());
     }
 
@@ -170,7 +170,7 @@ public partial class SwiftObservableList<T> : SwiftList<T>, IStateBacked<SwiftAr
         if (additionalCount > 0)
         {
             long requiredCount = (long)_count + additionalCount;
-            SwiftThrowHelper.ThrowIfTrue(requiredCount > int.MaxValue, message: "The collection is too large.");
+            ChronicleGuard.ThrowIfTrue(requiredCount > int.MaxValue, message: "The collection is too large.");
             EnsureCapacity((int)requiredCount);
         }
     }

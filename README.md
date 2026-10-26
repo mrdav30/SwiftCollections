@@ -79,6 +79,11 @@ For externally owned compact integer IDs, start with `SwiftSparseSet` or
 `SwiftSparseMap<T>`. For broad-phase queries, start with `SwiftBVH<TKey>`,
 `SwiftSpatialHash<TKey>`, or `SwiftOctree<TKey>`.
 
+Shared logging and exception guards come from the independent
+`Chronicler.Diagnostics` package. See the
+[migration guide](https://github.com/mrdav30/SwiftCollections/blob/main/docs/MIGRATION.md)
+for the updated imports and guard names.
+
 ## Learn more
 
 - [Library overview and container guide](https://mrdav30.github.io/SwiftCollections/guides/OVERVIEW.html)

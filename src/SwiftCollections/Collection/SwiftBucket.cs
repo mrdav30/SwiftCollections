@@ -13,7 +13,7 @@ using System.Text.Json.Serialization;
 using Chronicler;
 using Chronicler.Serialization;
 using MemoryPack;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 using SwiftCollections.Utility;
 
 namespace SwiftCollections;
@@ -119,8 +119,8 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     {
         State = state;
 
-        SwiftThrowHelper.ThrowIfNull(_innerArray, nameof(state.Items));
-        SwiftThrowHelper.ThrowIfNull(_freeIndices, nameof(state.FreeIndices));
+        ChronicleGuard.ThrowIfNull(_innerArray, nameof(state.Items));
+        ChronicleGuard.ThrowIfNull(_freeIndices, nameof(state.FreeIndices));
     }
 
     #endregion
@@ -160,13 +160,13 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            SwiftThrowHelper.ThrowIfTrue(!IsAllocated(index), nameof(index), message: "Index is out of range or unallocated.");
+            ChronicleGuard.ThrowIfTrue(!IsAllocated(index), nameof(index), message: "Index is out of range or unallocated.");
             return _innerArray[index].Value;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set
         {
-            SwiftThrowHelper.ThrowIfTrue(!IsAllocated(index), nameof(index), message: "Index is out of range or unallocated.");
+            ChronicleGuard.ThrowIfTrue(!IsAllocated(index), nameof(index), message: "Index is out of range or unallocated.");
             _innerArray[index].Value = value;
             _version++;
         }
@@ -267,7 +267,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     {
         foreach (var index in freeIndices)
         {
-            SwiftThrowHelper.ThrowIfTrue((uint)index >= (uint)capacity, message: "Free index is out of range.");
+            ChronicleGuard.ThrowIfTrue((uint)index >= (uint)capacity, message: "Free index is out of range.");
 
             _freeIndices.Push(index);
             if (index > maxReferencedIndex)
@@ -324,7 +324,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     /// <param name="item">The item to insert.</param>
     public void InsertAt(int index, T item)
     {
-        SwiftThrowHelper.ThrowIfNegative(index, nameof(index));
+        ChronicleGuard.ThrowIfNegative(index, nameof(index));
         if ((uint)index >= (uint)_innerArray.Length)
             Resize(SwiftHashTools.NextPowerOfTwo(index + 1));
         if (!_innerArray[index].IsUsed)
@@ -512,7 +512,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     /// <returns><c>true</c> if the <see cref="SwiftBucket{T}"/> contains one or more elements that match the specified predicate; otherwise, <c>false</c>.</returns>
     public bool Exists(Predicate<T> match)
     {
-        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+        ChronicleGuard.ThrowIfNull(match, nameof(match));
 
         uint count = 0;
 
@@ -537,7 +537,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     /// <returns>The first element that matches the conditions defined by the specified predicate, if found; otherwise, the default value for type <typeparamref name="T"/>.</returns>
     public T Find(Predicate<T> match)
     {
-        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+        ChronicleGuard.ThrowIfNull(match, nameof(match));
 
         uint count = 0;
 
@@ -614,9 +614,9 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     /// <param name="arrayIndex">The zero-based arrayIndex in array at which copying begins.</param>
     public void CopyTo(T[] array, int arrayIndex)
     {
-        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
-        SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "The array is not large enough to hold the elements.");
+        ChronicleGuard.ThrowIfNull(array, nameof(array));
+        ChronicleGuard.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
+        ChronicleGuard.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "The array is not large enough to hold the elements.");
 
         uint count = 0;
         for (uint i = 0; i < (uint)_peakCount && count < (uint)_count; i++)
@@ -631,11 +631,11 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
 
     void ICollection.CopyTo(Array array, int arrayIndex)
     {
-        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfArgument((uint)array.Rank != 1, nameof(array), "Array must be single dimensional.");
-        SwiftThrowHelper.ThrowIfArgument((uint)array.GetLowerBound(0) != 0, nameof(array), "Array must have zero-based indexing.");
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
-        SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "The array is not large enough to hold the elements.");
+        ChronicleGuard.ThrowIfNull(array, nameof(array));
+        ChronicleGuard.ThrowIfArgument((uint)array.Rank != 1, nameof(array), "Array must be single dimensional.");
+        ChronicleGuard.ThrowIfArgument((uint)array.GetLowerBound(0) != 0, nameof(array), "Array must have zero-based indexing.");
+        ChronicleGuard.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
+        ChronicleGuard.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "The array is not large enough to hold the elements.");
 
         try
         {
@@ -713,7 +713,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
         {
             get
             {
-                SwiftThrowHelper.ThrowIfTrue(_index > (uint)_bucket._count, message: "Enumerator is before the first element or after the last element.");
+                ChronicleGuard.ThrowIfTrue(_index > (uint)_bucket._count, message: "Enumerator is before the first element or after the last element.");
                 return _current!;
             }
         }
@@ -722,7 +722,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
-            SwiftThrowHelper.ThrowIfTrue(_version != _bucket._version, message: "Enumerator modified outside of enumeration!");
+            ChronicleGuard.ThrowIfTrue(_version != _bucket._version, message: "Enumerator modified outside of enumeration!");
 
             uint count = (uint)_bucket._peakCount;
             while (++_index < count)
@@ -739,7 +739,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
         /// <inheritdoc/>
         public void Reset()
         {
-            SwiftThrowHelper.ThrowIfTrue(_version != _bucket._version, message: "Enumerator modified outside of enumeration!");
+            ChronicleGuard.ThrowIfTrue(_version != _bucket._version, message: "Enumerator modified outside of enumeration!");
 
             _index = -1;
             _current = default!;

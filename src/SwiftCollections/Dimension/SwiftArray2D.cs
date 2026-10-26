@@ -12,7 +12,7 @@ using System.Text.Json.Serialization;
 using Chronicler;
 using Chronicler.Serialization;
 using MemoryPack;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 
 namespace SwiftCollections.Dimensions;
 
@@ -50,7 +50,7 @@ public partial class SwiftArray2D<T> : IStateBacked<Array2DState<T>>, IEnumerabl
         Initialize(width, height);
 
         // Ensure that the inner array is not null after initialization
-        SwiftThrowHelper.ThrowIfNull(_innerArray, nameof(_innerArray));
+        ChronicleGuard.ThrowIfNull(_innerArray, nameof(_innerArray));
     }
 
     /// <summary>
@@ -76,7 +76,7 @@ public partial class SwiftArray2D<T> : IStateBacked<Array2DState<T>>, IEnumerabl
 
         Initialize(width, height);
 
-        SwiftThrowHelper.ThrowIfNull(_innerArray, nameof(_innerArray));
+        ChronicleGuard.ThrowIfNull(_innerArray, nameof(_innerArray));
 
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)
@@ -92,7 +92,7 @@ public partial class SwiftArray2D<T> : IStateBacked<Array2DState<T>>, IEnumerabl
     {
         State = state;
 
-        SwiftThrowHelper.ThrowIfNull(_innerArray, nameof(_innerArray));
+        ChronicleGuard.ThrowIfNull(_innerArray, nameof(_innerArray));
     }
 
     #endregion
@@ -179,7 +179,7 @@ public partial class SwiftArray2D<T> : IStateBacked<Array2DState<T>>, IEnumerabl
 
         internal set
         {
-            SwiftThrowHelper.ThrowIfNull(value.Data, nameof(value.Data));
+            ChronicleGuard.ThrowIfNull(value.Data, nameof(value.Data));
 
             _width = value.Width;
             _height = value.Height;
@@ -204,7 +204,7 @@ public partial class SwiftArray2D<T> : IStateBacked<Array2DState<T>>, IEnumerabl
     /// <param name="source">The source values to copy.</param>
     public void AddRange(T[,] source)
     {
-        SwiftThrowHelper.ThrowIfNull(source, nameof(source));
+        ChronicleGuard.ThrowIfNull(source, nameof(source));
 
         int width = source.GetLength(0);
         int height = source.GetLength(1);
@@ -307,8 +307,8 @@ public partial class SwiftArray2D<T> : IStateBacked<Array2DState<T>>, IEnumerabl
     /// </summary>
     public void Resize(int newWidth, int newHeight)
     {
-        SwiftThrowHelper.ThrowIfNegative(newWidth, nameof(newWidth));
-        SwiftThrowHelper.ThrowIfNegative(newHeight, nameof(newHeight));
+        ChronicleGuard.ThrowIfNegative(newWidth, nameof(newWidth));
+        ChronicleGuard.ThrowIfNegative(newHeight, nameof(newHeight));
 
         if (newWidth == _width && newHeight == _height)
             return;

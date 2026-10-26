@@ -12,7 +12,7 @@ using System.Text.Json.Serialization;
 using Chronicler;
 using Chronicler.Serialization;
 using MemoryPack;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 
 namespace SwiftCollections.Dimensions;
 
@@ -87,7 +87,7 @@ public partial class SwiftArray3D<T> : IStateBacked<Array3DState<T>>, IEnumerabl
     public SwiftArray3D(Array3DState<T> state)
     {
         State = state;
-        SwiftThrowHelper.ThrowIfNull(_innerArray, nameof(_innerArray));
+        ChronicleGuard.ThrowIfNull(_innerArray, nameof(_innerArray));
     }
 
     #endregion

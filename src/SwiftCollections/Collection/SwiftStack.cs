@@ -13,7 +13,7 @@ using System.Text.Json.Serialization;
 using Chronicler;
 using Chronicler.Serialization;
 using MemoryPack;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 using SwiftCollections.Utility;
 
 namespace SwiftCollections;
@@ -103,7 +103,7 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// <param name="items">The collection whose elements are copied to the new stack. Cannot be null.</param>
     public SwiftStack(IEnumerable<T> items)
     {
-        SwiftThrowHelper.ThrowIfNull(items, nameof(items));
+        ChronicleGuard.ThrowIfNull(items, nameof(items));
 
         if (items is ICollection<T> collection)
         {
@@ -134,7 +134,7 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     public SwiftStack(SwiftArrayState<T> state)
     {
         State = state;
-        SwiftThrowHelper.ThrowIfNull(_innerArray, nameof(_innerArray));
+        ChronicleGuard.ThrowIfNull(_innerArray, nameof(_innerArray));
     }
 
     #endregion
@@ -182,13 +182,13 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count);
+            ChronicleGuard.ThrowIfListIndexInvalid(index, _count);
             return _innerArray[index];
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set
         {
-            SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count);
+            ChronicleGuard.ThrowIfListIndexInvalid(index, _count);
             _innerArray[index] = value;
         }
     }
@@ -212,7 +212,7 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
         }
         internal set
         {
-            SwiftThrowHelper.ThrowIfNull(value.Items, nameof(value.Items));
+            ChronicleGuard.ThrowIfNull(value.Items, nameof(value.Items));
 
             int count = value.Items.Length;
 
@@ -286,7 +286,7 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Pop()
     {
-        SwiftThrowHelper.ThrowIfTrue((uint)_count == 0, message: "Stack is empty.");
+        ChronicleGuard.ThrowIfTrue((uint)_count == 0, message: "Stack is empty.");
         T item = _innerArray[--_count];
         if (_clearReleasedSlots)
             _innerArray[_count] = default!;
@@ -379,7 +379,7 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Peek()
     {
-        SwiftThrowHelper.ThrowIfTrue((uint)_count == 0, message: "Stack is empty.");
+        ChronicleGuard.ThrowIfTrue((uint)_count == 0, message: "Stack is empty.");
         return _innerArray[_count - 1];
     }
 
@@ -421,9 +421,9 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// </exception>
     public void CopyTo(T[] array, int arrayIndex)
     {
-        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
-        SwiftThrowHelper.ThrowIfArgument((uint)(array.Length - arrayIndex) < (uint)_count, nameof(array), "Destination array is not long enough.");
+        ChronicleGuard.ThrowIfNull(array, nameof(array));
+        ChronicleGuard.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
+        ChronicleGuard.ThrowIfArgument((uint)(array.Length - arrayIndex) < (uint)_count, nameof(array), "Destination array is not long enough.");
 
         Array.Copy(_innerArray, 0, array, arrayIndex, _count);
     }
@@ -434,7 +434,7 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// <param name="destination">The destination span.</param>
     public void CopyTo(Span<T> destination)
     {
-        SwiftThrowHelper.ThrowIfArgument(destination.Length < _count, nameof(destination), "Destination span is not long enough.");
+        ChronicleGuard.ThrowIfArgument(destination.Length < _count, nameof(destination), "Destination span is not long enough.");
 
         AsSpan().CopyTo(destination);
     }
@@ -442,11 +442,11 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// <inheritdoc/>
     public void CopyTo(Array array, int arrayIndex)
     {
-        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfArgument(array.Rank != 1, nameof(array), "Array must be single dimensional.");
-        SwiftThrowHelper.ThrowIfArgument(array.GetLowerBound(0) != 0, nameof(array), "Array must have zero-based indexing.");
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
-        SwiftThrowHelper.ThrowIfArgument((uint)(array.Length - arrayIndex) < (uint)_count, nameof(array), "Destination array is not long enough.");
+        ChronicleGuard.ThrowIfNull(array, nameof(array));
+        ChronicleGuard.ThrowIfArgument(array.Rank != 1, nameof(array), "Array must be single dimensional.");
+        ChronicleGuard.ThrowIfArgument(array.GetLowerBound(0) != 0, nameof(array), "Array must have zero-based indexing.");
+        ChronicleGuard.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
+        ChronicleGuard.ThrowIfArgument((uint)(array.Length - arrayIndex) < (uint)_count, nameof(array), "Destination array is not long enough.");
 
         try
         {
@@ -486,7 +486,7 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// <returns><c>true</c> if the <see cref="SwiftStack{T}"/> contains one or more elements that match the specified predicate; otherwise, <c>false</c>.</returns>
     public bool Exists(Predicate<T> match)
     {
-        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+        ChronicleGuard.ThrowIfNull(match, nameof(match));
 
         for (int i = _count - 1; i >= 0; i--)
         {
@@ -504,7 +504,7 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// <returns>The first element that matches the conditions defined by the specified predicate, if found; otherwise, the default value for type <typeparamref name="T"/>.</returns>
     public T Find(Predicate<T> match)
     {
-        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+        ChronicleGuard.ThrowIfNull(match, nameof(match));
 
         for (int i = _count - 1; i >= 0; i--)
         {
@@ -558,7 +558,7 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
         {
             get
             {
-                SwiftThrowHelper.ThrowIfTrue((uint)_index > _count, message: "Bad enumeration");
+                ChronicleGuard.ThrowIfTrue((uint)_index > _count, message: "Bad enumeration");
                 return _current!;
             }
         }
@@ -567,7 +567,7 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
-            SwiftThrowHelper.ThrowIfTrue(_version != _stack._version, message: "Enumerator modified outside of enumeration!");
+            ChronicleGuard.ThrowIfTrue(_version != _stack._version, message: "Enumerator modified outside of enumeration!");
 
             if (_index == -2)
             {
@@ -592,7 +592,7 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
         /// <inheritdoc/>
         public void Reset()
         {
-            SwiftThrowHelper.ThrowIfTrue(_version != _stack._version, message: "Enumerator modified outside of enumeration!");
+            ChronicleGuard.ThrowIfTrue(_version != _stack._version, message: "Enumerator modified outside of enumeration!");
 
             _index = -2;
             _current = default!;

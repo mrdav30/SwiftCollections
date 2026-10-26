@@ -7,7 +7,7 @@
 
 using System;
 using System.Threading;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 using SwiftCollections.Lazy;
 
 namespace SwiftCollections.Pool;
@@ -70,7 +70,7 @@ public sealed class SwiftSparseMapPool<T> : IDisposable
     /// <returns>A <see cref="SwiftSparseMap{T}"/> instance.</returns>
     public SwiftSparseMap<T> Rent()
     {
-        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftSparseMapPool<T>));
+        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftSparseMapPool<T>));
 
         return CollectionPool.Rent();
     }
@@ -82,7 +82,7 @@ public sealed class SwiftSparseMapPool<T> : IDisposable
     /// <returns>A <see cref="SwiftPooledObject{T}"/> instance wrapping the rented sparse map.</returns>
     public SwiftPooledObject<SwiftSparseMap<T>> Get(out SwiftSparseMap<T> value)
     {
-        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftSparseMapPool<T>));
+        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftSparseMapPool<T>));
 
         return CollectionPool.Rent(out value);
     }
@@ -93,7 +93,7 @@ public sealed class SwiftSparseMapPool<T> : IDisposable
     /// <param name="map">The sparse map to release.</param>
     public void Release(SwiftSparseMap<T> map)
     {
-        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftSparseMapPool<T>));
+        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftSparseMapPool<T>));
 
         if (map == null) return;
 

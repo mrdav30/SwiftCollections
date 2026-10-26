@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Chronicler.Diagnostics;
 using SwiftCollections.Diagnostics;
 using SwiftCollections.Utility;
 using Xunit;

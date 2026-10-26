@@ -7,7 +7,7 @@
 
 using System;
 using System.Threading;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 using SwiftCollections.Lazy;
 
 namespace SwiftCollections.Pool;
@@ -52,7 +52,7 @@ public sealed class SwiftStackPool<T> : SwiftCollectionPool<SwiftStack<T>, T>, I
     /// <returns>A <see cref="SwiftStack{T}"/> instance.</returns>
     public override SwiftStack<T> Rent()
     {
-        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftStackPool<T>));
+        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftStackPool<T>));
 
         return base.Rent();
     }
@@ -63,7 +63,7 @@ public sealed class SwiftStackPool<T> : SwiftCollectionPool<SwiftStack<T>, T>, I
     /// <param name="stack">The stack to release.</param>
     public override void Release(SwiftStack<T> stack)
     {
-        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftStackPool<T>));
+        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftStackPool<T>));
 
         if (stack == null) return;
 

@@ -11,7 +11,7 @@ using System.Text.Json.Serialization;
 using Chronicler;
 using Chronicler.Serialization;
 using MemoryPack;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 using SwiftCollections.Utility;
 
 namespace SwiftCollections;
@@ -98,7 +98,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     public SwiftBiDictionary(IDictionary<T1, T2> dictionary, IEqualityComparer<T1>? comparer1, IEqualityComparer<T2>? comparer2)
         : this(comparer1, comparer2)
     {
-        SwiftThrowHelper.ThrowIfNull(dictionary, nameof(dictionary));
+        ChronicleGuard.ThrowIfNull(dictionary, nameof(dictionary));
 
         foreach (var kvp in dictionary)
             Add(kvp.Key, kvp.Value);
@@ -113,8 +113,8 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     {
         State = state;
 
-        SwiftThrowHelper.ThrowIfNull(_reverseMap, nameof(_reverseMap));
-        SwiftThrowHelper.ThrowIfNull(_reverseComparer, nameof(_reverseComparer));
+        ChronicleGuard.ThrowIfNull(_reverseMap, nameof(_reverseMap));
+        ChronicleGuard.ThrowIfNull(_reverseComparer, nameof(_reverseComparer));
     }
 
     #endregion
@@ -150,7 +150,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
         get => base[key];
         set
         {
-            SwiftThrowHelper.ThrowIfNullGeneric(key, nameof(key));
+            ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
 
             lock (ReverseSyncRoot)
             {
@@ -161,7 +161,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
                         return;
 
                     // Prevent duplicate values
-                    SwiftThrowHelper.ThrowIfArgument(_reverseMap.ContainsKey(value), nameof(value), "Value already exists");
+                    ChronicleGuard.ThrowIfArgument(_reverseMap.ContainsKey(value), nameof(value), "Value already exists");
 
                     // Remove old reverse mapping
                     _reverseMap.Remove(oldValue);
@@ -178,7 +178,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
                 else
                 {
                     // New insert
-                    SwiftThrowHelper.ThrowIfArgument(_reverseMap.ContainsKey(value), nameof(value), "Value already exists");
+                    ChronicleGuard.ThrowIfArgument(_reverseMap.ContainsKey(value), nameof(value), "Value already exists");
 
                     CheckLoadThreshold();
 
@@ -234,8 +234,8 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     /// <returns><c>true</c> if the element is successfully found and removed; otherwise, <c>false</c>.</returns>
     public bool Remove(T1 key, T2 value)
     {
-        SwiftThrowHelper.ThrowIfNullGeneric(key, nameof(key));
-        SwiftThrowHelper.ThrowIfNullGeneric(value, nameof(value));
+        ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
+        ChronicleGuard.ThrowIfNullGeneric(value, nameof(value));
 
         if (TryGetValue(key, out T2 existingValue))
         {
@@ -261,8 +261,8 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     /// <exception cref="ArgumentException">An element with the same key or value already exists.</exception>
     public override bool Add(T1 key, T2 value)
     {
-        SwiftThrowHelper.ThrowIfNullGeneric(key, nameof(key));
-        SwiftThrowHelper.ThrowIfNullGeneric(value, nameof(value));
+        ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
+        ChronicleGuard.ThrowIfNullGeneric(value, nameof(value));
 
         if (ContainsKey(key))
             return false;
@@ -311,7 +311,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     /// <returns><c>true</c> if the element is successfully found and removed; otherwise, <c>false</c>.</returns>
     public override bool Remove(T1 key)
     {
-        SwiftThrowHelper.ThrowIfNullGeneric(key, nameof(key));
+        ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
 
         if (TryGetValue(key, out T2 value))
         {
@@ -351,8 +351,8 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     /// <param name="comparer2">The equality comparer to use for values of type T2. Cannot be null.</param>
     public void SetComparer(IEqualityComparer<T1> comparer1, IEqualityComparer<T2> comparer2)
     {
-        SwiftThrowHelper.ThrowIfNull(comparer1, nameof(comparer1));
-        SwiftThrowHelper.ThrowIfNull(comparer2, nameof(comparer2));
+        ChronicleGuard.ThrowIfNull(comparer1, nameof(comparer1));
+        ChronicleGuard.ThrowIfNull(comparer2, nameof(comparer2));
         if (ReferenceEquals(comparer1, _comparer) && ReferenceEquals(comparer2, _reverseComparer))
             return;
 
@@ -377,7 +377,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     /// <returns><c>true</c> if the key was found; otherwise, <c>false</c>.</returns>
     public bool TryGetKey(T2 value, out T1 key)
     {
-        SwiftThrowHelper.ThrowIfNullGeneric(value, nameof(value));
+        ChronicleGuard.ThrowIfNullGeneric(value, nameof(value));
 
         lock (ReverseSyncRoot)
             return _reverseMap.TryGetValue(value, out key);
@@ -391,7 +391,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     /// <exception cref="KeyNotFoundException">The property is retrieved and <paramref name="value"/> does not exist in the reverse map.</exception>
     public T1 GetKey(T2 value)
     {
-        SwiftThrowHelper.ThrowIfNullGeneric(value, nameof(value));
+        ChronicleGuard.ThrowIfNullGeneric(value, nameof(value));
 
         lock (ReverseSyncRoot)
             return _reverseMap[value];
@@ -404,7 +404,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     /// <returns><c>true</c> if the dictionary contains an element with the specified value; otherwise, <c>false</c>.</returns>
     public bool ContainsValue(T2 value)
     {
-        SwiftThrowHelper.ThrowIfNullGeneric(value, nameof(value));
+        ChronicleGuard.ThrowIfNullGeneric(value, nameof(value));
 
         lock (ReverseSyncRoot)
             return _reverseMap.ContainsKey(value);

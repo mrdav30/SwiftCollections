@@ -8,7 +8,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 
 namespace SwiftCollections;
 
@@ -105,8 +105,8 @@ public static class SwiftExtensions
     /// <returns>An iterator that yields the shuffled elements.</returns>
     public static IEnumerable<T> Shuffle<T>(this IEnumerable<T> source, Random rng)
     {
-        SwiftThrowHelper.ThrowIfNull(source, nameof(source));
-        SwiftThrowHelper.ThrowIfNull(rng, nameof(rng));
+        ChronicleGuard.ThrowIfNull(source, nameof(source));
+        ChronicleGuard.ThrowIfNull(rng, nameof(rng));
 
         SwiftList<T> buffer = new(source);
         int n = buffer.Count;
@@ -128,8 +128,8 @@ public static class SwiftExtensions
     /// <param name="rng">The random number generator to use for shuffling.</param>
     public static void ShuffleInPlace<T>(this IList<T> list, Random rng)
     {
-        SwiftThrowHelper.ThrowIfNull(list, nameof(list));
-        SwiftThrowHelper.ThrowIfNull(rng, nameof(rng));
+        ChronicleGuard.ThrowIfNull(list, nameof(list));
+        ChronicleGuard.ThrowIfNull(rng, nameof(rng));
 
         int n = list.Count;
         while (n > 1)
@@ -151,7 +151,7 @@ public static class SwiftExtensions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsPopulated<T>(this IEnumerable<T> source)
     {
-        SwiftThrowHelper.ThrowIfNull(source, nameof(source));
+        ChronicleGuard.ThrowIfNull(source, nameof(source));
         using IEnumerator<T> enumerator = source.GetEnumerator();
         return enumerator.MoveNext();
     }
@@ -187,7 +187,7 @@ public static class SwiftExtensions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static T FromEnd<T>(this SwiftList<T> list, int reverseIndex)
     {
-        SwiftThrowHelper.ThrowIfArgumentOutOfRange(reverseIndex <= 0 || reverseIndex > list.Count, reverseIndex, nameof(reverseIndex));
+        ChronicleGuard.ThrowIfArgumentOutOfRange(reverseIndex <= 0 || reverseIndex > list.Count, reverseIndex, nameof(reverseIndex));
         return list[^reverseIndex];
     }
 
@@ -202,8 +202,8 @@ public static class SwiftExtensions
     /// </summary>
     public static IEnumerable<T> SkipFromEnd<T>(this IEnumerable<T> source, int count)
     {
-        SwiftThrowHelper.ThrowIfNull(source, nameof(source));
-        SwiftThrowHelper.ThrowIfNegative(count, nameof(count));
+        ChronicleGuard.ThrowIfNull(source, nameof(source));
+        ChronicleGuard.ThrowIfNegative(count, nameof(count));
 
         SwiftQueue<T> buffer = new();
 

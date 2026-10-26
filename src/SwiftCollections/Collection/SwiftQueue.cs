@@ -13,7 +13,7 @@ using System.Text.Json.Serialization;
 using Chronicler;
 using Chronicler.Serialization;
 using MemoryPack;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 using SwiftCollections.Utility;
 
 namespace SwiftCollections;
@@ -119,7 +119,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// </summary>
     public SwiftQueue(IEnumerable<T> items)
     {
-        SwiftThrowHelper.ThrowIfNull(items, nameof(items));
+        ChronicleGuard.ThrowIfNull(items, nameof(items));
         _innerArray = _emptyArray;
 
         if (items is ICollection<T> collection)
@@ -170,7 +170,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     {
         State = state;
 
-        SwiftThrowHelper.ThrowIfNull(_innerArray, nameof(_innerArray));
+        ChronicleGuard.ThrowIfNull(_innerArray, nameof(_innerArray));
     }
 
     #endregion
@@ -220,13 +220,13 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count);
+            ChronicleGuard.ThrowIfListIndexInvalid(index, _count);
             return _innerArray[(_head + index) & _mask];
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set
         {
-            SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count);
+            ChronicleGuard.ThrowIfListIndexInvalid(index, _count);
             _innerArray[(_head + index) & _mask] = value;
         }
     }
@@ -254,7 +254,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
         }
         internal set
         {
-            SwiftThrowHelper.ThrowIfNull(value.Items, nameof(value.Items));
+            ChronicleGuard.ThrowIfNull(value.Items, nameof(value.Items));
 
             int count = value.Items.Length;
 
@@ -315,7 +315,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void EnqueueRange(IEnumerable<T> items)
     {
-        SwiftThrowHelper.ThrowIfNull(items, nameof(items));
+        ChronicleGuard.ThrowIfNull(items, nameof(items));
 
         if (items is ICollection<T> collection)
         {
@@ -358,7 +358,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// <param name="items">The array whose elements should be enqueued.</param>
     public void EnqueueRange(T[] items)
     {
-        SwiftThrowHelper.ThrowIfNull(items, nameof(items));
+        ChronicleGuard.ThrowIfNull(items, nameof(items));
         EnqueueRange(items.AsSpan());
     }
 
@@ -386,7 +386,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     private void EnsureAdditionalCapacity(int additionalCount)
     {
         long requiredCount = (long)_count + additionalCount;
-        SwiftThrowHelper.ThrowIfTrue(requiredCount > int.MaxValue, message: "The collection is too large.");
+        ChronicleGuard.ThrowIfTrue(requiredCount > int.MaxValue, message: "The collection is too large.");
         EnsureCapacity((int)requiredCount);
     }
 
@@ -398,7 +398,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Dequeue()
     {
-        SwiftThrowHelper.ThrowIfTrue((uint)_count == 0, message: "Queue is Empty");
+        ChronicleGuard.ThrowIfTrue((uint)_count == 0, message: "Queue is Empty");
         T item = _innerArray[_head];
         if (_clearReleasedSlots)
             _innerArray[_head] = default!;
@@ -439,7 +439,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Peek()
     {
-        SwiftThrowHelper.ThrowIfTrue((uint)_count == 0, message: "Queue is Empty");
+        ChronicleGuard.ThrowIfTrue((uint)_count == 0, message: "Queue is Empty");
         return _innerArray[_head];
     }
 
@@ -467,7 +467,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T PeekTail()
     {
-        SwiftThrowHelper.ThrowIfTrue((uint)_count == 0, message: "Queue is Empty");
+        ChronicleGuard.ThrowIfTrue((uint)_count == 0, message: "Queue is Empty");
         int tailIndex = (_tail - 1) & _mask;
         return _innerArray[tailIndex];
     }
@@ -496,7 +496,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// <returns><c>true</c> if the <see cref="SwiftQueue{T}"/> contains one or more elements that match the specified predicate; otherwise, <c>false</c>.</returns>
     public bool Exists(Predicate<T> match)
     {
-        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+        ChronicleGuard.ThrowIfNull(match, nameof(match));
 
         int index = _head;
         for (int i = 0; i < _count; i++)
@@ -517,7 +517,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// <returns>The first element that matches the conditions defined by the specified predicate, if found; otherwise, the default value for type <typeparamref name="T"/>.</returns>
     public T Find(Predicate<T> match)
     {
-        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+        ChronicleGuard.ThrowIfNull(match, nameof(match));
 
         int index = _head;
         for (int i = 0; i < _count; i++)
@@ -706,11 +706,11 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// <inheritdoc/>
     public void CopyTo(Array array, int arrayIndex)
     {
-        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfArgument((uint)array.Rank != 1, nameof(array), "Array must be single dimensional.");
-        SwiftThrowHelper.ThrowIfArgument((uint)array.GetLowerBound(0) != 0, nameof(array), "Array must have zero-based indexing.");
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
-        SwiftThrowHelper.ThrowIfArgument((uint)(array.Length - arrayIndex) < _count, nameof(array), "Destination array is not long enough.");
+        ChronicleGuard.ThrowIfNull(array, nameof(array));
+        ChronicleGuard.ThrowIfArgument((uint)array.Rank != 1, nameof(array), "Array must be single dimensional.");
+        ChronicleGuard.ThrowIfArgument((uint)array.GetLowerBound(0) != 0, nameof(array), "Array must have zero-based indexing.");
+        ChronicleGuard.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
+        ChronicleGuard.ThrowIfArgument((uint)(array.Length - arrayIndex) < _count, nameof(array), "Destination array is not long enough.");
 
         if ((uint)_count == 0)
             return;
@@ -728,11 +728,11 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// <inheritdoc/>
     public void CopyTo(T[] array, int arrayIndex)
     {
-        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfArgument((uint)array.Rank != 1, nameof(array), "Array must be single dimensional.");
-        SwiftThrowHelper.ThrowIfArgument((uint)array.GetLowerBound(0) != 0, nameof(array), "Array must have zero-based indexing.");
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
-        SwiftThrowHelper.ThrowIfArgument((uint)(array.Length - arrayIndex) < _count, nameof(array), "Destination array is not long enough.");
+        ChronicleGuard.ThrowIfNull(array, nameof(array));
+        ChronicleGuard.ThrowIfArgument((uint)array.Rank != 1, nameof(array), "Array must be single dimensional.");
+        ChronicleGuard.ThrowIfArgument((uint)array.GetLowerBound(0) != 0, nameof(array), "Array must have zero-based indexing.");
+        ChronicleGuard.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
+        ChronicleGuard.ThrowIfArgument((uint)(array.Length - arrayIndex) < _count, nameof(array), "Destination array is not long enough.");
 
         if ((uint)_count == 0) return;
 
@@ -745,7 +745,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// <param name="destination">The destination span.</param>
     public void CopyTo(Span<T> destination)
     {
-        SwiftThrowHelper.ThrowIfArgument((uint)destination.Length < _count, nameof(destination), "Destination span is not long enough.");
+        ChronicleGuard.ThrowIfArgument((uint)destination.Length < _count, nameof(destination), "Destination span is not long enough.");
 
         GetSegments(out ReadOnlySpan<T> first, out ReadOnlySpan<T> second);
         first.CopyTo(destination);
@@ -772,7 +772,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// <inheritdoc/>
     public void CloneTo(ICollection<T> output)
     {
-        SwiftThrowHelper.ThrowIfNull(output, nameof(output));
+        ChronicleGuard.ThrowIfNull(output, nameof(output));
         output.Clear();
         foreach (var item in this)
             output.Add(item);
@@ -820,7 +820,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                SwiftThrowHelper.ThrowIfTrue(_index >= (uint)_queue._count, message: "Bad enumeration");
+                ChronicleGuard.ThrowIfTrue(_index >= (uint)_queue._count, message: "Bad enumeration");
                 return _current!;
             }
         }
@@ -829,7 +829,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
-            SwiftThrowHelper.ThrowIfTrue(_version != _queue._version, message: "Collection was modified during enumeration.");
+            ChronicleGuard.ThrowIfTrue(_version != _queue._version, message: "Collection was modified during enumeration.");
 
             _index++;
             if (_index > (uint)_queue._count) return false;
@@ -842,7 +842,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
         /// <inheritdoc/>
         public void Reset()
         {
-            SwiftThrowHelper.ThrowIfTrue(_version != _queue._version, message: "Collection was modified during enumeration.");
+            ChronicleGuard.ThrowIfTrue(_version != _queue._version, message: "Collection was modified during enumeration.");
 
             _index = 0;
             _currentIndex = (uint)_queue._head - 1;

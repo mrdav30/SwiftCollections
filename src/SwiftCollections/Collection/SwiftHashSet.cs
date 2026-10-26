@@ -13,7 +13,7 @@ using System.Text.Json.Serialization;
 using Chronicler;
 using Chronicler.Serialization;
 using MemoryPack;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 using SwiftCollections.Utility;
 
 namespace SwiftCollections;
@@ -138,8 +138,8 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     {
         Initialize(capacity, comparer);
 
-        SwiftThrowHelper.ThrowIfNull(_entries, nameof(_entries));
-        SwiftThrowHelper.ThrowIfNull(_comparer, nameof(_comparer));
+        ChronicleGuard.ThrowIfNull(_entries, nameof(_entries));
+        ChronicleGuard.ThrowIfNull(_comparer, nameof(_comparer));
     }
 
     /// <summary>
@@ -149,14 +149,14 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <param name="comparer">The comparer to use when comparing elements.</param>
     public SwiftHashSet(IEnumerable<T> collection, IEqualityComparer<T>? comparer = null)
     {
-        SwiftThrowHelper.ThrowIfNull(collection, nameof(collection));
+        ChronicleGuard.ThrowIfNull(collection, nameof(collection));
 
         int count = (collection as ICollection<T>)?.Count ?? DefaultCapacity;
         int size = (int)(count / _LoadFactorThreshold);  // Dynamic padding based on collision estimation
         Initialize(size, comparer);
 
-        SwiftThrowHelper.ThrowIfNull(_entries, nameof(_entries));
-        SwiftThrowHelper.ThrowIfNull(_comparer, nameof(_comparer));
+        ChronicleGuard.ThrowIfNull(_entries, nameof(_entries));
+        ChronicleGuard.ThrowIfNull(_comparer, nameof(_comparer));
 
         foreach (T item in collection)
             InsertIfNotExists(item);
@@ -171,8 +171,8 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     {
         State = state;
 
-        SwiftThrowHelper.ThrowIfNull(_entries, nameof(_entries));
-        SwiftThrowHelper.ThrowIfNull(_comparer, nameof(_comparer));
+        ChronicleGuard.ThrowIfNull(_entries, nameof(_entries));
+        ChronicleGuard.ThrowIfNull(_comparer, nameof(_comparer));
     }
 
     #endregion
@@ -209,7 +209,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
         get
         {
             int index = FindEntry(key);
-            SwiftThrowHelper.ThrowIfKeyInvalid(index, key);
+            ChronicleGuard.ThrowIfKeyInvalid(index, key);
             return _entries[index].Value;
         }
     }
@@ -238,7 +238,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
         }
         internal set
         {
-            SwiftThrowHelper.ThrowIfNull(value.Items, nameof(value));
+            ChronicleGuard.ThrowIfNull(value.Items, nameof(value));
 
             T[] items = value.Items;
             int count = items.Length;
@@ -286,7 +286,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void AddRange(IEnumerable<T> items)
     {
-        SwiftThrowHelper.ThrowIfNull(items, nameof(items));
+        ChronicleGuard.ThrowIfNull(items, nameof(items));
 
         if (ReferenceEquals(this, items))
             return;
@@ -328,7 +328,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool InsertIfNotExists(T item)
     {
-        SwiftThrowHelper.ThrowIfNullGeneric(item, nameof(item));
+        ChronicleGuard.ThrowIfNullGeneric(item, nameof(item));
 
         int hashCode = _comparer.GetHashCode(item) & 0x7FFFFFFF;
         int entryIndex = hashCode & _entryMask;
@@ -396,7 +396,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// </returns>
     public bool Remove(T item)
     {
-        SwiftThrowHelper.ThrowIfNullGeneric(item, nameof(item));
+        ChronicleGuard.ThrowIfNullGeneric(item, nameof(item));
 
         int hashCode = _comparer.GetHashCode(item) & 0x7FFFFFFF;
         int entryIndex = hashCode & _entryMask;
@@ -478,7 +478,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
             return;
 
         long requiredCount = (long)_count + incomingCount;
-        SwiftThrowHelper.ThrowIfTrue(requiredCount > int.MaxValue, message: "The collection is too large.");
+        ChronicleGuard.ThrowIfTrue(requiredCount > int.MaxValue, message: "The collection is too large.");
 
         double minimumCapacity = Math.Ceiling(requiredCount / (double)_LoadFactorThreshold);
         EnsureCapacity((int)Math.Min(minimumCapacity, int.MaxValue));
@@ -635,7 +635,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <returns><c>true</c> if the <see cref="SwiftHashSet{T}"/> contains one or more elements that match the specified predicate; otherwise, <c>false</c>.</returns>
     public bool Exists(Predicate<T> match)
     {
-        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+        ChronicleGuard.ThrowIfNull(match, nameof(match));
 
         for (int i = 0; i <= _lastIndex; i++)
         {
@@ -653,7 +653,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <returns>The first element that matches the conditions defined by the specified predicate, if found; otherwise, the default value for type <typeparamref name="T"/>.</returns>
     public T Find(Predicate<T> match)
     {
-        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+        ChronicleGuard.ThrowIfNull(match, nameof(match));
 
         for (int i = 0; i <= _lastIndex; i++)
         {
@@ -684,9 +684,9 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// </summary>
     public void CopyTo(T[] array, int arrayIndex)
     {
-        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
-        SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "The array is not large enough to hold the elements.");
+        ChronicleGuard.ThrowIfNull(array, nameof(array));
+        ChronicleGuard.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
+        ChronicleGuard.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "The array is not large enough to hold the elements.");
 
         for (uint i = 0; i <= (uint)_lastIndex; i++)
         {
@@ -702,7 +702,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetComparer(IEqualityComparer<T>? comparer = null)
     {
-        SwiftThrowHelper.ThrowIfNull(comparer, nameof(comparer));
+        ChronicleGuard.ThrowIfNull(comparer, nameof(comparer));
         if (ReferenceEquals(comparer, _comparer))
             return;
 
@@ -830,7 +830,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
         {
             get
             {
-                SwiftThrowHelper.ThrowIfTrue(_index > (uint)_set._lastIndex, message: "Enumeration has either not started or has already finished.");
+                ChronicleGuard.ThrowIfTrue(_index > (uint)_set._lastIndex, message: "Enumeration has either not started or has already finished.");
                 return _current;
             }
         }
@@ -838,7 +838,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
         /// <inheritdoc/>
         public bool MoveNext()
         {
-            SwiftThrowHelper.ThrowIfTrue(_version != _set._version, message: "Collection was modified during enumeration.");
+            ChronicleGuard.ThrowIfTrue(_version != _set._version, message: "Collection was modified during enumeration.");
 
             uint last = (uint)_set._lastIndex;
             while (++_index <= last)
@@ -857,7 +857,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
         /// <inheritdoc/>
         public void Reset()
         {
-            SwiftThrowHelper.ThrowIfTrue(_version != _set._version, message: "Collection was modified during enumeration.");
+            ChronicleGuard.ThrowIfTrue(_version != _set._version, message: "Collection was modified during enumeration.");
 
             _index = -1;
             _current = default!;
@@ -874,7 +874,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <inheritdoc/>
     public void ExceptWith(IEnumerable<T> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         if (ReferenceEquals(this, other))
         {
@@ -891,7 +891,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <inheritdoc/>
     public void IntersectWith(IEnumerable<T> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         if (ReferenceEquals(this, other))
             return;
@@ -912,7 +912,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <inheritdoc/>
     public bool IsProperSubsetOf(IEnumerable<T> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         var otherSet = new SwiftHashSet<T>(other, _comparer);
 
@@ -929,7 +929,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <inheritdoc/>
     public bool IsProperSupersetOf(IEnumerable<T> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         var otherSet = new SwiftHashSet<T>(other, _comparer);
 
@@ -946,7 +946,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <inheritdoc/>
     public bool IsSubsetOf(IEnumerable<T> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         var otherSet = new SwiftHashSet<T>(other, _comparer);
 
@@ -963,7 +963,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <inheritdoc/>
     public bool IsSupersetOf(IEnumerable<T> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         foreach (var item in other)
         {
@@ -977,7 +977,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <inheritdoc/>
     public bool Overlaps(IEnumerable<T> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         foreach (var item in other)
             if (Contains(item))
@@ -989,7 +989,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <inheritdoc/>
     public bool SetEquals(IEnumerable<T> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         var otherSet = new SwiftHashSet<T>(other, _comparer);
 
@@ -1006,7 +1006,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <inheritdoc/>
     public void SymmetricExceptWith(IEnumerable<T> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         if (ReferenceEquals(this, other))
         {
@@ -1026,7 +1026,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <inheritdoc/>
     public void UnionWith(IEnumerable<T> other)
     {
-        SwiftThrowHelper.ThrowIfNull(other, nameof(other));
+        ChronicleGuard.ThrowIfNull(other, nameof(other));
 
         foreach (var item in other)
             Add(item);

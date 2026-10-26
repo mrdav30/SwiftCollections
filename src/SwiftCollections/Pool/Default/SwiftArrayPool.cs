@@ -9,7 +9,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 using SwiftCollections.Lazy;
 
 namespace SwiftCollections.Pool;
@@ -65,7 +65,7 @@ public sealed class SwiftArrayPool<T> : IDisposable where T : new()
         Action<T[]>? actionOnDestroy = null,
         int poolMaxCapacity = 100)
     {
-        SwiftThrowHelper.ThrowIfNegativeOrZero(poolMaxCapacity, nameof(poolMaxCapacity));
+        ChronicleGuard.ThrowIfNegativeOrZero(poolMaxCapacity, nameof(poolMaxCapacity));
 
         _sizePools = new ConcurrentDictionary<int, SwiftObjectPool<T[]>>();
         PoolMaxCapacity = poolMaxCapacity;
@@ -113,8 +113,8 @@ public sealed class SwiftArrayPool<T> : IDisposable where T : new()
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T[] Rent(int size)
     {
-        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftArrayPool<T>));
-        SwiftThrowHelper.ThrowIfNegativeOrZero(size, nameof(size));
+        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftArrayPool<T>));
+        ChronicleGuard.ThrowIfNegativeOrZero(size, nameof(size));
 
         return _sizePools.GetOrAdd(size, key => CreatePoolForSize(key)).Rent();
     }
@@ -126,7 +126,7 @@ public sealed class SwiftArrayPool<T> : IDisposable where T : new()
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Release(T[] array)
     {
-        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftArrayPool<T>));
+        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftArrayPool<T>));
 
         if (array == null || array.Length == 0) return;
 

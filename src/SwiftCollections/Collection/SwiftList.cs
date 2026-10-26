@@ -13,7 +13,7 @@ using System.Text.Json.Serialization;
 using Chronicler;
 using Chronicler.Serialization;
 using MemoryPack;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 using SwiftCollections.Utility;
 
 namespace SwiftCollections;
@@ -109,7 +109,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// <exception cref="ArgumentException">Thrown if the input collection does not have a known count.</exception>
     public SwiftList(IEnumerable<T> items)
     {
-        SwiftThrowHelper.ThrowIfNull(items, nameof(items));
+        ChronicleGuard.ThrowIfNull(items, nameof(items));
 
         if (items is ICollection<T> collection)
         {
@@ -140,7 +140,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
         State = state;
 
         // Validate that the internal array is not null after deserialization
-        SwiftThrowHelper.ThrowIfNull(_innerArray, nameof(_innerArray));
+        ChronicleGuard.ThrowIfNull(_innerArray, nameof(_innerArray));
     }
 
     #endregion
@@ -215,13 +215,13 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count);
+            ChronicleGuard.ThrowIfListIndexInvalid(index, _count);
             return _innerArray[index];
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set
         {
-            SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count);
+            ChronicleGuard.ThrowIfListIndexInvalid(index, _count);
             _innerArray[index] = value;
         }
     }
@@ -246,7 +246,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
         }
         internal set
         {
-            SwiftThrowHelper.ThrowIfNull(value.Items, nameof(value.Items));
+            ChronicleGuard.ThrowIfNull(value.Items, nameof(value.Items));
 
             int count = value.Items.Length;
 
@@ -304,7 +304,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// </remarks>
     public virtual void AddRange(IEnumerable<T> items)
     {
-        SwiftThrowHelper.ThrowIfNull(items, nameof(items));
+        ChronicleGuard.ThrowIfNull(items, nameof(items));
 
         if (items is ICollection<T> collection)
         {
@@ -349,7 +349,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// <param name="items">The array whose elements should be appended.</param>
     public virtual void AddRange(T[] items)
     {
-        SwiftThrowHelper.ThrowIfNull(items, nameof(items));
+        ChronicleGuard.ThrowIfNull(items, nameof(items));
         AddRange(items.AsSpan());
     }
 
@@ -372,7 +372,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     private void EnsureAdditionalCapacity(int additionalCount)
     {
         long requiredCount = (long)_count + additionalCount;
-        SwiftThrowHelper.ThrowIfTrue(requiredCount > int.MaxValue, message: "The collection is too large.");
+        ChronicleGuard.ThrowIfTrue(requiredCount > int.MaxValue, message: "The collection is too large.");
         EnsureCapacity((int)requiredCount);
     }
 
@@ -405,7 +405,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// </summary>
     public virtual void RemoveAt(int index)
     {
-        SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count);
+        ChronicleGuard.ThrowIfListIndexInvalid(index, _count);
         Array.Copy(_innerArray, index + 1, _innerArray, index, _count - index - 1);
         _count--;
         if (_clearReleasedSlots)
@@ -418,7 +418,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// </summary>
     public virtual int RemoveAll(Predicate<T> match)
     {
-        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+        ChronicleGuard.ThrowIfNull(match, nameof(match));
 
         int firstMatchIndex = IndexOfFirstMatch(match);
         if (firstMatchIndex >= _count)
@@ -464,7 +464,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// </summary>
     public virtual void Insert(int index, T item)
     {
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(index, _count);
+        ChronicleGuard.ThrowIfArrayIndexInvalid(index, _count);
         if ((uint)_count == (uint)_innerArray.Length)
             Resize(_innerArray.Length * 2);
         if ((uint)index < (uint)_count)
@@ -669,7 +669,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// <returns><c>true</c> if the <see cref="SwiftList{T}"/> contains one or more elements that match the specified predicate; otherwise, <c>false</c>.</returns>
     public bool Exists(Predicate<T> match)
     {
-        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+        ChronicleGuard.ThrowIfNull(match, nameof(match));
 
         for (int i = 0; i < _count; i++)
         {
@@ -687,7 +687,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// <returns>The first element that matches the conditions defined by the specified predicate, if found; otherwise, the default value for type <typeparamref name="T"/>.</returns>
     public T Find(Predicate<T> match)
     {
-        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+        ChronicleGuard.ThrowIfNull(match, nameof(match));
 
         for (int i = 0; i < _count; i++)
         {
@@ -738,9 +738,9 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// <inheritdoc/>
     public void CopyTo(T[] array, int arrayIndex)
     {
-        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
-        SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "Destination array is not long enough.");
+        ChronicleGuard.ThrowIfNull(array, nameof(array));
+        ChronicleGuard.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
+        ChronicleGuard.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "Destination array is not long enough.");
 
         Array.Copy(_innerArray, 0, array, arrayIndex, _count);
     }
@@ -751,7 +751,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// <param name="destination">The destination span.</param>
     public void CopyTo(Span<T> destination)
     {
-        SwiftThrowHelper.ThrowIfArgument(destination.Length < _count, nameof(destination), "Destination span is not long enough.");
+        ChronicleGuard.ThrowIfArgument(destination.Length < _count, nameof(destination), "Destination span is not long enough.");
 
         AsSpan().CopyTo(destination);
     }
@@ -759,11 +759,11 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// <inheritdoc/>
     public void CopyTo(Array array, int arrayIndex)
     {
-        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfArgument(array.Rank != 1, nameof(array), "Array must be single dimensional.");
-        SwiftThrowHelper.ThrowIfArgument(array.GetLowerBound(0) != 0, nameof(array), "Array must have zero-based indexing.");
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
-        SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "Destination array is not long enough.");
+        ChronicleGuard.ThrowIfNull(array, nameof(array));
+        ChronicleGuard.ThrowIfArgument(array.Rank != 1, nameof(array), "Array must be single dimensional.");
+        ChronicleGuard.ThrowIfArgument(array.GetLowerBound(0) != 0, nameof(array), "Array must have zero-based indexing.");
+        ChronicleGuard.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
+        ChronicleGuard.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "Destination array is not long enough.");
 
         Array.Copy(_innerArray, 0, array, arrayIndex, _count);
     }
@@ -823,7 +823,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                SwiftThrowHelper.ThrowIfTrue(_index >= _count, message: "Enumeration has either not started or has already finished.");
+                ChronicleGuard.ThrowIfTrue(_index >= _count, message: "Enumeration has either not started or has already finished.");
                 return _current!;
             }
         }
@@ -832,7 +832,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
-            SwiftThrowHelper.ThrowIfTrue(_version != _list._version, message: "Collection was modified during enumeration.");
+            ChronicleGuard.ThrowIfTrue(_version != _list._version, message: "Collection was modified during enumeration.");
 
             if (_index >= _count) return false;
             _current = _array[_index++];
@@ -842,7 +842,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
         /// <inheritdoc/>
         public void Reset()
         {
-            SwiftThrowHelper.ThrowIfTrue(_version != _list._version, message: "Collection was modified during enumeration.");
+            ChronicleGuard.ThrowIfTrue(_version != _list._version, message: "Collection was modified during enumeration.");
 
             _index = 0;
             _current = default!;

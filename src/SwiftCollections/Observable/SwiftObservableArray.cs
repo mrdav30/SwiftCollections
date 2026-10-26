@@ -11,7 +11,7 @@ using System.Text.Json.Serialization;
 using Chronicler;
 using Chronicler.Serialization;
 using MemoryPack;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 
 namespace SwiftCollections.Observable;
 
@@ -98,7 +98,7 @@ public partial class SwiftObservableArray<TValue> : IStateBacked<SwiftArrayState
     /// <param name="capacity">The number of elements the array can contain. Must be a positive integer.</param>
     public SwiftObservableArray(int capacity)
     {
-        SwiftThrowHelper.ThrowIfNegativeOrZero(capacity, nameof(capacity));
+        ChronicleGuard.ThrowIfNegativeOrZero(capacity, nameof(capacity));
 
         _items = new SwiftObservableProperty<TValue>[capacity];
         _itemChangedHandler = (sender, e) => OnItemChanged(sender);
@@ -123,7 +123,7 @@ public partial class SwiftObservableArray<TValue> : IStateBacked<SwiftArrayState
     /// <param name="observableProperties">An array of <see cref="SwiftObservableProperty{TValue}"/> instances to be managed by the array. Cannot be null.</param>
     public SwiftObservableArray(SwiftObservableProperty<TValue>[] observableProperties)
     {
-        SwiftThrowHelper.ThrowIfNull(observableProperties, nameof(observableProperties));
+        ChronicleGuard.ThrowIfNull(observableProperties, nameof(observableProperties));
 
         _items = observableProperties;
         _itemChangedHandler = (sender, e) => OnItemChanged(sender);
@@ -144,8 +144,8 @@ public partial class SwiftObservableArray<TValue> : IStateBacked<SwiftArrayState
     {
         State = state;
 
-        SwiftThrowHelper.ThrowIfNull(_items, nameof(_items));
-        SwiftThrowHelper.ThrowIfNull(_itemChangedHandler, nameof(_itemChangedHandler));
+        ChronicleGuard.ThrowIfNull(_items, nameof(_items));
+        ChronicleGuard.ThrowIfNull(_itemChangedHandler, nameof(_itemChangedHandler));
     }
 
     #endregion
@@ -202,7 +202,7 @@ public partial class SwiftObservableArray<TValue> : IStateBacked<SwiftArrayState
         }
         internal set
         {
-            SwiftThrowHelper.ThrowIfNull(value.Items, nameof(value.Items));
+            ChronicleGuard.ThrowIfNull(value.Items, nameof(value.Items));
 
             var values = value.Items;
 

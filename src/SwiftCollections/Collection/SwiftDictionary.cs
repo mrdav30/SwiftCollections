@@ -13,7 +13,7 @@ using System.Text.Json.Serialization;
 using Chronicler;
 using Chronicler.Serialization;
 using MemoryPack;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 using SwiftCollections.Utility;
 
 namespace SwiftCollections;
@@ -191,19 +191,19 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     {
         Initialize(capacity, comparer);
 
-        SwiftThrowHelper.ThrowIfNull(_entries, nameof(_entries));
-        SwiftThrowHelper.ThrowIfNull(_comparer, nameof(_comparer));
+        ChronicleGuard.ThrowIfNull(_entries, nameof(_entries));
+        ChronicleGuard.ThrowIfNull(_comparer, nameof(_comparer));
     }
 
     /// <inheritdoc cref="SwiftDictionary()"/>
     public SwiftDictionary(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey>? comparer = null)
     {
-        SwiftThrowHelper.ThrowIfNull(dictionary, nameof(dictionary));
+        ChronicleGuard.ThrowIfNull(dictionary, nameof(dictionary));
 
         Initialize(dictionary.Count, comparer);
 
-        SwiftThrowHelper.ThrowIfNull(_entries, nameof(_entries));
-        SwiftThrowHelper.ThrowIfNull(_comparer, nameof(_comparer));
+        ChronicleGuard.ThrowIfNull(_entries, nameof(_entries));
+        ChronicleGuard.ThrowIfNull(_comparer, nameof(_comparer));
 
         foreach (KeyValuePair<TKey, TValue> kvp in dictionary)
             InsertIfNotExist(kvp.Key, kvp.Value);
@@ -212,15 +212,15 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// <inheritdoc cref="SwiftDictionary()"/>
     public SwiftDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey>? comparer = null)
     {
-        SwiftThrowHelper.ThrowIfNull(collection, nameof(collection));
+        ChronicleGuard.ThrowIfNull(collection, nameof(collection));
 
         int count = (collection as ICollection<KeyValuePair<TKey, TValue>>)?.Count ?? DefaultCapacity;
         // Dynamic padding based on collision estimation
         int size = (int)(count / _LoadFactorThreshold);
         Initialize(size, comparer);
 
-        SwiftThrowHelper.ThrowIfNull(_entries, nameof(_entries));
-        SwiftThrowHelper.ThrowIfNull(_comparer, nameof(_comparer));
+        ChronicleGuard.ThrowIfNull(_entries, nameof(_entries));
+        ChronicleGuard.ThrowIfNull(_comparer, nameof(_comparer));
 
         foreach (KeyValuePair<TKey, TValue> kvp in collection)
             InsertIfNotExist(kvp.Key, kvp.Value);
@@ -235,8 +235,8 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     {
         State = state;
 
-        SwiftThrowHelper.ThrowIfNull(_entries, nameof(_entries));
-        SwiftThrowHelper.ThrowIfNull(_comparer, nameof(_comparer));
+        ChronicleGuard.ThrowIfNull(_entries, nameof(_entries));
+        ChronicleGuard.ThrowIfNull(_comparer, nameof(_comparer));
     }
 
     #endregion
@@ -281,7 +281,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
             int index = FindEntry(key);
             // The object-based error helper would box a value key even on a successful lookup.
             if (index < 0)
-                SwiftThrowHelper.ThrowIfKeyInvalid(index, key);
+                ChronicleGuard.ThrowIfKeyInvalid(index, key);
             return _entries[index].Value;
         }
         set
@@ -304,7 +304,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     {
         get
         {
-            SwiftThrowHelper.ThrowIfNull(obj, nameof(obj));
+            ChronicleGuard.ThrowIfNull(obj, nameof(obj));
 
             if (obj is TKey key)
             {
@@ -315,7 +315,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         }
         set
         {
-            SwiftThrowHelper.ThrowIfNullAndNullsAreIllegal(value, default(TValue));
+            ChronicleGuard.ThrowIfNullAndNullsAreIllegal(value, default(TValue));
             try
             {
                 TKey tempKey = (TKey)obj;
@@ -408,7 +408,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         }
         internal set
         {
-            SwiftThrowHelper.ThrowIfNull(value.Items, nameof(value.Items));
+            ChronicleGuard.ThrowIfNull(value.Items, nameof(value.Items));
 
             var items = value.Items;
             int count = items.Length;
@@ -459,7 +459,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// <inheritdoc/>
     public void Add(object key, object? value)
     {
-        SwiftThrowHelper.ThrowIfNullAndNullsAreIllegal(value, default(TValue));
+        ChronicleGuard.ThrowIfNullAndNullsAreIllegal(value, default(TValue));
 
         try
         {
@@ -492,7 +492,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// <exception cref="ArgumentNullException">Thrown when the key is null.</exception>
     internal virtual bool InsertIfNotExist(TKey key, TValue value)
     {
-        SwiftThrowHelper.ThrowIfNullGeneric(key, nameof(key));
+        ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
 
         int hashCode = _comparer.GetHashCode(key) & 0x7FFFFFFF;
         int entryIndex = hashCode & _entryMask;
@@ -592,7 +592,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
 
     void IDictionary.Remove(object obj)
     {
-        SwiftThrowHelper.ThrowIfNull(obj, nameof(obj));
+        ChronicleGuard.ThrowIfNull(obj, nameof(obj));
         if (obj is TKey key) Remove(key);
     }
 
@@ -793,7 +793,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
 
     bool IDictionary.Contains(object obj)
     {
-        SwiftThrowHelper.ThrowIfNull(obj, nameof(obj));
+        ChronicleGuard.ThrowIfNull(obj, nameof(obj));
 
         if (obj is TKey key) return ContainsKey(key);
         return false;
@@ -837,9 +837,9 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// </exception>
     public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
     {
-        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
-        SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "Insufficient space in the target array.");
+        ChronicleGuard.ThrowIfNull(array, nameof(array));
+        ChronicleGuard.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
+        ChronicleGuard.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "Insufficient space in the target array.");
 
         for (uint i = 0; i <= (uint)_lastIndex; i++)
         {
@@ -851,11 +851,11 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// <inheritdoc/>
     public void CopyTo(Array array, int arrayIndex)
     {
-        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfArgument(array.Rank != 1, nameof(array), "Multidimensional array not supported");
-        SwiftThrowHelper.ThrowIfArgument(array.GetLowerBound(0) != 0, nameof(array), "Non-zero lower bound");
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
-        SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "Insufficient space in the target array.");
+        ChronicleGuard.ThrowIfNull(array, nameof(array));
+        ChronicleGuard.ThrowIfArgument(array.Rank != 1, nameof(array), "Multidimensional array not supported");
+        ChronicleGuard.ThrowIfArgument(array.GetLowerBound(0) != 0, nameof(array), "Non-zero lower bound");
+        ChronicleGuard.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
+        ChronicleGuard.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "Insufficient space in the target array.");
 
         if (array is KeyValuePair<TKey, TValue>[] pairs)
             ((ICollection<KeyValuePair<TKey, TValue>>)this).CopyTo(pairs, arrayIndex);
@@ -905,7 +905,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetComparer(IEqualityComparer<TKey> comparer)
     {
-        SwiftThrowHelper.ThrowIfNull(comparer, nameof(comparer));
+        ChronicleGuard.ThrowIfNull(comparer, nameof(comparer));
         if (ReferenceEquals(comparer, _comparer))
             return;
 
@@ -1034,7 +1034,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         {
             get
             {
-                SwiftThrowHelper.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
+                ChronicleGuard.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
                 return _current.Key;
             }
         }
@@ -1043,7 +1043,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         {
             get
             {
-                SwiftThrowHelper.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
+                ChronicleGuard.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
                 return _current.Value!;
             }
         }
@@ -1052,7 +1052,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         {
             get
             {
-                SwiftThrowHelper.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
+                ChronicleGuard.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
                 return new DictionaryEntry(_current.Key, _current.Value);
             }
         }
@@ -1064,7 +1064,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         {
             get
             {
-                SwiftThrowHelper.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
+                ChronicleGuard.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
                 return _returnEntry
                     ? new DictionaryEntry(_current.Key, _current.Value)
                     : new KeyValuePair<TKey, TValue>(_current.Key, _current.Value);
@@ -1074,7 +1074,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         /// <inheritdoc/>
         public bool MoveNext()
         {
-            SwiftThrowHelper.ThrowIfTrue(_version != _dictionary._version, message: "Enumerator modified outside of enumeration!");
+            ChronicleGuard.ThrowIfTrue(_version != _dictionary._version, message: "Enumerator modified outside of enumeration!");
 
             while (++_index <= (uint)_dictionary._lastIndex)
             {
@@ -1092,7 +1092,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         /// <inheritdoc/>
         public void Reset()
         {
-            SwiftThrowHelper.ThrowIfTrue(_version != _dictionary._version, message: "Enumerator modified outside of enumeration!");
+            ChronicleGuard.ThrowIfTrue(_version != _dictionary._version, message: "Enumerator modified outside of enumeration!");
 
             _index = -1;
             _current = default;
@@ -1122,7 +1122,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         /// <exception cref="ArgumentNullException">The dictionary is null.</exception>
         public KeyCollection(SwiftDictionary<TKey, TValue> dictionary)
         {
-            SwiftThrowHelper.ThrowIfNull(dictionary, nameof(dictionary));
+            ChronicleGuard.ThrowIfNull(dictionary, nameof(dictionary));
             _dictionary = dictionary;
             _entries = dictionary._entries;
         }
@@ -1147,9 +1147,9 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         /// <inheritdoc/>
         public void CopyTo(TKey[] array, int arrayIndex)
         {
-            SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-            SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
-            SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _dictionary._count, nameof(array), "Insufficient space in the target array.");
+            ChronicleGuard.ThrowIfNull(array, nameof(array));
+            ChronicleGuard.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
+            ChronicleGuard.ThrowIfArgument(array.Length - arrayIndex < _dictionary._count, nameof(array), "Insufficient space in the target array.");
 
             for (int i = 0, j = arrayIndex; i < _entries.Length; i++)
             {
@@ -1160,11 +1160,11 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
 
         void ICollection.CopyTo(Array array, int arrayIndex)
         {
-            SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-            SwiftThrowHelper.ThrowIfArgument(array.Rank != 1, nameof(array), "Multidimensional array not supported");
-            SwiftThrowHelper.ThrowIfArgument(array.GetLowerBound(0) != 0, nameof(array), "Non-zero lower bound");
-            SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
-            SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _dictionary._count, nameof(array), "Insufficient space in the target array.");
+            ChronicleGuard.ThrowIfNull(array, nameof(array));
+            ChronicleGuard.ThrowIfArgument(array.Rank != 1, nameof(array), "Multidimensional array not supported");
+            ChronicleGuard.ThrowIfArgument(array.GetLowerBound(0) != 0, nameof(array), "Non-zero lower bound");
+            ChronicleGuard.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
+            ChronicleGuard.ThrowIfArgument(array.Length - arrayIndex < _dictionary._count, nameof(array), "Insufficient space in the target array.");
 
             if (array is TKey[] keysArray)
                 CopyTo(keysArray, arrayIndex);
@@ -1230,7 +1230,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
             {
                 get
                 {
-                    SwiftThrowHelper.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
+                    ChronicleGuard.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
                     return _currentKey;
                 }
             }
@@ -1238,7 +1238,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
             /// <inheritdoc/>
             public bool MoveNext()
             {
-                SwiftThrowHelper.ThrowIfTrue(_version != _dictionary._version, message: "Enumerator modified outside of enumeration!");
+                ChronicleGuard.ThrowIfTrue(_version != _dictionary._version, message: "Enumerator modified outside of enumeration!");
 
                 while (++_index <= (uint)_dictionary._lastIndex)
                 {
@@ -1256,7 +1256,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
             /// <inheritdoc/>
             public void Reset()
             {
-                SwiftThrowHelper.ThrowIfTrue(_version != _dictionary._version, message: "Enumerator modified outside of enumeration!");
+                ChronicleGuard.ThrowIfTrue(_version != _dictionary._version, message: "Enumerator modified outside of enumeration!");
 
                 _index = -1;
                 _currentKey = default!;
@@ -1283,7 +1283,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         /// <exception cref="ArgumentNullException">The dictionary is null.</exception>
         public ValueCollection(SwiftDictionary<TKey, TValue> dictionary)
         {
-            SwiftThrowHelper.ThrowIfNull(dictionary, nameof(dictionary));
+            ChronicleGuard.ThrowIfNull(dictionary, nameof(dictionary));
             _dictionary = dictionary;
             _entries = dictionary._entries;
         }
@@ -1316,9 +1316,9 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         /// <inheritdoc/>
         public void CopyTo(TValue[] array, int arrayIndex)
         {
-            SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-            SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
-            SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _dictionary._count, nameof(array), "Insufficient space in the target array.");
+            ChronicleGuard.ThrowIfNull(array, nameof(array));
+            ChronicleGuard.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
+            ChronicleGuard.ThrowIfArgument(array.Length - arrayIndex < _dictionary._count, nameof(array), "Insufficient space in the target array.");
 
             for (int i = 0, j = arrayIndex; i <= _dictionary._lastIndex; i++)
             {
@@ -1329,11 +1329,11 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
 
         void ICollection.CopyTo(Array array, int arrayIndex)
         {
-            SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-            SwiftThrowHelper.ThrowIfArgument(array.Rank != 1, nameof(array), "Multidimensional array not supported");
-            SwiftThrowHelper.ThrowIfArgument(array.GetLowerBound(0) != 0, nameof(array), "Non-zero lower bound");
-            SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
-            SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _dictionary._count, nameof(array), "Insufficient space in the target array.");
+            ChronicleGuard.ThrowIfNull(array, nameof(array));
+            ChronicleGuard.ThrowIfArgument(array.Rank != 1, nameof(array), "Multidimensional array not supported");
+            ChronicleGuard.ThrowIfArgument(array.GetLowerBound(0) != 0, nameof(array), "Non-zero lower bound");
+            ChronicleGuard.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
+            ChronicleGuard.ThrowIfArgument(array.Length - arrayIndex < _dictionary._count, nameof(array), "Insufficient space in the target array.");
 
             if (array is TValue[] valuesArray)
                 CopyTo(valuesArray, arrayIndex);
@@ -1393,7 +1393,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
             {
                 get
                 {
-                    SwiftThrowHelper.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
+                    ChronicleGuard.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
                     return _currentValue!;
                 }
             }
@@ -1401,7 +1401,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
             /// <inheritdoc/>
             public bool MoveNext()
             {
-                SwiftThrowHelper.ThrowIfTrue(_version != _dictionary._version, message: "Enumerator modified outside of enumeration!");
+                ChronicleGuard.ThrowIfTrue(_version != _dictionary._version, message: "Enumerator modified outside of enumeration!");
 
                 while (++_index <= (uint)_dictionary._lastIndex)
                 {
@@ -1419,7 +1419,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
             /// <inheritdoc/>
             public void Reset()
             {
-                SwiftThrowHelper.ThrowIfTrue(_version != _dictionary._version, message: "Enumerator modified outside of enumeration!");
+                ChronicleGuard.ThrowIfTrue(_version != _dictionary._version, message: "Enumerator modified outside of enumeration!");
 
                 _index = -1;
                 _currentValue = default!;

@@ -8,6 +8,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using Chronicler.Diagnostics;
 using SwiftCollections.Diagnostics;
 using SwiftCollections.Utility;
 
@@ -41,7 +42,7 @@ public class SwiftOctree<TKey, TVolume>
     /// <param name="boundsPartitioner">The backend-owned partitioner that maps bounds into octants.</param>
     public SwiftOctree(TVolume worldBounds, SwiftOctreeOptions options, IOctreeBoundsPartitioner<TVolume> boundsPartitioner)
     {
-        SwiftThrowHelper.ThrowIfNull(boundsPartitioner, nameof(boundsPartitioner));
+        ChronicleGuard.ThrowIfNull(boundsPartitioner, nameof(boundsPartitioner));
 
         WorldBounds = worldBounds;
         Options = options;
@@ -83,7 +84,7 @@ public class SwiftOctree<TKey, TVolume>
     /// <returns><c>true</c> when a new key was added; <c>false</c> when an existing key was replaced.</returns>
     public bool Insert(TKey key, TVolume bounds)
     {
-        SwiftThrowHelper.ThrowIfNull(key, nameof(key));
+        ChronicleGuard.ThrowIfNull(key, nameof(key));
         EnsureWithinWorldBounds(bounds, nameof(bounds));
 
         int existingIndex = FindEntryIndex(key);
@@ -109,7 +110,7 @@ public class SwiftOctree<TKey, TVolume>
     /// <returns><c>true</c> when the key existed and was removed; otherwise, <c>false</c>.</returns>
     public bool Remove(TKey key)
     {
-        SwiftThrowHelper.ThrowIfNullGeneric(key, nameof(key));
+        ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
 
         int entryIndex = FindEntryIndex(key);
         if (entryIndex < 0)
@@ -134,7 +135,7 @@ public class SwiftOctree<TKey, TVolume>
     /// </summary>
     public bool TryGetBounds(TKey key, out TVolume bounds)
     {
-        SwiftThrowHelper.ThrowIfNullGeneric(key, nameof(key));
+        ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
 
         int entryIndex = FindEntryIndex(key);
         if (entryIndex < 0)
@@ -155,7 +156,7 @@ public class SwiftOctree<TKey, TVolume>
     /// <returns><c>true</c> when the key existed; otherwise, <c>false</c>.</returns>
     public bool UpdateEntryBounds(TKey key, TVolume newBounds)
     {
-        SwiftThrowHelper.ThrowIfNullGeneric(key, nameof(key));
+        ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
 
         int entryIndex = FindEntryIndex(key);
         if (entryIndex < 0)
@@ -169,7 +170,7 @@ public class SwiftOctree<TKey, TVolume>
     /// </summary>
     public bool Contains(TKey key)
     {
-        SwiftThrowHelper.ThrowIfNullGeneric(key, nameof(key));
+        ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
         return FindEntryIndex(key) >= 0;
     }
 
@@ -180,7 +181,7 @@ public class SwiftOctree<TKey, TVolume>
     /// <param name="results">The collection that receives intersecting keys.</param>
     public void Query(TVolume queryBounds, ICollection<TKey> results)
     {
-        SwiftThrowHelper.ThrowIfNull(results, nameof(results));
+        ChronicleGuard.ThrowIfNull(results, nameof(results));
 
         if (_count == 0 || !_root.Bounds.Intersects(queryBounds))
             return;

@@ -12,7 +12,7 @@ using System.Text.Json.Serialization;
 using Chronicler;
 using Chronicler.Serialization;
 using MemoryPack;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 using SwiftCollections.Utility;
 
 namespace SwiftCollections;
@@ -285,7 +285,7 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
     {
         foreach (var index in freeIndices)
         {
-            SwiftThrowHelper.ThrowIfArgument((uint)index >= (uint)capacity, message: "Free index is out of range.");
+            ChronicleGuard.ThrowIfArgument((uint)index >= (uint)capacity, message: "Free index is out of range.");
 
             _freeIndices.Push(index);
             if (index > maxReferencedIndex)
@@ -389,7 +389,7 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
     {
         ref Entry entry = ref _entries[handle.Index];
 
-        SwiftThrowHelper.ThrowIfTrue(!entry.IsUsed || entry.Generation != handle.Generation, message: "Invalid handle");
+        ChronicleGuard.ThrowIfTrue(!entry.IsUsed || entry.Generation != handle.Generation, message: "Invalid handle");
 
         return ref entry.Value;
     }
@@ -478,7 +478,7 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
     /// <inheritdoc/>
     public void CloneTo(ICollection<T> output)
     {
-        SwiftThrowHelper.ThrowIfNull(output, nameof(output));
+        ChronicleGuard.ThrowIfNull(output, nameof(output));
 
         output.Clear();
 
@@ -502,7 +502,7 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
     /// <returns><c>true</c> if the <see cref="SwiftGenerationalBucket{T}"/> contains one or more elements that match the specified predicate; otherwise, <c>false</c>.</returns>
     public bool Exists(Predicate<T> match)
     {
-        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+        ChronicleGuard.ThrowIfNull(match, nameof(match));
 
         uint count = 0;
         uint peak = (uint)_peak;
@@ -531,7 +531,7 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
     /// <returns>The first element that matches the conditions defined by the specified predicate, if found; otherwise, the default value for type <typeparamref name="T"/>.</returns>
     public T Find(Predicate<T> match)
     {
-        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+        ChronicleGuard.ThrowIfNull(match, nameof(match));
 
         uint count = 0;
         uint peak = (uint)_peak;
@@ -591,7 +591,7 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
         /// <inheritdoc/>
         public bool MoveNext()
         {
-            SwiftThrowHelper.ThrowIfTrue(_version != _bucket._version, message: "Collection modified");
+            ChronicleGuard.ThrowIfTrue(_version != _bucket._version, message: "Collection modified");
 
             uint peak = (uint)_bucket._peak;
             while (++_index < peak)

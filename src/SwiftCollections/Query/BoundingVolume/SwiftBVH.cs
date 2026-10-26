@@ -8,6 +8,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using Chronicler.Diagnostics;
 using SwiftCollections.Diagnostics;
 using SwiftCollections.Utility;
 
@@ -266,7 +267,7 @@ public class SwiftBVH<TKey, TVolume>
     /// </summary>
     public void UpdateEntryBounds(TKey value, TVolume newBounds)
     {
-        SwiftThrowHelper.ThrowIfNullGeneric(value, nameof(value));
+        ChronicleGuard.ThrowIfNullGeneric(value, nameof(value));
 
         int index = _keyToNodeIndex.Find(value);
         if (index == -1) return;
@@ -303,7 +304,7 @@ public class SwiftBVH<TKey, TVolume>
     /// </summary>
     public bool Remove(TKey value)
     {
-        SwiftThrowHelper.ThrowIfNullGeneric(value, nameof(value));
+        ChronicleGuard.ThrowIfNullGeneric(value, nameof(value));
 
         int nodeIndex = _keyToNodeIndex.Find(value);
         if (nodeIndex == -1) return false;
@@ -457,7 +458,7 @@ public class SwiftBVH<TKey, TVolume>
     /// </summary>
     public void Query(TVolume queryBounds, ICollection<TKey> results)
     {
-        SwiftThrowHelper.ThrowIfNull(results, nameof(results));
+        ChronicleGuard.ThrowIfNull(results, nameof(results));
 
         if (RootNodeIndex == -1) return;
 
@@ -509,7 +510,7 @@ public class SwiftBVH<TKey, TVolume>
     /// </summary>
     public int FindEntry(TKey value)
     {
-        SwiftThrowHelper.ThrowIfNullGeneric(value, nameof(value));
+        ChronicleGuard.ThrowIfNullGeneric(value, nameof(value));
         return _keyToNodeIndex.Find(value);
     }
 

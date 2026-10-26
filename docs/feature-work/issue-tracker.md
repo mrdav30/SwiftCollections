@@ -8,7 +8,7 @@ companion. Keep substantial implementation work in focused feature-work plans.
 
 ## Tracker Rules
 
-- Issue IDs use `SC-Issue-NNN`. The next available ID is `SC-Issue-003`.
+- Issue IDs use `SC-Issue-NNN`. The next available ID is `SC-Issue-004`.
 - Assign an ID at intake, retain it through resolution, and never reuse IDs.
   Check repository history before advancing or repairing the counter.
 - Record discovery dates, status, priority, affected owners, reproducible
@@ -28,7 +28,43 @@ companion. Keep substantial implementation work in focused feature-work plans.
 
 ## Active Issues
 
-None.
+### SC-Issue-003 - Hash-set lookup boxes value keys in unoptimized builds
+
+- **Status / priority:** Confirmed, 2026-10-17; Low, Debug allocation behavior.
+- **Discovered:** During downstream static-surface Debug validation on source
+  revision `5e0c4e0830342508c3fb87c2fe43cf7c30167522`; pre-existing in that revision.
+- **Affected owner / impact:**
+  [`SwiftHashSet<T>.FindEntry`](../../src/SwiftCollections/Collection/SwiftHashSet.cs)
+  tests `item == null` without a value-type nullability guard. The emitted
+  generic `box T` allocates for integer keys under the Debug JIT. Optimized
+  Release removes this allocation. Debug allocation assertions therefore cannot
+  assume the optimized build's zero-allocation behavior, even after warming.
+- **Evidence / reproduction:** Keep a `net8.0` console caller in Debug and
+  reference the standard library build, including its MemoryPack dependency.
+  Run this code first with the Debug library, then with the Release library:
+
+  ```csharp
+  using SwiftCollections;
+
+  var set = new SwiftHashSet<int>();
+  set.Add(1);
+  int found = 0;
+  for (int i = 0; i < 256; i++) if (set.Contains(1)) found++;
+  long before = GC.GetAllocatedBytesForCurrentThread();
+  for (int i = 0; i < 128; i++) if (set.Contains(1)) found++;
+  long bytes = GC.GetAllocatedBytesForCurrentThread() - before;
+  Console.WriteLine($"{bytes} B, {found} successful lookups");
+  ```
+
+  The same caller reports `3072 B` with Debug and `0 B` with Release: exactly
+  24 B per Debug lookup, with identical results. IL inspection confirms the
+  lookup's `box T`; no geometry or physics code is involved in this reproducer.
+- **Next action:** Reuse the existing `GenericNullability<T>.CanBeNull` guard
+  before the null comparison, preserving reference and nullable-key behavior.
+  Add an unoptimized integer-key allocation regression and retain the existing
+  null/comparer tests. Validate Release/Lean correctness, raw coverage and
+  unaffected warmed lookup performance; inspect other generic null guards only
+  when their live paths show the same issue.
 
 ## Resolved Issues
 
@@ -140,3 +176,4 @@ None.
 - **Evidence / reproduction:** Focused failing case or portable command
 - **Next action:** Focused investigation or fix and required verification
 ```
+

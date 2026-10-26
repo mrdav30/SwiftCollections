@@ -8,7 +8,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 using SwiftCollections.Lazy;
 
 namespace SwiftCollections.Pool;
@@ -57,7 +57,7 @@ public sealed class SwiftDictionaryPool<TKey, TValue> : SwiftCollectionPool<Swif
     /// <returns>A <see cref="SwiftDictionary{TKey, TValue}"/> instance.</returns>
     public override SwiftDictionary<TKey, TValue> Rent()
     {
-        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftDictionaryPool<TKey, TValue>));
+        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftDictionaryPool<TKey, TValue>));
 
         return base.Rent();
     }
@@ -71,7 +71,7 @@ public sealed class SwiftDictionaryPool<TKey, TValue> : SwiftCollectionPool<Swif
     /// </remarks>
     public override void Release(SwiftDictionary<TKey, TValue> dictionary)
     {
-        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftDictionaryPool<TKey, TValue>));
+        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftDictionaryPool<TKey, TValue>));
 
         if (dictionary == null) return;
 

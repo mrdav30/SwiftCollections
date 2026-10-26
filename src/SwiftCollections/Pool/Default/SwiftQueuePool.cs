@@ -7,7 +7,7 @@
 
 using System;
 using System.Threading;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 using SwiftCollections.Lazy;
 
 namespace SwiftCollections.Pool;
@@ -52,7 +52,7 @@ public sealed class SwiftQueuePool<T> : SwiftCollectionPool<SwiftQueue<T>, T>, I
     /// <returns>A <see cref="SwiftQueue{T}"/> instance.</returns>
     public override SwiftQueue<T> Rent()
     {
-        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftQueuePool<T>));
+        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftQueuePool<T>));
 
         return base.Rent();
     }
@@ -66,7 +66,7 @@ public sealed class SwiftQueuePool<T> : SwiftCollectionPool<SwiftQueue<T>, T>, I
     /// </remarks>
     public override void Release(SwiftQueue<T> queue)
     {
-        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftQueuePool<T>));
+        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftQueuePool<T>));
 
         if (queue == null) return;
 

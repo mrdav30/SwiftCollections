@@ -7,7 +7,7 @@
 
 using System;
 using System.Threading;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 using SwiftCollections.Lazy;
 
 namespace SwiftCollections.Pool;
@@ -53,7 +53,7 @@ public sealed class SwiftPackedSetPool<T> : SwiftCollectionPool<SwiftPackedSet<T
     /// <returns>A <see cref="SwiftPackedSet{T}"/> instance.</returns>
     public override SwiftPackedSet<T> Rent()
     {
-        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftPackedSetPool<T>));
+        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftPackedSetPool<T>));
 
         return base.Rent();
     }
@@ -64,7 +64,7 @@ public sealed class SwiftPackedSetPool<T> : SwiftCollectionPool<SwiftPackedSet<T
     /// <param name="set">The packed set to release.</param>
     public override void Release(SwiftPackedSet<T> set)
     {
-        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftPackedSetPool<T>));
+        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftPackedSetPool<T>));
 
         if (set == null) return;
 

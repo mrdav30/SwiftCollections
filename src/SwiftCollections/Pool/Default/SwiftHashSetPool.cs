@@ -7,7 +7,7 @@
 
 using System;
 using System.Threading;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 using SwiftCollections.Lazy;
 
 namespace SwiftCollections.Pool;
@@ -53,7 +53,7 @@ public sealed class SwiftHashSetPool<T> : SwiftCollectionPool<SwiftHashSet<T>, T
     /// <returns>A <see cref="SwiftHashSet{T}"/> instance.</returns>
     public override SwiftHashSet<T> Rent()
     {
-        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftHashSetPool<T>));
+        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftHashSetPool<T>));
 
         return base.Rent();
     }
@@ -67,7 +67,7 @@ public sealed class SwiftHashSetPool<T> : SwiftCollectionPool<SwiftHashSet<T>, T
     /// </remarks>
     public override void Release(SwiftHashSet<T> set)
     {
-        SwiftThrowHelper.ThrowIfDisposed(_disposed, nameof(SwiftHashSetPool<T>));
+        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftHashSetPool<T>));
 
         if (set == null) return;
 

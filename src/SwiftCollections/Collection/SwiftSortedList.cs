@@ -14,7 +14,7 @@ using System.Text.Json.Serialization;
 using Chronicler;
 using Chronicler.Serialization;
 using MemoryPack;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 using SwiftCollections.Utility;
 
 namespace SwiftCollections;
@@ -132,7 +132,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <exception cref="ArgumentException">Thrown if the input collection does not have a known count.</exception>
     public SwiftSortedList(IEnumerable<T> items, IComparer<T>? comparer = null)
     {
-        SwiftThrowHelper.ThrowIfNull(items, nameof(items));
+        ChronicleGuard.ThrowIfNull(items, nameof(items));
 
         _comparer = comparer ?? Comparer<T>.Default;
 
@@ -172,8 +172,8 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         State = state;
 
         // Validate that the internal array and comparer are not null after deserialization
-        SwiftThrowHelper.ThrowIfNull(_innerArray, nameof(_innerArray));
-        SwiftThrowHelper.ThrowIfNull(_comparer, nameof(_comparer));
+        ChronicleGuard.ThrowIfNull(_innerArray, nameof(_innerArray));
+        ChronicleGuard.ThrowIfNull(_comparer, nameof(_comparer));
     }
 
     #endregion
@@ -242,7 +242,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count);
+            ChronicleGuard.ThrowIfListIndexInvalid(index, _count);
             return _innerArray[GetPhysicalIndex(index)];
         }
     }
@@ -267,7 +267,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         }
         internal set
         {
-            SwiftThrowHelper.ThrowIfNull(value.Items, nameof(value.Items));
+            ChronicleGuard.ThrowIfNull(value.Items, nameof(value.Items));
 
             int count = value.Items.Length;
 
@@ -313,7 +313,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// </summary>
     private void Insert(T item, int index)
     {
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(index, _count, nameof(index));
+        ChronicleGuard.ThrowIfArrayIndexInvalid(index, _count, nameof(index));
         if (_offset + _count + 1 > _innerArray.Length)
             Resize(_innerArray.Length * 2);
 
@@ -357,7 +357,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// </remarks>
     public void AddRange(IEnumerable<T> items)
     {
-        SwiftThrowHelper.ThrowIfNull(items, nameof(items));
+        ChronicleGuard.ThrowIfNull(items, nameof(items));
 
         if (items is ICollection<T> collection)
         {
@@ -595,7 +595,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <returns>The minimum element.</returns>
     public T PopMin()
     {
-        SwiftThrowHelper.ThrowIfTrue((uint)_count == 0, message: "Cannot pop from an empty list.");
+        ChronicleGuard.ThrowIfTrue((uint)_count == 0, message: "Cannot pop from an empty list.");
 
         int index = GetPhysicalIndex(0);
         T ret = _innerArray[index];
@@ -615,7 +615,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <returns>The maximum element.</returns>
     public T PopMax()
     {
-        SwiftThrowHelper.ThrowIfTrue((uint)_count == 0, message: "Cannot pop from an empty list.");
+        ChronicleGuard.ThrowIfTrue((uint)_count == 0, message: "Cannot pop from an empty list.");
 
         int index = GetPhysicalIndex(--_count);
         T ret = _innerArray[index];
@@ -647,7 +647,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <param name="index">The zero-based arrayIndex of the element to remove.</param>
     public void RemoveAt(int index)
     {
-        SwiftThrowHelper.ThrowIfListIndexInvalid(index, _count);
+        ChronicleGuard.ThrowIfListIndexInvalid(index, _count);
 
         int physicalIndex = GetPhysicalIndex(index);
 
@@ -769,7 +769,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetComparer(IComparer<T> comparer)
     {
-        SwiftThrowHelper.ThrowIfNull(comparer, nameof(comparer));
+        ChronicleGuard.ThrowIfNull(comparer, nameof(comparer));
         if (ReferenceEquals(comparer, _comparer))
             return;
 
@@ -798,7 +798,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <returns>The minimum element.</returns>
     public T PeekMin()
     {
-        SwiftThrowHelper.ThrowIfTrue((uint)_count == 0, message: "Cannot peek from an empty list.");
+        ChronicleGuard.ThrowIfTrue((uint)_count == 0, message: "Cannot peek from an empty list.");
         return _innerArray[GetPhysicalIndex(0)];
     }
 
@@ -809,7 +809,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T PeekMax()
     {
-        SwiftThrowHelper.ThrowIfTrue((uint)_count == 0, message: "Cannot peek from an empty list.");
+        ChronicleGuard.ThrowIfTrue((uint)_count == 0, message: "Cannot peek from an empty list.");
         return _innerArray[GetPhysicalIndex(_count - 1)];
     }
 
@@ -824,7 +824,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <returns><c>true</c> if the <see cref="SwiftSortedList{T}"/> contains one or more elements that match the specified predicate; otherwise, <c>false</c>.</returns>
     public bool Exists(Predicate<T> match)
     {
-        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+        ChronicleGuard.ThrowIfNull(match, nameof(match));
 
         for (int i = 0; i < _count; i++)
         {
@@ -842,7 +842,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <returns>The first element that matches the conditions defined by the specified predicate, if found; otherwise, the default value for type <typeparamref name="T"/>.</returns>
     public T Find(Predicate<T> match)
     {
-        SwiftThrowHelper.ThrowIfNull(match, nameof(match));
+        ChronicleGuard.ThrowIfNull(match, nameof(match));
 
         for (int i = 0; i < _count; i++)
         {
@@ -909,9 +909,9 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <inheritdoc/>
     public void CopyTo(T[] array, int arrayIndex)
     {
-        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, nameof(arrayIndex));
-        SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "The target array is too small.");
+        ChronicleGuard.ThrowIfNull(array, nameof(array));
+        ChronicleGuard.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, nameof(arrayIndex));
+        ChronicleGuard.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "The target array is too small.");
 
         Array.Copy(_innerArray, _offset, array, arrayIndex, _count);
     }
@@ -919,9 +919,9 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <inheritdoc/>
     public void CopyTo(Array array, int arrayIndex)
     {
-        SwiftThrowHelper.ThrowIfNull(array, nameof(array));
-        SwiftThrowHelper.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, nameof(arrayIndex));
-        SwiftThrowHelper.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "The target array is too small.");
+        ChronicleGuard.ThrowIfNull(array, nameof(array));
+        ChronicleGuard.ThrowIfArrayIndexInvalid(arrayIndex, array.Length, nameof(arrayIndex));
+        ChronicleGuard.ThrowIfArgument(array.Length - arrayIndex < _count, nameof(array), "The target array is too small.");
 
         Array.Copy(_innerArray, _offset, array, arrayIndex, _count);
     }
@@ -929,7 +929,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <inheritdoc/>
     public void CloneTo(ICollection<T> output)
     {
-        SwiftThrowHelper.ThrowIfNull(output, nameof(output));
+        ChronicleGuard.ThrowIfNull(output, nameof(output));
 
         output.Clear();
 
@@ -982,7 +982,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                SwiftThrowHelper.ThrowIfTrue((uint)_index > _count, message: "Enumerator is past the end of the collection.");
+                ChronicleGuard.ThrowIfTrue((uint)_index > _count, message: "Enumerator is past the end of the collection.");
                 return _current!;
             }
 
@@ -992,7 +992,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
-            SwiftThrowHelper.ThrowIfTrue(_version != _list._version, message: "Enumerator modified outside of enumeration!");
+            ChronicleGuard.ThrowIfTrue(_version != _list._version, message: "Enumerator modified outside of enumeration!");
 
             if (_index < _count)
             {
@@ -1009,7 +1009,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         /// <inheritdoc/>
         public void Reset()
         {
-            SwiftThrowHelper.ThrowIfTrue(_version != _list._version, message: "Enumerator modified outside of enumeration!");
+            ChronicleGuard.ThrowIfTrue(_version != _list._version, message: "Enumerator modified outside of enumeration!");
 
             _index = 0;
             _current = default!;

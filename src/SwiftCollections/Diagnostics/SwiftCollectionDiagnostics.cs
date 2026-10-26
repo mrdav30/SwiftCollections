@@ -5,6 +5,8 @@
 // See LICENSE file in the project root for full license information.
 //=======================================================================
 
+using Chronicler.Diagnostics;
+
 namespace SwiftCollections.Diagnostics;
 
 /// <summary>

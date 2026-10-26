@@ -7,7 +7,7 @@
 
 using System;
 using System.Threading;
-using SwiftCollections.Diagnostics;
+using Chronicler.Diagnostics;
 
 namespace SwiftCollections.Pool;
 
@@ -44,8 +44,8 @@ public sealed class SwiftPooledObject<T> : IDisposable where T : class
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="value"/> or <paramref name="pool"/> is null.</exception>
     internal SwiftPooledObject(T value, ISwiftObjectPool<T> pool)
     {
-        SwiftThrowHelper.ThrowIfNull(value, nameof(value));
-        SwiftThrowHelper.ThrowIfNull(pool, nameof(pool));
+        ChronicleGuard.ThrowIfNull(value, nameof(value));
+        ChronicleGuard.ThrowIfNull(pool, nameof(pool));
 
         _value = value;
         _pool = pool;
