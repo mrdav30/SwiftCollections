@@ -72,12 +72,12 @@ internal static class Program
     private static void WriteUsage()
     {
         Console.WriteLine("Usage:");
-        Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8");
-        Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- list");
-        Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- dictionary-parity");
-        Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- query --list flat");
-        Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- set-workload --list flat");
-        Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- all --list flat");
+        Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net10.0");
+        Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net10.0 -- list");
+        Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net10.0 -- dictionary-parity");
+        Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net10.0 -- query --list flat");
+        Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net10.0 -- set-workload --list flat");
+        Console.WriteLine("  dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net10.0 -- all --list flat");
         Console.WriteLine();
         Console.WriteLine("Leading arguments that do not start with '-' are treated as benchmark selections.");
         Console.WriteLine("Remaining arguments are forwarded to BenchmarkDotNet.");

@@ -99,7 +99,7 @@ FixedMathSharp integration.
 
 ## Compatibility
 
-The libraries target `netstandard2.1` and `net8.0`. CI validates Standard and
+The libraries target `netstandard2.1` and `net10.0`. CI validates Standard and
 Lean builds on Windows and Linux.
 
 Questions and discussion are welcome in the

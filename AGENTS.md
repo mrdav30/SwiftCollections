@@ -53,11 +53,11 @@ Compiled projects:
 
 | Project                  | Path                                                                         | Target Frameworks       |
 | ------------------------ | ---------------------------------------------------------------------------- | ----------------------- |
-| Core library             | `src/SwiftCollections/SwiftCollections.csproj`                               | `netstandard2.1;net8.0` |
-| FixedMathSharp companion | `src/SwiftCollections.FixedMathSharp/SwiftCollections.FixedMathSharp.csproj` | `netstandard2.1;net8.0` |
-| Core unit tests          | `tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj`                 | `net8.0`                |
-| FixedMathSharp tests     | `tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMathSharp.Tests.csproj` | `net8.0` |
-| Benchmarks               | `tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj`       | `net8`                  |
+| Core library             | `src/SwiftCollections/SwiftCollections.csproj`                               | `netstandard2.1;net10.0` |
+| FixedMathSharp companion | `src/SwiftCollections.FixedMathSharp/SwiftCollections.FixedMathSharp.csproj` | `netstandard2.1;net10.0` |
+| Core unit tests          | `tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj`                 | `net10.0`                |
+| FixedMathSharp tests     | `tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMathSharp.Tests.csproj` | `net10.0` |
+| Benchmarks               | `tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj`       | `net10.0`                  |
 
 Keep these aligned whenever behavior, public API, package variants, or workflow
 expectations change:
@@ -117,7 +117,7 @@ Serialization guidance:
 - Types marked `[MemoryPackable]` are partial and depend on source generators in
   standard builds.
 - State-backed collections should preserve state constructors and state structs.
-- `net8.0` builds use System.Text.Json converter implementations where
+- `net10.0` builds use System.Text.Json converter implementations where
   supported.
 - Compatibility shims under `src/SwiftCollections/Support` exist for
   package/target variants. Follow existing preprocessor patterns instead of
@@ -186,6 +186,9 @@ Preserve these expectations:
 
 ## Code Style And Conventions
 
+C# 14 is the default language version; runtime projects override it to C# 11
+for `netstandard2.1`. Tests and benchmarks use C# 14.
+
 - Library and tests use file-scoped namespaces.
 - `ImplicitUsings` is disabled. Add explicit `using` directives.
 - Nullable settings differ by project:
@@ -248,10 +251,10 @@ dotnet test tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMa
 Run benchmark selections:
 
 ```bash
-dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- list
-dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- dictionary
-dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- query --list flat
-dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net8 -- all --list flat
+dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net10.0 -- list
+dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net10.0 -- dictionary
+dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net10.0 -- query --list flat
+dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net10.0 -- all --list flat
 ```
 
 For release-sensitive or package-variant changes, also verify `Release` and
@@ -290,7 +293,7 @@ GitVersion's owning checkout path. See
 ## Quick Checklist
 
 - Confirm the file being edited is part of the compiled project.
-- Preserve compatibility for `netstandard2.1` and `net8.0`.
+- Preserve compatibility for `netstandard2.1` and `net10.0`.
 - Preserve standard and lean package behavior.
 - Preserve public API and exception contracts unless a breaking change is
   intentional.

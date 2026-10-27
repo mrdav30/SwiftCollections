@@ -38,7 +38,6 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: |
-            8.0.x
             10.0.x
 
       - name: Cache NuGet packages
@@ -65,10 +64,10 @@ jobs:
 
       - name: Build API documentation
         run: |
-          test -f src/SwiftCollections/bin/Release/net8.0/SwiftCollections.dll
-          test -f src/SwiftCollections/bin/Release/net8.0/SwiftCollections.xml
-          test -f src/SwiftCollections.FixedMathSharp/bin/Release/net8.0/SwiftCollections.FixedMathSharp.dll
-          test -f src/SwiftCollections.FixedMathSharp/bin/Release/net8.0/SwiftCollections.FixedMathSharp.xml
+          test -f src/SwiftCollections/bin/Release/net10.0/SwiftCollections.dll
+          test -f src/SwiftCollections/bin/Release/net10.0/SwiftCollections.xml
+          test -f src/SwiftCollections.FixedMathSharp/bin/Release/net10.0/SwiftCollections.FixedMathSharp.dll
+          test -f src/SwiftCollections.FixedMathSharp/bin/Release/net10.0/SwiftCollections.FixedMathSharp.xml
           dotnet tool run docfx docs/api/docfx.json --warningsAsErrors
           test -f docs/api/obj/_site/index.html
           test -f docs/api/obj/_site/guides/OVERVIEW.html

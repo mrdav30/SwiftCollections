@@ -291,7 +291,7 @@ jobs:
                 throw "Expected two target-framework dependency groups in $expectedId, found $($groups.Count)."
               }
 
-              $expectedFrameworks = @("net8.0", ".NETStandard2.1")
+              $expectedFrameworks = @("net10.0", ".NETStandard2.1")
               $actualFrameworks = @($groups | ForEach-Object { $_.GetAttribute("targetFramework") })
               $missingFrameworks = @($expectedFrameworks | Where-Object { $actualFrameworks -cnotcontains $_ })
               $unexpectedFrameworks = @($actualFrameworks | Where-Object { $expectedFrameworks -cnotcontains $_ })
