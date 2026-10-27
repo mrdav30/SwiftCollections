@@ -71,6 +71,8 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
 
     private int _lastIndex;
 
+    private static readonly bool _ItemCanBeNull = default(T) is null;
+
     /// <summary>
     /// A mask used for efficiently computing the entry index from a hash code.
     /// This is typically the size of the entry array minus one, assuming the size is a power of two.
@@ -209,7 +211,9 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
         get
         {
             int index = FindEntry(key);
-            ChronicleGuard.ThrowIfKeyInvalid(index, key);
+            // The object-based error helper would box a value key even on a successful lookup.
+            if (index < 0)
+                ChronicleGuard.ThrowIfKeyInvalid(index, key);
             return _entries[index].Value;
         }
     }
@@ -767,7 +771,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int FindEntry(T item)
     {
-        if (item == null) return -1;
+        if (_ItemCanBeNull && item is null) return -1;
 
         int hashCode = _comparer.GetHashCode(item) & 0x7FFFFFFF;
         int entryIndex = hashCode & _entryMask;

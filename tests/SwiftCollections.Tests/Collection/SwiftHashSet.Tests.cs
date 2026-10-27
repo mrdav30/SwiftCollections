@@ -196,6 +196,54 @@ public class SwiftHashSetTests
         Assert.False(contains);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void Lookup_WithInt32Keys_DoesNotAllocateSteadyState(int operation)
+    {
+        var set = new SwiftHashSet<int> { 7 };
+        int found = 0;
+        Action lookup = () =>
+        {
+            for (int i = 0; i < 128; i++)
+            {
+                bool matched = operation switch
+                {
+                    0 => set.Contains(7) && !set.Contains(15),
+                    1 => set.TryGetValue(7, out int actual) && actual == 7 && !set.TryGetValue(15, out _),
+                    _ => set[7] == 7
+                };
+                if (matched) found++;
+            }
+        };
+        lookup();
+        lookup();
+        found = 0;
+
+        long allocated = MeasureAllocatedBytes(lookup);
+
+        Assert.Equal(128, found);
+        Assert.Equal(0, allocated);
+    }
+
+    [Fact]
+    public void Lookup_WithNullableInt32Keys_PreservesNullAndValueBehavior()
+    {
+        var set = new SwiftHashSet<int?> { 7 };
+
+        bool containsValue = set.Contains(7);
+        bool containsNull = set.Contains(null);
+        Assert.True(containsValue);
+        Assert.False(containsNull);
+        Assert.True(set.TryGetValue(7, out int? actual));
+        Assert.Equal(7, actual);
+        Assert.False(set.TryGetValue(null, out int? missing));
+        Assert.Null(missing);
+        Assert.Equal(7, set[7]);
+        Assert.Throws<KeyNotFoundException>(() => set[null]);
+    }
+
     [Fact]
     public void Exists_MatchingItem_ReturnsTrue()
     {

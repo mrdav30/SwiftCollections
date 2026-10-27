@@ -28,18 +28,26 @@ companion. Keep substantial implementation work in focused feature-work plans.
 
 ## Active Issues
 
+None.
+
+## Resolved Issues
+
 ### SC-Issue-003 - Hash-set lookup boxes value keys in unoptimized builds
 
-- **Status / priority:** Confirmed, 2026-10-17; Low, Debug allocation behavior.
+- **Status / priority:** Resolved 2026-10-26; Low, Debug allocation behavior.
 - **Discovered:** During downstream static-surface Debug validation on source
   revision `5e0c4e0830342508c3fb87c2fe43cf7c30167522`; pre-existing in that revision.
-- **Affected owner / impact:**
+- **Root cause / affected owner:**
   [`SwiftHashSet<T>.FindEntry`](../../src/SwiftCollections/Collection/SwiftHashSet.cs)
   tests `item == null` without a value-type nullability guard. The emitted
   generic `box T` allocates for integer keys under the Debug JIT. Optimized
   Release removes this allocation. Debug allocation assertions therefore cannot
   assume the optimized build's zero-allocation behavior, even after warming.
-- **Evidence / reproduction:** Keep a `net8.0` console caller in Debug and
+  All three lookup APIs (`Contains`, `TryGetValue`, and the indexer) share this
+  method. The indexer also passed every key to the object-based
+  `ChronicleGuard.ThrowIfKeyInvalid` helper, boxing successful value-key lookups
+  independently of the null check.
+- **Original evidence / reproduction:** Keep a `net8.0` console caller in Debug and
   reference the standard library build, including its MemoryPack dependency.
   Run this code first with the Debug library, then with the Release library:
 
@@ -59,14 +67,62 @@ companion. Keep substantial implementation work in focused feature-work plans.
   The same caller reports `3072 B` with Debug and `0 B` with Release: exactly
   24 B per Debug lookup, with identical results. IL inspection confirms the
   lookup's `box T`; no geometry or physics code is involved in this reproducer.
-- **Next action:** Reuse the existing `GenericNullability<T>.CanBeNull` guard
-  before the null comparison, preserving reference and nullable-key behavior.
-  Add an unoptimized integer-key allocation regression and retain the existing
-  null/comparer tests. Validate Release/Lean correctness, raw coverage and
-  unaffected warmed lookup performance; inspect other generic null guards only
-  when their live paths show the same issue.
-
-## Resolved Issues
+- **Fix:** Cache `default(T) is null` once per closed set type, matching
+  `SwiftDictionary`'s existing nullability pattern, and short-circuit the lookup
+  null comparison for non-nullable value types. Call the indexer's error helper
+  only when the lookup misses. `GenericNullability<T>` now belongs to the private
+  implementation of `Chronicler.Diagnostics`, so no shared helper or public API
+  was added. Reference/nullable null handling, comparer/probe behavior, exception
+  contracts and serialized state are preserved.
+- **Regression evidence:** The existing
+  [hash-set tests](../../tests/SwiftCollections.Tests/Collection/SwiftHashSet.Tests.cs)
+  now measure each lookup API independently after warm-up, including hit/miss
+  checks for `Contains` and `TryGetValue`, with 128 measured iterations. Before
+  the fix, all three cases failed in Debug with 6,144 B each: two boxed lookups
+  per iteration for `Contains`/`TryGetValue`, and two boxes per successful
+  indexer lookup. Afterward all three allocate exactly 0 B. A nullable-integer
+  regression checks both populated and null keys; existing reference-null,
+  comparer and missing-indexer tests remain intact. Run the allocation regression
+  in Debug to retain its unoptimized-library check; Release alone can eliminate
+  the original boxing and would miss the defect.
+- **Verification:** Windows x64, SDK 10.0.302 / runtime 10.0.10, with
+  `UseLocalLsfStack=true`. Solution builds passed for Debug, Release and
+  ReleaseLean, including both `netstandard2.1` and `net10.0` runtime targets.
+  Full core suites passed 1,073 / 1,075 / 1,047 tests respectively; the companion
+  passed 43 tests per profile. Raw Release core coverage was 5,251/5,251 lines,
+  2,306/2,306 branches and 1,132/1,132 methods; Lean was 5,237/5,237 lines,
+  2,306/2,306 branches and 1,125/1,125 methods. Independent companion captures
+  covered all 121 lines, 62 branches and 35 methods in both profiles. No zero-hit
+  line or method nodes remained. Independent review found no actionable issues.
+  Builds retained the pre-existing benchmark-project NU1510 package warning.
+- **Warmed performance:** The existing
+  [integer set benchmark](../../tests/SwiftCollections.Benchmarks/Benchmarks/Set.Parity.Integer.Benchmarks.cs)
+  performed 10,000 successful shuffled-key lookups per operation, with identical
+  seed-42 inputs. Balanced baseline/fix/fix/baseline Release runs with tiered
+  compilation disabled measured 40.81 / 38.69 / 38.74 / 41.05 microseconds per
+  operation; all allocated 0 B. Each run used four warm-up iterations, ten
+  measurement iterations and 8,192 invocations per iteration. The 252-byte native
+  disassembly matched after normalizing addresses. These runs showed no warmed
+  lookup regression; they do not establish a general speedup. The earlier
+  tiered-JIT capture mixed compilation tiers and was retained as inconclusive.
+- **Repeat verification:** Build the solution from the root with `-m:1` and
+  `-p:UseLocalLsfStack=true` in Debug, Release and ReleaseLean. Run the full
+  solution tests with the same configuration/property and `--no-build`. To
+  reproduce only the allocation checks, run the core project in Debug with
+  `--filter "FullyQualifiedName~Lookup_WithInt32Keys_DoesNotAllocateSteadyState"`.
+  Collect Release/Lean coverage from each test project using its own
+  `coverlet.runsettings` and `--collect:"XPlat Code Coverage"`. For the timed
+  workload, set `UseLocalLsfStack=true` and `DOTNET_TieredCompilation=0` in the
+  environment, and run `set-parity-integer` with
+  `--filter "*SwiftHashSet_Contains(N: 10000)" --job short --iterationCount 10
+  --warmupCount 4 --launchCount 1 --invocationCount 8192 --unrollFactor 1
+  --disasm --disasmDepth 2` through the benchmark runner.
+- **Scope / supporting evidence:** This is a SwiftCollections-only runtime/test
+  fix; no dependency, CI or package-version changes were needed. Linux,
+  released-package mode and the original .NET 8 caller were not rerun. Ignored
+  TRX, raw coverage and before/after benchmark captures are under
+  `artifacts/issue-003/`; the regressions and commands above are the durable
+  evidence.
 
 ### SC-Issue-001 - Pool finalizer coverage depends on incidental GC
 
