@@ -586,7 +586,14 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
         /// <inheritdoc/>
         public readonly T Current => _current;
 
-        readonly object IEnumerator.Current => _current ?? throw new InvalidOperationException();
+        readonly object IEnumerator.Current
+        {
+            get
+            {
+                ChronicleGuard.ThrowIfTrue((uint)_index >= (uint)_bucket._peak, message: "Enumerator is before the first element or after the last element.");
+                return _current!;
+            }
+        }
 
         /// <inheritdoc/>
         public bool MoveNext()
@@ -609,6 +616,8 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
         /// <inheritdoc/>
         public void Reset()
         {
+            ChronicleGuard.ThrowIfTrue(_version != _bucket._version, message: "Collection modified");
+
             _index = -1;
             _current = default!;
         }

@@ -83,6 +83,7 @@ public class ListParityIntegerBenchmarks
 
     [IterationSetup(Targets = new[] {
         nameof(SwiftList_Enumerate),
+        nameof(SwiftList_EnumerateGeneric),
         nameof(SwiftList_IndexerEnumerate),
         nameof(SwiftList_InsertMiddle),
         nameof(SwiftList_RemoveByValue),
@@ -113,6 +114,16 @@ public class ListParityIntegerBenchmarks
     {
         int sum = 0;
         foreach (int item in _swiftList)
+            sum += item;
+        return sum;
+    }
+
+    [Benchmark]
+    [BenchmarkCategory("EnumerateGeneric")]
+    public int SwiftList_EnumerateGeneric()
+    {
+        int sum = 0;
+        foreach (int item in (IEnumerable<int>)_swiftList)
             sum += item;
         return sum;
     }

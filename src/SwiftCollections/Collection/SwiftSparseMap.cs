@@ -619,7 +619,14 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
 
         /// <inheritdoc/>
         public KeyValuePair<int, T> Current { get; private set; }
-        object IEnumerator.Current => Current;
+        object IEnumerator.Current
+        {
+            get
+            {
+                ChronicleGuard.ThrowIfTrue((uint)_index >= (uint)_count, message: "Enumerator is before the first element or after the last element.");
+                return Current;
+            }
+        }
 
         /// <inheritdoc/>
         public bool MoveNext()
@@ -629,6 +636,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
             int next = _index + 1;
             if (next >= _count)
             {
+                _index = _count;
                 Current = default;
                 return false;
             }

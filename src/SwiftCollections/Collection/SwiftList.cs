@@ -823,7 +823,7 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                ChronicleGuard.ThrowIfTrue(_index >= _count, message: "Enumeration has either not started or has already finished.");
+                ChronicleGuard.ThrowIfTrue(_index == 0 || _index > _count, message: "Enumeration has either not started or has already finished.");
                 return _current!;
             }
         }
@@ -834,7 +834,11 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
         {
             ChronicleGuard.ThrowIfTrue(_version != _list._version, message: "Collection was modified during enumeration.");
 
-            if (_index >= _count) return false;
+            if (_index >= _count)
+            {
+                _index = _count + 1;
+                return false;
+            }
             _current = _array[_index++];
             return true;
         }

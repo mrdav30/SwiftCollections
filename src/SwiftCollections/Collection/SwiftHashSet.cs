@@ -834,7 +834,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
         {
             get
             {
-                ChronicleGuard.ThrowIfTrue(_index > (uint)_set._lastIndex, message: "Enumeration has either not started or has already finished.");
+                ChronicleGuard.ThrowIfTrue((uint)_index > (uint)_set._lastIndex, message: "Enumeration has either not started or has already finished.");
                 return _current;
             }
         }

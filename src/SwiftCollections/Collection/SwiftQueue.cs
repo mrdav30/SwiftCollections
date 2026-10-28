@@ -820,7 +820,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                ChronicleGuard.ThrowIfTrue(_index >= (uint)_queue._count, message: "Bad enumeration");
+                ChronicleGuard.ThrowIfTrue(_index == 0 || _index > (uint)_queue._count, message: "Bad enumeration");
                 return _current!;
             }
         }

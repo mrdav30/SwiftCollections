@@ -797,7 +797,14 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
 
         /// <inheritdoc/>
         public int Current { get; private set; }
-        object IEnumerator.Current => Current;
+        object IEnumerator.Current
+        {
+            get
+            {
+                ChronicleGuard.ThrowIfTrue((uint)_index >= (uint)_count, message: "Enumerator is before the first element or after the last element.");
+                return Current;
+            }
+        }
 
         /// <inheritdoc/>
         public bool MoveNext()
@@ -807,6 +814,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
             int next = _index + 1;
             if (next >= _count)
             {
+                _index = _count;
                 Current = default;
                 return false;
             }

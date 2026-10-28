@@ -713,7 +713,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
         {
             get
             {
-                ChronicleGuard.ThrowIfTrue(_index > (uint)_bucket._count, message: "Enumerator is before the first element or after the last element.");
+                ChronicleGuard.ThrowIfTrue((uint)_index >= (uint)_bucket._peakCount, message: "Enumerator is before the first element or after the last element.");
                 return _current!;
             }
         }

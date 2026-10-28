@@ -361,7 +361,14 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
         /// <inheritdoc/>
         public T Current { get; private set; }
 
-        object IEnumerator.Current => Current;
+        object IEnumerator.Current
+        {
+            get
+            {
+                ChronicleGuard.ThrowIfTrue((uint)_index >= (uint)_set._count, message: "Enumerator is before the first element or after the last element.");
+                return Current!;
+            }
+        }
 
         /// <inheritdoc/>
         public bool MoveNext()
@@ -371,6 +378,7 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
             int next = _index + 1;
             if (next >= _set._count)
             {
+                _index = _set._count;
                 Current = default!;
                 return false;
             }

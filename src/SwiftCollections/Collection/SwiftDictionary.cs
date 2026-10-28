@@ -1034,7 +1034,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         {
             get
             {
-                ChronicleGuard.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
+                ChronicleGuard.ThrowIfTrue((uint)_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
                 return _current.Key;
             }
         }
@@ -1043,7 +1043,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         {
             get
             {
-                ChronicleGuard.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
+                ChronicleGuard.ThrowIfTrue((uint)_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
                 return _current.Value!;
             }
         }
@@ -1052,7 +1052,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         {
             get
             {
-                ChronicleGuard.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
+                ChronicleGuard.ThrowIfTrue((uint)_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
                 return new DictionaryEntry(_current.Key, _current.Value);
             }
         }
@@ -1064,7 +1064,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         {
             get
             {
-                ChronicleGuard.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
+                ChronicleGuard.ThrowIfTrue((uint)_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
                 return _returnEntry
                     ? new DictionaryEntry(_current.Key, _current.Value)
                     : new KeyValuePair<TKey, TValue>(_current.Key, _current.Value);
@@ -1230,7 +1230,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
             {
                 get
                 {
-                    ChronicleGuard.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
+                    ChronicleGuard.ThrowIfTrue((uint)_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
                     return _currentKey;
                 }
             }
@@ -1393,7 +1393,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
             {
                 get
                 {
-                    ChronicleGuard.ThrowIfTrue(_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
+                    ChronicleGuard.ThrowIfTrue((uint)_index > (uint)_dictionary._lastIndex, message: "Enumerator is positioned before the first element or after the last element.");
                     return _currentValue!;
                 }
             }

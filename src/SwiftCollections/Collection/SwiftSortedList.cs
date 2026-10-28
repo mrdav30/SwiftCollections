@@ -982,7 +982,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                ChronicleGuard.ThrowIfTrue((uint)_index > _count, message: "Enumerator is past the end of the collection.");
+                ChronicleGuard.ThrowIfTrue(_index == 0 || (uint)_index > _count, message: "Enumerator is past the end of the collection.");
                 return _current!;
             }
 
