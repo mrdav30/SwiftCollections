@@ -55,10 +55,10 @@ shim. Validate both configurations:
 
 ```powershell
 $env:UseLocalLsfStack='true'
-dotnet build SwiftCollections.slnx -c Release -m:1
-dotnet test SwiftCollections.slnx -c Release --no-build
-dotnet build SwiftCollections.slnx -c ReleaseLean -m:1
-dotnet test SwiftCollections.slnx -c ReleaseLean --no-build
+dotnet build SwiftCollections.slnx -c Release -p:DisableTransitiveProjectReferences=true -m:1
+dotnet test SwiftCollections.slnx -c Release --no-build -p:DisableTransitiveProjectReferences=true
+dotnet build SwiftCollections.slnx -c ReleaseLean -p:DisableTransitiveProjectReferences=true -m:1
+dotnet test SwiftCollections.slnx -c ReleaseLean --no-build -p:DisableTransitiveProjectReferences=true
 ```
 
 Use `-m:1` for builds, including `dotnet test` when it builds, to avoid overlapping
@@ -66,7 +66,8 @@ writes to shared local project outputs. The local
 0.4.0 Chronicler/shim, 7.1.0 math/companion, and 7.0.0 collection identities coordinate
 assembly resolution; they are build fixtures, not release versions.
 Local builds use explicit references at library, test, and benchmark boundaries
-so inferred references cannot rebuild dependencies with different identities.
+and pass `-p:DisableTransitiveProjectReferences=true` globally on restore, build
+and test so sibling projects also preserve those explicit identities.
 
 Package mode remains the default release-validation path. Clear the environment
 variable before validating published dependencies; source-mode packages are not
@@ -144,7 +145,11 @@ branches use released packages with no sibling checkouts; a `develop` -> `main`
 PR validates packages. Release upstream dependencies before promotion and update
 source pins deliberately as the coordinated stack changes. Source/package NuGet
 caches are separated, and source graphs build serially to avoid shared-output
-races. Both Release/Lean Windows/Linux validation lanes remain required.
+races. Restore, build and test also pass
+`-p:DisableTransitiveProjectReferences=${{ env.UseLocalLsfStack }}` globally,
+so inferred references in sibling projects cannot discard explicit assembly
+identities. Serialization alone does not preserve those identities. Package mode
+sets the flag to false. Both Release/Lean Windows/Linux lanes remain required.
 
 ## Code of Conduct
 

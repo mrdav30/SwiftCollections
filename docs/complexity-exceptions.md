@@ -69,7 +69,7 @@ type guard does not justify decomposing the hash-table algorithm.
 Coverage was collected separately for both test projects in every configuration:
 
 ```powershell
-dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c ReleaseLean --no-build -p:UseLocalLsfStack=true --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.Tests/coverlet.runsettings
+dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c ReleaseLean --no-build -p:UseLocalLsfStack=true -p:DisableTransitiveProjectReferences=true --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.Tests/coverlet.runsettings
 ```
 
 Repeat for Debug/Release and the companion project's matching runsettings.
