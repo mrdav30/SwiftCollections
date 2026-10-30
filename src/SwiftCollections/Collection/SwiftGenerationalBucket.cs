@@ -8,6 +8,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using Chronicler;
 using Chronicler.Serialization;
@@ -249,7 +250,8 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
             bool isAllocated = IsStateIndexAllocated(allocated, i);
 
             entry.Generation = GetStateGeneration(generations, i);
-            if (entry.Generation != 0 || isAllocated)
+            // Generation history survives Clear; only allocation reserves the high-water range.
+            if (isAllocated)
                 maxReferencedIndex = i;
 
             if (isAllocated)
@@ -445,6 +447,30 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
         return entry.IsUsed && entry.Generation == handle.Generation;
     }
 
+    /// <summary>Removes all elements and invalidates their handles without reducing capacity.</summary>
+    public void Clear() => Clear(clearRetainedReferences: false);
+
+    /// <summary>Removes all elements, optionally releasing references throughout retained backing storage.</summary>
+    /// <param name="clearRetainedReferences">If true, also releases references outside the previously used range.</param>
+    /// <remarks>Stored generations survive clearing so old handles remain invalid on reuse. Capacity is preserved.</remarks>
+    public void Clear(bool clearRetainedReferences)
+    {
+        int end = clearRetainedReferences && RuntimeHelpers.IsReferenceOrContainsReferences<T>() ? _entries.Length : _peak;
+        for (int i = 0; i < end; i++)
+        {
+            ref Entry entry = ref _entries[i];
+            if (entry.IsUsed)
+            {
+                entry.IsUsed = false;
+                entry.Generation++;
+            }
+            entry.Value = default!;
+        }
+        _freeIndices.Reset();
+        _count = 0;
+        _peak = 0;
+        _version++;
+    }
     #endregion
 
     #region Capacity

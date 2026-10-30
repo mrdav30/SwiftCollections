@@ -350,6 +350,16 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
         _version++;
     }
 
+    /// <summary>
+    /// Removes all elements, optionally releasing references throughout retained backing storage.
+    /// </summary>
+    /// <param name="clearRetainedReferences">If true, also releases references outside the live range; otherwise uses ordinary clearing.</param>
+    /// <remarks>This collection stores only integer IDs, so the option adds no reference cleanup or capacity scan.</remarks>
+    public void Clear(bool clearRetainedReferences)
+    {
+        Clear();
+    }
+
     #endregion
 
     #region Set Operations

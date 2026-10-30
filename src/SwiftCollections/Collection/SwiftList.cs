@@ -532,10 +532,22 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// </summary>
     public virtual void Clear()
     {
-        if (_clearReleasedSlots)
+        if (_count != 0 && _clearReleasedSlots)
             Array.Clear(_innerArray, 0, _count);
         _count = 0;
         _version++;
+    }
+
+    /// <summary>
+    /// Removes all elements, optionally releasing references throughout retained backing storage.
+    /// </summary>
+    /// <param name="clearRetainedReferences">If true, also releases references outside the live range; otherwise uses ordinary clearing.</param>
+    /// <remarks>Capacity is preserved. Full reference cleanup can take time proportional to retained capacity.</remarks>
+    public void Clear(bool clearRetainedReferences)
+    {
+        if (clearRetainedReferences && _clearReleasedSlots)
+            Array.Clear(_innerArray, _count, _innerArray.Length - _count);
+        Clear();
     }
 
     /// <summary>

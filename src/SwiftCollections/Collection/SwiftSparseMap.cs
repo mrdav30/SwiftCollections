@@ -470,6 +470,18 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
         _version++;
     }
 
+    /// <summary>
+    /// Removes all elements, optionally releasing references throughout retained backing storage.
+    /// </summary>
+    /// <param name="clearRetainedReferences">If true, also releases references outside the live range; otherwise uses ordinary clearing.</param>
+    /// <remarks>Capacity is preserved. Full reference cleanup can take time proportional to retained capacity.</remarks>
+    public void Clear(bool clearRetainedReferences)
+    {
+        if (clearRetainedReferences && RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+            Array.Clear(_denseValues, _count, _denseValues.Length - _count);
+        Clear();
+    }
+
     #endregion
 
     #region Capacity Management

@@ -26,6 +26,8 @@ spatial indexing, deterministic runtimes, and allocation-sensitive tooling.
 - Fixed-point query companions powered by
   [FixedMathSharp](https://github.com/mrdav30/FixedMathSharp).
 - Explicit state-backed serialization, with Standard and Lean package variants.
+- [Explicit retained-reference cleanup](docs/OVERVIEW.md#clearing-and-retained-references)
+  at ownership boundaries, while preserving reusable capacity.
 - Benchmarks and full reachable coverage enforced as part of the repository
   workflow.
 

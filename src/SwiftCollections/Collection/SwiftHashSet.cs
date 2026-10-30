@@ -458,6 +458,21 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
         _version++;
     }
 
+    /// <summary>
+    /// Removes all elements, optionally releasing references throughout retained backing storage.
+    /// </summary>
+    /// <param name="clearRetainedReferences">If true, also releases references outside the live range; otherwise uses ordinary clearing.</param>
+    /// <remarks>Capacity is preserved. Full reference cleanup can take time proportional to retained capacity.</remarks>
+    public void Clear(bool clearRetainedReferences)
+    {
+        if (clearRetainedReferences && RuntimeHelpers.IsReferenceOrContainsReferences<Entry>())
+        {
+            int start = _count == 0 ? 0 : _lastIndex + 1;
+            Array.Clear(_entries, start, _entries.Length - start);
+        }
+        Clear();
+    }
+
     #endregion
 
     #region Capacity Management

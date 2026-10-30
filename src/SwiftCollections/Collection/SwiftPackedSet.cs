@@ -303,6 +303,21 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
         _version++;
     }
 
+    /// <summary>
+    /// Removes all elements, optionally releasing references throughout retained backing storage.
+    /// </summary>
+    /// <param name="clearRetainedReferences">If true, also releases references outside the live range; otherwise uses ordinary clearing.</param>
+    /// <remarks>Capacity is preserved. Full reference cleanup can take time proportional to retained capacity.</remarks>
+    public void Clear(bool clearRetainedReferences)
+    {
+        if (clearRetainedReferences && _clearReleasedSlots)
+        {
+            Array.Clear(_dense, _count, _dense.Length - _count);
+            _lookup.Clear(clearRetainedReferences: true);
+        }
+        Clear();
+    }
+
     #endregion
 
     #region Capacity

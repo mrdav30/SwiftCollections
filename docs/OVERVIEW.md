@@ -45,6 +45,40 @@ intended as blind drop-in replacements. Benchmark the workload you care about,
 especially when custom comparers, string keys, collision behavior, or
 trim/resize patterns are important.
 
+## Clearing And Retained References
+
+Core collections expose `Clear(bool clearRetainedReferences)` alongside their
+existing parameterless clearing operations. Use the explicit option at an
+ownership boundary when old backing slots must release their references:
+
+```csharp
+var scratch = new SwiftList<object>(1024);
+scratch.Add(new object());
+scratch.FastClear(); // Count becomes zero; the object remains in backing storage.
+scratch.Clear(clearRetainedReferences: true); // Release retained references; keep capacity.
+```
+
+- `Clear()` and `Clear(false)` preserve the collection's normal clearing cost
+  and behavior. They need not inspect retained slots outside the live range.
+- `Clear(true)` also releases reference-containing payloads outside that range,
+  including tails left by a previous `FastClear()` and smaller refill. Its cost
+  can scale with retained capacity. It preserves capacity and normal collection
+  policies such as comparers, sparse membership and notifications.
+- `FastClear()` remains a count-only operation on the types that support it.
+  It does not release stored references.
+
+The explicit option is available on all core collection types. Bidirectional
+and observable collections inherit it through their existing virtual clearing
+behavior. Reference-containing structs receive the same cleanup as reference
+types. Numeric-only payloads require no extra reference scan; `SwiftSparseSet`
+therefore accepts the option without additional work. Full reference cleanup
+does not promise to zero unused numeric storage.
+
+`SwiftGenerationalBucket<T>.Clear()` invalidates live handles while preserving
+generation history. Both clearing modes preserve subsequent handle allocation
+when the cleared bucket is saved and restored. Fixed-size arrays, pools and
+spatial indexes retain their separate clearing/lifecycle APIs.
+
 ## Specialized Containers
 
 | Use case                                                        | Better fit                                      | Why                                                                             |

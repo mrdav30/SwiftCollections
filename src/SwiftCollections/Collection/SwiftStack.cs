@@ -307,6 +307,18 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     }
 
     /// <summary>
+    /// Removes all elements, optionally releasing references throughout retained backing storage.
+    /// </summary>
+    /// <param name="clearRetainedReferences">If true, also releases references outside the live range; otherwise uses ordinary clearing.</param>
+    /// <remarks>Capacity is preserved. Full reference cleanup can take time proportional to retained capacity.</remarks>
+    public void Clear(bool clearRetainedReferences)
+    {
+        if (clearRetainedReferences && _clearReleasedSlots)
+            Array.Clear(_innerArray, _count, _innerArray.Length - _count);
+        Clear();
+    }
+
+    /// <summary>
     /// Clears the SwiftStack without releasing the reference to the stored elements.
     /// Use FastClear() when you want to quickly reset the list without reallocating memory.
     /// </summary>

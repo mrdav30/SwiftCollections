@@ -697,6 +697,21 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     }
 
     /// <summary>
+    /// Removes all elements, optionally releasing references throughout retained backing storage.
+    /// </summary>
+    /// <param name="clearRetainedReferences">If true, also releases references outside the live range; otherwise uses ordinary clearing.</param>
+    /// <remarks>Capacity is preserved. Full reference cleanup can take time proportional to retained capacity.</remarks>
+    public void Clear(bool clearRetainedReferences)
+    {
+        if (clearRetainedReferences && RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+        {
+            Array.Clear(_innerArray, 0, _offset);
+            Array.Clear(_innerArray, _offset + _count, _innerArray.Length - _offset - _count);
+        }
+        Clear();
+    }
+
+    /// <summary>
     /// Quickly clears the list by resetting the count and offset without modifying the internal array.
     /// Note: This leaves references in the internal array, which may prevent garbage collection of reference types.
     /// Use when performance is critical and you are certain that residual references are acceptable.
