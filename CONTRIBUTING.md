@@ -1,9 +1,9 @@
 # Contributing
 
 Focused fixes and documentation improvements can go directly through a pull
-request. For substantial public API, architecture, serialization, or
-performance changes, open an issue or discussion first so the intended contract
-and evidence bar are clear.
+request. For substantial public API, architecture, serialization, or performance
+changes, open an issue or discussion first so the intended contract and evidence
+bar are clear.
 
 Please follow the code of conduct in all project interactions.
 
@@ -18,8 +18,7 @@ Standard and Lean variants must remain version-aligned within each package
 family:
 
 - `SwiftCollections` with `SwiftCollections.Lean`
-- `SwiftCollections.FixedMathSharp` with
-  `SwiftCollections.FixedMathSharp.Lean`
+- `SwiftCollections.FixedMathSharp` with `SwiftCollections.FixedMathSharp.Lean`
 
 Standard includes the MemoryPack runtime. Lean exposes the same collection
 surface without that runtime dependency. The FixedMathSharp companion family
@@ -28,7 +27,8 @@ so the two families can be released independently.
 
 Record reproducible concerns outside the current change in the
 [issue tracker](docs/feature-work/issue-tracker.md). Preserve issue IDs, source
-revisions and verification evidence; track each concern in its owning repository.
+revisions and verification evidence; track each concern in its owning
+repository.
 
 ## Pull request checklist
 
@@ -61,10 +61,10 @@ dotnet build SwiftCollections.slnx -c ReleaseLean -p:DisableTransitiveProjectRef
 dotnet test SwiftCollections.slnx -c ReleaseLean --no-build -p:DisableTransitiveProjectReferences=true
 ```
 
-Use `-m:1` for builds, including `dotnet test` when it builds, to avoid overlapping
-writes to shared local project outputs. The local
-0.4.0 Chronicler/shim, 7.1.0 math/companion, and 7.0.0 collection identities coordinate
-assembly resolution; they are build fixtures, not release versions.
+Use `-m:1` for builds, including `dotnet test` when it builds, to avoid
+overlapping writes to shared local project outputs. The local 0.4.0
+Chronicler/shim, 7.1.0 math/companion, and 7.0.0 collection identities
+coordinate assembly resolution; they are build fixtures, not release versions.
 Local builds use explicit references at library, test, and benchmark boundaries
 and pass `-p:DisableTransitiveProjectReferences=true` globally on restore, build
 and test so sibling projects also preserve those explicit identities.
@@ -93,11 +93,11 @@ three-part version explicitly:
 
 GitHub release tags select the packages published to NuGet:
 
-| Tag | Packages |
-| --- | --- |
-| `SwiftCollections/v7.0.1` | `SwiftCollections` and `SwiftCollections.Lean` |
+| Tag                                      | Packages                                                                     |
+| ---------------------------------------- | ---------------------------------------------------------------------------- |
+| `SwiftCollections/v7.0.1`                | `SwiftCollections` and `SwiftCollections.Lean`                               |
 | `SwiftCollections.FixedMathSharp/v7.1.0` | `SwiftCollections.FixedMathSharp` and `SwiftCollections.FixedMathSharp.Lean` |
-| `v7.1.0` | All four packages at one lockstep version |
+| `v7.1.0`                                 | All four packages at one lockstep version                                    |
 
 Scoped companion releases compile and pack against the published minimum core
 version in `SwiftCollectionsPackageVersion` in
@@ -105,9 +105,9 @@ version in `SwiftCollectionsPackageVersion` in
 Bump that property only when the companion requires a newer core package.
 
 NuGet publication is not transactional across Standard and Lean. If a network
-failure publishes only part of a validated family, rerun the same GitHub
-release workflow; publication uses `--skip-duplicate` so already-published
-members are skipped while missing members are retried.
+failure publishes only part of a validated family, rerun the same GitHub release
+workflow; publication uses `--skip-duplicate` so already-published members are
+skipped while missing members are retried.
 
 ## Local validation
 
@@ -146,8 +146,8 @@ PR validates packages. Release upstream dependencies before promotion and update
 source pins deliberately as the coordinated stack changes. Source/package NuGet
 caches are separated, and source graphs build serially to avoid shared-output
 races. Restore, build and test also pass
-`-p:DisableTransitiveProjectReferences=${{ env.UseLocalLsfStack }}` globally,
-so inferred references in sibling projects cannot discard explicit assembly
+`-p:DisableTransitiveProjectReferences=${{ env.UseLocalLsfStack }}` globally, so
+inferred references in sibling projects cannot discard explicit assembly
 identities. Serialization alone does not preserve those identities. Package mode
 sets the flag to false. Both Release/Lean Windows/Linux lanes remain required.
 

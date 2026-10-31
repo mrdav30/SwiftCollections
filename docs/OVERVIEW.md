@@ -64,11 +64,11 @@ scratch.Clear(clearRetainedReferences: true); // Release retained references; ke
   including tails left by a previous `FastClear()` and smaller refill. Its cost
   can scale with retained capacity. It preserves capacity and normal collection
   policies such as comparers, sparse membership and notifications.
-- `FastClear()` remains a count-only operation on the types that support it.
-  It does not release stored references.
+- `FastClear()` remains a count-only operation on the types that support it. It
+  does not release stored references.
 
-The explicit option is available on all core collection types. Bidirectional
-and observable collections inherit it through their existing virtual clearing
+The explicit option is available on all core collection types. Bidirectional and
+observable collections inherit it through their existing virtual clearing
 behavior. Reference-containing structs receive the same cleanup as reference
 types. Numeric-only payloads require no extra reference scan; `SwiftSparseSet`
 therefore accepts the option without additional work. Full reference cleanup
@@ -188,8 +188,8 @@ State-backed collection types expose explicit state structs such as
 `SwiftSparseMapState<T>`.
 
 These types implement `Chronicler.IStateBacked<TState>` and use
-`Chronicler.Serialization.StateJsonConverterFactory` for JSON. When upgrading
-to Chronicler v1.0.0, add `using Chronicler.Serialization;` wherever you use the
+`Chronicler.Serialization.StateJsonConverterFactory` for JSON. When upgrading to
+Chronicler v1.0.0, add `using Chronicler.Serialization;` wherever you use the
 converter and rebuild dependent assemblies together. The collection and state
 type identities and JSON state shape remain unchanged.
 
@@ -204,9 +204,8 @@ SwiftCollections retains `SwiftCollectionDiagnostics.Shared` in
 - `DiagnosticLevel`
 - `SwiftCollectionDiagnostics.Shared`
 - interpolated diagnostic handlers that avoid formatting when disabled
-- `ChronicleGuard` guard methods with caller-expression names, canonical
-  default messages, and lazy interpolated exception messages for condition-gated
-  throws
+- `ChronicleGuard` guard methods with caller-expression names, canonical default
+  messages, and lazy interpolated exception messages for condition-gated throws
 
 Diagnostics are disabled by default until a minimum level and sink are
 configured.

@@ -51,13 +51,13 @@ source code first, then update the docs.
 
 Compiled projects:
 
-| Project                  | Path                                                                         | Target Frameworks       |
-| ------------------------ | ---------------------------------------------------------------------------- | ----------------------- |
-| Core library             | `src/SwiftCollections/SwiftCollections.csproj`                               | `netstandard2.1;net10.0` |
-| FixedMathSharp companion | `src/SwiftCollections.FixedMathSharp/SwiftCollections.FixedMathSharp.csproj` | `netstandard2.1;net10.0` |
-| Core unit tests          | `tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj`                 | `net10.0`                |
-| FixedMathSharp tests     | `tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMathSharp.Tests.csproj` | `net10.0` |
-| Benchmarks               | `tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj`       | `net10.0`                  |
+| Project                  | Path                                                                                       | Target Frameworks        |
+| ------------------------ | ------------------------------------------------------------------------------------------ | ------------------------ |
+| Core library             | `src/SwiftCollections/SwiftCollections.csproj`                                             | `netstandard2.1;net10.0` |
+| FixedMathSharp companion | `src/SwiftCollections.FixedMathSharp/SwiftCollections.FixedMathSharp.csproj`               | `netstandard2.1;net10.0` |
+| Core unit tests          | `tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj`                               | `net10.0`                |
+| FixedMathSharp tests     | `tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMathSharp.Tests.csproj` | `net10.0`                |
+| Benchmarks               | `tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj`                     | `net10.0`                |
 
 Keep these aligned whenever behavior, public API, package variants, or workflow
 expectations change:
@@ -73,23 +73,23 @@ expectations change:
 
 ## Repository Map
 
-| Path                                    | Purpose                                              | Notes                                                                                              |
-| --------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `src/SwiftCollections/Collection`       | Core collection types                                | Includes dictionary, hash set, list, queue, stack, bucket, packed set, sparse set, and sparse map. |
-| `src/SwiftCollections/Dimension`        | Flat 2D/3D arrays and typed array helpers            | Preserve index math and bounds behavior.                                                           |
-| `src/SwiftCollections/EqualityComparer` | SwiftCollections comparers                           | String default comparers are deterministic-oriented.                                               |
-| `src/SwiftCollections/Observable`       | Observable collection variants                       | Prefer for tooling/host-facing notifications, not simulation hot paths without evidence.           |
-| `src/SwiftCollections/Pool`             | Object, array, and collection pools                  | Watch ownership and dispose/release contracts.                                                     |
-| `src/SwiftCollections/Query`            | BVH, spatial hash, octree, bounds, and query helpers | Compiled in the core package. Keep mutable indexes single-owner unless synchronized externally.    |
-| `src/SwiftCollections/Serialization`    | State structs and JSON/state converter support       | Build after changing state shape or serialization constructors.                                    |
-| `src/SwiftCollections/Support`          | Compatibility shims                                  | Includes MemoryPack and interpolated-string-handler shims for target/package variants.             |
-| `src/SwiftCollections/Utility`          | Shared helpers, hashing, diagnostics, extensions     | Preserve helper exception contracts.                                                               |
-| `src/SwiftCollections.FixedMathSharp`   | Fixed-point spatial query companion                  | Depends on FixedMathSharp or FixedMathSharp.Lean based on package variant.                         |
-| `tests/SwiftCollections.Tests`          | Core xUnit v3 tests                                  | References only the core runtime assembly and mirrors its source areas.                             |
-| `tests/SwiftCollections.FixedMathSharp.Tests` | Companion xUnit v3 tests                      | References the FixedMathSharp companion and can validate it against a published core package.       |
-| `tests/SwiftCollections.Benchmarks`     | BenchmarkDotNet benchmarks                           | Alias-based runner supports `list`, `dictionary`, `query`, `all`, and other selections.            |
-| `docs/api`                              | Branded DocFX landing page, hosted overview, and API | Publishes both runtime assemblies; generated `obj` output is ignored.                              |
-| `.assets/scripts`                       | PowerShell release/version helpers                   | Requires PowerShell and GitVersion.Tool.                                                           |
+| Path                                          | Purpose                                              | Notes                                                                                              |
+| --------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `src/SwiftCollections/Collection`             | Core collection types                                | Includes dictionary, hash set, list, queue, stack, bucket, packed set, sparse set, and sparse map. |
+| `src/SwiftCollections/Dimension`              | Flat 2D/3D arrays and typed array helpers            | Preserve index math and bounds behavior.                                                           |
+| `src/SwiftCollections/EqualityComparer`       | SwiftCollections comparers                           | String default comparers are deterministic-oriented.                                               |
+| `src/SwiftCollections/Observable`             | Observable collection variants                       | Prefer for tooling/host-facing notifications, not simulation hot paths without evidence.           |
+| `src/SwiftCollections/Pool`                   | Object, array, and collection pools                  | Watch ownership and dispose/release contracts.                                                     |
+| `src/SwiftCollections/Query`                  | BVH, spatial hash, octree, bounds, and query helpers | Compiled in the core package. Keep mutable indexes single-owner unless synchronized externally.    |
+| `src/SwiftCollections/Serialization`          | State structs and JSON/state converter support       | Build after changing state shape or serialization constructors.                                    |
+| `src/SwiftCollections/Support`                | Compatibility shims                                  | Includes MemoryPack and interpolated-string-handler shims for target/package variants.             |
+| `src/SwiftCollections/Utility`                | Shared helpers, hashing, diagnostics, extensions     | Preserve helper exception contracts.                                                               |
+| `src/SwiftCollections.FixedMathSharp`         | Fixed-point spatial query companion                  | Depends on FixedMathSharp or FixedMathSharp.Lean based on package variant.                         |
+| `tests/SwiftCollections.Tests`                | Core xUnit v3 tests                                  | References only the core runtime assembly and mirrors its source areas.                            |
+| `tests/SwiftCollections.FixedMathSharp.Tests` | Companion xUnit v3 tests                             | References the FixedMathSharp companion and can validate it against a published core package.      |
+| `tests/SwiftCollections.Benchmarks`           | BenchmarkDotNet benchmarks                           | Alias-based runner supports `list`, `dictionary`, `query`, `all`, and other selections.            |
+| `docs/api`                                    | Branded DocFX landing page, hosted overview, and API | Publishes both runtime assemblies; generated `obj` output is ignored.                              |
+| `.assets/scripts`                             | PowerShell release/version helpers                   | Requires PowerShell and GitVersion.Tool.                                                           |
 
 Ignore generated output when reviewing structure:
 
@@ -127,9 +127,10 @@ Serialization guidance:
   signatures.
 - Chronicler recording contracts remain in `Chronicler`; JSON converter types
   use `Chronicler.Serialization`. Preserve collection and state type identities.
-- `UseLocalLsfStack=true` selects sibling Chronicler and FixedMathSharp projects,
-  including the Lean shim. See `CONTRIBUTING.md` for coordinated source validation;
-  local assembly identities are build fixtures, not release decisions.
+- `UseLocalLsfStack=true` selects sibling Chronicler and FixedMathSharp
+  projects, including the Lean shim. See `CONTRIBUTING.md` for coordinated
+  source validation; local assembly identities are build fixtures, not release
+  decisions.
 
 ## Collection Design Rules
 
@@ -186,8 +187,8 @@ Preserve these expectations:
 
 ## Code Style And Conventions
 
-C# 14 is the default language version; runtime projects override it to C# 11
-for `netstandard2.1`. Tests and benchmarks use C# 14.
+C# 14 is the default language version; runtime projects override it to C# 11 for
+`netstandard2.1`. Tests and benchmarks use C# 14.
 
 - Library and tests use file-scoped namespaces.
 - `ImplicitUsings` is disabled. Add explicit `using` directives.
@@ -311,6 +312,6 @@ assembly identities; CI sets it to false in package mode. See
 
 Use the independent `Chronicler.Diagnostics` package for diagnostic channels,
 lazy logging handlers, and `ChronicleGuard` guards. It does not depend on
-`Chronicler.Core`. Keep library-specific channels, formatters, and logger facades
-in their owning library. `UseLocalLsfStack=true` selects the sibling diagnostics
-project; standard and Lean builds use the same diagnostics package.
+`Chronicler.Core`. Keep library-specific channels, formatters, and logger
+facades in their owning library. `UseLocalLsfStack=true` selects the sibling
+diagnostics project; standard and Lean builds use the same diagnostics package.
