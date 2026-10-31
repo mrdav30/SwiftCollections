@@ -71,7 +71,9 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
 
     private int _lastIndex;
 
-    private static readonly bool _ItemCanBeNull = default(T) is null;
+    // A cold lookup must not box a default value while initializing this flag.
+    private static readonly bool _ItemCanBeNull = !typeof(T).IsValueType
+        || (typeof(T).IsGenericType && typeof(T).GetGenericTypeDefinition() == typeof(Nullable<>));
 
     /// <summary>
     /// A mask used for efficiently computing the entry index from a hash code.

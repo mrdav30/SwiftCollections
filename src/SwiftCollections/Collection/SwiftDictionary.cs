@@ -83,7 +83,9 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     #region Fields
 
     // Skip per-operation boxing for non-nullable value keys, including in Debug builds.
-    private static readonly bool _KeyCanBeNull = default(TKey) is null;
+    // A cold lookup must not box a default value while initializing this flag.
+    private static readonly bool _KeyCanBeNull = !typeof(TKey).IsValueType
+        || (typeof(TKey).IsGenericType && typeof(TKey).GetGenericTypeDefinition() == typeof(Nullable<>));
 
     /// <summary>
     /// The array containing the entries of the dictionary.
