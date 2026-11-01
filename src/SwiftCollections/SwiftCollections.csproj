@@ -96,22 +96,22 @@
 	<!-- Dependencies and Package References -->
 	<ItemGroup Condition="'$(DisableMemoryPack)' != 'true'">
 		<PackageReference Include="MemoryPack" Version="1.21.4" />
-		<PackageReference Include="Chronicler.Core" Version="0.4.0" Condition="'$(UseLocalLsfStack)' != 'true'" />
+		<PackageReference Include="Chronicler.Core" Version="1.0.0" Condition="'$(UseLocalLsfStack)' != 'true'" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(DisableMemoryPack)' == 'true'">
-		<PackageReference Include="Chronicler.Core.Lean" Version="0.4.0" Condition="'$(UseLocalLsfStack)' != 'true'" />
-		<PackageReference Include="Chronicler.MemoryPackShim" Version="0.4.0" Condition="'$(UseLocalLsfStack)' != 'true'" />
+		<PackageReference Include="Chronicler.Core.Lean" Version="1.0.0" Condition="'$(UseLocalLsfStack)' != 'true'" />
+		<PackageReference Include="Chronicler.MemoryPackShim" Version="1.0.0" Condition="'$(UseLocalLsfStack)' != 'true'" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UseLocalLsfStack)' == 'true'">
 		<ProjectReference Include="..\..\..\Chronicler\src\Chronicler\Chronicler.csproj"
-			AdditionalProperties="Configuration=$(Configuration);SemVer=0.4.0;AssemblySemVer=0.4.0.0" />
+			AdditionalProperties="Configuration=$(Configuration);SemVer=1.0.0;AssemblySemVer=1.0.0.0" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UseLocalLsfStack)' == 'true' And '$(DisableMemoryPack)' == 'true'">
 		<ProjectReference Include="..\..\..\Chronicler\src\Chronicler.MemoryPackShim\Chronicler.MemoryPackShim.csproj"
-			AdditionalProperties="Configuration=$(Configuration);SemVer=0.4.0;AssemblySemVer=0.4.0.0" />
+			AdditionalProperties="Configuration=$(Configuration);SemVer=1.0.0;AssemblySemVer=1.0.0.0" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">

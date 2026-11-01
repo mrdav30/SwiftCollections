@@ -2,6 +2,15 @@
 
 ## Upcoming release
 
+### Chronicler v1.0.0 dependency alignment
+
+Core, Lean, and shim package references now use Chronicler v1.0.0. Coordinated
+source references use `SemVer=1.0.0;AssemblySemVer=1.0.0.0` across libraries,
+tests, and benchmarks. Keep these identities aligned throughout the sibling
+graph to prevent runtime assembly-load failures. Validate both configurations
+against released dependencies before publishing; source-mode packages remain
+development artifacts.
+
 ### Shared diagnostics extraction
 
 Shared logging and exception guards now come from the independent

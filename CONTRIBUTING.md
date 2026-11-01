@@ -62,7 +62,7 @@ dotnet test SwiftCollections.slnx -c ReleaseLean --no-build -p:DisableTransitive
 ```
 
 Use `-m:1` for builds, including `dotnet test` when it builds, to avoid
-overlapping writes to shared local project outputs. The local 0.4.0
+overlapping writes to shared local project outputs. The local 1.0.0
 Chronicler/shim, 7.1.0 math/companion, and 7.0.0 collection identities
 coordinate assembly resolution; they are build fixtures, not release versions.
 Local builds use explicit references at library, test, and benchmark boundaries

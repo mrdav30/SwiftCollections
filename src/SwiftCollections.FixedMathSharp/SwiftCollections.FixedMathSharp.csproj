@@ -100,14 +100,14 @@
 
 	<ItemGroup Condition="'$(UseLocalLsfStack)' == 'true'">
 		<ProjectReference Include="..\..\..\Chronicler\src\Chronicler\Chronicler.csproj"
-			AdditionalProperties="Configuration=$(Configuration);SemVer=0.4.0;AssemblySemVer=0.4.0.0" />
+			AdditionalProperties="Configuration=$(Configuration);SemVer=1.0.0;AssemblySemVer=1.0.0.0" />
 		<ProjectReference Include="..\..\..\FixedMathSharp\src\FixedMathSharp\FixedMathSharp.csproj"
 			AdditionalProperties="Configuration=$(Configuration);SemVer=7.1.0;AssemblySemVer=7.1.0.0" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UseLocalLsfStack)' == 'true' And '$(DisableMemoryPack)' == 'true'">
 		<ProjectReference Include="..\..\..\Chronicler\src\Chronicler.MemoryPackShim\Chronicler.MemoryPackShim.csproj"
-			AdditionalProperties="Configuration=$(Configuration);SemVer=0.4.0;AssemblySemVer=0.4.0.0" />
+			AdditionalProperties="Configuration=$(Configuration);SemVer=1.0.0;AssemblySemVer=1.0.0.0" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UsePublishedSwiftCollections)' != 'true'">
