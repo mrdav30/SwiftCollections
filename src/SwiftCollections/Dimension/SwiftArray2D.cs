@@ -1,7 +1,7 @@
 //=======================================================================
 // SwiftArray2D.cs
 //=======================================================================
-// MIT License, Copyright (c) 2024–present David Oravsky (mrdav30)
+// MIT License, Copyright (c) 2024-present David Oravsky (mrdav30)
 // See LICENSE file in the project root for full license information.
 //=======================================================================
 
@@ -10,9 +10,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using Chronicler;
+using Chronicler.Diagnostics;
 using Chronicler.Serialization;
 using MemoryPack;
-using Chronicler.Diagnostics;
 
 namespace SwiftCollections.Dimensions;
 

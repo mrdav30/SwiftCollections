@@ -1,7 +1,7 @@
 //=======================================================================
 // SwiftObservableArray.cs
 //=======================================================================
-// MIT License, Copyright (c) 2024–present David Oravsky (mrdav30)
+// MIT License, Copyright (c) 2024-present David Oravsky (mrdav30)
 // See LICENSE file in the project root for full license information.
 //=======================================================================
 
@@ -9,9 +9,9 @@ using System;
 using System.ComponentModel;
 using System.Text.Json.Serialization;
 using Chronicler;
+using Chronicler.Diagnostics;
 using Chronicler.Serialization;
 using MemoryPack;
-using Chronicler.Diagnostics;
 
 namespace SwiftCollections.Observable;
 
@@ -57,32 +57,6 @@ public partial class SwiftObservableArray<TValue> : IStateBacked<SwiftArrayState
     /// Raised when the array's state changes.
     /// </summary>
     public event PropertyChangedEventHandler? PropertyChanged;
-
-    #endregion
-
-    #region Nested Types
-
-    /// <summary>
-    /// Provides details about a changed element, including its index and new value.
-    /// </summary>
-    public class ElementChangedEventArgs<T> : EventArgs
-    {
-        /// <summary>
-        /// The index of the changed element.
-        /// </summary>
-        public int Index { get; }
-
-        /// <summary>
-        /// The new value of the changed element.
-        /// </summary>
-        public T NewValue { get; }
-
-        internal ElementChangedEventArgs(int index, T newValue)
-        {
-            Index = index;
-            NewValue = newValue;
-        }
-    }
 
     #endregion
 

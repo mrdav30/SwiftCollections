@@ -71,6 +71,9 @@ jobs:
           dotnet tool run docfx docs/api/docfx.json --warningsAsErrors
           test -f docs/api/obj/_site/index.html
           test -f docs/api/obj/_site/guides/OVERVIEW.html
+          for guide in getting-started collections spatial-queries pools-and-observables serialization-and-diagnostics; do
+            test -f "docs/api/obj/_site/guides/${guide}.html"
+          done
           test -f docs/api/obj/_site/api/SwiftCollections.html
           test -f docs/api/obj/_site/api/SwiftCollections.Query.html
           test -f docs/api/obj/_site/assets/icon.png
@@ -80,6 +83,45 @@ jobs:
           grep -Fq 'github.com/mrdav30/SwiftCollections' docs/api/obj/_site/public/main.js
           grep -Fq 'SwiftCollections-Unity' docs/api/obj/_site/api/SwiftCollections.html
           grep -Fq 'github.com/mrdav30/FixedMathSharp' docs/api/obj/_site/api/SwiftCollections.Query.html
+
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          from urllib.parse import unquote, urlsplit
+
+          site = Path("docs/api/obj/_site").resolve()
+          broken = []
+
+          class Links(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.hrefs = []
+
+              def handle_starttag(self, tag, attrs):
+                  if tag == "a":
+                      href = dict(attrs).get("href")
+                      if href:
+                          self.hrefs.append(href)
+
+          for page in site.rglob("*.html"):
+              parser = Links()
+              parser.feed(page.read_text(encoding="utf-8"))
+              for href in parser.hrefs:
+                  parsed = urlsplit(href)
+                  if parsed.scheme or parsed.netloc or not parsed.path:
+                      continue
+
+                  path = unquote(parsed.path)
+                  target = site / path.lstrip("/") if path.startswith("/") else page.parent / path
+                  target = target.resolve()
+                  if target.is_dir():
+                      target /= "index.html"
+                  if not target.exists():
+                      broken.append(f"{page.relative_to(site)} -> {href}")
+
+          if broken:
+              raise SystemExit("Broken local links:\n" + "\n".join(sorted(broken)))
+          PY
 
       - name: Install ReportGenerator
         run: dotnet tool install --global dotnet-reportgenerator-globaltool

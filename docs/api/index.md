@@ -11,7 +11,7 @@ description: API reference and guides for specialized, low-allocation .NET colle
   handles, pooling, and broad-phase queries.</p>
   <div class="sc-actions">
     <a href="xref:SwiftCollections">Browse the API</a>
-    <a href="../OVERVIEW.md">Choose a collection</a>
+    <a href="guides/OVERVIEW.md">Choose a collection</a>
   </div>
 </div>
 
@@ -60,12 +60,35 @@ description: API reference and guides for specialized, low-allocation .NET colle
   </div>
 </div>
 
+## Guides
+
+- [Get started](guides/getting-started.md) with packages and a first container.
+- [Choose collections and clearing policies](guides/collections.md) for the
+  ownership model.
+- [Query spatial bounds](guides/spatial-queries.md), including fixed-point
+  volumes.
+- [Manage rentals and notifications](guides/pools-and-observables.md) at host
+  boundaries.
+- [Serialize state and configure diagnostics](guides/serialization-and-diagnostics.md).
+
+## Part of the LSF ecosystem
+
+SwiftCollections provides specialized collections and spatial indexes for
+libraries, games, simulations, and tools throughout the Lockstep Simulation
+Framework ecosystem:
+
+- [Chronicler](https://github.com/mrdav30/Chronicler)
+- [FixedMathSharp](https://github.com/mrdav30/FixedMathSharp)
+- [GridForge](https://github.com/mrdav30/GridForge)
+- [Gravitas](https://github.com/mrdav30/Gravitas)
+- [Trailblazer](https://github.com/mrdav30/Trailblazer)
+
 ## Resources
 
-- [Library overview and container guide](../OVERVIEW.md)
+- [Library overview and container guide](guides/OVERVIEW.md)
 - [Source, issues, and releases](https://github.com/mrdav30/SwiftCollections)
 - [Unity packages](https://github.com/mrdav30/SwiftCollections-Unity)
-- [Core test-suite coverage](https://mrdav30.github.io/SwiftCollections/coverage/)
+- [Test coverage](https://mrdav30.github.io/SwiftCollections/coverage/)
 
 The API reference is generated from the source XML documentation. The overview
 explains tradeoffs, ID density constraints, serialization state, spatial query

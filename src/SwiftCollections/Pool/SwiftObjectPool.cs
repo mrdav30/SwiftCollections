@@ -1,7 +1,7 @@
 //=======================================================================
 // SwiftObjectPool.cs
 //=======================================================================
-// MIT License, Copyright (c) 2024–present David Oravsky (mrdav30)
+// MIT License, Copyright (c) 2024-present David Oravsky (mrdav30)
 // See LICENSE file in the project root for full license information.
 //=======================================================================
 
@@ -156,7 +156,7 @@ public sealed class SwiftObjectPool<T> : IDisposable, ISwiftObjectPool<T> where 
     }
 
     /// <summary>
-    /// Clears all objects from the pool, destroying any active objects if a destroy action is configured.
+    /// Clears the inactive objects currently held by the pool, invoking the destroy action if configured.
     /// </summary>
     public void Clear()
     {

@@ -3,7 +3,7 @@
 ![SwiftCollections icon](https://raw.githubusercontent.com/mrdav30/SwiftCollections/main/icon.png)
 
 [![Build](https://github.com/mrdav30/SwiftCollections/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/mrdav30/SwiftCollections/actions/workflows/build-and-test.yml)
-[![Core Branch Coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fmrdav30.github.io%2FSwiftCollections%2Fcoverage%2FSummary.json&query=%24.summary.branchcoverage&suffix=%25&label=core%20branch%20coverage&color=brightgreen)](https://mrdav30.github.io/SwiftCollections/coverage/)
+[![Coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fmrdav30.github.io%2FSwiftCollections%2Fcoverage%2FSummary.json&query=%24.summary.branchcoverage&suffix=%25&label=coverage&color=brightgreen)](https://mrdav30.github.io/SwiftCollections/coverage/)
 [![NuGet](https://img.shields.io/nuget/v/SwiftCollections.svg)](https://www.nuget.org/packages/SwiftCollections)
 [![License](https://img.shields.io/github/license/mrdav30/SwiftCollections.svg)](https://github.com/mrdav30/SwiftCollections/blob/main/LICENSE)
 [![API](https://img.shields.io/badge/docs-API-f4511e)](https://mrdav30.github.io/SwiftCollections/)
@@ -26,7 +26,7 @@ spatial indexing, deterministic runtimes, and allocation-sensitive tooling.
 - Fixed-point query companions powered by
   [FixedMathSharp](https://github.com/mrdav30/FixedMathSharp).
 - Explicit state-backed serialization, with Standard and Lean package variants.
-- [Explicit retained-reference cleanup](docs/OVERVIEW.md#clearing-and-retained-references)
+- [Explicit retained-reference cleanup](https://mrdav30.github.io/SwiftCollections/guides/collections.html#clearing-and-retained-references)
   at ownership boundaries, while preserving reusable capacity.
 - Benchmarks and full reachable coverage enforced as part of the repository
   workflow.
@@ -88,6 +88,10 @@ for the updated imports and guard names.
 
 ## Learn more
 
+- [Getting started](https://mrdav30.github.io/SwiftCollections/guides/getting-started.html)
+- [Collections and clearing](https://mrdav30.github.io/SwiftCollections/guides/collections.html)
+- [Spatial queries](https://mrdav30.github.io/SwiftCollections/guides/spatial-queries.html)
+
 - [Library overview and container guide](https://mrdav30.github.io/SwiftCollections/guides/OVERVIEW.html)
 - [Core API reference](https://mrdav30.github.io/SwiftCollections/api/SwiftCollections.html)
 - [Spatial query API](https://mrdav30.github.io/SwiftCollections/api/SwiftCollections.Query.html)
@@ -106,4 +110,6 @@ Lean builds on Windows and Linux.
 
 Questions and discussion are welcome in the
 [Discord community](https://discord.gg/mhwK2QFNBA). SwiftCollections is
-available under the [MIT License](LICENSE).
+available under the [MIT License](LICENSE). See [Support](.github/SUPPORT.md),
+the [Code of Conduct](CODE_OF_CONDUCT.md), and [Security](SECURITY.md) for help
+and reporting guidance.

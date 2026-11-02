@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Xunit;
 
 #if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK

@@ -1,8 +1,21 @@
 items:
   - name: Home
     href: index.md
-  - name: Guide
-    href: ../OVERVIEW.md
+  - name: Guides
+    href: guides/OVERVIEW.md
+    items:
+      - name: Overview
+        href: guides/OVERVIEW.md
+      - name: Getting Started
+        href: guides/getting-started.md
+      - name: Collections and Clearing
+        href: guides/collections.md
+      - name: Spatial Queries
+        href: guides/spatial-queries.md
+      - name: Pools and Observable Collections
+        href: guides/pools-and-observables.md
+      - name: Serialization and Diagnostics
+        href: guides/serialization-and-diagnostics.md
   - name: API Reference
     href: obj/api/
     homepage: obj/api/SwiftCollections.yml
@@ -12,5 +25,5 @@ items:
         href: https://github.com/mrdav30/SwiftCollections-Unity
       - name: Source
         href: https://github.com/mrdav30/SwiftCollections
-      - name: Core Test Coverage
+      - name: Test Coverage
         href: https://mrdav30.github.io/SwiftCollections/coverage/

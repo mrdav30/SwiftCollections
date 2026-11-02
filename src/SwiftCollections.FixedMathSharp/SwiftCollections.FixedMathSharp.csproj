@@ -44,7 +44,7 @@
 	<!-- Output Settings -->
 	<PropertyGroup>
 		<AssemblyName>SwiftCollections.FixedMathSharp</AssemblyName>
-		<RootNamespace>SwiftCollections..FixedMathSharp</RootNamespace>
+		<RootNamespace>SwiftCollections.FixedMathSharp</RootNamespace>
 		<ProjectGuid>{CB6B93CA-2A09-4500-9E45-4AF90D42E236}</ProjectGuid>
 		<OutputPath>bin\$(Configuration)</OutputPath>
 	</PropertyGroup>

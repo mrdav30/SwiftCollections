@@ -1,6 +1,6 @@
 # SwiftCollections Migration Guide
 
-## Upcoming release
+## Chronicler dependency and diagnostics migration
 
 ### Chronicler v1.0.0 dependency alignment
 

@@ -29,8 +29,8 @@ Priorities:
 Read these before making non-trivial changes:
 
 1. `README.md` for the public front door and package orientation.
-2. `docs/OVERVIEW.md` for the collection, spatial query, serialization, and
-   diagnostics map.
+2. `docs/api/guides/OVERVIEW.md` for the collection, spatial query,
+   serialization, and diagnostics map.
 3. `SwiftCollections.slnx` and the relevant `*.csproj` files. They are the
    source of truth for compiled projects, package shape, and target frameworks.
 4. The source folder under `src/SwiftCollections` or
@@ -63,7 +63,8 @@ Keep these aligned whenever behavior, public API, package variants, or workflow
 expectations change:
 
 - `README.md`
-- `docs/OVERVIEW.md` and the DocFX source and configuration under `docs/api`
+- `docs/api/guides/OVERVIEW.md` and the DocFX source and configuration under
+  `docs/api`
 - `docs/complexity-exceptions.md`
 - `docs/feature-work/issue-tracker.md` for issue intake and resolution evidence
 - relevant tests and benchmarks
@@ -73,23 +74,22 @@ expectations change:
 
 ## Repository Map
 
-| Path                                          | Purpose                                              | Notes                                                                                              |
-| --------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `src/SwiftCollections/Collection`             | Core collection types                                | Includes dictionary, hash set, list, queue, stack, bucket, packed set, sparse set, and sparse map. |
-| `src/SwiftCollections/Dimension`              | Flat 2D/3D arrays and typed array helpers            | Preserve index math and bounds behavior.                                                           |
-| `src/SwiftCollections/EqualityComparer`       | SwiftCollections comparers                           | String default comparers are deterministic-oriented.                                               |
-| `src/SwiftCollections/Observable`             | Observable collection variants                       | Prefer for tooling/host-facing notifications, not simulation hot paths without evidence.           |
-| `src/SwiftCollections/Pool`                   | Object, array, and collection pools                  | Watch ownership and dispose/release contracts.                                                     |
-| `src/SwiftCollections/Query`                  | BVH, spatial hash, octree, bounds, and query helpers | Compiled in the core package. Keep mutable indexes single-owner unless synchronized externally.    |
-| `src/SwiftCollections/Serialization`          | State structs and JSON/state converter support       | Build after changing state shape or serialization constructors.                                    |
-| `src/SwiftCollections/Support`                | Compatibility shims                                  | Includes MemoryPack and interpolated-string-handler shims for target/package variants.             |
-| `src/SwiftCollections/Utility`                | Shared helpers, hashing, diagnostics, extensions     | Preserve helper exception contracts.                                                               |
-| `src/SwiftCollections.FixedMathSharp`         | Fixed-point spatial query companion                  | Depends on FixedMathSharp or FixedMathSharp.Lean based on package variant.                         |
-| `tests/SwiftCollections.Tests`                | Core xUnit v3 tests                                  | References only the core runtime assembly and mirrors its source areas.                            |
-| `tests/SwiftCollections.FixedMathSharp.Tests` | Companion xUnit v3 tests                             | References the FixedMathSharp companion and can validate it against a published core package.      |
-| `tests/SwiftCollections.Benchmarks`           | BenchmarkDotNet benchmarks                           | Alias-based runner supports `list`, `dictionary`, `query`, `all`, and other selections.            |
-| `docs/api`                                    | Branded DocFX landing page, hosted overview, and API | Publishes both runtime assemblies; generated `obj` output is ignored.                              |
-| `.assets/scripts`                             | PowerShell release/version helpers                   | Requires PowerShell and GitVersion.Tool.                                                           |
+| Path                                          | Purpose                                                | Notes                                                                                              |
+| --------------------------------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| `src/SwiftCollections/Collection`             | Core collection types                                  | Includes dictionary, hash set, list, queue, stack, bucket, packed set, sparse set, and sparse map. |
+| `src/SwiftCollections/Dimension`              | Flat 2D/3D arrays and typed array helpers              | Preserve index math and bounds behavior.                                                           |
+| `src/SwiftCollections/EqualityComparer`       | SwiftCollections comparers                             | String default comparers are deterministic-oriented.                                               |
+| `src/SwiftCollections/Observable`             | Observable collection variants                         | Prefer for tooling/host-facing notifications, not simulation hot paths without evidence.           |
+| `src/SwiftCollections/Pool`                   | Object, array, and collection pools                    | Watch ownership and dispose/release contracts.                                                     |
+| `src/SwiftCollections/Query`                  | BVH, spatial hash, octree, bounds, and query helpers   | Compiled in the core package. Keep mutable indexes single-owner unless synchronized externally.    |
+| `src/SwiftCollections/Serialization`          | State structs and JSON/state converter support         | Build after changing state shape or serialization constructors.                                    |
+| `src/SwiftCollections/Utility`                | Shared helpers, hashing, diagnostics, extensions       | Preserve helper exception contracts.                                                               |
+| `src/SwiftCollections.FixedMathSharp`         | Fixed-point spatial query companion                    | Depends on FixedMathSharp or FixedMathSharp.Lean based on package variant.                         |
+| `tests/SwiftCollections.Tests`                | Core xUnit v3 tests                                    | References only the core runtime assembly and mirrors its source areas.                            |
+| `tests/SwiftCollections.FixedMathSharp.Tests` | Companion xUnit v3 tests                               | References the FixedMathSharp companion and can validate it against a published core package.      |
+| `tests/SwiftCollections.Benchmarks`           | BenchmarkDotNet benchmarks                             | Alias-based runner supports `list`, `dictionary`, `query`, `all`, and other selections.            |
+| `docs/api`                                    | Branded DocFX landing page, conceptual guides, and API | Publishes both runtime assemblies; generated `obj` output is ignored.                              |
+| `.assets/scripts`                             | PowerShell release/version helpers                     | Requires PowerShell and GitVersion.Tool.                                                           |
 
 Ignore generated output when reviewing structure:
 
@@ -119,9 +119,10 @@ Serialization guidance:
 - State-backed collections should preserve state constructors and state structs.
 - `net10.0` builds use System.Text.Json converter implementations where
   supported.
-- Compatibility shims under `src/SwiftCollections/Support` exist for
-  package/target variants. Follow existing preprocessor patterns instead of
-  introducing a new conditional style.
+- Shared MemoryPack and interpolated-handler compatibility attributes come from
+  Chronicler packages. Preserve existing package/target preprocessor patterns.
+  The dictionary-specific internal nullability annotation stays with its
+  existing namespace and owner.
 - Build both standard and lean configurations after changing serialized fields,
   state structs, MemoryPack attributes, JSON converter behavior, or constructor
   signatures.
@@ -200,8 +201,17 @@ C# 14 is the default language version; runtime projects override it to C# 11 for
 - Public APIs should include XML docs unless the surrounding file clearly does
   not.
 - Larger collection types often use `#region` blocks; preserve local style.
-- Avoid renaming files, reshaping namespaces, or normalizing formatting purely
-  for style.
+- Avoid unrelated namespace or style changes. Keep cleanup explicit through the
+  commands in `CONTRIBUTING.md`, excluding generated output.
+- Give each namespace-level type or delegate its own file. Public/internal
+  nested types use companion files while preserving generic constraints and CLR
+  identities; private nested helpers may stay with their owner.
+- Authored C# files under `src` carry the current filename/MIT license header.
+  Test and benchmark files under `tests` do not carry license headers.
+- Keep conceptual documentation under `docs/api/guides`; preserve the existing
+  `guides/OVERVIEW.html` entry route. Do not hand-edit generated `docs/api/obj`.
+- Leave work unstaged and uncommitted unless the user explicitly requests a
+  commit.
 - Minimize XML/project-file formatting churn. Existing XML files mix tabs and
   spaces.
 - Keep comments useful and sparse. Explain invariants, not obvious assignments.
@@ -305,8 +315,9 @@ assembly identities; CI sets it to false in package mode. See
 - Run relevant build/tests before finishing.
 - Run benchmarks when changing a measured hot path or making a performance
   claim.
-- Update README, `docs/OVERVIEW.md`, package metadata, or complexity exceptions
-  when the public API, package shape, workflow, or performance story changes.
+- Update README, `docs/api/guides/OVERVIEW.md`, package metadata, or complexity
+  exceptions when the public API, package shape, workflow, or performance story
+  changes.
 
 ## Shared Diagnostics Ownership
 

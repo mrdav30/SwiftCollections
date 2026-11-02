@@ -5,7 +5,9 @@ request. For substantial public API, architecture, serialization, or performance
 changes, open an issue or discussion first so the intended contract and evidence
 bar are clear.
 
-Please follow the code of conduct in all project interactions.
+Please follow the [Code of Conduct](CODE_OF_CONDUCT.md). See
+[Support](.github/SUPPORT.md) for help and [Security](SECURITY.md) for private
+vulnerability reports.
 
 ## Source of truth
 
@@ -109,6 +111,53 @@ failure publishes only part of a validated family, rerun the same GitHub release
 workflow; publication uses `--skip-duplicate` so already-published members are
 skipped while missing members are retried.
 
+## Documentation and cleanup
+
+Conceptual guides live in `docs/api/guides` and publish alongside the API
+reference and coverage through the existing Pages workflow. Keep guides
+evergreen; version-specific upgrade steps belong in
+[Migration](docs/MIGRATION.md). Preserve completed design and validation records
+as history. Generated output under `docs/api/obj` is ignored.
+
+Give each namespace-level type or delegate its own file. Public/internal nested
+types use companion files while preserving containing types, generic
+constraints, and CLR identities; private nested helpers may stay with their
+owner. Authored C# files under `src` carry the current filename and MIT license
+header. Test and benchmark files under `tests` have no license header.
+
+Run cleanup explicitly before review using the SDK from `global.json` and
+Node.js/npm for Prettier:
+
+```powershell
+$env:TargetFramework='net10.0'
+dotnet format SwiftCollections.slnx --severity error
+Remove-Item Env:TargetFramework
+npx --yes prettier@3.9.5 --write .
+```
+
+Select one target framework for formatting so the SDK does not merge competing
+fixes into files shared by multiple targets. Clear that environment selection
+before normal multi-target builds; those builds still validate both frameworks.
+If workspace loading reports unmatched project/metadata references, stop
+semantic fixes and clean/rebuild the selected configuration before retrying.
+Always validate the result with both target frameworks.
+
+The .NET formatter follows `.editorconfig`, applying whitespace and error-level
+style/analyzer fixes. It does not reproduce a Visual Studio cleanup profile.
+Prettier is pinned in the command and may download on first use;
+`.prettierignore` excludes generated output. No commit hook rewrites or stages
+files. Use the existing environment flags for coordinated-source formatting when
+that dependency mode is needed.
+
+Check without rewriting files:
+
+```powershell
+$env:TargetFramework='net10.0'
+dotnet format SwiftCollections.slnx --severity error --verify-no-changes
+Remove-Item Env:TargetFramework
+npx --yes prettier@3.9.5 --check .
+```
+
 ## Local validation
 
 Restore and build both package variants:
@@ -150,79 +199,3 @@ races. Restore, build and test also pass
 inferred references in sibling projects cannot discard explicit assembly
 identities. Serialization alone does not preserve those identities. Package mode
 sets the flag to false. Both Release/Lean Windows/Linux lanes remain required.
-
-## Code of Conduct
-
-### Our Pledge
-
-In the interest of fostering an open and welcoming environment, we as
-contributors and maintainers pledge to making participation in our project and
-our community a harassment-free experience for everyone, regardless of age, body
-size, disability, ethnicity, gender identity and expression, level of
-experience, nationality, personal appearance, race, religion, or sexual identity
-and orientation.
-
-### Our Standards
-
-Examples of behavior that contributes to creating a positive environment
-include:
-
-- Using welcoming and inclusive language
-- Being respectful of differing viewpoints and experiences
-- Gracefully accepting constructive criticism
-- Focusing on what is best for the community
-- Showing empathy towards other community members
-
-Examples of unacceptable behavior by participants include:
-
-- The use of sexualized language or imagery and unwelcome sexual attention or
-  advances
-- Trolling, insulting/derogatory comments, and personal or political attacks
-- Public or private harassment
-- Publishing others' private information, such as a physical or electronic
-  address, without explicit permission
-- Other conduct which could reasonably be considered inappropriate in a
-  professional setting
-
-### Our Responsibilities
-
-Project maintainers are responsible for clarifying the standards of acceptable
-behavior and are expected to take appropriate and fair corrective action in
-response to any instances of unacceptable behavior.
-
-Project maintainers have the right and responsibility to remove, edit, or reject
-comments, commits, code, wiki edits, issues, and other contributions that are
-not aligned to this Code of Conduct, or to ban temporarily or permanently any
-contributor for other behaviors that they deem inappropriate, threatening,
-offensive, or harmful.
-
-### Scope
-
-This Code of Conduct applies both within project spaces and in public spaces
-when an individual is representing the project or its community. Examples of
-representing a project or community include using an official project e-mail
-address, posting via an official social media account, or acting as an appointed
-representative at an online or offline event. Representation of a project may be
-further defined and clarified by project maintainers.
-
-### Enforcement
-
-Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported by contacting the project team at `david.oravsky@gmail.com`. All
-complaints will be reviewed and investigated and will result in a response that
-is deemed necessary and appropriate to the circumstances. The project team is
-obligated to maintain confidentiality with regard to the reporter of an
-incident. Further details of specific enforcement policies may be posted
-separately.
-
-Project maintainers who do not follow or enforce the Code of Conduct in good
-faith may face temporary or permanent repercussions as determined by other
-members of the project's leadership.
-
-### Attribution
-
-This Code of Conduct is adapted from the [Contributor Covenant][homepage],
-version 1.4, available at [http://contributor-covenant.org/version/1/4][version]
-
-[homepage]: http://contributor-covenant.org
-[version]: http://contributor-covenant.org/version/1/4/

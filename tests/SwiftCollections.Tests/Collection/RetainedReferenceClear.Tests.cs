@@ -10,10 +10,22 @@ namespace SwiftCollections.Tests;
 public sealed class RetainedReferenceClearTests
 {
     [Theory]
-    [InlineData(0, false, false)] [InlineData(0, false, true)] [InlineData(0, true, false)] [InlineData(0, true, true)]
-    [InlineData(1, false, false)] [InlineData(1, false, true)] [InlineData(1, true, false)] [InlineData(1, true, true)]
-    [InlineData(2, false, false)] [InlineData(2, false, true)] [InlineData(2, true, false)] [InlineData(2, true, true)]
-    [InlineData(3, false, false)] [InlineData(3, false, true)] [InlineData(3, true, false)] [InlineData(3, true, true)]
+    [InlineData(0, false, false)]
+    [InlineData(0, false, true)]
+    [InlineData(0, true, false)]
+    [InlineData(0, true, true)]
+    [InlineData(1, false, false)]
+    [InlineData(1, false, true)]
+    [InlineData(1, true, false)]
+    [InlineData(1, true, true)]
+    [InlineData(2, false, false)]
+    [InlineData(2, false, true)]
+    [InlineData(2, true, false)]
+    [InlineData(2, true, true)]
+    [InlineData(3, false, false)]
+    [InlineData(3, false, true)]
+    [InlineData(3, true, false)]
+    [InlineData(3, true, true)]
     public void ArrayBuffers_ExplicitClearReleasesOldTailsAndPreservesCapacity(int kind, bool full, bool smaller)
     {
         Action<string> add;
@@ -91,7 +103,8 @@ public sealed class RetainedReferenceClearTests
     }
 
     [Theory]
-    [InlineData(false)] [InlineData(true)]
+    [InlineData(false)]
+    [InlineData(true)]
     public void CollectionFamilies_ClearAndReuseWithoutLosingTheirPolicies(bool full)
     {
         var dictionary = new SwiftDictionary<string, string>(32, StringComparer.OrdinalIgnoreCase) { ["key"] = "value" };
@@ -134,7 +147,8 @@ public sealed class RetainedReferenceClearTests
     }
 
     [Theory]
-    [InlineData(false)] [InlineData(true)]
+    [InlineData(false)]
+    [InlineData(true)]
     public void ObservableAndCustomOverrides_KeepExistingClearDispatch(bool full)
     {
         int resets = 0, properties = 0;
@@ -160,7 +174,8 @@ public sealed class RetainedReferenceClearTests
     }
 
     [Theory]
-    [InlineData(false)] [InlineData(true)]
+    [InlineData(false)]
+    [InlineData(true)]
     public void GenerationalClear_InvalidatesLiveAndPreviouslyRemovedHandles(bool full)
     {
         var bucket = new SwiftGenerationalBucket<object>(8);
@@ -179,7 +194,8 @@ public sealed class RetainedReferenceClearTests
     }
 
     [Theory]
-    [InlineData(false)] [InlineData(true)]
+    [InlineData(false)]
+    [InlineData(true)]
     public void GenerationalClear_StateRoundTripPreservesSubsequentHandles(bool full)
     {
         var original = new SwiftGenerationalBucket<string>(8);
@@ -193,7 +209,8 @@ public sealed class RetainedReferenceClearTests
     }
 
     [Theory]
-    [InlineData(false)] [InlineData(true)]
+    [InlineData(false)]
+    [InlineData(true)]
     public void GenerationalClear_ReleasesValueGraphsWhileBucketStaysAlive(bool full)
     {
         var bucket = new SwiftGenerationalBucket<object>(8);
@@ -213,7 +230,8 @@ public sealed class RetainedReferenceClearTests
     }
 
     [Theory]
-    [InlineData(false)] [InlineData(true)]
+    [InlineData(false)]
+    [InlineData(true)]
     public void ValuePayloads_AndEmptyStorageSupportBothModes(bool full)
     {
         var list = new SwiftList<int>(); list.Clear(full); list.Add(1); list.Clear(full); Assert.Empty(list);
@@ -232,7 +250,10 @@ public sealed class RetainedReferenceClearTests
     private readonly record struct ReferenceValue(object Value);
 
     [Theory]
-    [InlineData(false, false)] [InlineData(false, true)] [InlineData(true, false)] [InlineData(true, true)]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
     public void Dictionary_FullClearReleasesProtectedTailAndPreservesOverride(bool full, bool empty)
     {
         var dictionary = new TrackingDictionary();
