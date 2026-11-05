@@ -8,27 +8,9 @@
 		<Configurations>Debug;Release;ReleaseLean</Configurations>
 		<DisableMemoryPack Condition="'$(DisableMemoryPack)' == ''">false</DisableMemoryPack>
 		<UsePublishedSwiftCollections Condition="'$(UsePublishedSwiftCollections)' == ''">false</UsePublishedSwiftCollections>
-		<SwiftCollectionsPackageVersion Condition="'$(SwiftCollectionsPackageVersion)' == ''">7.0.0</SwiftCollectionsPackageVersion>
+		<SwiftCollectionsPackageVersion Condition="'$(SwiftCollectionsPackageVersion)' == ''">8.0.0</SwiftCollectionsPackageVersion>
 		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
 		<Deterministic>true</Deterministic>
-	</PropertyGroup>
-
-	<!-- Git Versioning -->
-	<PropertyGroup>
-		<SemVer Condition="'$(GitVersion_FullSemVer)' != ''">$(GitVersion_FullSemVer)</SemVer>
-		<SemVer Condition="'$(UseLocalLsfStack)' == 'true' And '$(SemVer)' == ''">7.1.0</SemVer>
-		<SemVer Condition="'$(SemVer)' == ''">0.0.0</SemVer>
-		<InfoVer Condition="'$(GitVersion_InformationalVersion)' != ''">$(GitVersion_InformationalVersion)</InfoVer>
-		<InfoVer Condition="'$(InfoVer)' == ''">$(SemVer)</InfoVer>
-		<AssemblySemVer Condition="'$(GitVersion_AssemblySemVer)' != ''">$(GitVersion_AssemblySemVer)</AssemblySemVer>
-		<AssemblySemVer Condition="'$(UseLocalLsfStack)' == 'true' And '$(AssemblySemVer)' == ''">7.1.0.0</AssemblySemVer>
-		<AssemblySemVer Condition="'$(AssemblySemVer)' == ''">$(SemVer).0</AssemblySemVer>
-		<AssemblySemFileVer Condition="'$(GitVersion_AssemblySemFileVer)' != ''">$(GitVersion_AssemblySemFileVer)</AssemblySemFileVer>
-		<AssemblySemFileVer Condition="'$(AssemblySemFileVer)' == ''">$(AssemblySemVer)</AssemblySemFileVer>
-		<InformationalVersion>$(InfoVer)</InformationalVersion>
-		<Version>$(SemVer)</Version>
-		<AssemblyVersion>$(AssemblySemVer)</AssemblyVersion>
-		<FileVersion>$(AssemblySemFileVer)</FileVersion>
 	</PropertyGroup>
 
 	<!-- Code Analysis and Documentation -->
@@ -45,7 +27,6 @@
 	<PropertyGroup>
 		<AssemblyName>SwiftCollections.FixedMathSharp</AssemblyName>
 		<RootNamespace>SwiftCollections.FixedMathSharp</RootNamespace>
-		<ProjectGuid>{CB6B93CA-2A09-4500-9E45-4AF90D42E236}</ProjectGuid>
 		<OutputPath>bin\$(Configuration)</OutputPath>
 	</PropertyGroup>
 
@@ -81,7 +62,7 @@
 	<PropertyGroup Condition="'$(Configuration)' == 'Debug'">
 		<DebugSymbols>true</DebugSymbols>
 		<Optimize>false</Optimize>
-		<DefineConstants>DEBUG;TRACE</DefineConstants>
+		<DefineConstants>$(DefineConstants);DEBUG;TRACE</DefineConstants>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)' == 'Release' Or '$(Configuration)' == 'ReleaseLean'">
@@ -91,28 +72,28 @@
 
 	<!-- Dependencies and Package References -->
 	<ItemGroup Condition="'$(DisableMemoryPack)' != 'true' And '$(UseLocalLsfStack)' != 'true'">
-		<PackageReference Include="FixedMathSharp" Version="7.1.0" />
+		<PackageReference Include="FixedMathSharp" Version="8.0.0" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(DisableMemoryPack)' == 'true' And '$(UseLocalLsfStack)' != 'true'">
-		<PackageReference Include="FixedMathSharp.Lean" Version="7.1.0" />
+		<PackageReference Include="FixedMathSharp.Lean" Version="8.0.0" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UseLocalLsfStack)' == 'true'">
 		<ProjectReference Include="..\..\..\Chronicler\src\Chronicler\Chronicler.csproj"
-			AdditionalProperties="Configuration=$(Configuration);SemVer=1.0.0;AssemblySemVer=1.0.0.0" />
+			AdditionalProperties="Configuration=$(Configuration);$(LocalLsfChroniclerProperties)" />
 		<ProjectReference Include="..\..\..\FixedMathSharp\src\FixedMathSharp\FixedMathSharp.csproj"
-			AdditionalProperties="Configuration=$(Configuration);SemVer=7.1.0;AssemblySemVer=7.1.0.0" />
+			AdditionalProperties="Configuration=$(Configuration);$(LocalLsfFixedMathSharpProperties)" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UseLocalLsfStack)' == 'true' And '$(DisableMemoryPack)' == 'true'">
 		<ProjectReference Include="..\..\..\Chronicler\src\Chronicler.MemoryPackShim\Chronicler.MemoryPackShim.csproj"
-			AdditionalProperties="Configuration=$(Configuration);SemVer=1.0.0;AssemblySemVer=1.0.0.0" />
+			AdditionalProperties="Configuration=$(Configuration);$(LocalLsfChroniclerProperties)" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UsePublishedSwiftCollections)' != 'true'">
 		<ProjectReference Include="..\SwiftCollections\SwiftCollections.csproj">
-			<AdditionalProperties Condition="'$(UseLocalLsfStack)' == 'true'">Configuration=$(Configuration);SemVer=7.0.0;AssemblySemVer=7.0.0.0</AdditionalProperties>
+			<AdditionalProperties Condition="'$(UseLocalLsfStack)' == 'true'">Configuration=$(Configuration);$(LocalLsfSwiftCollectionsProperties)</AdditionalProperties>
 		</ProjectReference>
 	</ItemGroup>
 

@@ -41,14 +41,14 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: mrdav30/Chronicler
-          ref: 70b97a130dec899fda7ba9e539398c807e70116f
+          ref: 7b90d5923d4bb6e0e42c033ec697b9678d6b8ece
           path: Chronicler
           persist-credentials: false
       - if: env.UseLocalLsfStack == 'true'
         uses: actions/checkout@v6
         with:
           repository: mrdav30/FixedMathSharp
-          ref: ba14b8f5a6b7b3a3df23052e62f7271e493edb20
+          ref: e2c325a827506419b1a04b2427d9bc77e629ab6f
           path: FixedMathSharp
           persist-credentials: false
 

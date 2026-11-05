@@ -11,24 +11,6 @@
 		<Deterministic>true</Deterministic>
 	</PropertyGroup>
 
-	<!-- Git Versioning -->
-	<PropertyGroup>
-		<SemVer Condition="'$(GitVersion_FullSemVer)' != ''">$(GitVersion_FullSemVer)</SemVer>
-		<SemVer Condition="'$(UseLocalLsfStack)' == 'true' And '$(SemVer)' == ''">7.0.0</SemVer>
-		<SemVer Condition="'$(SemVer)' == ''">0.0.0</SemVer>
-		<InfoVer Condition="'$(GitVersion_InformationalVersion)' != ''">$(GitVersion_InformationalVersion)</InfoVer>
-		<InfoVer Condition="'$(InfoVer)' == ''">$(SemVer)</InfoVer>
-		<AssemblySemVer Condition="'$(GitVersion_AssemblySemVer)' != ''">$(GitVersion_AssemblySemVer)</AssemblySemVer>
-		<AssemblySemVer Condition="'$(UseLocalLsfStack)' == 'true' And '$(AssemblySemVer)' == ''">7.0.0.0</AssemblySemVer>
-		<AssemblySemVer Condition="'$(AssemblySemVer)' == ''">$(SemVer).0</AssemblySemVer>
-		<AssemblySemFileVer Condition="'$(GitVersion_AssemblySemFileVer)' != ''">$(GitVersion_AssemblySemFileVer)</AssemblySemFileVer>
-		<AssemblySemFileVer Condition="'$(AssemblySemFileVer)' == ''">$(AssemblySemVer)</AssemblySemFileVer>
-		<InformationalVersion>$(InfoVer)</InformationalVersion>
-		<Version>$(SemVer)</Version>
-		<AssemblyVersion>$(AssemblySemVer)</AssemblyVersion>
-		<FileVersion>$(AssemblySemFileVer)</FileVersion>
-	</PropertyGroup>
-
 	<!-- Code Analysis and Documentation -->
 	<PropertyGroup>
 		<ImplicitUsings>disable</ImplicitUsings>
@@ -44,7 +26,6 @@
 	<PropertyGroup>
 		<AssemblyName>SwiftCollections</AssemblyName>
 		<RootNamespace>SwiftCollections</RootNamespace>
-		<ProjectGuid>{009CBC1E-B915-476D-98D6-1081526F7A9E}</ProjectGuid>
 		<OutputPath>bin\$(Configuration)\</OutputPath>
 	</PropertyGroup>
 
@@ -79,7 +60,6 @@
 
 	<PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-		<IncludeTransitiveProjectReferences>false</IncludeTransitiveProjectReferences>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)' == 'Debug'">
@@ -106,12 +86,12 @@
 
 	<ItemGroup Condition="'$(UseLocalLsfStack)' == 'true'">
 		<ProjectReference Include="..\..\..\Chronicler\src\Chronicler\Chronicler.csproj"
-			AdditionalProperties="Configuration=$(Configuration);SemVer=1.0.0;AssemblySemVer=1.0.0.0" />
+			AdditionalProperties="Configuration=$(Configuration);$(LocalLsfChroniclerProperties)" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UseLocalLsfStack)' == 'true' And '$(DisableMemoryPack)' == 'true'">
 		<ProjectReference Include="..\..\..\Chronicler\src\Chronicler.MemoryPackShim\Chronicler.MemoryPackShim.csproj"
-			AdditionalProperties="Configuration=$(Configuration);SemVer=1.0.0;AssemblySemVer=1.0.0.0" />
+			AdditionalProperties="Configuration=$(Configuration);$(LocalLsfChroniclerProperties)" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
@@ -139,6 +119,6 @@
 	</ItemGroup>
 	<ItemGroup Condition="'$(UseLocalLsfStack)' == 'true'">
 		<ProjectReference Include="..\..\..\Chronicler\src\Chronicler.Diagnostics\Chronicler.Diagnostics.csproj"
-			AdditionalProperties="Configuration=$(Configuration);SemVer=1.0.0;AssemblySemVer=1.0.0.0" />
+			AdditionalProperties="Configuration=$(Configuration);$(LocalLsfChroniclerProperties)" />
 	</ItemGroup>
 </Project>

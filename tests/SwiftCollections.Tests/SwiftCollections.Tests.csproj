@@ -19,7 +19,7 @@
 	</PropertyGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\SwiftCollections\SwiftCollections.csproj">
-			<AdditionalProperties Condition="'$(UseLocalLsfStack)' == 'true'">Configuration=$(Configuration);SemVer=7.0.0;AssemblySemVer=7.0.0.0</AdditionalProperties>
+			<AdditionalProperties Condition="'$(UseLocalLsfStack)' == 'true'">Configuration=$(Configuration);$(LocalLsfSwiftCollectionsProperties)</AdditionalProperties>
 		</ProjectReference>
 		<PackageReference Include="coverlet.collector" Version="10.0.1">
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -39,11 +39,11 @@
 	</ItemGroup>
 	<ItemGroup Condition="'$(UseLocalLsfStack)' == 'true'">
 		<ProjectReference Include="..\..\..\Chronicler\src\Chronicler\Chronicler.csproj"
-			AdditionalProperties="Configuration=$(Configuration);SemVer=1.0.0;AssemblySemVer=1.0.0.0" />
+			AdditionalProperties="Configuration=$(Configuration);$(LocalLsfChroniclerProperties)" />
 	</ItemGroup>
 	<ItemGroup Condition="'$(UseLocalLsfStack)' == 'true' And ('$(Configuration)' == 'ReleaseLean' Or '$(DisableMemoryPack)' == 'true')">
 		<ProjectReference Include="..\..\..\Chronicler\src\Chronicler.MemoryPackShim\Chronicler.MemoryPackShim.csproj"
-			AdditionalProperties="Configuration=$(Configuration);SemVer=1.0.0;AssemblySemVer=1.0.0.0" />
+			AdditionalProperties="Configuration=$(Configuration);$(LocalLsfChroniclerProperties)" />
 	</ItemGroup>
 
   <ItemGroup Condition="'$(UseLocalLsfStack)' != 'true'">
@@ -51,6 +51,6 @@
   </ItemGroup>
   <ItemGroup Condition="'$(UseLocalLsfStack)' == 'true'">
     <ProjectReference Include="..\..\..\Chronicler\src\Chronicler.Diagnostics\Chronicler.Diagnostics.csproj"
-                      AdditionalProperties="Configuration=$(Configuration);SemVer=1.0.0;AssemblySemVer=1.0.0.0" />
+                      AdditionalProperties="Configuration=$(Configuration);$(LocalLsfChroniclerProperties)" />
   </ItemGroup>
 </Project>

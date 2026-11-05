@@ -64,9 +64,13 @@ dotnet test SwiftCollections.slnx -c ReleaseLean --no-build -p:DisableTransitive
 ```
 
 Use `-m:1` for builds, including `dotnet test` when it builds, to avoid
-overlapping writes to shared local project outputs. The local 1.0.0
-Chronicler/shim, 7.1.0 math/companion, and 7.0.0 collection identities
-coordinate assembly resolution; they are build fixtures, not release versions.
+overlapping writes to shared local project outputs. `Directory.Build.props`
+owns the source-build identities and shared runtime version selection. Both
+SwiftCollections assemblies use `0.0.0-sc-local-lsf` with assembly/file version
+`0.0.0.0`, even when GitVersion values are present. Sibling references use the
+same policy: Chronicler/core/shim/diagnostics use `0.0.0-chronicler-local-lsf`,
+and FixedMathSharp assemblies use `0.0.0-fms-local-lsf`, all with numeric
+assembly/file version `0.0.0.0`. These identities do not change for releases.
 Local builds use explicit references at library, test, and benchmark boundaries
 and pass `-p:DisableTransitiveProjectReferences=true` globally on restore, build
 and test so sibling projects also preserve those explicit identities.
