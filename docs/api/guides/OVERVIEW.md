@@ -33,13 +33,13 @@ or [coverage report](https://mrdav30.github.io/SwiftCollections/coverage/).
 
 ## Choose a guide
 
-| Task                                                       | Guide                                                             |
-| ---------------------------------------------------------- | ----------------------------------------------------------------- |
-| Install a package and run a first example                  | [Getting started](getting-started.md)                             |
-| Choose a container, own IDs, and clear retained references | [Collections and clearing](collections.md)                        |
-| Index and query spatial bounds                             | [Spatial queries](spatial-queries.md)                             |
-| Rent collections and manage host notifications             | [Pools and observable collections](pools-and-observables.md)      |
-| Save explicit state and configure diagnostic output        | [Serialization and diagnostics](serialization-and-diagnostics.md) |
+| Task                                                                                      | Guide                                                             |
+| ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Install a package and run a first example                                                 | [Getting started](getting-started.md)                             |
+| Choose a container, distinguish slots/handles/external IDs, and clear retained references | [Collections and clearing](collections.md)                        |
+| Index and query spatial bounds                                                            | [Spatial queries](spatial-queries.md)                             |
+| Rent collections and manage host notifications                                            | [Pools and observable collections](pools-and-observables.md)      |
+| Save explicit state and configure diagnostic output                                       | [Serialization and diagnostics](serialization-and-diagnostics.md) |
 
 ## Clearing And Retained References
 

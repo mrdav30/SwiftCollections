@@ -59,8 +59,8 @@ serialization stack or wants the smaller dependency surface.
 
 ## A quick taste
 
-`SwiftGenerationalBucket<T>` gives you dense storage with handles that stop
-resolving after their slot is reused:
+`SwiftGenerationalBucket<T>` gives you stable slots with generation-checked
+handles that stop resolving after removal and slot reuse:
 
 ```csharp
 using System;

@@ -52,6 +52,89 @@ Sparse containers are strongest when IDs are compact, non-negative, and
 externally owned by a simulation, ECS, partition, or handle system. Their memory
 usage scales with the highest stored ID, not only with the number of live IDs.
 
+## Who issues the identity?
+
+Both bucket types issue an identity when you call `Add`. Later lookup and
+removal operations take that identity back. The difference is whether it
+identifies only a slot or also the particular allocation occupying that slot.
+
+| Container                    | Identity supplied to `Add`       | Identity returned by `Add`                      | After removal and slot reuse                            |
+| ---------------------------- | -------------------------------- | ----------------------------------------------- | ------------------------------------------------------- |
+| `SwiftBucket<T>`             | None                             | An integer slot index                           | The old index can refer to the replacement value        |
+| `SwiftGenerationalBucket<T>` | None                             | A `SwiftHandle` containing index and generation | The old handle is rejected while its generation differs |
+| `SwiftSparseMap<T>`          | Your externally owned integer ID | None; `TryAdd` reports success                  | The container does not track generations of your ID     |
+
+### Stable slots under your ownership
+
+Use `SwiftBucket<T>` when items need stable indices while registered and the
+owner can discard every saved index when removing an item. Other live items keep
+their indices; removal leaves a reusable slot rather than shifting them.
+
+```csharp
+using SwiftCollections;
+
+var registrations = new SwiftBucket<string>();
+int firstSlot = registrations.Add("first");
+registrations.TryRemoveAt(firstSlot);
+
+int replacementSlot = registrations.Add("replacement");
+bool sameSlot = firstSlot == replacementSlot; // true: the freed slot was reused.
+bool found = registrations.TryGetValue(firstSlot, out string value);
+// found is true and value is "replacement". The integer cannot detect staleness.
+```
+
+This fits a tightly owned registry whose removal path also clears its callers'
+stored IDs. `InsertAt` can explicitly choose or replace a slot, but adds no
+generation validation. Use a sparse map when attaching values to existing
+external IDs is the main job.
+
+### A ticket for one allocation
+
+Use `SwiftGenerationalBucket<T>` when a saved identity can outlive removal, such
+as a queued command or delayed lookup. Keep the handle returned by `Add` and
+pass it back to `TryGet`, `Remove`, or `IsValid`:
+
+```csharp
+using SwiftCollections;
+
+var actors = new SwiftGenerationalBucket<string>();
+SwiftHandle oldTicket = actors.Add("first");
+actors.Remove(oldTicket);
+
+SwiftHandle currentTicket = actors.Add("replacement");
+bool oldFound = actors.TryGet(oldTicket, out _); // false: generation changed.
+bool currentFound = actors.TryGet(currentTicket, out string actor);
+// currentFound is true and actor is "replacement".
+```
+
+The ticket analogy describes the handle's role: its index chooses the slot and
+its generation distinguishes allocations of that slot. Preserve both fields when
+storing a handle. Handles belong to their originating collection; they carry no
+collection identity and are not globally unique IDs. Generations are finite
+`uint` counters, so this is not an unlimited uniqueness guarantee. Neither
+bucket compacts live values on removal; iteration can scan holes in the
+allocated slot range instead of visiting only live values.
+
+### Values attached to existing IDs
+
+Use `SwiftSparseMap<T>` when another system already owns compact integer IDs:
+
+```csharp
+using SwiftCollections;
+
+int actorId = 42; // Issued by the owning system.
+var labels = new SwiftSparseMap<string>();
+labels.Add(actorId, "player");
+bool found = labels.TryGetValue(actorId, out string label);
+// found is true and label is "player"; the map did not issue actorId.
+```
+
+Choose `SwiftSparseSet` for membership without a payload. If IDs can be very
+large or widely scattered, use a hash-based collection instead of allocating
+sparse lookup storage up to the highest ID. Choose `SwiftList<T>` when indices
+need no stability across structural edits, or `SwiftPackedSet<T>` when dense
+unique-value iteration and membership matter more than assigned slots.
+
 `SwiftSparseSet` and `SwiftSparseMap<T>` can copy dense keys into caller-owned
 `SwiftList<int>` buffers, including sorted ascending export through
 `CopySortedKeysTo(...)`. Use that path for deterministic per-frame scratch

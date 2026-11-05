@@ -64,8 +64,8 @@ dotnet test SwiftCollections.slnx -c ReleaseLean --no-build -p:DisableTransitive
 ```
 
 Use `-m:1` for builds, including `dotnet test` when it builds, to avoid
-overlapping writes to shared local project outputs. `Directory.Build.props`
-owns the source-build identities and shared runtime version selection. Both
+overlapping writes to shared local project outputs. `Directory.Build.props` owns
+the source-build identities and shared runtime version selection. Both
 SwiftCollections assemblies use `0.0.0-sc-local-lsf` with assembly/file version
 `0.0.0.0`, even when GitVersion values are present. Sibling references use the
 same policy: Chronicler/core/shim/diagnostics use `0.0.0-chronicler-local-lsf`,
@@ -189,6 +189,12 @@ dotnet tool run docfx docs/api/docfx.json --warningsAsErrors
 
 See [AGENTS.md](AGENTS.md) for repository architecture, testing patterns,
 serialization boundaries, and benchmark guidance.
+
+Track measured performance, allocation, scaling, and benchmark reliability
+concerns in the
+[benchmark signal backlog](docs/feature-work/benchmark-signal-hardening-backlog.md).
+It contains baseline commands and evidence requirements. Keep correctness
+defects in the [issue tracker](docs/feature-work/issue-tracker.md).
 
 ## Branch-Specific CI Dependencies
 

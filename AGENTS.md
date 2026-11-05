@@ -43,6 +43,9 @@ Read these before making non-trivial changes:
    adding a new intentional exception.
 8. [Issue tracker](docs/feature-work/issue-tracker.md) for active concerns,
    resolved root causes and required verification in the owning repository.
+9. [Benchmark signal backlog](docs/feature-work/benchmark-signal-hardening-backlog.md)
+   for measured performance, allocation, scaling and benchmark reliability
+   concerns.
 
 ## Source Of Truth
 
