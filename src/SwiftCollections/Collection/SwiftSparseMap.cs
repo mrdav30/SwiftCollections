@@ -24,7 +24,7 @@ namespace SwiftCollections;
 /// for cache-friendly iteration.
 /// </summary>
 /// <remarks>
-/// Unlike <see cref="SwiftBucket{T}"/>, which internally assigns and manages item indices,
+/// Unlike <see cref="SwiftSlotMap{T}"/>, which internally assigns and manages item indices,
 /// <see cref="SwiftSparseMap{T}"/> is externally keyed. The caller supplies the integer key
 /// (for example, an entity ID or handle) used to index the value.
 ///

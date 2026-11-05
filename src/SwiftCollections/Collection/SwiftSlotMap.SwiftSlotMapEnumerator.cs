@@ -1,5 +1,5 @@
 //=======================================================================
-// SwiftBucket.SwiftBucketEnumerator.cs
+// SwiftSlotMap.SwiftSlotMapEnumerator.cs
 //=======================================================================
 // MIT License, Copyright (c) 2024-present David Oravsky (mrdav30)
 // See LICENSE file in the project root for full license information.
@@ -15,28 +15,28 @@ using Chronicler.Diagnostics;
 
 namespace SwiftCollections;
 
-public sealed partial class SwiftBucket<T>
+public sealed partial class SwiftSlotMap<T>
 {
     /// <summary>
-    /// Enumerates the elements of a <see cref="SwiftBucket{T}"/> collection.
+    /// Enumerates the elements of a <see cref="SwiftSlotMap{T}"/> collection.
     /// </summary>
     /// <remarks>
-    /// The enumerator provides read-only, forward-only iteration over the elements in the <see cref="SwiftBucket{T}"/>.
+    /// The enumerator provides read-only, forward-only iteration over the elements in the <see cref="SwiftSlotMap{T}"/>.
     /// The enumerator is invalidated if the collection is modified after the enumerator is created.
     /// </remarks>
-    public struct SwiftBucketEnumerator : IEnumerator<T>, IDisposable
+    public struct SwiftSlotMapEnumerator : IEnumerator<T>, IDisposable
     {
-        private readonly SwiftBucket<T> _bucket;
+        private readonly SwiftSlotMap<T> _bucket;
         private readonly Entry[] _entries;
         private readonly uint _version;
         private int _index;
         private T _current;
 
-        internal SwiftBucketEnumerator(SwiftBucket<T> bucket)
+        internal SwiftSlotMapEnumerator(SwiftSlotMap<T> map)
         {
-            _bucket = bucket;
-            _entries = bucket._innerArray;
-            _version = bucket._version;
+            _bucket = map;
+            _entries = map._innerArray;
+            _version = map._version;
             _index = -1;
             _current = default!;
         }

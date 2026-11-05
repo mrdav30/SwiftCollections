@@ -35,8 +35,8 @@ removed; reusing that slot does not make the old handle valid again:
 using System;
 using SwiftCollections;
 
-var actors = new SwiftGenerationalBucket<string>();
-SwiftHandle player = actors.Add("player");
+var actors = new SwiftTicketMap<string>();
+SwiftTicket player = actors.Add("player");
 
 if (actors.TryGet(player, out string actor))
     Console.WriteLine(actor);

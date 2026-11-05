@@ -7,7 +7,7 @@ namespace SwiftCollections.Benchmarks;
 [MemoryDiagnoser]
 [CategoriesColumn]
 [GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
-public class BucketWorkloadBenchmarks
+public class SlotMapWorkloadBenchmarks
 {
     [Params(100, 1000, 10000, 100000)]
     public int N;
@@ -17,8 +17,8 @@ public class BucketWorkloadBenchmarks
     private int[] _churnPositions;
     private int[] _replacementValues;
 
-    private SwiftBucket<int> _swiftBucket;
-    private int[] _bucketIndices;
+    private SwiftSlotMap<int> _swiftSlotMap;
+    private int[] _slotMapIndices;
     private Dictionary<int, int> _dictionary;
 
     [GlobalSetup]
@@ -56,18 +56,18 @@ public class BucketWorkloadBenchmarks
     }
 
     [IterationSetup(Targets = new[] {
-        nameof(Bucket_LookupByStoredIndex),
-        nameof(Bucket_RemoveByStoredIndex),
-        nameof(Bucket_EnumerateActiveValues),
-        nameof(Bucket_StableSlotChurn25)
+        nameof(SlotMap_LookupByStoredIndex),
+        nameof(SlotMap_RemoveByStoredIndex),
+        nameof(SlotMap_EnumerateActiveValues),
+        nameof(SlotMap_StableSlotChurn25)
     })]
-    public void IterationSetup_Bucket()
+    public void IterationSetup_SlotMap()
     {
-        _swiftBucket = new SwiftBucket<int>(N);
-        _bucketIndices = new int[N];
+        _swiftSlotMap = new SwiftSlotMap<int>(N);
+        _slotMapIndices = new int[N];
 
         for (int i = 0; i < N; i++)
-            _bucketIndices[i] = _swiftBucket.Add(_values[i]);
+            _slotMapIndices[i] = _swiftSlotMap.Add(_values[i]);
     }
 
     [Benchmark(Baseline = true)]
@@ -87,13 +87,13 @@ public class BucketWorkloadBenchmarks
 
     [Benchmark]
     [BenchmarkCategory("Lookup")]
-    public int Bucket_LookupByStoredIndex()
+    public int SlotMap_LookupByStoredIndex()
     {
         int sum = 0;
         for (int i = 0; i < N; i++)
         {
             int position = _lookupOrder[i];
-            sum += _swiftBucket[_bucketIndices[position]];
+            sum += _swiftSlotMap[_slotMapIndices[position]];
         }
 
         return sum;
@@ -116,13 +116,13 @@ public class BucketWorkloadBenchmarks
 
     [Benchmark]
     [BenchmarkCategory("Remove")]
-    public int Bucket_RemoveByStoredIndex()
+    public int SlotMap_RemoveByStoredIndex()
     {
         int removed = 0;
         for (int i = 0; i < N; i++)
         {
             int position = _lookupOrder[i];
-            if (_swiftBucket.TryRemoveAt(_bucketIndices[position]))
+            if (_swiftSlotMap.TryRemoveAt(_slotMapIndices[position]))
                 removed++;
         }
 
@@ -141,10 +141,10 @@ public class BucketWorkloadBenchmarks
 
     [Benchmark]
     [BenchmarkCategory("Enumerate")]
-    public int Bucket_EnumerateActiveValues()
+    public int SlotMap_EnumerateActiveValues()
     {
         int sum = 0;
-        foreach (var item in _swiftBucket)
+        foreach (var item in _swiftSlotMap)
             sum += item;
         return sum;
     }
@@ -165,17 +165,17 @@ public class BucketWorkloadBenchmarks
 
     [Benchmark]
     [BenchmarkCategory("Churn")]
-    public int Bucket_StableSlotChurn25()
+    public int SlotMap_StableSlotChurn25()
     {
         for (int i = 0; i < _churnPositions.Length; i++)
         {
             int position = _churnPositions[i];
-            int index = _bucketIndices[position];
+            int index = _slotMapIndices[position];
 
-            _swiftBucket.TryRemoveAt(index);
-            _swiftBucket.InsertAt(index, _replacementValues[i]);
+            _swiftSlotMap.TryRemoveAt(index);
+            _swiftSlotMap.InsertAt(index, _replacementValues[i]);
         }
 
-        return _swiftBucket.Count;
+        return _swiftSlotMap.Count;
     }
 }

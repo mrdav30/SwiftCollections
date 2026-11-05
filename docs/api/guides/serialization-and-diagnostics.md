@@ -19,8 +19,8 @@ Package variants:
 - `SwiftCollections.FixedMathSharp.Lean`
 
 State-backed collection types expose explicit state structs such as
-`SwiftArrayState<T>`, `SwiftBucketState<T>`,
-`SwiftDictionaryState<TKey, TValue>`, `SwiftGenerationalBucketState<T>`, and
+`SwiftArrayState<T>`, `SwiftSlotMapState<T>`,
+`SwiftDictionaryState<TKey, TValue>`, `SwiftTicketMapState<T>`, and
 `SwiftSparseMapState<T>`.
 
 These types implement `Chronicler.IStateBacked<TState>` and use

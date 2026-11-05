@@ -24,8 +24,8 @@ description: API reference and guides for specialized, low-allocation .NET colle
     when your system already owns small non-negative IDs.</p>
   </div>
   <div class="sc-card">
-    <h3><a href="xref:SwiftCollections.SwiftGenerationalBucket`1">Stable handles</a></h3>
-    <p>Use buckets for reusable slots, or generation-checked buckets when stale
+    <h3><a href="xref:SwiftCollections.SwiftTicketMap`1">Stable handles</a></h3>
+    <p>Use slot maps for reusable slots, or ticket maps when stale
     references must stop resolving after a slot is reused.</p>
   </div>
   <div class="sc-card">

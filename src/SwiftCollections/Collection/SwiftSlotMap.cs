@@ -1,5 +1,5 @@
 //=======================================================================
-// SwiftBucket.cs
+// SwiftSlotMap.cs
 //=======================================================================
 // MIT License, Copyright (c) 2024-present David Oravsky (mrdav30)
 // See LICENSE file in the project root for full license information.
@@ -19,40 +19,40 @@ using SwiftCollections.Utility;
 namespace SwiftCollections;
 
 /// <summary>
-/// Represents a high-performance bucket collection that assigns and manages stable integer indices
+/// Represents a high-performance map collection that assigns and manages stable integer indices
 /// for stored items. Provides O(1) insertion, removal, and lookup by internally generated index.
 /// </summary>
 /// <remarks>
 /// Unlike <see cref="SwiftSparseMap{T}"/>, which requires callers to provide the key used to store values,
-/// <see cref="SwiftBucket{T}"/> internally generates and manages indices for each inserted item.
+/// <see cref="SwiftSlotMap{T}"/> internally generates and manages indices for each inserted item.
 ///
 /// These indices remain stable for the lifetime of the item unless it is removed.
 ///
 /// The container is optimized for scenarios requiring:
 /// <list type="bullet">
 ///     <item>
-///         <description>Stable handles or identifiers.</description>
+///         <description>Stable integer slots.</description>
 ///     </item>
 ///     <item>
 ///         <description>Fast addition and removal.</description>
 ///     </item>
 ///     <item>
-///         <description>Dense storage and iteration performance.</description>
+///         <description>Array-backed storage; iteration scans allocated slots and skips holes.</description>
 ///     </item>
 /// </list>
 ///
 /// **Efficient Lookups Using Indices**:
-/// When you add items to the bucket using the <see cref="Add"/> method, it returns an arrayIndex that you can store externally.
+/// When you add items to the map using the <see cref="Add"/> method, it returns an arrayIndex that you can store externally.
 /// You can then use this arrayIndex to access the item directly via the indexer, and check if it's still present using the <see cref="IsAllocated"/> method.
 /// This approach allows for O(1) time complexity for lookups and existence checks, avoiding the need for O(n) searches using methods like <see cref="IndexOf"/> or <see cref="Contains"/>.
 ///
 /// **Note**: iteration over the collection does not follow any guaranteed order and depends on internal allocation.
 /// </remarks>
-/// <typeparam name="T">Specifies the type of elements in the bucket.</typeparam>
+/// <typeparam name="T">Specifies the type of elements in the map.</typeparam>
 [Serializable]
 [JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
-public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, ISwiftCloneable<T>, IEnumerable<T>, ICollection<T>, ICollection
+public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>, ISwiftCloneable<T>, IEnumerable<T>, ICollection<T>, ICollection
 {
     #region Constants
 
@@ -95,15 +95,15 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     #region Constructors
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftBucket{T}"/> class.
+    /// Initializes a new instance of the <see cref="SwiftSlotMap{T}"/> class.
     /// </summary>
-    public SwiftBucket() : this(DefaultCapacity) { }
+    public SwiftSlotMap() : this(DefaultCapacity) { }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftBucket{T}"/> class with the specified capacity.
+    /// Initializes a new instance of the <see cref="SwiftSlotMap{T}"/> class with the specified capacity.
     /// </summary>
-    /// <param name="capacity">The initial capacity of the bucket.</param>
-    public SwiftBucket(int capacity)
+    /// <param name="capacity">The initial capacity of the map.</param>
+    public SwiftSlotMap(int capacity)
     {
         capacity = capacity <= DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(capacity);
         _innerArray = new Entry[capacity];
@@ -111,11 +111,11 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     }
 
     ///  <summary>
-    ///  Initializes a new instance of the <see cref="SwiftBucket{T}"/> class with the specified <see cref="SwiftArrayState{T}"/>.
+    ///  Initializes a new instance of the <see cref="SwiftSlotMap{T}"/> class with the specified <see cref="SwiftArrayState{T}"/>.
     ///  </summary>
     ///  <param name="state">The state containing the internal array, count, offset, and version for initialization.</param>
     [MemoryPackConstructor]
-    public SwiftBucket(SwiftBucketState<T> state)
+    public SwiftSlotMap(SwiftSlotMapState<T> state)
     {
         State = state;
 
@@ -128,7 +128,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     #region Properties
 
     /// <summary>
-    /// Gets the number of elements contained in the <see cref="SwiftBucket{T}"/>.
+    /// Gets the number of elements contained in the <see cref="SwiftSlotMap{T}"/>.
     /// </summary>
     [JsonIgnore]
     [MemoryPackIgnore]
@@ -142,7 +142,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     public int PeakCount => _peakCount;
 
     /// <summary>
-    /// Gets the total capacity of the <see cref="SwiftBucket{T}"/>.
+    /// Gets the total capacity of the <see cref="SwiftSlotMap{T}"/>.
     /// </summary>
     [JsonIgnore]
     [MemoryPackIgnore]
@@ -188,15 +188,15 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     public object SyncRoot => _syncRoot ??= new object();
 
     /// <summary>
-    /// Gets or sets the current state of the bucket, including all items, allocation status, and free indices.
+    /// Gets or sets the current state of the map, including all items, allocation status, and free indices.
     /// </summary>
     /// <remarks>
-    /// Use this property to capture or restore the complete state of the bucket, such as for serialization or checkpointing scenarios. 
+    /// Use this property to capture or restore the complete state of the map, such as for serialization or checkpointing scenarios. 
     /// Setting this property replaces the entire internal state, including items and allocation metadata.
     /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
-    public SwiftBucketState<T> State
+    public SwiftSlotMapState<T> State
     {
         get
         {
@@ -217,7 +217,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
             int[] free = new int[_freeIndices.Count];
             Array.Copy(_freeIndices.Array, free, _freeIndices.Count);
 
-            return new SwiftBucketState<T>(
+            return new SwiftSlotMapState<T>(
                 items,
                 allocated,
                 free,
@@ -291,7 +291,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     #region Collection Management
 
     /// <summary>
-    /// Adds an item to the bucket and returns its arrayIndex.
+    /// Adds an item to the map and returns its arrayIndex.
     /// </summary>
     /// <param name="item">The item to add.</param>
     /// <returns>The arrayIndex where the item was added.</returns>
@@ -339,7 +339,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     }
 
     /// <summary>
-    /// Removes the first occurrence of a specific object from the bucket.
+    /// Removes the first occurrence of a specific object from the map.
     /// </summary>
     /// <param name="item">The object to remove.</param>
     /// <returns><c>true</c> if item was successfully removed; otherwise, <c>false</c>.</returns>
@@ -382,7 +382,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     }
 
     /// <summary>
-    /// Removes all items from the bucket.
+    /// Removes all items from the map.
     /// </summary>
     public void Clear()
     {
@@ -447,7 +447,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     }
 
     /// <summary>
-    /// Reduces unused tail capacity while preserving stable handles for all currently allocated entries.
+    /// Reduces unused tail capacity while preserving stable indices for all currently allocated entries.
     /// </summary>
     public void TrimExcessCapacity()
     {
@@ -495,7 +495,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     /// </summary>
     /// <param name="key">The arrayIndex of the item to get.</param>
     /// <param name="value">When this method returns, contains the value associated with the specified arrayIndex, if the arrayIndex is found; otherwise, the default value for the type of the value parameter.</param>
-    /// <returns><c>true</c> if the bucket contains an element at the specified arrayIndex; otherwise, <c>false</c>.</returns>
+    /// <returns><c>true</c> if the map contains an element at the specified arrayIndex; otherwise, <c>false</c>.</returns>
     public bool TryGetValue(int key, out T value)
     {
         if (!IsAllocated(key))
@@ -509,9 +509,9 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     }
 
     /// <summary>
-    /// Determines whether the bucket contains a specific value.
+    /// Determines whether the map contains a specific value.
     /// </summary>
-    /// <param name="item">The object to locate in the bucket.</param>
+    /// <param name="item">The object to locate in the map.</param>
     /// <returns><c>true</c> if item is found; otherwise, <c>false</c>.</returns>
     /// <remarks>
     /// This method performs a linear search and has a time complexity of O(n).
@@ -521,10 +521,10 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     public bool Contains(T item) => IndexOf(item) != -1;
 
     /// <summary>
-    /// Determines whether the <see cref="SwiftBucket{T}"/> contains an element that matches the conditions defined by the specified predicate.
+    /// Determines whether the <see cref="SwiftSlotMap{T}"/> contains an element that matches the conditions defined by the specified predicate.
     /// </summary>
     /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
-    /// <returns><c>true</c> if the <see cref="SwiftBucket{T}"/> contains one or more elements that match the specified predicate; otherwise, <c>false</c>.</returns>
+    /// <returns><c>true</c> if the <see cref="SwiftSlotMap{T}"/> contains one or more elements that match the specified predicate; otherwise, <c>false</c>.</returns>
     public bool Exists(Predicate<T> match)
     {
         ChronicleGuard.ThrowIfNull(match, nameof(match));
@@ -546,7 +546,7 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     }
 
     /// <summary>
-    /// Searches for an element that matches the conditions defined by the specified predicate, and returns the first matching element in bucket iteration order.
+    /// Searches for an element that matches the conditions defined by the specified predicate, and returns the first matching element in map iteration order.
     /// </summary>
     /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
     /// <returns>The first element that matches the conditions defined by the specified predicate, if found; otherwise, the default value for type <typeparamref name="T"/>.</returns>
@@ -580,11 +580,11 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     public bool IsAllocated(int index) => !((uint)index >= (uint)_innerArray.Length) && _innerArray[index].IsUsed;
 
     /// <summary>
-    /// Searches for the specified object and returns the zero-based arrayIndex of the first occurrence within the bucket.
+    /// Searches for the specified object and returns the zero-based arrayIndex of the first occurrence within the map.
     /// </summary>
-    /// <param name="item">The object to locate in the bucket.</param>
+    /// <param name="item">The object to locate in the map.</param>
     /// <returns>
-    /// The zero-based arrayIndex of the first occurrence of <paramref name="item"/> within the bucket, if found; otherwise, <c>-1</c>.
+    /// The zero-based arrayIndex of the first occurrence of <paramref name="item"/> within the map, if found; otherwise, <c>-1</c>.
     /// </returns>
     /// <remarks>
     /// This method performs a linear search and has a time complexity of O(n).
@@ -623,9 +623,9 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     }
 
     /// <summary>
-    /// Copies the elements of the bucket to an <see cref="Array"/>, starting at a particular Array arrayIndex.
+    /// Copies the elements of the map to an <see cref="Array"/>, starting at a particular Array arrayIndex.
     /// </summary>
-    /// <param name="array">The one-dimensional Array that is the destination of the elements copied from bucket.</param>
+    /// <param name="array">The one-dimensional Array that is the destination of the elements copied from map.</param>
     /// <param name="arrayIndex">The zero-based arrayIndex in array at which copying begins.</param>
     public void CopyTo(T[] array, int arrayIndex)
     {
@@ -690,10 +690,10 @@ public sealed partial class SwiftBucket<T> : IStateBacked<SwiftBucketState<T>>, 
     #region Enumerator
 
     /// <summary>
-    /// Returns an enumerator that iterates through the <see cref="SwiftBucket{T}"/>.
+    /// Returns an enumerator that iterates through the <see cref="SwiftSlotMap{T}"/>.
     /// </summary>
-    /// <returns>An enumerator for the bucket.</returns>
-    public SwiftBucketEnumerator GetEnumerator() => new(this);
+    /// <returns>An enumerator for the map.</returns>
+    public SwiftSlotMapEnumerator GetEnumerator() => new(this);
     IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 

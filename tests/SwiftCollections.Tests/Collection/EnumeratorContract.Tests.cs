@@ -102,7 +102,7 @@ public class EnumeratorContractTests
     [Fact]
     public void Bucket_CurrentUsesSlotExtentRatherThanLiveCount()
     {
-        var bucket = new SwiftBucket<int>();
+        var bucket = new SwiftSlotMap<int>();
         for (int i = 0; i < 8; i++) bucket.Add(i);
         for (int i = 0; i < 7; i++) bucket.RemoveAt(i);
         IEnumerator iterator = ((IEnumerable)bucket).GetEnumerator();
@@ -115,7 +115,7 @@ public class EnumeratorContractTests
     [Fact]
     public void GenerationalBucket_CurrentAcceptsNullAndRejectsInvalidPositions()
     {
-        var bucket = new SwiftGenerationalBucket<string>();
+        var bucket = new SwiftTicketMap<string>();
         var removed = bucket.Add("removed");
         bucket.Add(null);
         bucket.Remove(removed);
@@ -206,11 +206,11 @@ public class EnumeratorContractTests
                 var stack = new SwiftStack<int>(items);
                 return Case(stack, () => stack.Push(99));
             case "Bucket":
-                var bucket = new SwiftBucket<int>();
+                var bucket = new SwiftSlotMap<int>();
                 foreach (int item in items) bucket.Add(item);
                 return Case(bucket, () => bucket.Add(99));
             case "GenerationalBucket":
-                var generational = new SwiftGenerationalBucket<int>();
+                var generational = new SwiftTicketMap<int>();
                 foreach (int item in items) generational.Add(item);
                 return Case(generational, () => generational.Add(99));
             case "HashSet":

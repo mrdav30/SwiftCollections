@@ -3,9 +3,9 @@
 ## Migrating from v7 to v8
 
 v8 updates the Chronicler and FixedMathSharp dependencies, moves shared
-diagnostics into Chronicler, and adds explicit retained-reference clearing. The
-diagnostics move changes public type identities, so rebuild consumers and
-adapters against the updated packages.
+diagnostics into Chronicler, renames the slot-based collections, and adds
+explicit retained-reference clearing. These changes introduce new public type
+identities, so rebuild consumers and adapters against the updated packages.
 
 ### Package and framework changes
 
@@ -31,6 +31,38 @@ Both runtime libraries now target `netstandard2.1` and `net10.0`; the dedicated
 remains available for compatible runtimes. Building this repository requires the
 .NET 10 SDK, and its tests and benchmarks run on .NET 10. This does not require
 package consumers to use C# 14.
+
+### Slot maps and tickets
+
+The slot-based collections now use names that describe their ownership model:
+
+| v7 API                                                         | v8 API                                       |
+| -------------------------------------------------------------- | -------------------------------------------- |
+| `SwiftBucket<T>`                                               | `SwiftSlotMap<T>`                            |
+| `SwiftGenerationalBucket<T>`                                   | `SwiftTicketMap<T>`                          |
+| `SwiftHandle`                                                  | `SwiftTicket`                                |
+| `SwiftBucketState<T>`                                          | `SwiftSlotMapState<T>`                       |
+| `SwiftGenerationalBucketState<T>`                              | `SwiftTicketMapState<T>`                     |
+| `SwiftBucket<T>.SwiftBucketEnumerator`                         | `SwiftSlotMap<T>.SwiftSlotMapEnumerator`     |
+| `SwiftGenerationalBucket<T>.SwiftGenerationalBucketEnumerator` | `SwiftTicketMap<T>.SwiftTicketMapEnumerator` |
+
+`SwiftSlotMap<T>.Add` returns an integer slot. `SwiftTicketMap<T>.Add` returns a
+`SwiftTicket` containing an index and generation; pass that ticket back for
+lookup and removal. Both maps issue their own identities. Use
+`SwiftSparseMap<T>` when another system already owns the integer IDs. See the
+[selection guide and examples](api/guides/collections.md#who-issues-the-identity).
+
+Replace the old names and rebuild consumers and adapters; there are no aliases
+or forwarding wrappers. Ticket-map methods now name their identity parameter
+`ticket` instead of `handle`, so update named arguments too.
+`SwiftTicket.ToString()` returns `Ticket(index:generation)`.
+
+State fields and their order are unchanged. Regression fixtures captured from
+the published v7 package verify typed JSON and MemoryPack collection payloads,
+including free-slot reuse and generation validation after restore. When a host
+stores CLR type names or maintains serializer registrations, migrate those names
+and registrations separately. Tickets still contain `Index` and `Generation`,
+carry no collection identity, and must only be used with their originating map.
 
 ### Chronicler imports
 
@@ -84,10 +116,9 @@ Full cleanup can take time proportional to retained capacity. It does not
 promise to zero unused numeric storage. `FastClear()` remains a count-only
 operation on types that support it.
 
-`SwiftGenerationalBucket<T>` also gains `Clear()` and the explicit cleanup
-overload. Clearing invalidates live handles and preserves generation history;
-saving and restoring a cleared bucket preserves subsequent handle allocation.
-See
+`SwiftTicketMap<T>` also gains `Clear()` and the explicit cleanup overload.
+Clearing invalidates live tickets and preserves generation history; saving and
+restoring a cleared map preserves subsequent ticket allocation. See
 [Collections and clearing](api/guides/collections.md#clearing-and-retained-references)
 for the complete ownership and cost guidance.
 
@@ -95,8 +126,8 @@ for the complete ownership and cost guidance.
 
 Affected handwritten non-generic enumerators now reject `Current` before the
 first successful `MoveNext()` and after enumeration ends. Fixes also cover the
-last valid item, sparse bucket slots, valid null values, and mutation detection
-on generational-bucket `Reset()`.
+last valid item, sparse map slots, valid null values, and mutation detection on
+ticket-map `Reset()`.
 
 Code that reads `IEnumerator.Current` outside a valid position should instead
 check `MoveNext()` before each read. Ordinary `foreach` usage needs no change;

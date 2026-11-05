@@ -1,5 +1,5 @@
 //=======================================================================
-// SwiftGenerationalBucket.cs
+// SwiftTicketMap.cs
 //=======================================================================
 // MIT License, Copyright (c) 2024-present David Oravsky (mrdav30)
 // See LICENSE file in the project root for full license information.
@@ -19,18 +19,18 @@ using SwiftCollections.Utility;
 namespace SwiftCollections;
 
 /// <summary>
-/// Represents a high-performance generational bucket that assigns stable handles to stored items.
+/// Represents a high-performance ticket map that assigns stable tickets to stored items.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <see cref="SwiftGenerationalBucket{T}"/> is similar to <see cref="SwiftBucket{T}"/> but adds
+/// <see cref="SwiftTicketMap{T}"/> is similar to <see cref="SwiftSlotMap{T}"/> but adds
 /// <b>generation tracking</b> to prevent stale references from accessing reused slots.
 /// </para>
 ///
 /// <para>
-/// When an item is added, a <see cref="SwiftHandle"/> containing both an index and generation
+/// When an item is added, a <see cref="SwiftTicket"/> containing both an index and generation
 /// is returned. If the item is removed and the slot reused later, the generation value
-/// changes, causing older handles to automatically become invalid.
+/// changes, causing older tickets to automatically become invalid.
 /// </para>
 ///
 /// <para>
@@ -42,22 +42,22 @@ namespace SwiftCollections;
 /// Key characteristics:
 /// <list type="bullet">
 /// <item><description>O(1) insertion and removal.</description></item>
-/// <item><description>Stable handles for the lifetime of stored items.</description></item>
-/// <item><description>Automatic invalidation of stale handles via generation counters.</description></item>
+/// <item><description>Stable tickets for the lifetime of stored items.</description></item>
+/// <item><description>Automatic invalidation of stale tickets via generation counters.</description></item>
 /// <item><description>Cache-friendly contiguous storage.</description></item>
 /// </list>
 /// </para>
 ///
 /// <para>
-/// Use <see cref="SwiftBucket{T}"/> when raw indices are acceptable.
-/// Use <see cref="SwiftGenerationalBucket{T}"/> when handle safety is required.
+/// Use <see cref="SwiftSlotMap{T}"/> when raw indices are acceptable.
+/// Use <see cref="SwiftTicketMap{T}"/> when ticket safety is required.
 /// </para>
 /// </remarks>
-/// <typeparam name="T">Specifies the type of elements stored in the bucket.</typeparam>
+/// <typeparam name="T">Specifies the type of elements stored in the map.</typeparam>
 [Serializable]
 [JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
-public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGenerationalBucketState<T>>, ISwiftCloneable<T>, IEnumerable<T>
+public sealed partial class SwiftTicketMap<T> : IStateBacked<SwiftTicketMapState<T>>, ISwiftCloneable<T>, IEnumerable<T>
 {
     #region Nested Types
 
@@ -98,12 +98,12 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
     #region Constructors
 
     /// <summary>
-    /// Initializes a new instance of the SwiftGenerationalBucket class with the default capacity.
+    /// Initializes a new instance of the SwiftTicketMap class with the default capacity.
     /// </summary>
-    public SwiftGenerationalBucket() : this(DefaultCapacity) { }
+    public SwiftTicketMap() : this(DefaultCapacity) { }
 
     /// <summary>
-    /// Initializes a new instance of the SwiftGenerationalBucket class with the specified initial capacity.
+    /// Initializes a new instance of the SwiftTicketMap class with the specified initial capacity.
     /// </summary>
     /// <remarks>
     /// The actual capacity will be set to the next power of two greater than or equal to the specified capacity, 
@@ -111,11 +111,11 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
     /// This ensures efficient internal storage and lookup performance.
     /// </remarks>
     /// <param name="capacity">
-    /// The initial number of elements that the bucket can contain. 
+    /// The initial number of elements that the map can contain. 
     /// If less than or equal to the default capacity, the default capacity is used. 
     /// Must be a non-negative integer.
     /// </param>
-    public SwiftGenerationalBucket(int capacity)
+    public SwiftTicketMap(int capacity)
     {
         capacity = capacity <= DefaultCapacity
             ? DefaultCapacity
@@ -126,11 +126,11 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
     }
 
     ///  <summary>
-    ///  Initializes a new instance of the <see cref="SwiftGenerationalBucket{T}"/> class with the specified <see cref="SwiftBucketState{T}"/>.
+    ///  Initializes a new instance of the <see cref="SwiftTicketMap{T}"/> class with the specified <see cref="SwiftTicketMapState{T}"/>.
     ///  </summary>
     ///  <param name="state">The state containing the internal array, count, offset, and version for initialization.</param>
     [MemoryPackConstructor]
-    public SwiftGenerationalBucket(SwiftGenerationalBucketState<T> state)
+    public SwiftTicketMap(SwiftTicketMapState<T> state)
     {
         _entries = Array.Empty<Entry>();
         _freeIndices = new SwiftIntStack(0);
@@ -161,16 +161,16 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
     public int Capacity => _entries.Length;
 
     /// <summary>
-    /// Gets or sets the current state of the generational bucket.
+    /// Gets or sets the current state of the ticket map.
     /// </summary>
     /// <remarks>
-    /// This property provides a snapshot of the bucket's internal state, which can be used for serialization, diagnostics, 
-    /// or restoring the bucket to a previous state. 
-    /// Setting this property replaces the entire state of the bucket, including its contents and allocation metadata.
+    /// This property provides a snapshot of the map's internal state, which can be used for serialization, diagnostics, 
+    /// or restoring the map to a previous state. 
+    /// Setting this property replaces the entire state of the map, including its contents and allocation metadata.
     /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
-    public SwiftGenerationalBucketState<T> State
+    public SwiftTicketMapState<T> State
     {
         get
         {
@@ -194,7 +194,7 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
             int[] free = new int[_freeIndices.Count];
             Array.Copy(_freeIndices.Array, free, _freeIndices.Count);
 
-            return new SwiftGenerationalBucketState<T>(
+            return new SwiftTicketMapState<T>(
                 items,
                 allocated,
                 generations,
@@ -310,15 +310,15 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
     #region Core Operations
 
     /// <summary>
-    /// Adds the specified value to the collection and returns a handle that can be used to reference it.
+    /// Adds the specified value to the collection and returns a ticket that can be used to reference it.
     /// </summary>
     /// <remarks>
-    /// The returned handle can be used to access or remove the value later. 
-    /// Handles are only valid as long as the value remains in the collection.
+    /// The returned ticket can be used to access or remove the value later. 
+    /// Tickets are only valid as long as the value remains in the collection.
     /// </remarks>
     /// <param name="value">The value to add to the collection.</param>
-    /// <returns>A <see cref="SwiftHandle"/> that uniquely identifies the added value within the collection.</returns>
-    public SwiftHandle Add(T value)
+    /// <returns>A <see cref="SwiftTicket"/> that uniquely identifies the added value within the collection.</returns>
+    public SwiftTicket Add(T value)
     {
         int index;
 
@@ -342,33 +342,33 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
         _count++;
         _version++;
 
-        return new SwiftHandle(index, entry.Generation);
+        return new SwiftTicket(index, entry.Generation);
     }
 
     /// <summary>
-    /// Attempts to retrieve the value associated with the specified handle.
+    /// Attempts to retrieve the value associated with the specified ticket.
     /// </summary>
     /// <remarks>
-    /// Use this method to safely attempt retrieval without throwing an exception if the handle is invalid or the entry is not in use.
+    /// Use this method to safely attempt retrieval without throwing an exception if the ticket is invalid or the entry is not in use.
     /// </remarks>
-    /// <param name="handle">The handle used to identify the entry to retrieve.</param>
+    /// <param name="ticket">The ticket used to identify the entry to retrieve.</param>
     /// <param name="value">
-    /// When this method returns, contains the value associated with the specified handle if the handle is valid 
+    /// When this method returns, contains the value associated with the specified ticket if the ticket is valid 
     /// and the entry is in use; otherwise, the default value for the type of the value parameter. 
     /// This parameter is passed uninitialized.
     /// </param>
     /// <returns>true if the value was found and retrieved successfully; otherwise, false.</returns>
-    public bool TryGet(SwiftHandle handle, out T value)
+    public bool TryGet(SwiftTicket ticket, out T value)
     {
-        if ((uint)handle.Index >= (uint)_entries.Length)
+        if ((uint)ticket.Index >= (uint)_entries.Length)
         {
             value = default!;
             return false;
         }
 
-        ref Entry entry = ref _entries[handle.Index];
+        ref Entry entry = ref _entries[ticket.Index];
 
-        if (!entry.IsUsed || entry.Generation != handle.Generation)
+        if (!entry.IsUsed || entry.Generation != ticket.Generation)
         {
             value = default!;
             return false;
@@ -379,40 +379,40 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
     }
 
     /// <summary>
-    /// Returns a reference to the value associated with the specified handle.
+    /// Returns a reference to the value associated with the specified ticket.
     /// </summary>
-    /// <param name="handle">
-    /// A handle that identifies the entry whose value is to be accessed. 
-    /// The handle must be valid and refer to an existing entry.
+    /// <param name="ticket">
+    /// A ticket that identifies the entry whose value is to be accessed. 
+    /// The ticket must be valid and refer to an existing entry.
     /// </param>
-    /// <returns>A reference to the value of type T associated with the specified handle.</returns>
-    /// <exception cref="InvalidOperationException">Thrown if the handle does not refer to a valid or currently used entry.</exception>
-    public ref T GetRef(SwiftHandle handle)
+    /// <returns>A reference to the value of type T associated with the specified ticket.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the ticket does not refer to a valid or currently used entry.</exception>
+    public ref T GetRef(SwiftTicket ticket)
     {
-        ref Entry entry = ref _entries[handle.Index];
+        ref Entry entry = ref _entries[ticket.Index];
 
-        ChronicleGuard.ThrowIfTrue(!entry.IsUsed || entry.Generation != handle.Generation, message: "Invalid handle");
+        ChronicleGuard.ThrowIfTrue(!entry.IsUsed || entry.Generation != ticket.Generation, message: "Invalid ticket");
 
         return ref entry.Value;
     }
 
     /// <summary>
-    /// Removes the entry associated with the specified handle from the collection.
+    /// Removes the entry associated with the specified ticket from the collection.
     /// </summary>
     /// <remarks>
-    /// If the handle does not refer to a valid or currently used entry, the method returns false and no action is taken. 
-    /// Removing an entry invalidates the handle for future operations.
+    /// If the ticket does not refer to a valid or currently used entry, the method returns false and no action is taken. 
+    /// Removing an entry invalidates the ticket for future operations.
     /// </remarks>
-    /// <param name="handle">The handle identifying the entry to remove. The handle must refer to a valid, currently used entry.</param>
+    /// <param name="ticket">The ticket identifying the entry to remove. The ticket must refer to a valid, currently used entry.</param>
     /// <returns>true if the entry was successfully removed; otherwise, false.</returns>
-    public bool Remove(SwiftHandle handle)
+    public bool Remove(SwiftTicket ticket)
     {
-        if ((uint)handle.Index >= (uint)_entries.Length)
+        if ((uint)ticket.Index >= (uint)_entries.Length)
             return false;
 
-        ref Entry entry = ref _entries[handle.Index];
+        ref Entry entry = ref _entries[ticket.Index];
 
-        if (!entry.IsUsed || entry.Generation != handle.Generation)
+        if (!entry.IsUsed || entry.Generation != ticket.Generation)
             return false;
 
         entry.Value = default!;
@@ -420,7 +420,7 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
 
         entry.Generation++;
 
-        _freeIndices.Push(handle.Index);
+        _freeIndices.Push(ticket.Index);
 
         _count--;
         _version++;
@@ -429,30 +429,30 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
     }
 
     /// <summary>
-    /// Determines whether the specified handle refers to a valid and currently used entry.
+    /// Determines whether the specified ticket refers to a valid and currently used entry.
     /// </summary>
     /// <remarks>
-    /// A handle may become invalid if the referenced entry has been removed or replaced. 
-    /// Use this method to check handle validity before accessing the associated entry.
+    /// A ticket may become invalid if the referenced entry has been removed or replaced. 
+    /// Use this method to check ticket validity before accessing the associated entry.
     /// </remarks>
-    /// <param name="handle">The handle to validate. The handle must have been obtained from this collection; otherwise, the result is undefined.</param>
-    /// <returns>true if the handle is valid and refers to an active entry; otherwise, false.</returns>
-    public bool IsValid(SwiftHandle handle)
+    /// <param name="ticket">The ticket to validate. The ticket must have been obtained from this collection; otherwise, the result is undefined.</param>
+    /// <returns>true if the ticket is valid and refers to an active entry; otherwise, false.</returns>
+    public bool IsValid(SwiftTicket ticket)
     {
-        if ((uint)handle.Index >= (uint)_entries.Length)
+        if ((uint)ticket.Index >= (uint)_entries.Length)
             return false;
 
-        ref Entry entry = ref _entries[handle.Index];
+        ref Entry entry = ref _entries[ticket.Index];
 
-        return entry.IsUsed && entry.Generation == handle.Generation;
+        return entry.IsUsed && entry.Generation == ticket.Generation;
     }
 
-    /// <summary>Removes all elements and invalidates their handles without reducing capacity.</summary>
+    /// <summary>Removes all elements and invalidates their tickets without reducing capacity.</summary>
     public void Clear() => Clear(clearRetainedReferences: false);
 
     /// <summary>Removes all elements, optionally releasing references throughout retained backing storage.</summary>
     /// <param name="clearRetainedReferences">If true, also releases references outside the previously used range.</param>
-    /// <remarks>Stored generations survive clearing so old handles remain invalid on reuse. Capacity is preserved.</remarks>
+    /// <remarks>Stored generations survive clearing so old tickets remain invalid on reuse. Capacity is preserved.</remarks>
     public void Clear(bool clearRetainedReferences)
     {
         int end = clearRetainedReferences && RuntimeHelpers.IsReferenceOrContainsReferences<T>() ? _entries.Length : _peak;
@@ -522,10 +522,10 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
     }
 
     /// <summary>
-    /// Determines whether the <see cref="SwiftGenerationalBucket{T}"/> contains an element that matches the conditions defined by the specified predicate.
+    /// Determines whether the <see cref="SwiftTicketMap{T}"/> contains an element that matches the conditions defined by the specified predicate.
     /// </summary>
     /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
-    /// <returns><c>true</c> if the <see cref="SwiftGenerationalBucket{T}"/> contains one or more elements that match the specified predicate; otherwise, <c>false</c>.</returns>
+    /// <returns><c>true</c> if the <see cref="SwiftTicketMap{T}"/> contains one or more elements that match the specified predicate; otherwise, <c>false</c>.</returns>
     public bool Exists(Predicate<T> match)
     {
         ChronicleGuard.ThrowIfNull(match, nameof(match));
@@ -551,7 +551,7 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
     }
 
     /// <summary>
-    /// Searches for an element that matches the conditions defined by the specified predicate, and returns the first matching element in bucket iteration order.
+    /// Searches for an element that matches the conditions defined by the specified predicate, and returns the first matching element in map iteration order.
     /// </summary>
     /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
     /// <returns>The first element that matches the conditions defined by the specified predicate, if found; otherwise, the default value for type <typeparamref name="T"/>.</returns>
@@ -582,7 +582,7 @@ public sealed partial class SwiftGenerationalBucket<T> : IStateBacked<SwiftGener
     #region Enumeration
 
     /// <inheritdoc cref="IEnumerable.GetEnumerator()"/>
-    public SwiftGenerationalBucketEnumerator GetEnumerator() => new(this);
+    public SwiftTicketMapEnumerator GetEnumerator() => new(this);
     IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 

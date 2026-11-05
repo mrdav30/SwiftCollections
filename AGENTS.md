@@ -77,22 +77,22 @@ expectations change:
 
 ## Repository Map
 
-| Path                                          | Purpose                                                | Notes                                                                                              |
-| --------------------------------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
-| `src/SwiftCollections/Collection`             | Core collection types                                  | Includes dictionary, hash set, list, queue, stack, bucket, packed set, sparse set, and sparse map. |
-| `src/SwiftCollections/Dimension`              | Flat 2D/3D arrays and typed array helpers              | Preserve index math and bounds behavior.                                                           |
-| `src/SwiftCollections/EqualityComparer`       | SwiftCollections comparers                             | String default comparers are deterministic-oriented.                                               |
-| `src/SwiftCollections/Observable`             | Observable collection variants                         | Prefer for tooling/host-facing notifications, not simulation hot paths without evidence.           |
-| `src/SwiftCollections/Pool`                   | Object, array, and collection pools                    | Watch ownership and dispose/release contracts.                                                     |
-| `src/SwiftCollections/Query`                  | BVH, spatial hash, octree, bounds, and query helpers   | Compiled in the core package. Keep mutable indexes single-owner unless synchronized externally.    |
-| `src/SwiftCollections/Serialization`          | State structs and JSON/state converter support         | Build after changing state shape or serialization constructors.                                    |
-| `src/SwiftCollections/Utility`                | Shared helpers, hashing, diagnostics, extensions       | Preserve helper exception contracts.                                                               |
-| `src/SwiftCollections.FixedMathSharp`         | Fixed-point spatial query companion                    | Depends on FixedMathSharp or FixedMathSharp.Lean based on package variant.                         |
-| `tests/SwiftCollections.Tests`                | Core xUnit v3 tests                                    | References only the core runtime assembly and mirrors its source areas.                            |
-| `tests/SwiftCollections.FixedMathSharp.Tests` | Companion xUnit v3 tests                               | References the FixedMathSharp companion and can validate it against a published core package.      |
-| `tests/SwiftCollections.Benchmarks`           | BenchmarkDotNet benchmarks                             | Alias-based runner supports `list`, `dictionary`, `query`, `all`, and other selections.            |
-| `docs/api`                                    | Branded DocFX landing page, conceptual guides, and API | Publishes both runtime assemblies; generated `obj` output is ignored.                              |
-| `.assets/scripts`                             | PowerShell release/version helpers                     | Requires PowerShell and GitVersion.Tool.                                                           |
+| Path                                          | Purpose                                                | Notes                                                                                                            |
+| --------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `src/SwiftCollections/Collection`             | Core collection types                                  | Includes dictionary, hash set, list, queue, stack, slot map, ticket map, packed set, sparse set, and sparse map. |
+| `src/SwiftCollections/Dimension`              | Flat 2D/3D arrays and typed array helpers              | Preserve index math and bounds behavior.                                                                         |
+| `src/SwiftCollections/EqualityComparer`       | SwiftCollections comparers                             | String default comparers are deterministic-oriented.                                                             |
+| `src/SwiftCollections/Observable`             | Observable collection variants                         | Prefer for tooling/host-facing notifications, not simulation hot paths without evidence.                         |
+| `src/SwiftCollections/Pool`                   | Object, array, and collection pools                    | Watch ownership and dispose/release contracts.                                                                   |
+| `src/SwiftCollections/Query`                  | BVH, spatial hash, octree, bounds, and query helpers   | Compiled in the core package. Keep mutable indexes single-owner unless synchronized externally.                  |
+| `src/SwiftCollections/Serialization`          | State structs and JSON/state converter support         | Build after changing state shape or serialization constructors.                                                  |
+| `src/SwiftCollections/Utility`                | Shared helpers, hashing, diagnostics, extensions       | Preserve helper exception contracts.                                                                             |
+| `src/SwiftCollections.FixedMathSharp`         | Fixed-point spatial query companion                    | Depends on FixedMathSharp or FixedMathSharp.Lean based on package variant.                                       |
+| `tests/SwiftCollections.Tests`                | Core xUnit v3 tests                                    | References only the core runtime assembly and mirrors its source areas.                                          |
+| `tests/SwiftCollections.FixedMathSharp.Tests` | Companion xUnit v3 tests                               | References the FixedMathSharp companion and can validate it against a published core package.                    |
+| `tests/SwiftCollections.Benchmarks`           | BenchmarkDotNet benchmarks                             | Alias-based runner supports `list`, `dictionary`, `query`, `all`, and other selections.                          |
+| `docs/api`                                    | Branded DocFX landing page, conceptual guides, and API | Publishes both runtime assemblies; generated `obj` output is ignored.                                            |
+| `.assets/scripts`                             | PowerShell release/version helpers                     | Requires PowerShell and GitVersion.Tool.                                                                         |
 
 Ignore generated output when reviewing structure:
 
@@ -144,8 +144,8 @@ Use the right container for the ownership model:
 | -------------------------------------------------------------------- | ------------------------------------------------ |
 | General key/value lookup with arbitrary keys                         | `SwiftDictionary<TKey, TValue>`                  |
 | General unique values                                                | `SwiftHashSet<T>`                                |
-| Stable integer slots owned by the container                          | `SwiftBucket<T>`                                 |
-| Stable handles with stale-reference protection                       | `SwiftGenerationalBucket<T>`                     |
+| Stable integer slots owned by the container                          | `SwiftSlotMap<T>`                                |
+| Stable handles with stale-reference protection                       | `SwiftTicketMap<T>`                              |
 | Membership for compact externally owned non-negative integer IDs     | `SwiftSparseSet`                                 |
 | Values attached to compact externally owned non-negative integer IDs | `SwiftSparseMap<T>`                              |
 | Dense unique-value iteration with hash-backed membership             | `SwiftPackedSet<T>`                              |

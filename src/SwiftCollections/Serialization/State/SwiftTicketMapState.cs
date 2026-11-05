@@ -1,5 +1,5 @@
 //=======================================================================
-// SwiftGenerationalBucketState.cs
+// SwiftTicketMapState.cs
 //=======================================================================
 // MIT License, Copyright (c) 2024-present David Oravsky (mrdav30)
 // See LICENSE file in the project root for full license information.
@@ -12,16 +12,16 @@ using MemoryPack;
 namespace SwiftCollections;
 
 /// <summary>
-/// Represents the immutable state of a generational bucket, including item storage, allocation status, generation tracking, and free index management.
+/// Represents the immutable state of a generational map, including item storage, allocation status, generation tracking, and free index management.
 /// </summary>
 /// <remarks>
-/// This struct is typically used to capture or transfer the complete state of a generational bucket for serialization, persistence, or inspection purposes. 
+/// This struct is typically used to capture or transfer the complete state of a generational map for serialization, persistence, or inspection purposes. 
 /// All arrays are expected to be of the same length, and the struct is designed for efficient value-type usage. 
 /// The state is read-only and does not provide mutation operations.</remarks>
-/// <typeparam name="T">The type of elements stored in the bucket.</typeparam>
+/// <typeparam name="T">The type of elements stored in the map.</typeparam>
 [Serializable]
 [MemoryPackable]
-public readonly partial struct SwiftGenerationalBucketState<T>
+public readonly partial struct SwiftTicketMapState<T>
 {
     /// <summary>
     /// Gets the array of items contained in the collection.
@@ -59,17 +59,17 @@ public readonly partial struct SwiftGenerationalBucketState<T>
     public readonly int Peak;
 
     /// <summary>
-    /// Initializes a new instance of the SwiftGenerationalBucketState class with the specified items, allocation states, 
+    /// Initializes a new instance of the SwiftTicketMapState class with the specified items, allocation states, 
     /// generation counters, free indices, and peak index.
     /// </summary>
-    /// <param name="items">The array of items to be managed by the bucket. Cannot be null; an empty array is used if null is provided.</param>
+    /// <param name="items">The array of items to be managed by the map. Cannot be null; an empty array is used if null is provided.</param>
     /// <param name="allocated">
-    /// An array indicating which slots in the bucket are currently allocated.
+    /// An array indicating which slots in the map are currently allocated.
     /// Each element corresponds to an item in the items array. 
     /// Cannot be null; an empty array is used if null is provided.
     /// </param>
     /// <param name="generations">
-    /// An array of generation counters for each slot in the bucket. 
+    /// An array of generation counters for each slot in the map. 
     /// Used to track the version or state of each item.
     /// Cannot be null; an empty array is used if null is provided.
     /// </param>
@@ -77,10 +77,10 @@ public readonly partial struct SwiftGenerationalBucketState<T>
     /// An array of indices representing the free slots available for allocation. 
     /// Cannot be null; an empty array is used if null is provided.
     /// </param>
-    /// <param name="peak">The highest index that has been allocated in the bucket. Must be greater than or equal to zero.</param>
+    /// <param name="peak">The highest index that has been allocated in the map. Must be greater than or equal to zero.</param>
     [JsonConstructor]
     [MemoryPackConstructor]
-    public SwiftGenerationalBucketState(
+    public SwiftTicketMapState(
         T[] items,
         bool[] allocated,
         uint[] generations,

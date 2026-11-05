@@ -1,5 +1,5 @@
 //=======================================================================
-// SwiftGenerationalBucket.SwiftGenerationalBucketEnumerator.cs
+// SwiftTicketMap.SwiftTicketMapEnumerator.cs
 //=======================================================================
 // MIT License, Copyright (c) 2024-present David Oravsky (mrdav30)
 // See LICENSE file in the project root for full license information.
@@ -12,27 +12,27 @@ using Chronicler.Diagnostics;
 
 namespace SwiftCollections;
 
-public sealed partial class SwiftGenerationalBucket<T>
+public sealed partial class SwiftTicketMap<T>
 {
     /// <summary>
-    /// Enumerates the elements of a <see cref="SwiftGenerationalBucket{T}"/> collection in a forward-only, read-only manner.
+    /// Enumerates the elements of a <see cref="SwiftTicketMap{T}"/> collection in a forward-only, read-only manner.
     /// </summary>
     /// <remarks>
     /// The enumerator is invalidated if the underlying collection is modified during enumeration.
     /// In such cases, subsequent calls to MoveNext will throw an InvalidOperationException.
-    /// This enumerator is typically obtained by calling GetEnumerator on a <see cref="SwiftGenerationalBucket{T}"/> instance.
+    /// This enumerator is typically obtained by calling GetEnumerator on a <see cref="SwiftTicketMap{T}"/> instance.
     /// </remarks>
-    public struct SwiftGenerationalBucketEnumerator : IEnumerator<T>
+    public struct SwiftTicketMapEnumerator : IEnumerator<T>
     {
-        private readonly SwiftGenerationalBucket<T> _bucket;
+        private readonly SwiftTicketMap<T> _bucket;
         private readonly uint _version;
         private int _index;
         private T _current;
 
-        internal SwiftGenerationalBucketEnumerator(SwiftGenerationalBucket<T> bucket)
+        internal SwiftTicketMapEnumerator(SwiftTicketMap<T> map)
         {
-            _bucket = bucket;
-            _version = bucket._version;
+            _bucket = map;
+            _version = map._version;
             _index = -1;
             _current = default!;
         }

@@ -7,14 +7,14 @@ namespace SwiftCollections.Benchmarks;
 [MemoryDiagnoser]
 [CategoriesColumn]
 [GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
-public class BucketParityBenchmarks
+public class SlotMapParityBenchmarks
 {
     [Params(100, 1000, 10000, 100000)]
     public int N;
 
     private int[] _data;
 
-    private SwiftBucket<int> _swiftBucket;
+    private SwiftSlotMap<int> _swiftSlotMap;
     private List<int> _list;
 
     [GlobalSetup]
@@ -35,24 +35,24 @@ public class BucketParityBenchmarks
 
     [Benchmark]
     [BenchmarkCategory("Add")]
-    public int Bucket_Add()
+    public int SlotMap_Add()
     {
-        var bucket = new SwiftBucket<int>(N);
+        var slotMap = new SwiftSlotMap<int>(N);
         for (int i = 0; i < N; i++)
-            bucket.Add(_data[i]);
-        return bucket.Count;
+            slotMap.Add(_data[i]);
+        return slotMap.Count;
     }
 
     [IterationSetup(Targets = new[] {
-            nameof(Bucket_RemoveByValue),
-            nameof(Bucket_Enumerate),
-            nameof(Bucket_ContainsValue)
+            nameof(SlotMap_RemoveByValue),
+            nameof(SlotMap_Enumerate),
+            nameof(SlotMap_ContainsValue)
         })]
-    public void IterationSetup_Bucket()
+    public void IterationSetup_SlotMap()
     {
-        _swiftBucket = new SwiftBucket<int>(N);
+        _swiftSlotMap = new SwiftSlotMap<int>(N);
         for (int i = 0; i < N; i++)
-            _swiftBucket.Add(_data[i]);
+            _swiftSlotMap.Add(_data[i]);
     }
 
     [IterationSetup(Targets = new[] {
@@ -81,12 +81,12 @@ public class BucketParityBenchmarks
 
     [Benchmark]
     [BenchmarkCategory("Remove")]
-    public int Bucket_RemoveByValue()
+    public int SlotMap_RemoveByValue()
     {
         int removed = 0;
         for (int i = 0; i < N; i++)
         {
-            if (_swiftBucket.TryRemove(_data[i]))
+            if (_swiftSlotMap.TryRemove(_data[i]))
                 removed++;
         }
 
@@ -105,10 +105,10 @@ public class BucketParityBenchmarks
 
     [Benchmark]
     [BenchmarkCategory("Enumerate")]
-    public int Bucket_Enumerate()
+    public int SlotMap_Enumerate()
     {
         int sum = 0;
-        foreach (var item in _swiftBucket)
+        foreach (var item in _swiftSlotMap)
             sum += item;
         return sum;
     }
@@ -129,12 +129,12 @@ public class BucketParityBenchmarks
 
     [Benchmark]
     [BenchmarkCategory("Contains")]
-    public int Bucket_ContainsValue()
+    public int SlotMap_ContainsValue()
     {
         int found = 0;
         for (int i = 0; i < N; i++)
         {
-            if (_swiftBucket.Contains(_data[i]))
+            if (_swiftSlotMap.Contains(_data[i]))
                 found++;
         }
 

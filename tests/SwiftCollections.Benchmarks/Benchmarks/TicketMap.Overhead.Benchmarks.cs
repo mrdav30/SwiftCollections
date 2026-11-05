@@ -6,17 +6,17 @@ namespace SwiftCollections.Benchmarks;
 [MemoryDiagnoser]
 [CategoriesColumn]
 [GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
-public class GenerationalBucketOverheadBenchmarks
+public class TicketMapOverheadBenchmarks
 {
     [Params(100, 1000, 10000, 100000)]
     public int N;
 
     private int[] _data;
-    private int[] _bucketIndices;
-    private SwiftHandle[] _handles;
+    private int[] _slotMapIndices;
+    private SwiftTicket[] _tickets;
 
-    private SwiftBucket<int> _bucket;
-    private SwiftGenerationalBucket<int> _generationalBucket;
+    private SwiftSlotMap<int> _slotMap;
+    private SwiftTicketMap<int> _ticketMap;
 
     [GlobalSetup]
     public void Setup()
@@ -26,72 +26,72 @@ public class GenerationalBucketOverheadBenchmarks
 
     [Benchmark(Baseline = true)]
     [BenchmarkCategory("Add")]
-    public int Bucket_Add()
+    public int SlotMap_Add()
     {
-        var bucket = new SwiftBucket<int>(N);
+        var slotMap = new SwiftSlotMap<int>(N);
         for (int i = 0; i < N; i++)
-            bucket.Add(_data[i]);
-        return bucket.Count;
+            slotMap.Add(_data[i]);
+        return slotMap.Count;
     }
 
     [Benchmark]
     [BenchmarkCategory("Add")]
-    public int GenerationalBucket_Add()
+    public int TicketMap_Add()
     {
-        var bucket = new SwiftGenerationalBucket<int>(N);
+        var slotMap = new SwiftTicketMap<int>(N);
         for (int i = 0; i < N; i++)
-            bucket.Add(_data[i]);
-        return bucket.Count;
+            slotMap.Add(_data[i]);
+        return slotMap.Count;
     }
 
     [IterationSetup(Targets = new[] {
-        nameof(Bucket_LookupByIndex),
-        nameof(Bucket_Enumerate),
-        nameof(Bucket_RemoveByIndex),
-        nameof(Bucket_IndexValidityCheck)
+        nameof(SlotMap_LookupByIndex),
+        nameof(SlotMap_Enumerate),
+        nameof(SlotMap_RemoveByIndex),
+        nameof(SlotMap_IndexValidityCheck)
     })]
-    public void IterationSetup_Bucket()
+    public void IterationSetup_SlotMap()
     {
-        _bucket = new SwiftBucket<int>(N);
-        _bucketIndices = new int[N];
+        _slotMap = new SwiftSlotMap<int>(N);
+        _slotMapIndices = new int[N];
 
         for (int i = 0; i < N; i++)
-            _bucketIndices[i] = _bucket.Add(_data[i]);
+            _slotMapIndices[i] = _slotMap.Add(_data[i]);
     }
 
     [IterationSetup(Targets = new[] {
-        nameof(GenerationalBucket_LookupByHandle),
-        nameof(GenerationalBucket_Enumerate),
-        nameof(GenerationalBucket_RemoveByHandle),
-        nameof(GenerationalBucket_HandleValidityCheck)
+        nameof(TicketMap_LookupByTicket),
+        nameof(TicketMap_Enumerate),
+        nameof(TicketMap_RemoveByTicket),
+        nameof(TicketMap_TicketValidityCheck)
     })]
-    public void IterationSetup_GenerationalBucket()
+    public void IterationSetup_TicketMap()
     {
-        _generationalBucket = new SwiftGenerationalBucket<int>(N);
-        _handles = new SwiftHandle[N];
+        _ticketMap = new SwiftTicketMap<int>(N);
+        _tickets = new SwiftTicket[N];
 
         for (int i = 0; i < N; i++)
-            _handles[i] = _generationalBucket.Add(_data[i]);
+            _tickets[i] = _ticketMap.Add(_data[i]);
     }
 
     [BenchmarkCategory("Lookup")]
     [Benchmark(Baseline = true)]
-    public int Bucket_LookupByIndex()
+    public int SlotMap_LookupByIndex()
     {
         int sum = 0;
         for (int i = 0; i < N; i++)
-            sum += _bucket[_bucketIndices[i]];
+            sum += _slotMap[_slotMapIndices[i]];
         return sum;
     }
 
     [Benchmark]
     [BenchmarkCategory("Lookup")]
-    public int GenerationalBucket_LookupByHandle()
+    public int TicketMap_LookupByTicket()
     {
         int sum = 0;
         for (int i = 0; i < N; i++)
         {
-            if (_generationalBucket.TryGet(_handles[i], out int value))
+            if (_ticketMap.TryGet(_tickets[i], out int value))
                 sum += value;
         }
 
@@ -100,32 +100,32 @@ public class GenerationalBucketOverheadBenchmarks
 
     [BenchmarkCategory("Enumerate")]
     [Benchmark(Baseline = true)]
-    public int Bucket_Enumerate()
+    public int SlotMap_Enumerate()
     {
         int sum = 0;
-        foreach (var item in _bucket)
+        foreach (var item in _slotMap)
             sum += item;
         return sum;
     }
 
     [Benchmark]
     [BenchmarkCategory("Enumerate")]
-    public int GenerationalBucket_Enumerate()
+    public int TicketMap_Enumerate()
     {
         int sum = 0;
-        foreach (var item in _generationalBucket)
+        foreach (var item in _ticketMap)
             sum += item;
         return sum;
     }
 
     [BenchmarkCategory("Remove")]
     [Benchmark(Baseline = true)]
-    public int Bucket_RemoveByIndex()
+    public int SlotMap_RemoveByIndex()
     {
         int removed = 0;
         for (int i = 0; i < N; i++)
         {
-            if (_bucket.TryRemoveAt(_bucketIndices[i]))
+            if (_slotMap.TryRemoveAt(_slotMapIndices[i]))
                 removed++;
         }
 
@@ -134,12 +134,12 @@ public class GenerationalBucketOverheadBenchmarks
 
     [Benchmark]
     [BenchmarkCategory("Remove")]
-    public int GenerationalBucket_RemoveByHandle()
+    public int TicketMap_RemoveByTicket()
     {
         int removed = 0;
         for (int i = 0; i < N; i++)
         {
-            if (_generationalBucket.Remove(_handles[i]))
+            if (_ticketMap.Remove(_tickets[i]))
                 removed++;
         }
 
@@ -148,12 +148,12 @@ public class GenerationalBucketOverheadBenchmarks
 
     [BenchmarkCategory("Validity")]
     [Benchmark(Baseline = true)]
-    public int Bucket_IndexValidityCheck()
+    public int SlotMap_IndexValidityCheck()
     {
         int allocated = 0;
         for (int i = 0; i < N; i++)
         {
-            if (_bucket.IsAllocated(_bucketIndices[i]))
+            if (_slotMap.IsAllocated(_slotMapIndices[i]))
                 allocated++;
         }
 
@@ -162,12 +162,12 @@ public class GenerationalBucketOverheadBenchmarks
 
     [Benchmark]
     [BenchmarkCategory("Validity")]
-    public int GenerationalBucket_HandleValidityCheck()
+    public int TicketMap_TicketValidityCheck()
     {
         int valid = 0;
         for (int i = 0; i < N; i++)
         {
-            if (_generationalBucket.IsValid(_handles[i]))
+            if (_ticketMap.IsValid(_tickets[i]))
                 valid++;
         }
 

@@ -134,7 +134,7 @@ public sealed class RetainedReferenceClearTests
         var ids = new SwiftSparseSet(32, 8); ids.Add(17); ids.Clear(full); ids.Clear(full);
         Assert.Empty(ids); Assert.True(ids.Add(17));
 
-        var bucket = new SwiftBucket<object>(32); int id = bucket.Add(new object());
+        var bucket = new SwiftSlotMap<object>(32); int id = bucket.Add(new object());
         bucket.Clear(full); Assert.Empty(bucket); Assert.False(bucket.IsAllocated(id));
         bucket.Clear(full); Assert.Equal(32, bucket.Capacity);
         int next = bucket.Add("reused"); Assert.Equal("reused", bucket[next]);
@@ -178,15 +178,15 @@ public sealed class RetainedReferenceClearTests
     [InlineData(true)]
     public void GenerationalClear_InvalidatesLiveAndPreviouslyRemovedHandles(bool full)
     {
-        var bucket = new SwiftGenerationalBucket<object>(8);
-        SwiftHandle removed = bucket.Add(new object());
-        SwiftHandle live = bucket.Add(new object());
+        var bucket = new SwiftTicketMap<object>(8);
+        SwiftTicket removed = bucket.Add(new object());
+        SwiftTicket live = bucket.Add(new object());
         Assert.True(bucket.Remove(removed));
         bucket.Clear(full);
         Assert.Empty(bucket); Assert.Equal(8, bucket.Capacity);
         for (int i = 0; i < 8; i++) bucket.Add(new object());
         Assert.False(bucket.IsValid(removed)); Assert.False(bucket.IsValid(live));
-        var restored = new SwiftGenerationalBucket<object>(bucket.State);
+        var restored = new SwiftTicketMap<object>(bucket.State);
         restored.Clear();
         for (int i = 0; i < 8; i++) restored.Add(new object());
         Assert.False(restored.IsValid(removed)); Assert.False(restored.IsValid(live));
@@ -198,11 +198,11 @@ public sealed class RetainedReferenceClearTests
     [InlineData(true)]
     public void GenerationalClear_StateRoundTripPreservesSubsequentHandles(bool full)
     {
-        var original = new SwiftGenerationalBucket<string>(8);
-        SwiftHandle removed = original.Add("removed"), live = original.Add("live");
+        var original = new SwiftTicketMap<string>(8);
+        SwiftTicket removed = original.Add("removed"), live = original.Add("live");
         original.Remove(removed);
         original.Clear(full);
-        var restored = new SwiftGenerationalBucket<string>(original.State);
+        var restored = new SwiftTicketMap<string>(original.State);
         for (int i = 0; i < 10; i++)
             Assert.Equal(original.Add("next"), restored.Add("next"));
         Assert.False(restored.IsValid(removed)); Assert.False(restored.IsValid(live));
@@ -213,7 +213,7 @@ public sealed class RetainedReferenceClearTests
     [InlineData(true)]
     public void GenerationalClear_ReleasesValueGraphsWhileBucketStaysAlive(bool full)
     {
-        var bucket = new SwiftGenerationalBucket<object>(8);
+        var bucket = new SwiftTicketMap<object>(8);
         WeakReference retired = PopulateGenerationValue(bucket);
         bucket.Clear(full);
         GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect();
@@ -222,7 +222,7 @@ public sealed class RetainedReferenceClearTests
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static WeakReference PopulateGenerationValue(SwiftGenerationalBucket<object> bucket)
+    private static WeakReference PopulateGenerationValue(SwiftTicketMap<object> bucket)
     {
         var value = new object();
         bucket.Add(value);
@@ -242,8 +242,8 @@ public sealed class RetainedReferenceClearTests
         var set = new SwiftHashSet<int>(); set.Clear(full); set.Add(1); set.Clear(full); Assert.Empty(set);
         var packed = new SwiftPackedSet<int>(); packed.Clear(full); packed.Add(1); packed.Clear(full); Assert.Empty(packed);
         var sparse = new SwiftSparseMap<int>(); sparse.Clear(full); sparse.Add(1, 2); sparse.Clear(full); Assert.Empty(sparse);
-        var bucket = new SwiftBucket<int>(); bucket.Clear(full); bucket.Add(1); bucket.Clear(full); Assert.Empty(bucket);
-        var handles = new SwiftGenerationalBucket<int>(); handles.Clear(full); var old = handles.Add(1); handles.Clear(full);
+        var bucket = new SwiftSlotMap<int>(); bucket.Clear(full); bucket.Add(1); bucket.Clear(full); Assert.Empty(bucket);
+        var handles = new SwiftTicketMap<int>(); handles.Clear(full); var old = handles.Add(1); handles.Clear(full);
         handles.Add(2); Assert.False(handles.IsValid(old));
     }
 
@@ -282,8 +282,8 @@ public sealed class RetainedReferenceClearTests
         var packed = new SwiftPackedSet<string>();
         var sparse = new SwiftSparseMap<string>();
         var ids = new SwiftSparseSet();
-        var bucket = new SwiftBucket<string>();
-        var handles = new SwiftGenerationalBucket<string>();
+        var bucket = new SwiftSlotMap<string>();
+        var handles = new SwiftTicketMap<string>();
         void Cycle()
         {
             list.Add("value"); list.FastClear(); list.Clear(true);

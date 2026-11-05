@@ -18,8 +18,8 @@ spatial indexing, deterministic runtimes, and allocation-sensitive tooling.
 
 ## Why SwiftCollections?
 
-- Low-allocation lists, queues, stacks, hash tables, buckets, packed sets,
-  sparse sets, and sparse maps.
+- Low-allocation lists, queues, stacks, hash tables, slot maps, ticket maps,
+  packed sets, sparse sets, and sparse maps.
 - Dense iteration and stable or generation-checked handles for entity-style
   workloads.
 - BVH, spatial hash, and octree queries over `System.Numerics` volumes.
@@ -59,15 +59,15 @@ serialization stack or wants the smaller dependency surface.
 
 ## A quick taste
 
-`SwiftGenerationalBucket<T>` gives you stable slots with generation-checked
-handles that stop resolving after removal and slot reuse:
+`SwiftTicketMap<T>` gives you stable slots with generation-checked handles that
+stop resolving after removal and slot reuse:
 
 ```csharp
 using System;
 using SwiftCollections;
 
-var actors = new SwiftGenerationalBucket<string>();
-SwiftHandle player = actors.Add("player");
+var actors = new SwiftTicketMap<string>();
+SwiftTicket player = actors.Add("player");
 
 if (actors.TryGet(player, out string actor))
 {
