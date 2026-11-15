@@ -176,6 +176,12 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     [MemoryPackIgnore]
     public int Count => _count;
 
+    /// <summary>Gets an upper bound on the physical entry slots inspected by a full enumeration.</summary>
+    /// <remarks>Includes holes left by removed entries. Keep the collection unchanged after sampling the bound.</remarks>
+    [JsonIgnore]
+    [MemoryPackIgnore]
+    public int EnumerationSlotCount => _lastIndex + 1;
+
     /// <summary>
     /// Gets the <see cref="IEqualityComparer{T}"/> object that is used to determine equality for the values in the set.
     /// </summary>

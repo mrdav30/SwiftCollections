@@ -13,6 +13,19 @@ namespace SwiftCollections.Tests;
 
 public class SwiftHashSetTests
 {
+    [Fact]
+    public void EnumerationSlotCount_IncludesHolesBeforeLiveEntries()
+    {
+        var set = new SwiftHashSet<int>();
+        set.Add(0);
+        set.Add(1);
+        set.Add(2);
+        set.Remove(1);
+
+        Assert.Equal(2, set.Count);
+        Assert.Equal(3, set.EnumerationSlotCount);
+        Assert.Equal(new[] { 0, 2 }, set);
+    }
 
     [Fact]
     public void WrappedCollisionChain_LookupAndRemovalReachEveryEntry()

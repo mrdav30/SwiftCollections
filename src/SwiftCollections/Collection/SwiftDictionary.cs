@@ -203,6 +203,12 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     [MemoryPackIgnore]
     public int Capacity => _entries.Length;
 
+    /// <summary>Gets the maximum entry probes in a single key lookup.</summary>
+    /// <remarks>Does not include the cost of the key comparer. Sample again after resizing.</remarks>
+    [JsonIgnore]
+    [MemoryPackIgnore]
+    public uint LookupProbeLimit => (uint)_entries.Length * 2;
+
     /// <summary>
     /// Gets the equality comparer used to determine equality of keys in the collection.
     /// </summary>
@@ -510,7 +516,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         int step = 0;
         // A bucket index is not a probe distance: wrapped chains can take more steps.
         // Use the same complete cumulative-square period as insertion.
-        while ((uint)step < (uint)_entries.Length * 2)
+        while ((uint)step < LookupProbeLimit)
         {
             ref Entry entry = ref _entries[entryIndex];
             // Stop probing if an unused entry is found (not deleted)
@@ -942,7 +948,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         int step = 0;
         // A bucket index is not a probe distance: wrapped chains can take more steps.
         // Use the same complete cumulative-square period as insertion.
-        while ((uint)step < (uint)_entries.Length * 2)
+        while ((uint)step < LookupProbeLimit)
         {
             ref Entry entry = ref _entries[entryIndex];
             // Stop probing if an unused entry is found (not deleted)

@@ -37,6 +37,12 @@ intended as blind drop-in replacements. Benchmark the workload you care about,
 especially when custom comparers, string keys, collision behavior, or
 trim/resize patterns are important.
 
+For deterministic work accounting, `SwiftHashSet<T>.EnumerationSlotCount`
+bounds physical slots visited by a full enumeration, including removed
+entries. `SwiftDictionary<TKey, TValue>.LookupProbeLimit` bounds entry probes
+for one key lookup. Sample the bounds from the collection state used by the
+operation and account for the key comparer's work separately.
+
 ## Specialized Containers
 
 | Use case                                                        | Better fit                                      | Why                                                                             |
