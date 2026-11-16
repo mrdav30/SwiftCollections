@@ -381,26 +381,100 @@ public class SwiftSortedListTests
     }
 
     [Fact]
-    public void Add_WhenHeadSpaceIsExhaustedAndTailShiftIsCheaper_RecentersBeforeInsert()
+    public void Add_WhenHeadSpaceIsExhausted_ReusesTailSpace()
     {
-        var sorter = new SwiftSortedList<int>();
-
-        sorter.Add(100);
-        sorter.Add(200);
-        sorter.Add(190);
-        sorter.Add(180);
-        sorter.Add(185);
-        sorter.Add(187);
+        var sorter = new SwiftSortedList<int>(new[] { 100, 180, 185, 187, 190, 200, 210, 220 });
+        sorter.PopMax();
+        sorter.PopMax();
 
         Assert.Equal(0, sorter.Offset);
 
+        int[] storage = sorter.InnerArray;
         sorter.Add(188);
 
         Assert.Equal(new[] { 100, 180, 185, 187, 188, 190, 200 }, sorter.AsReadOnlySpan().ToArray());
-        Assert.True(sorter.Offset > 0);
+        Assert.Same(storage, sorter.InnerArray);
     }
 
     #endregion
+
+    [Fact]
+    public void Add_AfterRepeatedHeadRemoval_ReusesExistingCapacity()
+    {
+        var sorter = new SwiftSortedList<int>(new[] { 0, 1, 2, 3, 4, 5 });
+        int capacity = sorter.Capacity;
+        for (int next = sorter.Count; next < 40; next++)
+        {
+            Assert.Equal(next - 6, sorter.PopMin());
+            sorter.Add(next);
+            Assert.Equal(capacity, sorter.Capacity);
+        }
+        Assert.Equal(new[] { 34, 35, 36, 37, 38, 39 }, sorter.AsReadOnlySpan().ToArray());
+    }
+
+    [Fact]
+    public void RemoveAt_HeadShift_ReleasesRemovedReference()
+    {
+        var sorter = new SwiftSortedList<string>(new[] { "a", "b", "c", "d", "e", "f" });
+
+        sorter.RemoveAt(0);
+
+        Assert.DoesNotContain("a", sorter.InnerArray);
+        Assert.Equal(new[] { "b", "c", "d", "e", "f" }, sorter.AsReadOnlySpan().ToArray());
+    }
+
+    [Fact]
+    public void TryAddUnique_UsesComparerEqualityAndKeepsEnumeratorOnRejection()
+    {
+        var sorter = new SwiftSortedList<string>(StringComparer.OrdinalIgnoreCase);
+        Assert.True(sorter.TryAddUnique("Beta"));
+        Assert.True(sorter.TryAddUnique("delta"));
+        Assert.True(sorter.TryAddUnique("Alpha"));
+        Assert.True(sorter.TryAddUnique("gamma"));
+        int capacity = sorter.Capacity;
+        var enumerator = sorter.GetEnumerator();
+
+        Assert.False(sorter.TryAddUnique("beta"));
+        Assert.Equal(capacity, sorter.Capacity);
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal("Alpha", enumerator.Current);
+        Assert.Equal(new[] { "Alpha", "Beta", "delta", "gamma" }, sorter.AsReadOnlySpan().ToArray());
+
+        sorter.Add("beta");
+        Assert.Equal(5, sorter.Count);
+        Assert.Throws<InvalidOperationException>(() => enumerator.MoveNext());
+    }
+
+    [Fact]
+    public void Recenter_AfterHeadChurn_ReleasesVacatedReferences()
+    {
+        var sorter = new SwiftSortedList<string>(new[] { "a", "b", "c", "d", "e", "f", "g", "h" });
+        int capacity = sorter.Capacity;
+        sorter.PopMin();
+        sorter.PopMin();
+        sorter.PopMin();
+
+        sorter.Add("i");
+
+        Assert.Equal(capacity, sorter.Capacity);
+
+        Assert.Equal(new[] { "d", "e", "f", "g", "h", "i" }, sorter.AsReadOnlySpan().ToArray());
+        Assert.Null(sorter.InnerArray[^1]);
+    }
+
+    [Fact]
+    public void RemoveAt_WhenRecenteringRight_ReleasesVacatedReferences()
+    {
+        var sorter = new SwiftSortedList<string>(new[] {
+            "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p"
+        });
+        sorter.PopMin();
+        while (sorter.Count > 3)
+            sorter.RemoveAt(sorter.Count - 1);
+
+        Assert.Equal(new[] { "b", "c", "d" }, sorter.AsReadOnlySpan().ToArray());
+        Assert.Null(sorter.InnerArray[1]);
+    }
 
     #region Test: PopMin and PopMax
 
@@ -719,6 +793,24 @@ public class SwiftSortedListTests
 
         Assert.Equal((sorter.Capacity - sorter.Count) >> 1, sorter.Offset);
         Assert.Equal(new[] { 3, 4, 5, 6, 7, 8, 9 }, sorter.AsReadOnlySpan().ToArray());
+
+        int offset = sorter.Offset;
+        sorter.RemoveAt(sorter.Count - 1);
+        Assert.Equal(offset, sorter.Offset);
+        Assert.Equal(new[] { 3, 4, 5, 6, 7, 8 }, sorter.AsReadOnlySpan().ToArray());
+    }
+
+    [Fact]
+    public void RemoveAt_WhenAlreadyCentered_PreservesTheRemainingItemAndReleasesTheTail()
+    {
+        var sorter = new SwiftSortedList<string>(new[] { "a", "b" });
+        int offset = sorter.Offset;
+
+        sorter.RemoveAt(1);
+
+        Assert.Equal(offset, sorter.Offset);
+        Assert.Equal("a", Assert.Single(sorter));
+        Assert.Null(sorter.InnerArray[offset + 1]);
     }
 
     [Fact]
@@ -736,14 +828,9 @@ public class SwiftSortedListTests
     [Fact]
     public void RemoveAt_WhenCountStaysAboveQuarter_DoesNotRecenter()
     {
-        var sorter = new SwiftSortedList<int>();
-
-        sorter.Add(100);
-        sorter.Add(200);
-        sorter.Add(190);
-        sorter.Add(180);
-        sorter.Add(185);
-        sorter.Add(187);
+        var sorter = new SwiftSortedList<int>(new[] { 100, 180, 185, 187, 190, 200, 210, 220 });
+        sorter.PopMax();
+        sorter.PopMax();
 
         Assert.Equal(0, sorter.Offset);
 
@@ -756,14 +843,9 @@ public class SwiftSortedListTests
     [Fact]
     public void RemoveAt_WhenOffsetIsZeroAndCountDropsBelowQuarter_DoesNotRecenter()
     {
-        var sorter = new SwiftSortedList<int>();
-
-        sorter.Add(100);
-        sorter.Add(200);
-        sorter.Add(190);
-        sorter.Add(180);
-        sorter.Add(185);
-        sorter.Add(187);
+        var sorter = new SwiftSortedList<int>(new[] { 100, 180, 185, 187, 190, 200, 210, 220 });
+        sorter.PopMax();
+        sorter.PopMax();
 
         Assert.Equal(0, sorter.Offset);
 

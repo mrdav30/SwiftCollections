@@ -147,6 +147,13 @@ unique-value iteration and membership matter more than assigned slots.
 ordering instead of building a persistent `SwiftSortedList<T>` solely to sort
 transient keys.
 
+## Unique insertion in sorted lists
+
+Use `SwiftSortedList<T>.TryAddUnique(item)` when values must stay ordered and
+the list should reject a value that compares equal to an existing value.
+`Add(item)` allows duplicates. A rejected insertion leaves the list and active
+enumerators valid.
+
 ## Clearing And Retained References
 
 Core collections expose `Clear(bool clearRetainedReferences)` alongside their

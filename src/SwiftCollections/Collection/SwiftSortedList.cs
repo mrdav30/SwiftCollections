@@ -21,7 +21,7 @@ namespace SwiftCollections;
 
 /// <summary>
 /// Represents a dynamically sorted collection of elements.
-/// Provides efficient O(log n) operations for adding, removing, and checking for the presence of elements.
+/// Search takes O(log n) comparisons. Insertion and removal may shift elements.
 /// </summary>
 /// <remarks>
 /// The comparer is not serialized. After deserialization the list uses
@@ -308,44 +308,42 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         Insert(item, index);
     }
 
-    /// <summary>
-    /// Inserts an item into the internal array at the specified arrayIndex, shifting elements as needed.
-    /// </summary>
+    /// <summary>Adds an item if no existing item compares equal to it.</summary>
+    /// <returns>Whether the item was added.</returns>
+    public bool TryAddUnique(T item)
+    {
+        int index = _count == 0 || _comparer.Compare(_innerArray[_offset + _count - 1], item) < 0
+            ? ~_count
+            : Search(item);
+        if (index >= 0)
+            return false;
+        Insert(item, ~index);
+        return true;
+    }
+
     private void Insert(T item, int index)
     {
         ChronicleGuard.ThrowIfArrayIndexInvalid(index, _count, nameof(index));
-        if (_offset + _count + 1 > _innerArray.Length)
+        if (_count == _innerArray.Length)
             Resize(_innerArray.Length * 2);
 
+        int suffixCount = _count - index;
+        if (index >= suffixCount && _offset + _count == _innerArray.Length)
+            RecenterArray();
+
         int physicalIndex = GetPhysicalIndex(index);
-
-        if (index < (uint)_count)
+        if (_offset > 0 && index < suffixCount)
         {
-            int distanceToHead = physicalIndex - _offset;
-            int distanceToTail = (_offset + _count - 1) - physicalIndex;
-
-            if (distanceToHead >= (uint)distanceToTail)
-            {
-                if ((uint)_offset == 0)
-                {
-                    // Ensure capacity for recentering
-                    Resize(_innerArray.Length * 2);
-                    RecenterArray();
-                    physicalIndex = GetPhysicalIndex(index);
-                }
-
-                _offset--;
-                physicalIndex--;
-                // Shift elements towards the head (left)
-                Array.Copy(_innerArray, _offset + 1, _innerArray, _offset, distanceToHead + 1);
-            }
-            else  // Shift elements towards the tail (right) to make space
-                Array.Copy(_innerArray, physicalIndex, _innerArray, physicalIndex + 1, _count - index);
+            if (index != 0)
+                Array.Copy(_innerArray, _offset, _innerArray, _offset - 1, index);
+            _offset--;
+            physicalIndex--;
         }
+        else if (suffixCount != 0)
+            Array.Copy(_innerArray, physicalIndex, _innerArray, physicalIndex + 1, suffixCount);
 
         _innerArray[physicalIndex] = item;
         _count++;
-
         _version++;
     }
 
@@ -660,8 +658,9 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
             if (distanceToHead < distanceToTail)
             {
                 // Shift elements towards the tail (right) to fill the gap
-                Array.Copy(_innerArray, _offset, _innerArray, _offset + 1, distanceToHead);
-                _offset++;  // Adjust offset since we've moved elements towards the tail
+                if (distanceToHead != 0)
+                    Array.Copy(_innerArray, _offset, _innerArray, _offset + 1, distanceToHead);
+                _innerArray[_offset++] = default!;
             }
             else
             {
@@ -673,12 +672,12 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         else  // Removing the last element; simply clear it
             _innerArray[GetPhysicalIndex(_count)] = default!;
 
-        // Only recenter if offset is non-zero and count is less than 25% of capacity
-        if (_offset != 0 && (uint)_count < _innerArray.Length * 0.25)
+        if (_offset != 0)
         {
-            if ((uint)_count == 0)
-                _offset = _innerArray.Length >> 1; // Reset offset to the middle when list is empty
-            else
+            if (_count == 0)
+                _offset = _innerArray.Length >> 1;
+            // Recenter at the quarter-full boundary to avoid repeated copies during a drain.
+            else if (_count == (_innerArray.Length >> 2) - 1)
                 RecenterArray();
         }
 
@@ -767,7 +766,15 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     private void RecenterArray()
     {
         int newOffset = (_innerArray.Length - _count) >> 1;
+        if (newOffset == _offset)
+            return;
+
         Array.Copy(_innerArray, _offset, _innerArray, newOffset, _count);
+        if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+        {
+            int start = newOffset < _offset ? Math.Max(_offset, newOffset + _count) : _offset;
+            Array.Clear(_innerArray, start, Math.Min(Math.Abs(newOffset - _offset), _count));
+        }
         _offset = newOffset;
 
         _version++;
@@ -899,26 +906,24 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// </summary>
     /// <param name="item">The item to search for.</param>
     /// <returns>
-    /// The arrayIndex of the item if found or where the item should be inserted if not found.
+    /// The matching index or the bitwise complement of the insertion index.
     /// </returns>
     public int Search(T item)
     {
-        int low = 0;
-        int high = _count - 1;
-        while ((uint)low <= high)
+        int low = _offset;
+        int high = low + _count - 1;
+        while (low <= high)
         {
             int mid = low + ((high - low) >> 1);
-            T midItem = _innerArray[GetPhysicalIndex(mid)];
-            int cmp = _comparer.Compare(midItem, item);
-            if ((uint)cmp == 0)
-                return mid; // Exact match found
-
+            int cmp = _comparer.Compare(_innerArray[mid], item);
+            if (cmp == 0)
+                return mid - _offset;
             if (cmp < 0)
-                low = mid + 1; // Search in the right half
+                low = mid + 1;
             else
-                high = mid - 1; // Search in the left half
+                high = mid - 1;
         }
-        return ~low; // Item not found, should be inserted at arrayIndex low
+        return ~(low - _offset);
     }
 
     /// <inheritdoc/>
