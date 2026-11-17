@@ -68,5 +68,11 @@ Broad-phase volume matches do not replace your application's narrow-phase shape
 tests. Updates must follow changes to an indexed object's bounds; the index does
 not observe object movement automatically.
 
+For a BVH query with fixed storage, use `TryQuery(bounds, results, traversal)`.
+Supply a plain `SwiftList<TKey>` and a separate `Span<int>` for traversal.
+Allow one spare result entry and one traversal slot for each live leaf.
+Insufficient capacity returns `false` before appending anything. Successful
+queries preserve ordinary BVH traversal order.
+
 Use the [query API reference](xref:SwiftCollections.Query) for duplicate-key,
 update, removal, and invalid-bound contracts of the selected structure.

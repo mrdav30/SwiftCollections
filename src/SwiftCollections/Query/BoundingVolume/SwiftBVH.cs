@@ -463,36 +463,53 @@ public class SwiftBVH<TKey, TVolume>
         if (RootNodeIndex == -1) return;
 
         SwiftIntStack nodeStack = _queryScratch.RentIntStack(_peakIndex + 1);
-        nodeStack.Push(RootNodeIndex);
-
-        while (nodeStack.Count > 0)
-        {
-            int index = nodeStack.Pop();
-            QueryNode(index, queryBounds, results, nodeStack);
-        }
+        Query(queryBounds, results, nodeStack.Array);
     }
 
-    private void QueryNode(int index, TVolume queryBounds, ICollection<TKey> results, SwiftIntStack nodeStack)
+    /// <summary>Appends matching values using caller-owned storage without growing either buffer.</summary>
+    /// <remarks>
+    /// Requires one stack slot and one spare result slot for every live leaf.
+    /// Insufficient storage returns false and leaves the results unchanged.
+    /// Matching values use the same traversal order as the ordinary query.
+    /// Pass a plain <see cref="SwiftList{T}"/> to prevent virtual add callbacks during traversal.
+    /// The traversal span must be independent of the result array.
+    /// </remarks>
+    public bool TryQuery(TVolume queryBounds, SwiftList<TKey> results, Span<int> traversal)
     {
-        ref SwiftBVHNode<TKey, TVolume> node = ref _nodePool[index];
-        ThrowIfQueryNodeIsUnallocated(index, node);
+        ChronicleGuard.ThrowIfNull(results, nameof(results));
+        ChronicleGuard.ThrowIfArgument(results.GetType() != typeof(SwiftList<TKey>),
+            nameof(results), "Caller-owned query results must be a plain SwiftList.");
+        ChronicleGuard.ThrowIfArgument((object)results.InnerArray is int[] backing && traversal.Overlaps(backing),
+            nameof(traversal), "Traversal storage overlaps the results.");
+        if (traversal.Length < Count || results.Capacity - results.Count < Count)
+            return false;
 
-        if (!queryBounds.Intersects(node.Bounds))
-            return;
-
-        if (node.IsLeaf)
-        {
-            results.Add(node.Value);
-            return;
-        }
-
-        PushChildNodes(node, nodeStack);
+        if (RootNodeIndex != -1)
+            Query(queryBounds, results, traversal);
+        return true;
     }
 
-    private static void PushChildNodes(SwiftBVHNode<TKey, TVolume> node, SwiftIntStack nodeStack)
+    private void Query(TVolume queryBounds, ICollection<TKey> results, Span<int> traversal)
     {
-        nodeStack.Push(node.LeftChildIndex);
-        nodeStack.Push(node.RightChildIndex);
+        int count = 0;
+        traversal[count++] = RootNodeIndex;
+        while (count != 0)
+        {
+            int index = traversal[--count];
+            ref SwiftBVHNode<TKey, TVolume> node = ref _nodePool[index];
+            ThrowIfQueryNodeIsUnallocated(index, node);
+            if (!queryBounds.Intersects(node.Bounds))
+                continue;
+
+            if (node.IsLeaf)
+                results.Add(node.Value);
+            else
+            {
+                // The pending nodes cover disjoint subtrees, so their count is at most the live leaf count.
+                traversal[count++] = node.LeftChildIndex;
+                traversal[count++] = node.RightChildIndex;
+            }
+        }
     }
 
     private static void ThrowIfQueryNodeIsUnallocated(int index, SwiftBVHNode<TKey, TVolume> node)

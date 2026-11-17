@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using SwiftCollections.Observable;
 using Xunit;
 
 namespace SwiftCollections.Query.Tests
@@ -21,6 +23,53 @@ namespace SwiftCollections.Query.Tests
 
             Assert.Single(results);
             Assert.Contains(1, results);
+        }
+
+        [Fact]
+        public void TryQueryPreservesOrderAndLeavesResultsUnchangedOnShortStorage()
+        {
+            var bvh = new SwiftBVH<int, TestBoundVolume>(8);
+            var bounds = new TestBoundVolume(0, 0, 0, 1, 1, 1);
+            bvh.Insert(1, bounds);
+            bvh.Insert(2, bounds);
+            bvh.Insert(3, bounds);
+            bvh.Remove(2);
+
+            var expected = new List<int> { 7 };
+            bvh.Query(bounds, expected);
+            var results = new SwiftList<int>(3) { 7 };
+            Assert.False(bvh.TryQuery(bounds, results, new int[1]));
+            Assert.Equal(new[] { 7 }, results);
+            var shortResults = new SwiftList<int>(2);
+            for (int i = 0; i < shortResults.Capacity - 1; i++)
+                shortResults.Add(7);
+            int previousCount = shortResults.Count;
+            Assert.False(bvh.TryQuery(bounds, shortResults, new int[2]));
+            Assert.Equal(previousCount, shortResults.Count);
+            Assert.All(shortResults, item => Assert.Equal(7, item));
+            Assert.True(bvh.TryQuery(bounds, results, new int[2]));
+            Assert.Equal(expected, results);
+        }
+
+        [Fact]
+        public void TryQueryWithEmptyTreeCompletesWithNoStorage()
+        {
+            var bvh = new SwiftBVH<string, TestBoundVolume>(8);
+            var bounds = new TestBoundVolume(0, 0, 0, 1, 1, 1);
+            var results = new SwiftList<string>();
+            Assert.True(bvh.TryQuery(bounds, results, Span<int>.Empty));
+            Assert.Empty(results);
+        }
+
+        [Fact]
+        public void TryQueryRejectsOverlappingAndCallbackBackedStorage()
+        {
+            var bvh = new SwiftBVH<int, TestBoundVolume>(8);
+            var bounds = new TestBoundVolume(0, 0, 0, 1, 1, 1);
+            var results = new SwiftList<int>(2);
+            Assert.Throws<ArgumentException>("traversal", () => bvh.TryQuery(bounds, results, results.InnerArray.AsSpan(1)));
+            var observable = new SwiftObservableList<int>(2);
+            Assert.Throws<ArgumentException>("results", () => bvh.TryQuery(bounds, observable, new int[2]));
         }
 
         [Fact]
