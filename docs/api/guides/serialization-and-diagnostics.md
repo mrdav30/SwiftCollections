@@ -36,6 +36,24 @@ shallow snapshots, so their array storage is independent but referenced elements
 remain shared. Validate externally supplied dimensions, IDs and free-slot
 metadata against the concrete collection's restore contract.
 
+Dimensional arrays validate restored shapes before copying data into independently
+owned storage. Each dimension must be non-negative, and its exact product must
+fit in `Int32` and equal the data length. Any zero axis gives an empty shape,
+including when the other dimensions are large, and requires empty data. Negative
+dimensions throw `ArgumentOutOfRangeException`, an overflowing product throws
+`OverflowException`, and a length mismatch throws `ArgumentException`. Null data
+retains the existing exception distinction: 2D arrays throw
+`ArgumentNullException`; 3D arrays throw `NullReferenceException`.
+
+`Resize` rejects negative dimensions and overflowing products before changing the
+array. Failed resize or validation/copying by the dimensional owner's state
+setter preserves its shape, stored values and backing array. Ordinary 2D
+dimensional constructors, including the bool and short specializations, retain
+their negative-to-zero clamping behavior;
+3D dimensional constructors reject negative dimensions. These checks do not
+change the passive `Array2DState<T>` and `Array3DState<T>` constructors, which
+retain supplied data without validation or copying.
+
 The factory discovers the declared state contract with reflection and compiles a
 constructor delegate. A state value is an explicit schema, not an arbitrary
 object-graph discovery mechanism. See the

@@ -8,6 +8,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using Chronicler;
 using Chronicler.Diagnostics;
@@ -22,8 +23,8 @@ namespace SwiftCollections.Dimensions;
 /// <typeparam name="T">The type of elements in the 3D array.</typeparam>
 /// <remarks>
 /// Coordinates are zero-based cells; the last coordinate varies fastest in flattened storage. Element copies are
-/// shallow. Mutable instances and their enumerators require external synchronization. Restore constructors trust
-/// dimension/data consistency.
+/// shallow. Mutable instances and their enumerators require external synchronization. Construction, resizing and
+/// restoration validate the shape before installing storage.
 /// </remarks>
 [Serializable]
 [JsonConverter(typeof(StateJsonConverterFactory))]
@@ -63,19 +64,22 @@ public partial class SwiftArray3D<T> : IStateBacked<Array3DState<T>>, IEnumerabl
     /// <param name="depth">The new depth in cells. Use a non-negative value and a dimension product representable
     /// as an array length.</param>
     /// <remarks>
-    /// Unlike the 2D constructor, dimensions are stored verbatim without a non-negative guard. Negative or
-    /// overflowing products can throw or create inconsistent shapes. The dimension product uses unchecked Int32
-    /// arithmetic; provide dimensions whose product fits the supported array length. Zero dimensions create empty
-    /// storage.
+    /// Unlike the 2D constructor, negative dimensions are rejected. Any zero dimension creates empty storage;
+    /// otherwise the exact product must fit Int32. Allocation remains subject to runtime array-length and memory
+    /// limits.
     /// </remarks>
-    /// <exception cref="T:System.OverflowException">The unchecked dimension product is negative when used as an
-    /// array length. Positive wrapped products are not detected; keep the full product representable.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">A dimension is negative.</exception>
+    /// <exception cref="T:System.OverflowException">The exact dimension product exceeds Int32.MaxValue.</exception>
     public SwiftArray3D(int width, int height, int depth)
     {
+        ChronicleGuard.ThrowIfNegative(width, nameof(width));
+        ChronicleGuard.ThrowIfNegative(height, nameof(height));
+        ChronicleGuard.ThrowIfNegative(depth, nameof(depth));
+
+        _innerArray = new T[GetLength(width, height, depth)];
         _width = width;
         _height = height;
         _depth = depth;
-        _innerArray = new T[width * height * depth];
     }
 
     /// <summary>
@@ -91,13 +95,12 @@ public partial class SwiftArray3D<T> : IStateBacked<Array3DState<T>>, IEnumerabl
     /// <param name="defaultValue">The value assigned to every selected cell; reference-type values are shared,
     /// not cloned.</param>
     /// <remarks>
-    /// Unlike the 2D constructor, dimensions are stored verbatim without a non-negative guard. Negative or
-    /// overflowing products can throw or create inconsistent shapes. The dimension product uses unchecked Int32
-    /// arithmetic; provide dimensions whose product fits the supported array length. Zero dimensions create empty
-    /// storage.
+    /// Unlike the 2D constructor, negative dimensions are rejected. Any zero dimension creates empty storage;
+    /// otherwise the exact product must fit Int32. Allocation remains subject to runtime array-length and memory
+    /// limits.
     /// </remarks>
-    /// <exception cref="T:System.OverflowException">The unchecked dimension product is negative when used as an
-    /// array length. Positive wrapped products are not detected; keep the full product representable.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">A dimension is negative.</exception>
+    /// <exception cref="T:System.OverflowException">The exact dimension product exceeds Int32.MaxValue.</exception>
     public SwiftArray3D(int width, int height, int depth, T defaultValue) : this(width, height, depth)
     {
         Fill(defaultValue);
@@ -106,12 +109,15 @@ public partial class SwiftArray3D<T> : IStateBacked<Array3DState<T>>, IEnumerabl
     /// <summary>
     /// Initializes a new instance of the SwiftArray3D class with the specified array state.
     /// </summary>
-    /// <param name="state">The state to restore. Data is shallow-copied; dimensions and data length are not
-    /// checked for consistency.</param>
+    /// <param name="state">The state to restore. Dimensions must be non-negative and their exact product must
+    /// equal the data length. Data is shallow-copied into independent storage.</param>
     /// <exception cref="T:System.NullReferenceException">The state data array is null.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">A state dimension is negative.</exception>
+    /// <exception cref="T:System.OverflowException">The exact dimension product exceeds Int32.MaxValue.</exception>
+    /// <exception cref="T:System.ArgumentException">The data length does not match the dimension product.</exception>
     /// <remarks>
-    /// The state is a value type and may be default. Its data must be non-null; shape consistency is the caller's
-    /// responsibility.
+    /// The state is a value type and may be default, but its data must be non-null. Any zero dimension requires
+    /// empty data. Invalid state is rejected before storage is installed.
     /// </remarks>
     [MemoryPackConstructor]
     public SwiftArray3D(Array3DState<T> state)
@@ -127,7 +133,7 @@ public partial class SwiftArray3D<T> : IStateBacked<Array3DState<T>>, IEnumerabl
     /// <summary>
     /// Gets the width of the object.
     /// </summary>
-    /// <value>The stored width in cells; restored states are not validated.</value>
+    /// <value>The non-negative width in cells.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Width => _width;
@@ -135,7 +141,7 @@ public partial class SwiftArray3D<T> : IStateBacked<Array3DState<T>>, IEnumerabl
     /// <summary>
     /// Gets the height value associated with the current instance.
     /// </summary>
-    /// <value>The stored height in cells; restored states are not validated.</value>
+    /// <value>The non-negative height in cells.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Height => _height;
@@ -143,16 +149,15 @@ public partial class SwiftArray3D<T> : IStateBacked<Array3DState<T>>, IEnumerabl
     /// <summary>
     /// Gets the current depth value for this instance.
     /// </summary>
-    /// <value>The stored depth in cells; restored states are not validated.</value>
+    /// <value>The non-negative depth in cells.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Depth => _depth;
 
     /// <summary>
-    /// Gets the unchecked product of the stored dimensions.
+    /// Gets the number of cells in the shape.
     /// </summary>
-    /// <value>The logical cell count for valid dimensions; malformed restored dimensions or arithmetic overflow
-    /// can make it differ from Length.</value>
+    /// <value>The exact dimension product, equal to Length. Any zero dimension gives zero cells.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Size => _width * _height * _depth;
@@ -179,8 +184,7 @@ public partial class SwiftArray3D<T> : IStateBacked<Array3DState<T>>, IEnumerabl
     /// <remarks>
     /// An exception is thrown if any index is outside the valid range for its dimension.
     /// </remarks>
-    /// <exception cref="T:System.IndexOutOfRangeException">A coordinate is outside its dimension, or inconsistent
-    /// restored storage cannot hold the flattened offset.</exception>
+    /// <exception cref="T:System.IndexOutOfRangeException">A coordinate is outside its dimension.</exception>
     [JsonIgnore]
     [MemoryPackIgnore]
     public T this[int x, int y, int z]
@@ -202,8 +206,8 @@ public partial class SwiftArray3D<T> : IStateBacked<Array3DState<T>>, IEnumerabl
     /// </summary>
     /// <value>A new state with independently allocated data storage; referenced elements remain shared.</value>
     /// <remarks>
-    /// Restoration through the state constructor copies data but trusts dimensions and data length. Validate
-    /// untrusted states before restoring. The setter is internal.
+    /// Restoration validates non-negative dimensions, their exact product and data length, then copies data.
+    /// Validation and copying complete before dimensions or backing storage change. The setter is internal.
     /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
@@ -224,12 +228,20 @@ public partial class SwiftArray3D<T> : IStateBacked<Array3DState<T>>, IEnumerabl
 
         internal set
         {
+            int capacity = value.Data.Length;
+            ChronicleGuard.ThrowIfNegative(value.Width, nameof(value.Width));
+            ChronicleGuard.ThrowIfNegative(value.Height, nameof(value.Height));
+            ChronicleGuard.ThrowIfNegative(value.Depth, nameof(value.Depth));
+
+            ChronicleGuard.ThrowIfArgument(capacity != GetLength(value.Width, value.Height, value.Depth), nameof(value), "State data length must match the dimension product.");
+
+            var data = new T[capacity];
+            Array.Copy(value.Data, data, capacity);
+
             _width = value.Width;
             _height = value.Height;
             _depth = value.Depth;
-
-            _innerArray = new T[value.Data.Length];
-            Array.Copy(value.Data, _innerArray, value.Data.Length);
+            _innerArray = data;
         }
     }
 
@@ -248,14 +260,15 @@ public partial class SwiftArray3D<T> : IStateBacked<Array3DState<T>>, IEnumerabl
     /// representable as an array length.</param>
     /// <remarks>
     /// Preserves cells at coordinates inside both old and new shapes; new cells contain default(T). Storage is
-    /// replaced even for an unchanged shape. Dimension products use unchecked Int32 arithmetic; keep the product
-    /// within the supported array length.
+    /// replaced even for an unchanged shape. Any zero dimension creates empty storage. Invalid dimensions or
+    /// allocation failure leave dimensions, storage and contents unchanged.
     /// </remarks>
-    /// <exception cref="T:System.OverflowException">The unchecked dimension product is negative when used as an
-    /// array length. Positive wrapped products are not detected; keep the full product representable.</exception>
+    /// <exception cref="T:System.OverflowException">The exact dimension product exceeds Int32.MaxValue.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">A new dimension is negative.</exception>
     public void Resize(int newWidth, int newHeight, int newDepth)
     {
-        var newArray = new T[newWidth * newHeight * newDepth];
+        ValidateResizeDimensions(newWidth, newHeight, newDepth);
+        var newArray = new T[unchecked(newWidth * newHeight * newDepth)];
 
         int minWidth = Math.Min(Width, newWidth);
         int minHeight = Math.Min(Height, newHeight);
@@ -278,6 +291,22 @@ public partial class SwiftArray3D<T> : IStateBacked<Array3DState<T>>, IEnumerabl
         _width = newWidth;
         _height = newHeight;
         _depth = newDepth;
+    }
+
+    // Keep guard/overflow code out of Resize so the JIT retains its compact copy loop.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ValidateResizeDimensions(int newWidth, int newHeight, int newDepth)
+    {
+        ChronicleGuard.ThrowIfNegative(newWidth, nameof(newWidth));
+        ChronicleGuard.ThrowIfNegative(newHeight, nameof(newHeight));
+        ChronicleGuard.ThrowIfNegative(newDepth, nameof(newDepth));
+        _ = GetLength(newWidth, newHeight, newDepth);
+    }
+
+    private static int GetLength(int width, int height, int depth)
+    {
+        // An empty shape is valid even when its nonzero axes would overflow an intermediate product.
+        return width == 0 || height == 0 || depth == 0 ? 0 : checked(width * height * depth);
     }
 
     /// <summary>

@@ -22,8 +22,8 @@ namespace SwiftCollections.Dimensions;
 /// <typeparam name="T">The type of elements in the array.</typeparam>
 /// <remarks>
 /// Coordinates are zero-based cells; the last coordinate varies fastest in flattened storage. Element copies are
-/// shallow. Mutable instances and their enumerators require external synchronization. Restore constructors trust
-/// dimension/data consistency.
+/// shallow. Mutable instances and their enumerators require external synchronization. Construction, resizing and
+/// restoration validate the shape before installing storage.
 /// </remarks>
 [Serializable]
 [JsonConverter(typeof(StateJsonConverterFactory))]
@@ -54,11 +54,10 @@ public partial class SwiftArray2D<T> : IStateBacked<Array2DState<T>>, IEnumerabl
     /// <param name="width">The requested width in cells; negative values are clamped to zero.</param>
     /// <param name="height">The requested height in cells; negative values are clamped to zero.</param>
     /// <remarks>
-    /// The dimension product uses unchecked Int32 arithmetic; provide dimensions whose product fits the supported
-    /// array length. Zero dimensions create empty storage.
+    /// The exact product of the clamped dimensions must fit Int32. Any zero dimension creates empty storage;
+    /// allocation is still subject to runtime array-length and memory limits.
     /// </remarks>
-    /// <exception cref="T:System.OverflowException">The unchecked dimension product is negative when used as an
-    /// array length. Positive wrapped products are not detected; keep the full product representable.</exception>
+    /// <exception cref="T:System.OverflowException">The exact dimension product exceeds Int32.MaxValue.</exception>
     public SwiftArray2D(int width, int height)
     {
         Initialize(width, height);
@@ -76,11 +75,10 @@ public partial class SwiftArray2D<T> : IStateBacked<Array2DState<T>>, IEnumerabl
     /// <param name="defaultValue">The value assigned to every selected cell; reference-type values are shared,
     /// not cloned.</param>
     /// <remarks>
-    /// The dimension product uses unchecked Int32 arithmetic; provide dimensions whose product fits the supported
-    /// array length. Zero dimensions create empty storage.
+    /// The exact product of the clamped dimensions must fit Int32. Any zero dimension creates empty storage;
+    /// allocation is still subject to runtime array-length and memory limits.
     /// </remarks>
-    /// <exception cref="T:System.OverflowException">The unchecked dimension product is negative when used as an
-    /// array length. Positive wrapped products are not detected; keep the full product representable.</exception>
+    /// <exception cref="T:System.OverflowException">The exact dimension product exceeds Int32.MaxValue.</exception>
     public SwiftArray2D(int width, int height, T defaultValue) : this(width, height)
     {
         Fill(defaultValue);
@@ -115,12 +113,15 @@ public partial class SwiftArray2D<T> : IStateBacked<Array2DState<T>>, IEnumerabl
     /// <summary>
     /// Initializes a new instance of the SwiftArray2D class with the specified array state.
     /// </summary>
-    /// <param name="state">The state to restore. Data is shallow-copied; dimensions and data length are not
-    /// checked for consistency.</param>
+    /// <param name="state">The state to restore. Dimensions must be non-negative and their exact product must
+    /// equal the data length. Data is shallow-copied into independent storage.</param>
     /// <exception cref="T:System.ArgumentNullException">The state data array is null.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">A state dimension is negative.</exception>
+    /// <exception cref="T:System.OverflowException">The exact dimension product exceeds Int32.MaxValue.</exception>
+    /// <exception cref="T:System.ArgumentException">The data length does not match the dimension product.</exception>
     /// <remarks>
-    /// The state is a value type and may be default. Its data must be non-null; shape consistency is the caller's
-    /// responsibility.
+    /// The state is a value type and may be default, but its data must be non-null. Any zero dimension requires
+    /// empty data. Invalid state is rejected before storage is installed.
     /// </remarks>
     [MemoryPackConstructor]
     public SwiftArray2D(Array2DState<T> state)
@@ -137,7 +138,7 @@ public partial class SwiftArray2D<T> : IStateBacked<Array2DState<T>>, IEnumerabl
     /// <summary>
     /// Gets the width of the 2D array.
     /// </summary>
-    /// <value>The stored width in cells; restored states are not validated.</value>
+    /// <value>The non-negative width in cells.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Width => _width;
@@ -145,7 +146,7 @@ public partial class SwiftArray2D<T> : IStateBacked<Array2DState<T>>, IEnumerabl
     /// <summary>
     /// Gets the height of the 2D array.
     /// </summary>
-    /// <value>The stored height in cells; restored states are not validated.</value>
+    /// <value>The non-negative height in cells.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Height => _height;
@@ -164,10 +165,9 @@ public partial class SwiftArray2D<T> : IStateBacked<Array2DState<T>>, IEnumerabl
     public T[] InnerArray => _innerArray;
 
     /// <summary>
-    /// Gets the unchecked product of the stored dimensions.
+    /// Gets the number of cells in the shape.
     /// </summary>
-    /// <value>The logical cell count for valid dimensions; malformed restored dimensions or arithmetic overflow
-    /// can make it differ from Length.</value>
+    /// <value>The exact dimension product, equal to Length. Any zero dimension gives zero cells.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Size => _width * _height;
@@ -188,8 +188,7 @@ public partial class SwiftArray2D<T> : IStateBacked<Array2DState<T>>, IEnumerabl
     /// <param name="y">The zero-based Y coordinate; valid from zero through the corresponding dimension minus
     /// one.</param>
     /// <value>The stored element; assigning replaces that cell without cloning.</value>
-    /// <exception cref="T:System.IndexOutOfRangeException">A coordinate is outside its dimension, or inconsistent
-    /// restored storage cannot hold the flattened offset.</exception>
+    /// <exception cref="T:System.IndexOutOfRangeException">A coordinate is outside its dimension.</exception>
     [JsonIgnore]
     [MemoryPackIgnore]
     public T this[int x, int y]
@@ -211,8 +210,8 @@ public partial class SwiftArray2D<T> : IStateBacked<Array2DState<T>>, IEnumerabl
     /// </summary>
     /// <value>A new state with independently allocated data storage; referenced elements remain shared.</value>
     /// <remarks>
-    /// Restoration through the state constructor copies data but trusts dimensions and data length. Validate
-    /// untrusted states before restoring. The setter is internal.
+    /// Restoration validates non-negative dimensions, their exact product and data length, then copies data.
+    /// Validation and copying complete before dimensions or backing storage change. The setter is internal.
     /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
@@ -233,14 +232,18 @@ public partial class SwiftArray2D<T> : IStateBacked<Array2DState<T>>, IEnumerabl
         internal set
         {
             ChronicleGuard.ThrowIfNull(value.Data, nameof(value.Data));
+            ChronicleGuard.ThrowIfNegative(value.Width, nameof(value.Width));
+            ChronicleGuard.ThrowIfNegative(value.Height, nameof(value.Height));
+
+            int capacity = checked(value.Width * value.Height);
+            ChronicleGuard.ThrowIfArgument(value.Data.Length != capacity, nameof(value), "State data length must match the dimension product.");
+
+            var data = new T[capacity];
+            Array.Copy(value.Data, data, capacity);
 
             _width = value.Width;
             _height = value.Height;
-
-            int capacity = value.Data.Length;
-
-            _innerArray = new T[capacity];
-            Array.Copy(value.Data, _innerArray, capacity);
+            _innerArray = data;
         }
     }
 
@@ -382,11 +385,10 @@ public partial class SwiftArray2D<T> : IStateBacked<Array2DState<T>>, IEnumerabl
     /// <exception cref="T:System.ArgumentOutOfRangeException">A new dimension is negative.</exception>
     /// <remarks>
     /// Preserves cells at coordinates inside both old and new shapes; new cells contain default(T). Storage is
-    /// replaced only when the dimensions change. Negative dimensions are rejected before mutation. Dimension
-    /// products use unchecked Int32 arithmetic; keep the product within the supported array length.
+    /// replaced only when the dimensions change. Any zero dimension creates empty storage. Invalid dimensions
+    /// or allocation failure leave dimensions, storage and contents unchanged.
     /// </remarks>
-    /// <exception cref="T:System.OverflowException">The unchecked dimension product is negative when used as an
-    /// array length. Positive wrapped products are not detected; keep the full product representable.</exception>
+    /// <exception cref="T:System.OverflowException">The exact dimension product exceeds Int32.MaxValue.</exception>
     public void Resize(int newWidth, int newHeight)
     {
         ChronicleGuard.ThrowIfNegative(newWidth, nameof(newWidth));
@@ -395,7 +397,7 @@ public partial class SwiftArray2D<T> : IStateBacked<Array2DState<T>>, IEnumerabl
         if (newWidth == _width && newHeight == _height)
             return;
 
-        T[] newArray = new T[newWidth * newHeight];
+        T[] newArray = new T[checked(newWidth * newHeight)];
         int minWidth = Math.Min(_width, newWidth);
         int minHeight = Math.Min(_height, newHeight);
 
@@ -416,7 +418,7 @@ public partial class SwiftArray2D<T> : IStateBacked<Array2DState<T>>, IEnumerabl
     {
         _width = Math.Max(0, width);
         _height = Math.Max(0, height);
-        _innerArray = new T[_width * _height];
+        _innerArray = new T[checked(_width * _height)];
     }
 
     private static int NormalizeShift(int shift, int length)

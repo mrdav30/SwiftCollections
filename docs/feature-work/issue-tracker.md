@@ -71,42 +71,6 @@ diagnosis, decisions and reopening criteria stay with their owning issue.
 
 ## Active Issues
 
-### SC-Issue-006 - Dimensional arrays accept inconsistent shapes
-
-- **Status / priority:** Confirmed / P2; open.
-- **Discovered:** 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`.
-- **Affected owners / impact:** SwiftArray2D/3D construction, Resize and restore; unchecked products/negative shapes or mismatched state produce unusable arrays.
-- **Evidence environment:** Windows x64, SDK 10.0.302, runtime 10.0.10, Release with published dependencies (`UseLocalLsfStack=false`).
-
-**Reproducer** (use the console setup above):
-
-```csharp
-var a = new SwiftArray2D<int>(65536, 65536);
-Console.WriteLine($"{a.Width},{a.Height}; length={a.Length}; size={a.Size}");
-var b = new SwiftArray3D<int>(-1, -1, 1);
-Console.WriteLine($"{b.Width},{b.Height},{b.Depth}; length={b.Length}");
-var c = new SwiftArray2D<int>(new Array2DState<int>(2, 2, new[] { 7 }));
-Console.WriteLine(c[1, 1]);
-```
-
-Observed: `65536,65536; length=0; size=0`; `-1,-1,1; length=1`; then
-IndexOutOfRangeException for a logically valid coordinate. Expected: reject
-unrepresentable products, negative 3D shapes, and inconsistent restored shapes
-before installing unusable storage. The 2D normal constructor deliberately
-clamps negative dimensions, unlike Resize, which rejects them. Default 2D state
-throws ArgumentNullException; default 3D state and a null rectangular-source
-constructor throw NullReferenceException. Those exception differences are
-documented as implemented, not silently harmonized.
-
-- **Next action:** Validate dimensions, products and restored shape before mutation; preserve or explicitly decide the 2D negative-clamping contract.
-
-**Related documentation decision:** Readonly state structs retain mutable
-array arguments; collection `State` getters allocate shallow snapshots.
-Disposition: resolved documentation correction, described in the
-[state ownership guide](../api/guides/serialization-and-diagnostics.md#serialization).
-Reopen if storage ownership changes. Null/default exception differences above
-remain implemented behavior, not harmonized API guarantees.
-
 ### SC-Issue-007 - Int16 normalization fails on constant input
 
 - **Status / priority:** Confirmed / P2; open.
@@ -489,6 +453,7 @@ they do not claim a fresh rerun or package release.
 
 | Issue                                                                                          | Resolved/closed | Outcome                                                                                                                                                                                                                                                              | Evidence                                                                                                                                                                                                       |
 | ---------------------------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <a id="sc-issue-006---dimensional-arrays-accept-inconsistent-shapes"></a>SC-Issue-006 | 2026-11-18 | Enforced non-negative dimensions and exact Int32 products at construction, Resize and restore; restored data must match the shape, and owner validation/copy failures preserve existing storage and stored values. Preserved 2D constructor clamping, passive state DTOs and null exception distinctions; reconsider those policies only through an intentional API change. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `9ccb87724652516232322f3fe5ab0b173b493c4b`: `(65536,65536)` produced an empty 2D array, `(-1,-1,1)` produced a one-cell 3D array, and a 2x2 state with one item was accepted. Final regression suite: 45 failures and 20 passing controls on that baseline, all 65 passing after the fix (63 in Lean). Release/ReleaseLean builds checked both runtime assemblies at netstandard2.1 and net10.0 and all four package IDs; unit tests passed at net10.0 (core 1485/1453, companion 43 each). Debug build/tests passed (1483/43); core coverage retained all reachable lines/branches/methods in all three configurations. DocFX passed with warnings as errors. No release is claimed. | [Regressions](../../tests/SwiftCollections.Tests/Dimension/SwiftDimensionalArrayValidation.Tests.cs), [restore contracts](../api/guides/serialization-and-diagnostics.md#serialization), [performance evidence and reopening criteria](benchmark-signal-hardening-backlog.md#sc-benchmark-001---dimensional-resize-validation-code-generation) |
 | <a id="sc-issue-005---cold-value-key-lookup-boxes-a-default-key"></a>SC-Issue-005              | 2026-10-30      | Replaced dictionary/set nullability initializers with cached type metadata, removing the 24-byte first integer/enum lookup allocation exposed by Gravitas pair teardown. Reference, nullable and generic-struct semantics are preserved without a warmup workaround. | [Cold lookup and removal regressions](../../tests/SwiftCollections.Tests/Collection/SwiftFirstLookupAllocation.Tests.cs)                                                                                       |
 | <a id="sc-issue-004---non-generic-list-enumeration-rejects-the-final-item"></a>SC-Issue-004    | 2026-10-28      | Corrected list/queue final-item guards and reproduced position-contract defects across the other affected collections and dictionary views; preserved generic iteration and full reachable coverage.                                                                 | [Closeout and regressions](done/2026-10-28-enumerator-contract-closeout.md)                                                                                                                                    |
 | <a id="sc-issue-003---hash-set-lookup-boxes-value-keys-in-unoptimized-builds"></a>SC-Issue-003 | 2026-10-26      | Removed value-key boxing from all three hash-set lookup APIs, including Debug; retained null/error contracts and added warmed allocation regressions.                                                                                                                | [Closeout](https://github.com/mrdav30/SwiftCollections/blob/2b4894f87980147934b1eb74603029e04fb84ec8/docs/feature-work/issue-tracker.md#sc-issue-003---hash-set-lookup-boxes-value-keys-in-unoptimized-builds) |

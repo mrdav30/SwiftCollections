@@ -34,11 +34,11 @@ public partial class SwiftBoolArray2D : SwiftArray2D<bool>, IStateBacked<Array2D
     /// <param name="width">The requested width in cells; negative values are clamped to zero.</param>
     /// <param name="height">The requested height in cells; negative values are clamped to zero.</param>
     /// <remarks>
-    /// The dimension product uses unchecked Int32 arithmetic; provide dimensions whose product fits the supported
-    /// array length. Zero dimensions create empty storage.
+    /// Negative dimensions are clamped before checking the exact dimension product. A zero dimension creates
+    /// empty storage.
     /// </remarks>
-    /// <exception cref="T:System.OverflowException">The unchecked dimension product is negative when used as an
-    /// array length. Positive wrapped products are not detected; keep the full product representable.</exception>
+    /// <exception cref="T:System.OverflowException">The exact product of the clamped dimensions exceeds
+    /// Int32.MaxValue.</exception>
     public SwiftBoolArray2D(int width, int height) : base(width, height) { }
 
     /// <summary>
@@ -49,11 +49,11 @@ public partial class SwiftBoolArray2D : SwiftArray2D<bool>, IStateBacked<Array2D
     /// <param name="defaultValue">The value assigned to every selected cell; reference-type values are shared,
     /// not cloned.</param>
     /// <remarks>
-    /// The dimension product uses unchecked Int32 arithmetic; provide dimensions whose product fits the supported
-    /// array length. Zero dimensions create empty storage.
+    /// Negative dimensions are clamped before checking the exact dimension product. A zero dimension creates
+    /// empty storage.
     /// </remarks>
-    /// <exception cref="T:System.OverflowException">The unchecked dimension product is negative when used as an
-    /// array length. Positive wrapped products are not detected; keep the full product representable.</exception>
+    /// <exception cref="T:System.OverflowException">The exact product of the clamped dimensions exceeds
+    /// Int32.MaxValue.</exception>
     public SwiftBoolArray2D(int width, int height, bool defaultValue) : base(width, height, defaultValue) { }
 
     /// <summary>
@@ -69,12 +69,15 @@ public partial class SwiftBoolArray2D : SwiftArray2D<bool>, IStateBacked<Array2D
     /// <summary>
     /// Initializes a new instance of the SwiftBoolArray2D class using the specified array state.
     /// </summary>
-    /// <param name="state">The state to restore. Data is shallow-copied; dimensions and data length are not
-    /// checked for consistency.</param>
+    /// <param name="state">The state to restore. Dimensions must be non-negative and their exact product must
+    /// equal the non-null data array's length. Data is copied into independently owned storage.</param>
     /// <exception cref="T:System.ArgumentNullException">The state data array is null.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">A state dimension is negative.</exception>
+    /// <exception cref="T:System.OverflowException">The exact dimension product exceeds Int32.MaxValue.</exception>
+    /// <exception cref="T:System.ArgumentException">The data length differs from the dimension product.</exception>
     /// <remarks>
-    /// The state is a value type and may be default. Its data must be non-null; shape consistency is the caller's
-    /// responsibility.
+    /// A zero dimension requires empty data. Unlike dimensional construction, restoration rejects negative
+    /// dimensions instead of clamping them. Validation and copying complete before the restored state is installed.
     /// </remarks>
     [MemoryPackConstructor]
     public SwiftBoolArray2D(Array2DState<bool> state) : base(state) { }
