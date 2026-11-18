@@ -83,6 +83,209 @@ public class SwiftQueueTests
         Assert.Equal(SwiftQueue<int>.DefaultCapacity, queue.Capacity);
     }
 
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(1, 8)]
+    [InlineData(7, 8)]
+    [InlineData(8, 8)]
+    [InlineData(9, 16)]
+    [InlineData(15, 16)]
+    [InlineData(16, 16)]
+    [InlineData(17, 32)]
+    public void StateRestore_BoundaryCounts_PreserveFifoDuringContinuedUse(int count, int capacity)
+    {
+        int[] items = CreateSequence(0, count);
+        var queue = new SwiftQueue<int>(new SwiftArrayState<int>(items));
+        Assert.Equal(capacity, queue.Capacity);
+
+        AssertRestoredQueueCanContinue(queue, items);
+    }
+
+    [Theory]
+    [InlineData(64, 8)]
+    [InlineData(64, 9)]
+    [InlineData(8, 9)]
+    [InlineData(64, 16)]
+    public void StateRestore_Overwrite_ReconstructsRingForTheNewCapacity(int oldCapacity, int count)
+    {
+        var queue = new SwiftQueue<int>(oldCapacity);
+        queue.Enqueue(-1);
+        int[] items = CreateSequence(0, count);
+
+        queue.State = new SwiftArrayState<int>(items);
+
+        Assert.Equal(count == 8 ? 8 : 16, queue.Capacity);
+        AssertRestoredQueueCanContinue(queue, items);
+    }
+
+    [Fact]
+    public void StateRestore_DefaultState_PreservesNullRejection()
+    {
+        Assert.Throws<ArgumentNullException>(() => new SwiftQueue<int>(default(SwiftArrayState<int>)));
+    }
+
+    [Fact]
+    public void StateRestore_FullQueue_CanDrainCompletelyThenReuseStorage()
+    {
+        var queue = new SwiftQueue<int>(new SwiftArrayState<int>(CreateSequence(0, 8)));
+        int[] storage = queue.InnerArray;
+        for (int i = 0; i < 8; i++)
+            Assert.Equal(i, queue.Dequeue());
+        AssertQueueContents(queue, Array.Empty<int>());
+
+        queue.Enqueue(99);
+
+        Assert.Same(storage, queue.InnerArray);
+        Assert.Equal(8, queue.Capacity);
+        AssertQueueContents(queue, new[] { 99 });
+    }
+
+    [Theory]
+    [InlineData(8)]
+    [InlineData(16)]
+    public void StateRestore_FullQueue_ImmediateEnqueueGrowsWithoutReordering(int count)
+    {
+        var queue = new SwiftQueue<int>(new SwiftArrayState<int>(CreateSequence(0, count)));
+        int[] storage = queue.InnerArray;
+
+        queue.Enqueue(count);
+
+        Assert.NotSame(storage, queue.InnerArray);
+        Assert.Equal(count * 2, queue.Capacity);
+        AssertQueueContents(queue, CreateSequence(0, count + 1));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void StateRestore_FullQueue_TryDequeueThenEnqueueRangeRetainsFifo(int appendKind)
+    {
+        var queue = new SwiftQueue<int>(new SwiftArrayState<int>(CreateSequence(0, 8)));
+        int[] storage = queue.InnerArray;
+        Assert.True(queue.TryDequeue(out int removed));
+        Assert.Equal(0, removed);
+
+        if (appendKind == 0)
+            queue.EnqueueRange(new[] { 99 });
+        else if (appendKind == 1)
+            queue.EnqueueRange(new[] { 99 }.AsSpan());
+        else
+            queue.EnqueueRange((IEnumerable<int>)new List<int> { 99 });
+
+        Assert.Same(storage, queue.InnerArray);
+        Assert.Equal(8, queue.Capacity);
+        AssertQueueContents(queue, new[] { 1, 2, 3, 4, 5, 6, 7, 99 });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void StateRestore_SnapshotRetainsFifoAndSupportsContinuedUse(bool wrapped)
+    {
+        var source = CreateFullStateSource(wrapped);
+        int[] expected = CreateSequence(wrapped ? 3 : 0, 8);
+
+        var restored = new SwiftQueue<int>(source.State);
+
+        Assert.Equal(8, restored.Capacity);
+        AssertRestoredQueueCanContinue(restored, expected);
+        AssertQueueContents(source, expected);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void StateRestore_JsonRoundTripSupportsContinuedUse(bool wrapped)
+    {
+        var source = CreateFullStateSource(wrapped);
+        string json = JsonSerializer.Serialize(source);
+
+        var restored = JsonSerializer.Deserialize<SwiftQueue<int>>(json);
+
+        AssertRestoredQueueCanContinue(restored, CreateSequence(wrapped ? 3 : 0, 8));
+    }
+
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void StateRestore_MemoryPackCreateAndOverwriteSupportContinuedUse(bool wrapped)
+    {
+        var source = CreateFullStateSource(wrapped);
+        byte[] bytes = MemoryPackSerializer.Serialize(source);
+        int[] expected = CreateSequence(wrapped ? 3 : 0, 8);
+        var restored = MemoryPackSerializer.Deserialize<SwiftQueue<int>>(bytes);
+        var overwritten = new SwiftQueue<int>(64);
+        overwritten.Enqueue(-1);
+
+        MemoryPackSerializer.Deserialize(bytes, ref overwritten);
+
+        AssertRestoredQueueCanContinue(restored, expected);
+        AssertRestoredQueueCanContinue(overwritten, expected);
+    }
+#endif
+
+    private static SwiftQueue<int> CreateFullStateSource(bool wrapped)
+    {
+        var queue = new SwiftQueue<int>(wrapped ? 8 : 16);
+        queue.EnqueueRange(CreateSequence(0, 8));
+        if (wrapped)
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                Assert.Equal(i, queue.Dequeue());
+                queue.Enqueue(8 + i);
+            }
+        }
+        return queue;
+    }
+
+    private static int[] CreateSequence(int start, int count)
+    {
+        var items = new int[count];
+        for (int i = 0; i < count; i++)
+            items[i] = start + i;
+        return items;
+    }
+
+    private static void AssertRestoredQueueCanContinue(SwiftQueue<int> queue, int[] items)
+    {
+        var expected = new Queue<int>(items);
+        AssertQueueContents(queue, expected.ToArray());
+        int[] storage = queue.InnerArray;
+        int capacity = queue.Capacity;
+        for (int i = 0; i < Math.Max(1, items.Length * 2); i++)
+        {
+            if (expected.Count > 0)
+                Assert.Equal(expected.Dequeue(), queue.Dequeue());
+            expected.Enqueue(99 + i);
+            queue.Enqueue(99 + i);
+        }
+        Assert.Equal(Math.Max(SwiftQueue<int>.DefaultCapacity, capacity), queue.Capacity);
+        if (capacity != 0)
+            Assert.Same(storage, queue.InnerArray);
+        AssertQueueContents(queue, expected.ToArray());
+    }
+
+    private static void AssertQueueContents(SwiftQueue<int> queue, int[] expected)
+    {
+        Assert.Equal(expected.Length, queue.Count);
+        Assert.Equal(expected, queue.ToArray());
+        Assert.Equal<int>(expected, queue);
+        queue.GetSegments(out ReadOnlySpan<int> first, out ReadOnlySpan<int> second);
+        Assert.Equal(expected.Length, first.Length + second.Length);
+        var segments = new int[expected.Length];
+        first.CopyTo(segments);
+        second.CopyTo(segments.AsSpan(first.Length));
+        Assert.Equal(expected, segments);
+        var copied = new int[expected.Length];
+        queue.CopyTo(copied, 0);
+        Assert.Equal(expected, copied);
+        if (expected.Length != 0)
+            Assert.Equal(expected[expected.Length - 1], queue.PeekTail());
+    }
+
     [Fact]
     public void Enqueue_AddsElementsToQueue()
     {

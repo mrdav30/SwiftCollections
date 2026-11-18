@@ -54,8 +54,7 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
     private T[] _innerArray;
 
     /// <summary>
-    /// The current number of elements in the SwiftQueue. Represents the total count of
-    /// valid elements stored in the queue, also indicating the arrayIndex of the next insertion point.
+    /// The number of live elements. Unlike a ring index, this can equal the capacity.
     /// </summary>
     private int _count;
 
@@ -314,8 +313,8 @@ public sealed partial class SwiftQueue<T> : IStateBacked<SwiftArrayState<T>>, IS
 
             _count = count;
             _head = 0;
-            _tail = count;
             _mask = capacity - 1;
+            _tail = count & _mask;
 
             _version = 0;
         }
