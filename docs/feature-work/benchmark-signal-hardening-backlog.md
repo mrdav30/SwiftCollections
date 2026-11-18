@@ -14,7 +14,7 @@ feature-work plan and link it from the signal.
 ## Intake Rules
 
 - Signal IDs use `SC-Benchmark-NNN`. The next available ID is
-  `SC-Benchmark-002`.
+  `SC-Benchmark-003`.
 - Assign an ID at intake and never reuse it, including after closure or
   promotion. Check this file's history before changing the counter.
 - Open a signal from an actual benchmark, allocation guard, profiler capture, or
@@ -83,6 +83,64 @@ making a new performance claim.
 None. Creating this tracker does not establish a new regression or measurement.
 
 ## Closed Signals
+
+### SC-Benchmark-002 - Exact Int16 normalization
+
+- **Discovered / closed:** 2026-11-18; verified during
+  [SC-Issue-007](issue-tracker.md#sc-issue-007---int16-normalization-fails-on-constant-input).
+- **Owner / revisions:** `SwiftShortArray2D.Normalize`; baseline
+  `0ffc9d76dc0ed3bfbf485cc7491c4cd66f01501e` versus the SC-Issue-007 integer
+  interpolation. Published dependencies (`UseLocalLsfStack=false`), Release/net10.0,
+  SDK 10.0.302, runtime 10.0.10, Windows x64, Intel Core i7-9700K.
+- **Workload:** Normalize 32 retained square arrays per timed batch. Varying
+  inputs repeat `[-1024,-512,0,512,1024]` and map to `[-100,100]`; constant inputs
+  contain 5 and map to `[0,100]`. These are equal-output controls on this host;
+  all output cells were checked against the five exact values or zero. The
+  constant control uses min=0 so the old NaN conversion happens to agree with
+  the corrected policy on the recorded runtime. It does not validate the old
+  policy on other platforms.
+- **Measurement:** Four complete processes per payload in ABBAABBA order,
+  with loaded assembly hashes checked. Before cases, warm 100,000 alternating
+  normalizations of the five-value identity map and a constant 8x8 array.
+  Each case then warms 32 batches. Copy the original input into each backing
+  array before each batch, outside the timer. Time only the 32 Normalize calls
+  using Stopwatch. Timed batches are 20,000 for empty input; otherwise
+  `Clamp(4000000 / (32 * cellCount), 32, 20000)`. Forced GC occurs before timing.
+  `GC.GetAllocatedBytesForCurrentThread` reported **0 B/call** for every case.
+
+| Side / input | Baseline median (range), ns/call | Integer median (range), ns/call |
+| --- | --- | --- |
+| 0 / target `[-100,100]` | 12.12 (12.11–12.17) | 13.73 (13.62–13.84) |
+| 0 / target `[0,100]` | 11.34 (11.31–11.36) | 12.80 (12.74–12.91) |
+| 8 / varying | 941.63 (938.50–944.45) | 667.82 (667.14–675.36) |
+| 8 / constant | 929.36 (925.68–932.18) | 470.48 (469.80–489.82) |
+| 64 / varying | 12,739.89 (12,685.55–12,780.08) | 12,422.41 (12,389.84–12,474.80) |
+| 64 / constant | 12,704.06 (10,620.61–12,768.36) | 10,003.91 (5,844.63–10,082.71) |
+| 256 / varying | 155,058.25 (144,043.75–155,569.63) | 155,213.38 (154,727.05–169,129.10) |
+| 256 / constant | 155,024.60 (143,949.22–155,663.18) | 63,102.00 (63,001.95–63,416.21) |
+
+- **Disposition:** Keep the Int32 weighted interpolation and existing in-place
+  Fill for constant input. It removes floating-point errors without Int64
+  division, allocations, dependencies or new helpers. Large varying-map medians
+  are close; noisy outliers prevent a universal equivalence claim. Constant-map
+  throughput improves, while empty calls pay roughly 1–2 ns for the new policy
+  check. An explicit early-empty return improved empty-call timing but changed
+  JIT layout and slowed larger varying maps by roughly 9–10% in its balanced
+  comparison; it was removed. The selected payload matched the original fixed
+  payload byte for byte and was measured again. The adverse guard result is
+  retained here; it is not part of the selected implementation.
+- **Reopen / limits:** These are local normalization microbenchmarks, not a
+  cross-platform or whole-heightmap-pipeline guarantee. Reopen for a repeatable
+  material regression on representative maps or a supported JIT/architecture.
+  Keep the exact arithmetic and rounding oracle when testing alternatives.
+
+For a focused rerun, use the console setup in the
+[issue tracker](issue-tracker.md#reproducing-active-issues) against each source
+version, with the fixtures and batch procedure above:
+
+```powershell
+dotnet run --project ../SwiftCollectionsRepro/SwiftCollectionsRepro.csproj -c Release -p:UseLocalLsfStack=false
+```
 
 ### SC-Benchmark-001 - Dimensional resize validation code generation
 

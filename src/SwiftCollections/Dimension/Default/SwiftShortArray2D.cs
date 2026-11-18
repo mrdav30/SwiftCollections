@@ -98,31 +98,42 @@ public partial class SwiftShortArray2D : SwiftArray2D<short>, IStateBacked<Array
     }
 
     /// <summary>
-    /// Rescales non-constant Int16 data in place using floating-point interpolation.
+    /// Rescales the stored values in place using deterministic integer interpolation.
     /// </summary>
-    /// <param name="min">The requested lower endpoint.</param>
-    /// <param name="max">The requested upper endpoint; reversed endpoints are not rejected.</param>
+    /// <param name="min">The value assigned to the smallest input, or to every cell when the input is constant.</param>
+    /// <param name="max">The value assigned to the largest non-constant input. May be less than min for a
+    /// descending mapping, or equal to min for a constant output.</param>
     /// <remarks>
-    /// Uses single-precision floating-point interpolation and truncating conversion to Int16 in place. Empty
-    /// storage is unchanged. Constant data divides zero by zero and converts NaN; no stable constant-input or
-    /// cross-platform deterministic result is promised. Use non-constant data and ordered endpoints when a
-    /// meaningful range is required.
+    /// Maps the observed input range linearly onto the requested endpoints, truncating the final exact result
+    /// toward zero. All Int16 inputs and endpoints are supported without overflow or floating-point arithmetic.
+    /// Empty storage is unchanged. Constant input is filled with min. Dimensions and backing storage are preserved.
     /// </remarks>
     public void Normalize(short min, short max)
     {
+        short[] data = InnerArray;
         short currentMin = short.MaxValue;
         short currentMax = short.MinValue;
 
-        // Find current min and max
-        foreach (var value in InnerArray)
+        foreach (var value in data)
         {
             if (value < currentMin) currentMin = value;
             if (value > currentMax) currentMax = value;
         }
 
-        // Normalize values
-        for (int i = 0; i < InnerArray.Length; i++)
-            InnerArray[i] = (short)(((InnerArray[i] - currentMin) / (float)(currentMax - currentMin)) * (max - min) + min);
+        if (currentMin == currentMax)
+        {
+            Fill(min);
+            return;
+        }
+
+        int range = currentMax - currentMin;
+        for (int i = 0; i < data.Length; i++)
+        {
+            int value = data[i];
+            // Nonnegative weights sum to range, so the weighted sum fits Int32 for every Int16 endpoint.
+            int numerator = min * (currentMax - value) + max * (value - currentMin);
+            data[i] = (short)(numerator / range);
+        }
     }
 
     #endregion

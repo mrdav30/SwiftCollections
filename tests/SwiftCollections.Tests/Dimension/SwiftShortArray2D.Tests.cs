@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Xunit;
@@ -38,12 +39,111 @@ public class SwiftShortArray2DTests
     }
 
     [Fact]
-    public void Normalize_SingleValue_NoChange()
+    public void Normalize_ConstantInput_MapsToMin()
     {
         var shortArray = new SwiftShortArray2D(3, 3, 10);
         shortArray.Normalize(0, 100);
 
         Assert.All(shortArray.InnerArray, value => Assert.Equal(0, value));
+    }
+
+    [Theory]
+    [InlineData(5, 10, 20)]
+    [InlineData(-5, -20, -10)]
+    [InlineData(5, 20, 10)]
+    [InlineData(short.MinValue, short.MaxValue, short.MinValue)]
+    [InlineData(short.MaxValue, short.MinValue, short.MaxValue)]
+    [InlineData(5, -7, -7)]
+    public void Normalize_ConstantInput_FillsRequestedMin(short value, short min, short max)
+    {
+        var array = new SwiftShortArray2D(2, 3, value);
+        short[] storage = array.InnerArray;
+
+        array.Normalize(min, max);
+
+        Assert.Same(storage, array.InnerArray);
+        Assert.Equal((2, 3), (array.Width, array.Height));
+        Assert.All(storage, item => Assert.Equal(min, item));
+    }
+
+    [Theory]
+    [InlineData(0, 3, 10, -100, 100, -40)]
+    [InlineData(0, 6, 10, -100, 0, -40)]
+    [InlineData(0, 53, 100, 0, 100, 53)]
+    [InlineData(9239, 9628, 11054, -31979, -8370, -26918)]
+    [InlineData(0, 1, 3, -10, 10, -3)]
+    [InlineData(0, 2, 3, -10, 10, 3)]
+    [InlineData(0, 1, 3, 10, -10, 3)]
+    [InlineData(0, 2, 3, 10, -10, -3)]
+    [InlineData(0, 1, short.MaxValue, short.MinValue, short.MaxValue, -32765)]
+    [InlineData(short.MinValue, 0, short.MaxValue, short.MinValue, short.MaxValue, 0)]
+    [InlineData(short.MinValue, 0, short.MaxValue, short.MaxValue, short.MinValue, -1)]
+    [InlineData(short.MinValue, 0, short.MaxValue, -123, -123, -123)]
+    public void Normalize_InterpolatesExactlyAndTruncatesFinalResultTowardZero(
+        short sourceMin, short middle, short sourceMax, short min, short max, short expectedMiddle)
+    {
+        var array = new SwiftShortArray2D(new short[,] { { sourceMin }, { middle }, { sourceMax } });
+        short[] storage = array.InnerArray;
+
+        array.Normalize(min, max);
+
+        Assert.Same(storage, array.InnerArray);
+        Assert.Equal((3, 1), (array.Width, array.Height));
+        Assert.Equal(min, array[0, 0]);
+        Assert.Equal(expectedMiddle, array[1, 0]);
+        Assert.Equal(max, array[2, 0]);
+    }
+
+    [Theory]
+    [InlineData(short.MinValue, short.MaxValue)]
+    [InlineData(short.MaxValue, short.MinValue)]
+    [InlineData(-100, 0)]
+    [InlineData(0, 100)]
+    public void Normalize_FullInt16Domain_MatchesExactRationalOracle(short min, short max)
+    {
+        var array = new SwiftShortArray2D(256, 256);
+        short[] storage = array.InnerArray;
+        for (int i = 0; i < storage.Length; i++)
+            storage[i] = (short)(short.MinValue + i);
+
+        array.Normalize(min, max);
+
+        Assert.Same(storage, array.InnerArray);
+        Assert.Equal((256, 256), (array.Width, array.Height));
+        for (int i = 0; i < storage.Length; i++)
+        {
+            BigInteger numerator = (BigInteger)i * (max - min) + (BigInteger)min * ushort.MaxValue;
+            short expected = (short)(numerator / ushort.MaxValue);
+            Assert.Equal(expected, storage[i]);
+        }
+    }
+
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(0, 3)]
+    [InlineData(3, 0)]
+    public void Normalize_EmptyInput_PreservesShapeAndStorage(int width, int height)
+    {
+        var array = new SwiftShortArray2D(width, height);
+        short[] storage = array.InnerArray;
+
+        array.Normalize(20, 10);
+
+        Assert.Equal((width, height), (array.Width, array.Height));
+        Assert.Same(storage, array.InnerArray);
+        Assert.Empty(storage);
+    }
+
+    [Fact]
+    public void Normalize_RestoredConstantState_UsesTheSamePolicy()
+    {
+        var source = new SwiftShortArray2D(2, 2, 5);
+        var restored = new SwiftShortArray2D(source.State);
+
+        restored.Normalize(10, 20);
+
+        Assert.All(restored.InnerArray, item => Assert.Equal((short)10, item));
+        Assert.All(source.InnerArray, item => Assert.Equal((short)5, item));
     }
 
     [Fact]
@@ -110,6 +210,13 @@ public class SwiftShortArray2DTests
                 Assert.Equal(originalArray[x, y], deserializedArray[x, y]);
             }
         }
+
+        originalArray.Normalize(-100, 200);
+        deserializedArray.Normalize(-100, 200);
+        Assert.Equal(originalArray.InnerArray, deserializedArray.InnerArray);
+        Assert.Equal((short)-100, deserializedArray[0, 1]);
+        Assert.Equal((short)0, deserializedArray[0, 0]);
+        Assert.Equal((short)200, deserializedArray[2, 2]);
     }
 
 #if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
@@ -129,6 +236,13 @@ public class SwiftShortArray2DTests
         // Check that deserialized values match the original
         Assert.Equal(originalValue.Length, deserializedValue.Length);
         Assert.Equal(originalValue, deserializedValue);
+
+        originalValue.Normalize(-100, 200);
+        deserializedValue.Normalize(-100, 200);
+        Assert.Equal(originalValue.InnerArray, deserializedValue.InnerArray);
+        Assert.Equal((short)-100, deserializedValue[0, 1]);
+        Assert.Equal((short)0, deserializedValue[0, 0]);
+        Assert.Equal((short)200, deserializedValue[2, 2]);
     }
 #endif
 }
