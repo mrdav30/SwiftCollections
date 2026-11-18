@@ -906,20 +906,22 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     public void Swap(int indexA, int indexB) => (_innerArray[indexB], _innerArray[indexA]) = (_innerArray[indexA], _innerArray[indexB]);
 
     /// <summary>
-    /// Copies the elements of the SwiftList to the specified target SwiftList. The target list will resize if it
-    /// lacks sufficient capacity, but retains any existing elements beyond the copied range.
+    /// Replaces the target list's live contents with a shallow copy of this list.
     /// </summary>
     /// <param name="target">The destination list whose contents and count are replaced; null is not
     /// accepted.</param>
+    /// <exception cref="T:System.NullReferenceException">target is null.</exception>
     /// <remarks>
     /// Shallow-copies in list index order; source contents are preserved when the destination does not alias
-    /// source storage. Target contents and Count are replaced. Growth doubles the target only once; callers must
-    /// provision target.Capacity &gt;= source.Count to avoid an undersized-copy failure.
+    /// source storage. Target Count becomes Count. Capacity grows only when insufficient; otherwise backing
+    /// storage is reused, including for empty and self-copy operations. Unused backing slots are left unchanged
+    /// when storage is reused and can retain references. Target enumerators are invalidated even for empty or
+    /// self-copy operations.
     /// </remarks>
     public void CopyTo(SwiftList<T> target)
     {
-        if (_count + 1 > target._innerArray.Length)
-            target.Resize(target._innerArray.Length * 2);
+        if (_count > target._innerArray.Length)
+            target.EnsureCapacity(_count);
         Array.Copy(_innerArray, 0, target._innerArray, 0, _count);
         target._count = _count;
         target._version++;

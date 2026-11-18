@@ -691,6 +691,111 @@ public class SwiftListTests
         Assert.True(target.Capacity >= target.Count);
     }
 
+    [Theory]
+    [InlineData(0, 0, 0, 0)]
+    [InlineData(0, 16, 5, 16)]
+    [InlineData(1, 0, 0, 8)]
+    [InlineData(7, 0, 0, 8)]
+    [InlineData(8, 0, 0, 8)]
+    [InlineData(8, 8, 3, 8)]
+    [InlineData(9, 0, 0, 16)]
+    [InlineData(9, 8, 2, 16)]
+    [InlineData(17, 8, 3, 32)]
+    [InlineData(100, 0, 0, 128)]
+    [InlineData(100, 8, 3, 128)]
+    [InlineData(100, 16, 3, 128)]
+    [InlineData(100, 128, 3, 128)]
+    [InlineData(3, 16, 10, 16)]
+    [InlineData(17, 20, 20, 20)]
+    [InlineData(20, 20, 20, 20)]
+    public void CopyTo_ListTarget_GrowsForTheWholeCopyAndReusesSufficientStorage(
+        int count, int targetCapacity, int targetCount, int expectedCapacity)
+    {
+        int[] items = CreateAscendingRange(count);
+        var source = new SwiftList<int>(items);
+        var target = new SwiftList<int>(new int[targetCapacity]);
+        target.Clear();
+        for (int i = 0; i < targetCount; i++)
+            target.Add(-100 - i);
+        int[] sourceStorage = source.InnerArray;
+        int[] targetStorage = target.InnerArray;
+        var sourceEnumerator = source.GetEnumerator();
+        var targetEnumerator = target.GetEnumerator();
+
+        source.CopyTo(target);
+
+        Assert.Equal(items, target.ToArray());
+        Assert.Equal(count, target.Count);
+        Assert.Equal(expectedCapacity, target.Capacity);
+        if (count <= targetCapacity)
+            Assert.Same(targetStorage, target.InnerArray);
+        else
+            Assert.NotSame(targetStorage, target.InnerArray);
+        for (int i = count; i < targetCount; i++)
+            Assert.Equal(-100 - i, target.InnerArray[i]);
+        Assert.Equal(items, source.ToArray());
+        Assert.Same(sourceStorage, source.InnerArray);
+        Assert.Equal(count != 0, sourceEnumerator.MoveNext());
+        Assert.Throws<InvalidOperationException>(() => targetEnumerator.MoveNext());
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(3)]
+    [InlineData(8)]
+    [InlineData(9)]
+    [InlineData(100)]
+    public void CopyTo_ListTarget_SelfCopyPreservesStorageAndInvalidatesEnumerator(int count)
+    {
+        int[] items = CreateAscendingRange(count);
+        var list = new SwiftList<int>(items);
+        int[] storage = list.InnerArray;
+        var enumerator = list.GetEnumerator();
+
+        list.CopyTo(list);
+
+        Assert.Equal(items, list.ToArray());
+        Assert.Equal(count, list.Count);
+        Assert.Equal(count, list.Capacity);
+        Assert.Same(storage, list.InnerArray);
+        Assert.Throws<InvalidOperationException>(() => enumerator.MoveNext());
+    }
+
+    [Fact]
+    public void CopyTo_ListTarget_ShallowCopiesIntoIndependentStorage()
+    {
+        var first = new object();
+        var second = new object();
+        var source = new SwiftList<object>(new[] { first, second });
+        var target = new SwiftList<object>();
+
+        source.CopyTo(target);
+
+        Assert.NotSame(source.InnerArray, target.InnerArray);
+        Assert.Same(first, target[0]);
+        Assert.Same(second, target[1]);
+        target[0] = second;
+        Assert.Same(first, source[0]);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(100)]
+    public void CopyTo_ListTarget_NullPreservesSourceAndExistingException(int count)
+    {
+        int[] items = CreateAscendingRange(count);
+        var source = new SwiftList<int>(items);
+        int[] storage = source.InnerArray;
+        var enumerator = source.GetEnumerator();
+
+        Assert.Throws<NullReferenceException>(() => source.CopyTo((SwiftList<int>)null));
+
+        Assert.Equal(items, source.ToArray());
+        Assert.Same(storage, source.InnerArray);
+        Assert.Equal(count, source.Capacity);
+        Assert.Equal(count != 0, enumerator.MoveNext());
+    }
+
     [Fact]
     public void CopyTo_ShouldCopyElementsToArrayAtSpecifiedIndex()
     {
@@ -931,6 +1036,14 @@ public class SwiftListTests
         {
             Assert.Equal(originalList[i], deserializedList[i]);
         }
+
+        var copied = new SwiftList<int>();
+        deserializedList.CopyTo(copied);
+        Assert.Equal(CreateAscendingRange(100), copied.ToArray());
+        int[] restoredStorage = deserializedList.InnerArray;
+        new SwiftList<int>(new[] { 9, 8, 7 }).CopyTo(deserializedList);
+        Assert.Equal(new[] { 9, 8, 7 }, deserializedList.ToArray());
+        Assert.Same(restoredStorage, deserializedList.InnerArray);
     }
 
 #if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
@@ -947,6 +1060,14 @@ public class SwiftListTests
         // Check that deserialized values match the original
         Assert.Equal(originalValue.Count, deserializedValue.Count);
         Assert.Equal(originalValue, deserializedValue);
+
+        var copied = new SwiftList<int>();
+        deserializedValue.CopyTo(copied);
+        Assert.Equal(CreateAscendingRange(100), copied.ToArray());
+        int[] restoredStorage = deserializedValue.InnerArray;
+        new SwiftList<int>(new[] { 9, 8, 7 }).CopyTo(deserializedValue);
+        Assert.Equal(new[] { 9, 8, 7 }, deserializedValue.ToArray());
+        Assert.Same(restoredStorage, deserializedValue.InnerArray);
     }
 #endif
 

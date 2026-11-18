@@ -14,7 +14,7 @@ feature-work plan and link it from the signal.
 ## Intake Rules
 
 - Signal IDs use `SC-Benchmark-NNN`. The next available ID is
-  `SC-Benchmark-003`.
+  `SC-Benchmark-004`.
 - Assign an ID at intake and never reuse it, including after closure or
   promotion. Check this file's history before changing the counter.
 - Open a signal from an actual benchmark, allocation guard, profiler capture, or
@@ -83,6 +83,50 @@ making a new performance claim.
 None. Creating this tracker does not establish a new regression or measurement.
 
 ## Closed Signals
+
+### SC-Benchmark-003 - List-to-list copy capacity
+
+- **Discovered / closed:** 2026-11-18; fixed and verified during
+  [SC-Issue-009](issue-tracker.md#sc-issue-009---list-to-list-copy-grows-the-destination-only-once).
+- **Owner / environment:** `SwiftList<int>.CopyTo(SwiftList<int>)`; baseline
+  `63c6124572b703680e797770ed0d93e0eb88bea0` versus SC-Issue-009. Published
+  dependencies (`UseLocalLsfStack=false`), Release/net10.0, SDK 10.0.302,
+  runtime 10.0.10, Windows x64, Intel Core i7-9700K.
+- **Measured controls:** Sources contain ascending integers from zero. Reuse a
+  target at Capacity 128 for Count 100, or an exact Capacity 20 target for Count
+  17. The growth control creates a Capacity 64 target and copies Count 100 on
+  every invocation, retaining the resulting object in a static sink. It times
+  both target construction and copying. All final counts, capacities and values
+  were checked. These inputs complete correctly in both versions; the broken
+  Count 100 to Capacity 0 case is a correctness regression, not a latency baseline.
+- **Procedure:** Warm all three controls for 20,000 calls each; measure reuse
+  controls for 1,000,000 calls and growth for 100,000. Setup and forced GC are
+  outside the timer. Use Stopwatch and current-thread allocated bytes. Four
+  complete processes per version ran in ABBAABBA order, with loaded assembly
+  hashes distinguishing the payloads.
+
+| Control | Baseline median (range), ns/call | Fixed median (range), ns/call | Bytes/call, both |
+| --- | --- | --- | --- |
+| Reuse Count 100 / Capacity 128 | 18.70 (18.66–18.94) | 18.96 (18.71–19.15) | 0 |
+| Reuse Count 17 / Capacity 20 | 10.08 (9.93–10.88) | 10.12 (9.75–10.37) | 0 |
+| Construct Capacity 64 + copy Count 100 | 95.02 (86.92–100.47) | 98.16 (93.59–101.31) | 856 |
+
+- **Disposition / limits:** Guard insufficient capacity before requesting the
+  full source count through EnsureCapacity. This obtains sufficient capacity
+  in one growth and preserves fitting non-power-of-two buffers. Exact-fit,
+  self-copy and empty-to-empty regressions also verify storage reuse. These
+  local timings show close control medians and unchanged allocation; they do
+  not prove zero instruction cost or cross-platform throughput equivalence.
+  Reopen for a repeatable material regression on representative copies or a
+  supported JIT/architecture. No new runtime helper or dependency was added.
+
+For a focused rerun, use the console setup in the
+[issue tracker](issue-tracker.md#reproducing-active-issues) against each source
+version, with the controls and counts above:
+
+```powershell
+dotnet run --project ../SwiftCollectionsRepro/SwiftCollectionsRepro.csproj -c Release -p:UseLocalLsfStack=false
+```
 
 ### SC-Benchmark-002 - Exact Int16 normalization
 
