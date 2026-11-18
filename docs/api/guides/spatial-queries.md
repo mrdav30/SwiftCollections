@@ -28,6 +28,8 @@ unsigned space, so even the complete scalar domain can be partitioned without
 materializing an unrepresentable full size. Reading `Size` or `Volume` throws
 `OverflowException` when an exact positive component span cannot fit in
 `Fixed64`; it never substitutes a saturated under-size.
+The `Volume` product itself uses rounded, saturating `Fixed64` multiplication,
+so valid component spans do not guarantee an exact representable cubic volume.
 
 `SwiftFixedSpatialHash<TKey>.GetCellIndex(...)` exposes the hash's exact Q32.32
 floor mapping for callers that must classify bounds with the same cell contract.
@@ -64,9 +66,19 @@ index.Query(bounds, results); // Contains "player".
 ```
 
 Clear or reuse result buffers explicitly between independent queries.
+Spatial hash and octree duplicate insertion updates the existing key's bounds
+and returns `false`; BVH currently creates an additional leaf and returns `true`.
+Use unique BVH keys when queries must not append duplicates. None of these calls
+deduplicates against entries already present in the caller's result collection.
 Broad-phase volume matches do not replace your application's narrow-phase shape
 tests. Updates must follow changes to an indexed object's bounds; the index does
 not observe object movement automatically.
+
+The numerics wrappers require finite ordered bounds and representable
+intermediate arithmetic. In particular, numerics octree endpoint sums and
+differences must remain finite during subdivision; finite endpoints alone do
+not ensure a finite midpoint. Fixed-point wrappers have separate arithmetic
+contracts and do not use those floating-point midpoint calculations.
 
 For a BVH query with fixed storage, use `TryQuery(bounds, results, traversal)`.
 Supply a plain `SwiftList<TKey>` and a separate `Span<int>` for traversal.

@@ -36,6 +36,10 @@ Stop using a rented object after returning it, and return each lease only once.
 The lease's disposal runs even if the body throws. Do not dispose a shared pool
 while other owners still use it. Pooling does not make the rented collection
 safe for concurrent mutation.
+Complete rentals before clearing or disposing their pool. Concurrent backing
+storage does not make counters, callbacks, capacity checks or lifecycle changes
+atomic. Lease disposal attempts a return at most once; if the release callback
+throws, a later disposal does not retry it.
 
 Pools use their normal clearing policies. If a reference-containing collection
 has retained values after `FastClear()`, explicitly call `Clear(true)` before
@@ -58,3 +62,7 @@ unless the ordering and notification cost are explicitly tested and benchmarked.
 Keep event subscription lifetimes explicit. Unsubscribe handlers when a host or
 view is released, and avoid changing authoritative simulation decisions from
 notifications whose call order the host has not defined.
+Notifications run synchronously after mutation. A handler exception propagates
+without rolling the mutation back and can prevent later notifications. Only the
+observable overrides and hidden indexers emit events; base-typed indexer writes,
+direct storage writes and inherited non-overridden mutators can bypass them.

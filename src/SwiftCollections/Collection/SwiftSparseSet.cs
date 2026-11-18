@@ -19,23 +19,12 @@ using SwiftCollections.Utility;
 namespace SwiftCollections;
 
 /// <summary>
-/// Represents a high-performance sparse set for externally supplied non-negative integer IDs.
-/// Provides O(1) Add, Remove, Contains, and densely packed iteration.
+/// Stores membership for externally owned non-negative integer IDs in dense storage.
 /// </summary>
 /// <remarks>
-/// <para>
-/// <see cref="SwiftSparseSet"/> is intended for membership workloads where the caller already owns
-/// compact integer IDs, such as entity handles, body IDs, or slot indices.
-/// </para>
-/// <para>
-/// Internally, IDs are stored in a dense array for cache-friendly iteration while a sparse lookup
-/// table maps each ID directly to its dense position. Removal uses swap-back, so iteration order is
-/// not stable.
-/// </para>
-/// <para>
-/// Memory usage scales with the highest stored ID rather than only the number of IDs. For arbitrary,
-/// huge, or widely spaced keys, prefer <see cref="SwiftHashSet{T}"/> with <c>int</c> keys.
-/// </para>
+/// Copies are shallow and instances require external synchronization. Enumeration follows dense order. Removal
+/// swaps the final dense entry into the gap; dense indices are unstable. Sparse storage scales with the highest
+/// ID, not Count. Direct key writes corrupt membership and bypass version checks.
 /// </remarks>
 [Serializable]
 [JsonConverter(typeof(StateJsonConverterFactory))]
@@ -75,24 +64,29 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     #region Constructors
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftSparseSet"/> class with default sparse and dense capacities.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.SwiftSparseSet" /> class with default
+    /// sparse and dense capacities.
     /// </summary>
     public SwiftSparseSet() : this(DefaultSparseCapacity, DefaultDenseCapacity) { }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftSparseSet"/> class with matching sparse and dense capacities.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.SwiftSparseSet" /> class with matching
+    /// sparse and dense capacities.
     /// </summary>
-    /// <param name="capacity">The initial sparse and dense capacity.</param>
+    /// <param name="capacity">The requested element storage capacity; zero permits initially empty storage and
+    /// negative constructor capacities are rejected.</param>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">A requested capacity is negative.</exception>
     public SwiftSparseSet(int capacity) : this(capacity, capacity) { }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftSparseSet"/> class with explicit sparse and dense capacities.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.SwiftSparseSet" /> class with explicit
+    /// sparse and dense capacities.
     /// </summary>
-    /// <param name="sparseCapacity">
-    /// Initial sparse lookup capacity. This should track the highest expected ID plus one,
-    /// not just the number of stored IDs.
-    /// </param>
-    /// <param name="denseCapacity">Initial dense storage capacity for IDs.</param>
+    /// <param name="sparseCapacity">The requested sparse lookup length (largest ID plus one); zero permits
+    /// initially empty storage and negative constructor capacities are rejected.</param>
+    /// <param name="denseCapacity">The requested element storage capacity; zero permits initially empty storage
+    /// and negative constructor capacities are rejected.</param>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">A requested capacity is negative.</exception>
     public SwiftSparseSet(int sparseCapacity, int denseCapacity)
     {
         ChronicleGuard.ThrowIfNegative(sparseCapacity, nameof(sparseCapacity));
@@ -112,9 +106,19 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftSparseSet"/> class using the specified state.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.SwiftSparseSet" /> class using the
+    /// specified state.
     /// </summary>
-    /// <param name="state">The state object that provides the initial IDs. Cannot be null.</param>
+    /// <param name="state">The state to restore by shallow-copying arrays. Null item arrays are rejected; IDs
+    /// must be unique, non-negative and below Int32.MaxValue.</param>
+    /// <exception cref="T:System.ArgumentNullException">A required state array is null.</exception>
+    /// <exception cref="T:System.ArgumentException">State IDs are duplicated or map array lengths
+    /// differ.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">A state ID is outside the supported
+    /// range.</exception>
+    /// <remarks>
+    /// Input arrays are copied, not retained. Default state has null arrays and is rejected.
+    /// </remarks>
     [MemoryPackConstructor]
     public SwiftSparseSet(SwiftArrayState<int> state)
     {
@@ -131,6 +135,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <summary>
     /// Gets the number of IDs contained in the set.
     /// </summary>
+    /// <value>The number of live entries, excluding gaps and spare storage.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Count => _count;
@@ -138,6 +143,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <summary>
     /// Capacity of the dense ID storage.
     /// </summary>
+    /// <value>The allocated dense-array length; only the first Count entries are live.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int DenseCapacity => _denseKeys.Length;
@@ -145,11 +151,15 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <summary>
     /// Capacity of the sparse lookup table.
     /// </summary>
+    /// <value>The lookup-array length; directly indexed IDs must be below this length or require growth.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int SparseCapacity => _sparse.Length;
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Gets whether the collection rejects all mutations.
+    /// </summary>
+    /// <value>false.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public bool IsReadOnly => false;
@@ -157,6 +167,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <summary>
     /// Gets a value indicating whether access to the collection is synchronized.
     /// </summary>
+    /// <value>false.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public bool IsSynchronized => false;
@@ -164,6 +175,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <summary>
     /// Gets an object that can be used to synchronize access to the collection.
     /// </summary>
+    /// <value>A lazily allocated synchronization object; access is not locked automatically.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public object SyncRoot => _syncRoot ??= new object();
@@ -171,8 +183,10 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <summary>
     /// Returns the dense ID array. Only the range [0..Count) is populated.
     /// </summary>
+    /// <value>A borrowed array including spare slots in dense order.</value>
     /// <remarks>
-    /// Prefer collection APIs. Direct key mutation must preserve the dense/sparse lookup invariants; invalid edits may fail fast.
+    /// No copy or allocation. Structural operations can reorder or replace dense storage; do not retain across
+    /// them. Key writes are not validated and can corrupt the sparse lookup.
     /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
@@ -181,16 +195,23 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <summary>
     /// Gets a span containing the current IDs in dense iteration order.
     /// </summary>
+    /// <value>A borrowed span of Count live entries in dense order.</value>
     /// <remarks>
-    /// Prefer collection APIs. Direct key mutation must preserve the dense/sparse lookup invariants; invalid edits may fail fast.
+    /// No copy or allocation. Structural operations can reorder or replace dense storage; do not retain across
+    /// them. Key writes are not validated and can corrupt the sparse lookup.
     /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     public Span<int> Keys => _denseKeys.AsSpan(0, _count);
 
     /// <summary>
-    /// Gets or sets the current state of the sparse set.
+    /// Gets a shallow snapshot of storage and allocation metadata.
     /// </summary>
+    /// <value>A state with copied arrays; referenced elements remain shared.</value>
+    /// <remarks>
+    /// Stores live dense entries in order and rebuilds sparse membership on restore. Negative/duplicate IDs and
+    /// inconsistent map key/value lengths are rejected.
+    /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
     public SwiftArrayState<int> State
@@ -264,6 +285,10 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <summary>
     /// Determines whether the set contains the specified ID.
     /// </summary>
+    /// <param name="item">The externally owned non-negative ID, below Int32.MaxValue; inserting requires lookup
+    /// storage proportional to ID plus one.</param>
+    /// <returns>true if the requested live slot, token, ID or value exists; false for absent/out-of-range inputs.
+    /// No mutation.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Contains(int item)
     {
@@ -272,15 +297,24 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     }
 
     /// <summary>
-    /// Determines whether the set contains the specified key. Alias for <see cref="Contains(int)"/>.
+    /// Determines whether the set contains the specified key. Alias for <see
+    /// cref="M:SwiftCollections.SwiftSparseSet.Contains(System.Int32)" />.
     /// </summary>
+    /// <param name="key">The externally owned non-negative ID, below Int32.MaxValue; inserting requires lookup
+    /// storage proportional to ID plus one.</param>
+    /// <returns>true if the requested live slot, token, ID or value exists; false for absent/out-of-range inputs.
+    /// No mutation.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ContainsKey(int key) => Contains(key);
 
     /// <summary>
     /// Adds the specified ID if it is not already present.
     /// </summary>
-    /// <returns>true if the ID was added; false if it was already present.</returns>
+    /// <param name="item">The externally owned non-negative ID, below Int32.MaxValue; inserting requires lookup
+    /// storage proportional to ID plus one.</param>
+    /// <returns>true if inserted; false if the ID already exists, preserving the existing value. TryAdd still
+    /// throws for invalid ID ranges or allocation failure.</returns>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">The ID is negative or Int32.MaxValue.</exception>
     public bool Add(int item)
     {
         EnsureSparseCapacity(GetRequiredSparseCapacity(item));
@@ -300,14 +334,26 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <summary>
     /// Adds the specified ID if it is not already present.
     /// </summary>
+    /// <param name="item">The externally owned non-negative ID, below Int32.MaxValue; inserting requires lookup
+    /// storage proportional to ID plus one.</param>
+    /// <returns>true if inserted; false if the ID already exists, preserving the existing value. TryAdd still
+    /// throws for invalid ID ranges or allocation failure.</returns>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">The ID is negative or Int32.MaxValue.</exception>
     public bool TryAdd(int item) => Add(item);
 
+    /// <summary>
+    /// Adds an element through the implemented collection interface.
+    /// </summary>
+    /// <param name="item">The element to compare, add or remove; reference values are not cloned.</param>
     void ICollection<int>.Add(int item) => Add(item);
 
     /// <summary>
     /// Removes the specified ID from the set.
     /// </summary>
-    /// <returns>true if the ID was found and removed; otherwise, false.</returns>
+    /// <param name="item">The externally owned non-negative ID, below Int32.MaxValue; inserting requires lookup
+    /// storage proportional to ID plus one.</param>
+    /// <returns>true if a matching live entry was removed; false if absent or invalid, with contents unchanged.
+    /// Swap-back removal can change dense order.</returns>
     public bool Remove(int item)
     {
         if ((uint)item >= (uint)_sparse.Length) return false;
@@ -335,6 +381,10 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <summary>
     /// Removes all IDs from the set without reducing capacity.
     /// </summary>
+    /// <remarks>
+    /// Empties the collection while preserving capacity. The Boolean argument has no effect because IDs contain
+    /// no references.
+    /// </remarks>
     public void Clear()
     {
         if (_count == 0) return;
@@ -353,8 +403,12 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <summary>
     /// Removes all elements, optionally releasing references throughout retained backing storage.
     /// </summary>
-    /// <param name="clearRetainedReferences">If true, also releases references outside the live range; otherwise uses ordinary clearing.</param>
-    /// <remarks>This collection stores only integer IDs, so the option adds no reference cleanup or capacity scan.</remarks>
+    /// <param name="clearRetainedReferences">Ignored compatibility argument; integer IDs do not retain object
+    /// references.</param>
+    /// <remarks>
+    /// Empties the collection while preserving capacity. The Boolean argument has no effect because IDs contain
+    /// no references.
+    /// </remarks>
     public void Clear(bool clearRetainedReferences)
     {
         Clear();
@@ -364,7 +418,17 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
 
     #region Set Operations
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Removes elements belonging to the other input.
+    /// </summary>
+    /// <param name="other">The non-null ID sequence consumed for the operation. Duplicate IDs count once for set
+    /// comparisons.</param>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Mutates membership according to ExceptWith. Input storage is not retained; failures during input
+    /// enumeration can leave partial mutation. Negative and Int32.MaxValue IDs throw when insertion is required;
+    /// membership/removal checks treat them as absent.
+    /// </remarks>
     public void ExceptWith(IEnumerable<int> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -380,7 +444,17 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
             Remove(item);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Retains elements belonging to both inputs.
+    /// </summary>
+    /// <param name="other">The non-null ID sequence consumed for the operation. Duplicate IDs count once for set
+    /// comparisons.</param>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Mutates membership according to IntersectWith. Input storage is not retained; failures during input
+    /// enumeration can leave partial mutation. Negative and Int32.MaxValue IDs throw when insertion is required;
+    /// membership/removal checks treat them as absent.
+    /// </remarks>
     public void IntersectWith(IEnumerable<int> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -402,7 +476,14 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
         RemoveWhereMissingFrom(new HashSet<int>(other));
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Checks for a subset with fewer distinct elements.
+    /// </summary>
+    /// <param name="other">The non-null ID sequence consumed for the operation. Duplicate IDs count once for set
+    /// comparisons.</param>
+    /// <returns>true if all stored IDs belong to other and other has more distinct IDs; otherwise false. Contents
+    /// are unchanged.</returns>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
     public bool IsProperSubsetOf(IEnumerable<int> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -417,7 +498,14 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
         return _count < lookup.Count && IsSubsetOf(lookup);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Checks for a superset with more distinct elements.
+    /// </summary>
+    /// <param name="other">The non-null ID sequence consumed for the operation. Duplicate IDs count once for set
+    /// comparisons.</param>
+    /// <returns>true if all distinct IDs in other are stored here and this set has more IDs; otherwise false.
+    /// Contents are unchanged.</returns>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
     public bool IsProperSupersetOf(IEnumerable<int> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -432,7 +520,13 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
         return _count > lookup.Count && IsSupersetOf(lookup);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Checks whether all stored elements belong to the other input.
+    /// </summary>
+    /// <param name="other">The non-null ID sequence consumed for the operation. Duplicate IDs count once for set
+    /// comparisons.</param>
+    /// <returns>true if all stored IDs belong to other; otherwise false. Contents are unchanged.</returns>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
     public bool IsSubsetOf(IEnumerable<int> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -448,7 +542,14 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
         return IsSubsetOfSet(new HashSet<int>(other));
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Checks whether all other-input elements are stored here.
+    /// </summary>
+    /// <param name="other">The non-null ID sequence consumed for the operation. Duplicate IDs count once for set
+    /// comparisons.</param>
+    /// <returns>true if all distinct IDs in other are stored here; otherwise false. Contents are
+    /// unchanged.</returns>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
     public bool IsSupersetOf(IEnumerable<int> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -464,7 +565,13 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
         return true;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Checks whether at least one element is shared.
+    /// </summary>
+    /// <param name="other">The non-null ID sequence consumed for the operation. Duplicate IDs count once for set
+    /// comparisons.</param>
+    /// <returns>true if at least one ID is shared; otherwise false. Contents are unchanged.</returns>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
     public bool Overlaps(IEnumerable<int> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -478,7 +585,14 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
         return false;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Checks whether both inputs contain the same distinct elements.
+    /// </summary>
+    /// <param name="other">The non-null ID sequence consumed for the operation. Duplicate IDs count once for set
+    /// comparisons.</param>
+    /// <returns>true if both inputs contain exactly the same distinct IDs; otherwise false. Contents are
+    /// unchanged.</returns>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
     public bool SetEquals(IEnumerable<int> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -494,7 +608,17 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
         return SetEqualsSet(new HashSet<int>(other));
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Retains elements belonging to exactly one input.
+    /// </summary>
+    /// <param name="other">The non-null ID sequence consumed for the operation. Duplicate IDs count once for set
+    /// comparisons.</param>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Mutates membership according to SymmetricExceptWith. Input storage is not retained; failures during input
+    /// enumeration can leave partial mutation. Negative and Int32.MaxValue IDs throw when insertion is required;
+    /// membership/removal checks treat them as absent.
+    /// </remarks>
     public void SymmetricExceptWith(IEnumerable<int> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -520,7 +644,17 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
         SymmetricExceptWithSet(new HashSet<int>(other));
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Adds elements belonging to the other input.
+    /// </summary>
+    /// <param name="other">The non-null ID sequence consumed for the operation. Duplicate IDs count once for set
+    /// comparisons.</param>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Mutates membership according to UnionWith. Input storage is not retained; failures during input
+    /// enumeration can leave partial mutation. Negative and Int32.MaxValue IDs throw when insertion is required;
+    /// membership/removal checks treat them as absent.
+    /// </remarks>
     public void UnionWith(IEnumerable<int> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -605,6 +739,8 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <summary>
     /// Ensures that dense storage can hold at least the specified number of IDs.
     /// </summary>
+    /// <param name="capacity">The minimum storage length; requests at or below the current capacity change
+    /// nothing. Keep requests below 2^30 to avoid the capacity sentinel.</param>
     public void EnsureDenseCapacity(int capacity)
     {
         if (capacity <= _denseKeys.Length) return;
@@ -625,6 +761,8 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <summary>
     /// Ensures that the sparse lookup table has at least the specified capacity.
     /// </summary>
+    /// <param name="capacity">The minimum storage length; requests at or below the current capacity change
+    /// nothing. Keep requests below 2^30 to avoid the capacity sentinel.</param>
     public void EnsureSparseCapacity(int capacity)
     {
         if (capacity <= _sparse.Length) return;
@@ -689,11 +827,23 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <summary>
     /// Returns a read-only span over the populated dense ID range.
     /// </summary>
+    /// <returns>A borrowed read-only span of Count live IDs in dense order.</returns>
+    /// <remarks>
+    /// No copy or allocation. Removal reorders IDs and growth detaches storage. Do not retain across structural
+    /// mutation.
+    /// </remarks>
     public ReadOnlySpan<int> AsReadOnlySpan() => _denseKeys.AsSpan(0, _count);
 
     /// <summary>
     /// Retrieves the backing dense ID array and current count.
     /// </summary>
+    /// <param name="keys">Receives the borrowed dense backing array; only indices below count are live. Do not
+    /// modify keys.</param>
+    /// <param name="count">Receives the number of live entries in the returned arrays at this instant.</param>
+    /// <remarks>
+    /// Returns borrowed storage without allocation. Structural mutation can reorder or replace these arrays;
+    /// count is a snapshot, not a live binding. Do not write key arrays or retain views across mutation.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void GetDense(out int[] keys, out int count)
     {
@@ -704,12 +854,12 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <summary>
     /// Replaces the destination list contents with this set's keys in dense iteration order.
     /// </summary>
+    /// <param name="destination">The caller-owned list, cleared before receiving copied IDs; source storage is
+    /// not retained by the list.</param>
+    /// <exception cref="T:System.ArgumentNullException">destination is null.</exception>
     /// <remarks>
-    /// The destination list is reused and only grows when its current capacity is smaller than
-    /// <see cref="Count"/>. Use <see cref="CopySortedKeysTo(SwiftList{int})"/> when stable ascending
-    /// key order is required.
+    /// Clears destination before copying IDs in current dense order. The source remains unchanged.
     /// </remarks>
-    /// <param name="destination">The caller-owned list that receives the keys.</param>
     public void CopyKeysTo(SwiftList<int> destination)
     {
         ChronicleGuard.ThrowIfNull(destination, nameof(destination));
@@ -721,18 +871,31 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
     /// <summary>
     /// Replaces the destination list contents with this set's keys sorted in ascending order.
     /// </summary>
+    /// <param name="destination">The caller-owned list, cleared before receiving copied IDs; source storage is
+    /// not retained by the list.</param>
+    /// <exception cref="T:System.ArgumentNullException">destination is null.</exception>
     /// <remarks>
-    /// This method is intended for reusable hot-path scratch buffers that need deterministic key order
-    /// without constructing a persistent sorted collection.
+    /// Clears destination before copying IDs in ascending numeric order. The source remains unchanged.
     /// </remarks>
-    /// <param name="destination">The caller-owned list that receives the sorted keys.</param>
     public void CopySortedKeysTo(SwiftList<int> destination)
     {
         CopyKeysTo(destination);
         destination.SortInPlace(default(SwiftIntAscendingComparer));
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Copies live elements into caller-owned storage.
+    /// </summary>
+    /// <param name="array">The caller-owned destination array; only the copied range is overwritten.</param>
+    /// <param name="arrayIndex">The zero-based destination offset with room for Count live values.</param>
+    /// <exception cref="T:System.ArgumentNullException">array is null.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">arrayIndex is outside zero through
+    /// array.Length.</exception>
+    /// <exception cref="T:System.ArgumentException">The remaining destination space is shorter than
+    /// Count.</exception>
+    /// <remarks>
+    /// Shallow-copies Count live values in dense order without clearing the destination.
+    /// </remarks>
     public void CopyTo(int[] array, int arrayIndex)
     {
         ChronicleGuard.ThrowIfNull(array, nameof(array));
@@ -742,7 +905,16 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
         Array.Copy(_denseKeys, 0, array, arrayIndex, _count);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Copies live elements into a caller-owned array.
+    /// </summary>
+    /// <param name="array">The caller-owned, one-dimensional, zero-based destination array.</param>
+    /// <param name="index">The zero-based logical or destination index, interpreted by this interface
+    /// operation.</param>
+    /// <remarks>
+    /// Uses concrete collection copy order and validation. The destination is overwritten only in the copied
+    /// range; incompatible elements can cause partial copying.
+    /// </remarks>
     void ICollection.CopyTo(Array array, int index)
     {
         ChronicleGuard.ThrowIfNull(array, nameof(array));
@@ -768,7 +940,7 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
         throw new ArgumentException("Invalid array type.", nameof(array));
     }
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public void CloneTo(ICollection<int> output)
     {
         ChronicleGuard.ThrowIfNull(output, nameof(output));
@@ -779,9 +951,25 @@ public sealed partial class SwiftSparseSet : IStateBacked<SwiftArrayState<int>>,
             output.Add(_denseKeys[i]);
     }
 
-    /// <inheritdoc cref="IEnumerable.GetEnumerator()"/>
+    /// <summary>
+    /// Creates an enumerator over the live entries.
+    /// </summary>
+    /// <returns>A value-type enumerator over live entries in dense order.</returns>
+    /// <remarks>
+    /// MoveNext and Reset check the mutation version. Direct storage/ref writes bypass the version check.
+    /// </remarks>
     public SwiftSparseSetEnumerator GetEnumerator() => new(this);
+    /// <summary>
+    /// Creates an enumerator through the implemented interface.
+    /// </summary>
+    /// <returns>An enumerator with the concrete collection's ordering and mutation rules. Interface dispatch may
+    /// box the value-type enumerator.</returns>
     IEnumerator<int> IEnumerable<int>.GetEnumerator() => GetEnumerator();
+    /// <summary>
+    /// Creates an enumerator through the implemented interface.
+    /// </summary>
+    /// <returns>An enumerator with the concrete collection's ordering and mutation rules. Interface dispatch may
+    /// box the value-type enumerator.</returns>
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
 

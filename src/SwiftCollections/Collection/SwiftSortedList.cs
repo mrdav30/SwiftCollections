@@ -20,17 +20,15 @@ using SwiftCollections.Utility;
 namespace SwiftCollections;
 
 /// <summary>
-/// Represents a dynamically sorted collection of elements.
-/// Search takes O(log n) comparisons. Insertion and removal may shift elements.
+/// Stores elements in ascending comparer order, allowing duplicates.
 /// </summary>
-/// <remarks>
-/// The comparer is not serialized. After deserialization the list uses
-/// <see cref="Comparer{T}.Default"/>. 
-/// 
-/// If a custom comparer is required it can be reapplied using
-/// <see cref="SetComparer(IComparer{T})"/>.
-/// </remarks>
 /// <typeparam name="T">The type of elements in the collection.</typeparam>
+/// <remarks>
+/// Copies are shallow. Instances require external synchronization. Structural operations advance an unchecked
+/// mutation version; enumerators check that version in MoveNext and Reset. Direct backing-array writes bypass
+/// version checks. Ordering and lookup require a consistent, deterministic comparer. Equal elements have no
+/// stable tie order. Enumeration follows comparer order.
+/// </remarks>
 [Serializable]
 [JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
@@ -39,8 +37,8 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     #region Constants
 
     /// <summary>
-    /// The default initial capacity of the <see cref="SwiftSortedList{T}"/> if none is specified.
-    /// Used to allocate a reasonable starting size to minimize resizing operations.
+    /// The default initial capacity of the <see cref="T:SwiftCollections.SwiftSortedList`1" /> if none is
+    /// specified. Used to allocate a reasonable starting size to minimize resizing operations.
     /// </summary>
     public const int DefaultCapacity = 8;
 
@@ -90,24 +88,31 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     #region Constructors
 
     /// <summary>
-    /// Initializes a new instance of the SwiftSortedList class with the default capacity.
+    /// Creates an empty collection with no allocated element storage.
     /// </summary>
     /// <remarks>
-    /// This constructor creates an empty sorted list. 
-    /// Items added to the list will be automatically ordered according to the default comparer for the item type.
+    /// This constructor creates an empty sorted list. Items added to the list will be automatically ordered
+    /// according to the default comparer for the item type.
     /// </remarks>
     public SwiftSortedList() : this(0) { }
 
     /// <summary>
-    /// Initializes a new, empty instance of <see cref="SwiftSortedList{T}"/> uisng the specified <see cref="IComparer{T}"/>.
+    /// Initializes a new, empty instance of <see cref="T:SwiftCollections.SwiftSortedList`1" /> uisng the
+    /// specified <see cref="T:System.Collections.Generic.IComparer`1" />.
     /// </summary>
+    /// <param name="comparer">The ordering comparer, retained by reference; null uses
+    /// Comparer&lt;T&gt;.Default.</param>
     public SwiftSortedList(IComparer<T> comparer) : this(0, comparer) { }
 
     /// <summary>
-    /// Initializes a new, empty instance of <see cref="SwiftSortedList{T}"/> with the specified initial capacity and <see cref="IComparer{T}"/>.
+    /// Initializes a new, empty instance of <see cref="T:SwiftCollections.SwiftSortedList`1" /> with the
+    /// specified initial capacity and <see cref="T:System.Collections.Generic.IComparer`1" />.
     /// </summary>
-    /// <param name="capacity">The starting initial capacity.</param>
-    /// <param name="comparer">The comparer to use. If null, the default comparer is used.</param>
+    /// <param name="capacity">The requested element capacity; zero starts empty, and a negative constructor
+    /// capacity uses the minimum allocation. Positive growth is rounded up; requests at or above 2^30 reach the
+    /// Int32 capacity sentinel.</param>
+    /// <param name="comparer">The ordering comparer, retained by reference; null uses
+    /// Comparer&lt;T&gt;.Default.</param>
     public SwiftSortedList(int capacity, IComparer<T>? comparer = null)
     {
         _comparer = comparer ?? Comparer<T>.Default;
@@ -126,10 +131,17 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftList{T}"/> class with elements from the specified collection.
-    /// The collection must have a known count for optimized memory allocation.
+    /// Creates a collection by shallow-copying an enumerable.
     /// </summary>
-    /// <exception cref="ArgumentException">Thrown if the input collection does not have a known count.</exception>
+    /// <param name="items">The elements to copy in source order; source storage is not retained. Null is
+    /// rejected.</param>
+    /// <param name="comparer">The ordering comparer, retained by reference; null uses
+    /// Comparer&lt;T&gt;.Default.</param>
+    /// <exception cref="T:System.ArgumentNullException">items is null.</exception>
+    /// <remarks>
+    /// Known-count sources must report a stable count and remain unchanged while copied. Arbitrary enumerables
+    /// are supported. Input is sorted using the selected comparer.
+    /// </remarks>
     public SwiftSortedList(IEnumerable<T> items, IComparer<T>? comparer = null)
     {
         ChronicleGuard.ThrowIfNull(items, nameof(items));
@@ -162,10 +174,17 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         }
     }
 
-    ///  <summary>
-    ///  Initializes a new instance of the <see cref="SwiftSortedList{T}"/> class with the specified <see cref="SwiftArrayState{T}"/>.
-    ///  </summary>
-    ///  <param name="state">The state containing the internal array, count, offset, and version for initialization.</param>
+    /// <summary>
+    /// Restores a collection by shallow-copying its item state.
+    /// </summary>
+    /// <param name="state">The item state to shallow-copy into new storage; Items must be non-null.</param>
+    /// <exception cref="T:System.ArgumentNullException">state.Items is null, including a default
+    /// state.</exception>
+    /// <remarks>
+    /// Capacity and mutation version are reconstructed, not preserved. The comparer resets to
+    /// Comparer&lt;T&gt;.Default, but restored items are not re-sorted. Supply state already ordered by that
+    /// comparer; custom-comparer snapshots may violate lookup invariants.
+    /// </remarks>
     [MemoryPackConstructor]
     public SwiftSortedList(SwiftArrayState<T> state)
     {
@@ -183,24 +202,36 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <summary>
     /// Gets the underlying array that stores the elements of the collection.
     /// </summary>
+    /// <value>The live mutable backing storage, including unused slots.</value>
     /// <remarks>
-    /// The returned array may contain unused elements beyond the logical contents of the collection.
-    ///</remarks>
+    /// Only the Count cells starting at Offset are live. Structural mutations can move elements or replace this
+    /// array. Old arrays remain detached after replacement. Writes bypass versioning and may invalidate sorted
+    /// order.
+    /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     public T[] InnerArray => _innerArray;
 
-    /// <inheritdoc cref="_count"/>
+    /// <summary>
+    /// Gets the number of live elements.
+    /// </summary>
+    /// <value>The live count, excluding spare storage.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Count => _count;
 
-    /// <inheritdoc cref="_offset"/>
+    /// <summary>
+    /// Gets the physical offset of the first live element.
+    /// </summary>
+    /// <value>The physical backing-array index of logical element zero.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Offset => _offset;
 
-    /// <inheritdoc cref="_version"/>
+    /// <summary>
+    /// Gets the structural mutation version.
+    /// </summary>
+    /// <value>The unchecked structural-mutation counter used by enumerators.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public uint Version => _version;
@@ -208,33 +239,49 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <summary>
     /// Gets the current capacity of the internal array.
     /// </summary>
+    /// <value>The allocated backing-array length; it may exceed Count.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Capacity => _innerArray.Length;
 
-    /// <inheritdoc cref="_comparer"/>
+    /// <summary>
+    /// Gets the current ordering or equality comparer.
+    /// </summary>
+    /// <value>The comparer that defines ordering and equality for searches; retained by reference.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public IComparer<T> Comparer => _comparer;
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Gets whether the collection rejects all mutations.
+    /// </summary>
+    /// <value>false.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public bool IsReadOnly => false;
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Gets whether collection access is automatically synchronized.
+    /// </summary>
+    /// <value>false.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public bool IsSynchronized => false;
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Gets the external synchronization object.
+    /// </summary>
+    /// <value>A lazily created lock object; callers must coordinate all access using the same lock.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public object SyncRoot => _syncRoot ??= new object();
 
     /// <summary>
-    /// Gets the element at the specified arrayIndex.
+    /// Gets the element at a logical index.
     /// </summary>
+    /// <param name="index">The zero-based logical index, from zero through Count minus one. </param>
+    /// <value>The element at index in comparer order.</value>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">index is outside the live range.</exception>
     [JsonIgnore]
     [MemoryPackIgnore]
     public T this[int index]
@@ -248,12 +295,12 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     }
 
     /// <summary>
-    /// Gets or sets the current state of the array, including its items and structure.
+    /// Gets a shallow snapshot of the live elements.
     /// </summary>
+    /// <value>A new state containing a newly allocated array in comparer order.</value>
     /// <remarks>
-    /// Setting this property replaces the entire contents of the array with the specified state. 
-    /// The setter is intended for internal use and may reset internal metadata such as version and comparer.
-    /// This property is intended for serialization and deserialization scenarios.
+    /// Element references remain shared. Capacity and version are not serialized. The comparer is not serialized;
+    /// restoring uses Comparer&lt;T&gt;.Default without sorting.
     /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
@@ -299,7 +346,13 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
 
     #region Collection Manipulation
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Inserts an element in comparer order, including comparer-equal duplicates.
+    /// </summary>
+    /// <param name="item">The element to store or locate; reference-type elements are not cloned.</param>
+    /// <remarks>
+    /// Stores the supplied element without cloning; grows backing storage when needed.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Add(T item)
     {
@@ -308,8 +361,12 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         Insert(item, index);
     }
 
-    /// <summary>Adds an item if no existing item compares equal to it.</summary>
-    /// <returns>Whether the item was added.</returns>
+    /// <summary>
+    /// Adds an item if no existing item compares equal to it.
+    /// </summary>
+    /// <param name="item">The element to store or locate; reference-type elements are not cloned.</param>
+    /// <returns>true if inserted; false if the comparer considers an existing item equal, leaving contents
+    /// unchanged.</returns>
     public bool TryAddUnique(T item)
     {
         int index = _count == 0 || _comparer.Compare(_innerArray[_offset + _count - 1], item) < 0
@@ -350,8 +407,14 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <summary>
     /// Adds a range of elements to the collection, ensuring they are sorted and merged efficiently.
     /// </summary>
+    /// <param name="items">The elements to copy in source order; source storage is not retained. Null is
+    /// rejected.</param>
+    /// <exception cref="T:System.ArgumentNullException">items is null.</exception>
     /// <remarks>
-    /// This compacts the active item range for efficiency. Known-count sources reuse existing capacity when possible.
+    /// Copies and sorts/merges the supplied elements; source storage is not retained. Empty input changes
+    /// nothing. Enumerable sources must remain stable and report accurate counts. Exceptions from enumeration,
+    /// copying, or comparison can leave partial writes; there is no rollback guarantee. Self-add is copied
+    /// through temporary storage.
     /// </remarks>
     public void AddRange(IEnumerable<T> items)
     {
@@ -590,7 +653,9 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <summary>
     /// Removes and returns the minimum element in the sorter.
     /// </summary>
-    /// <returns>The minimum element.</returns>
+    /// <returns>The minimum element; removed from the collection.</returns>
+    /// <exception cref="T:System.InvalidOperationException">The collection is empty; contents are
+    /// unchanged.</exception>
     public T PopMin()
     {
         ChronicleGuard.ThrowIfTrue((uint)_count == 0, message: "Cannot pop from an empty list.");
@@ -610,7 +675,9 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <summary>
     /// Removes and returns the maximum element in the sorter.
     /// </summary>
-    /// <returns>The maximum element.</returns>
+    /// <returns>The maximum element; removed from the collection.</returns>
+    /// <exception cref="T:System.InvalidOperationException">The collection is empty; contents are
+    /// unchanged.</exception>
     public T PopMax()
     {
         ChronicleGuard.ThrowIfTrue((uint)_count == 0, message: "Cannot pop from an empty list.");
@@ -625,7 +692,12 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         return ret;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Removes one matching live entry.
+    /// </summary>
+    /// <param name="item">The element to store or locate; reference-type elements are not cloned.</param>
+    /// <returns>true if one matching element was removed; false if absent, with contents unchanged. Comparer
+    /// equality determines the match; any equal duplicate may be removed.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Remove(T item)
     {
@@ -639,10 +711,12 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     }
 
     /// <summary>
-    /// Removes the element at the specified arrayIndex from the sorted list.
-    /// Shifts elements as needed to maintain the sorted order and efficient space utilization.
+    /// Removes the element at the specified arrayIndex from the sorted list. Shifts elements as needed to
+    /// maintain the sorted order and efficient space utilization.
     /// </summary>
-    /// <param name="index">The zero-based arrayIndex of the element to remove.</param>
+    /// <param name="index">The zero-based logical index, from zero through Count minus one. </param>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">index is outside the permitted logical
+    /// range.</exception>
     public void RemoveAt(int index)
     {
         ChronicleGuard.ThrowIfListIndexInvalid(index, _count);
@@ -684,7 +758,13 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         _version++;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Removes all live entries while preserving reusable capacity.
+    /// </summary>
+    /// <remarks>
+    /// Empties the collection while preserving capacity. Ordinary clearing releases live references; references
+    /// previously hidden by FastClear can remain in spare storage.
+    /// </remarks>
     public void Clear()
     {
         if ((uint)_count == 0) return;
@@ -698,8 +778,12 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <summary>
     /// Removes all elements, optionally releasing references throughout retained backing storage.
     /// </summary>
-    /// <param name="clearRetainedReferences">If true, also releases references outside the live range; otherwise uses ordinary clearing.</param>
-    /// <remarks>Capacity is preserved. Full reference cleanup can take time proportional to retained capacity.</remarks>
+    /// <param name="clearRetainedReferences">If true, also releases references outside the live range; otherwise
+    /// uses ordinary clearing.</param>
+    /// <remarks>
+    /// Empties the collection while preserving capacity. The Boolean overload also clears references outside the
+    /// live range when requested.
+    /// </remarks>
     public void Clear(bool clearRetainedReferences)
     {
         if (clearRetainedReferences && RuntimeHelpers.IsReferenceOrContainsReferences<T>())
@@ -711,10 +795,14 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     }
 
     /// <summary>
-    /// Quickly clears the list by resetting the count and offset without modifying the internal array.
-    /// Note: This leaves references in the internal array, which may prevent garbage collection of reference types.
-    /// Use when performance is critical and you are certain that residual references are acceptable.
+    /// Quickly clears the list by resetting the count and offset without modifying the internal array. Note: This
+    /// leaves references in the internal array, which may prevent garbage collection of reference types. Use when
+    /// performance is critical and you are certain that residual references are acceptable.
     /// </summary>
+    /// <remarks>
+    /// Resets the logical count without clearing stored values. References can remain retained until overwritten,
+    /// reallocated, or Clear(true). Capacity is preserved.
+    /// </remarks>
     public void FastClear()
     {
         if ((uint)_count == 0) return;
@@ -729,9 +817,12 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     #region Capacity Management
 
     /// <summary>
-    /// Ensures that the capacity of <see cref="SwiftSortedList{T}"/> is sufficient to accommodate the specified number of elements.
-    /// The capacity can increase by double to balance memory allocation efficiency and space.
+    /// Ensures that the capacity of <see cref="T:SwiftCollections.SwiftSortedList`1" /> is sufficient to
+    /// accommodate the specified number of elements. The capacity can increase by double to balance memory
+    /// allocation efficiency and space.
     /// </summary>
+    /// <param name="capacity">The minimum element capacity. Values at or below zero normalize to one; requests at
+    /// or above 2^30 reach the Int32 capacity sentinel. Existing capacity is never reduced.</param>
     public void EnsureCapacity(int capacity)
     {
         capacity = SwiftHashTools.NextPowerOfTwo(capacity);
@@ -787,7 +878,12 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <summary>
     /// Sets a new comparer for the sorted list and re-sorts the elements.
     /// </summary>
-    /// <param name="comparer">The new comparer to use.</param>
+    /// <param name="comparer">The ordering comparer, retained by reference; must be non-null.</param>
+    /// <exception cref="T:System.ArgumentNullException">comparer is null.</exception>
+    /// <remarks>
+    /// Reorders live storage in place; equal items have no stable tie order. A throwing comparer can leave
+    /// partially reordered contents and the new comparer installed. Direct storage views observe the changes.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetComparer(IComparer<T> comparer)
     {
@@ -811,13 +907,21 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <summary>
     /// Returns a read-only span over the populated sorted portion of the list.
     /// </summary>
+    /// <returns>A read-only borrowed view over the live elements in comparer order.</returns>
+    /// <remarks>
+    /// No allocation or copy. Do not retain across structural mutations, capacity changes, or clearing; elements
+    /// can move, and replaced storage becomes detached. Read-only restricts this view, not mutations through the
+    /// owner.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ReadOnlySpan<T> AsReadOnlySpan() => _innerArray.AsSpan(_offset, _count);
 
     /// <summary>
     /// Returns the minimum element in the sorter without removing it.
     /// </summary>
-    /// <returns>The minimum element.</returns>
+    /// <returns>The minimum element; contents are unchanged.</returns>
+    /// <exception cref="T:System.InvalidOperationException">The collection is empty; contents are
+    /// unchanged.</exception>
     public T PeekMin()
     {
         ChronicleGuard.ThrowIfTrue((uint)_count == 0, message: "Cannot peek from an empty list.");
@@ -827,7 +931,9 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <summary>
     /// Returns the maximum element in the sorter without removing it.
     /// </summary>
-    /// <returns>The maximum element.</returns>
+    /// <returns>The maximum element; contents are unchanged.</returns>
+    /// <exception cref="T:System.InvalidOperationException">The collection is empty; contents are
+    /// unchanged.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T PeekMax()
     {
@@ -835,15 +941,22 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         return _innerArray[GetPhysicalIndex(_count - 1)];
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Checks whether a matching live entry exists.
+    /// </summary>
+    /// <param name="item">The element to store or locate; reference-type elements are not cloned.</param>
+    /// <returns>true if an equal live element exists; otherwise false. Uses the ordering comparer.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Contains(T item) => Search(item) >= 0;
 
     /// <summary>
-    /// Determines whether the <see cref="SwiftSortedList{T}"/> contains an element that matches the conditions defined by the specified predicate.
+    /// Determines whether the <see cref="T:SwiftCollections.SwiftSortedList`1" /> contains an element that
+    /// matches the conditions defined by the specified predicate.
     /// </summary>
-    /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
-    /// <returns><c>true</c> if the <see cref="SwiftSortedList{T}"/> contains one or more elements that match the specified predicate; otherwise, <c>false</c>.</returns>
+    /// <param name="match">The non-null predicate evaluated in comparer order. It must not mutate this
+    /// collection.</param>
+    /// <returns>true on the first matching predicate result; false if no live element matches.</returns>
+    /// <exception cref="T:System.ArgumentNullException">match is null.</exception>
     public bool Exists(Predicate<T> match)
     {
         ChronicleGuard.ThrowIfNull(match, nameof(match));
@@ -858,10 +971,14 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     }
 
     /// <summary>
-    /// Searches for an element that matches the conditions defined by the specified predicate, and returns the first matching element in sorted order.
+    /// Searches for an element that matches the conditions defined by the specified predicate, and returns the
+    /// first matching element in sorted order.
     /// </summary>
-    /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
-    /// <returns>The first element that matches the conditions defined by the specified predicate, if found; otherwise, the default value for type <typeparamref name="T"/>.</returns>
+    /// <param name="match">The non-null predicate evaluated in comparer order. It must not mutate this
+    /// collection.</param>
+    /// <returns>The first matching element in comparer order, or default(T) when absent. A stored default value
+    /// is indistinguishable from failure.</returns>
+    /// <exception cref="T:System.ArgumentNullException">match is null.</exception>
     public T Find(Predicate<T> match)
     {
         ChronicleGuard.ThrowIfNull(match, nameof(match));
@@ -877,10 +994,10 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     }
 
     /// <summary>
-    /// Searches for the specified item in the sorted collection and returns the arrayIndex of the first occurrence.
+    /// Finds a logical index of any comparer-equal element.
     /// </summary>
-    /// <param name="item">The item to search for.</param>
-    /// <returns>The zero-based arrayIndex of the item if found; otherwise, -1.</returns>
+    /// <param name="item">The element to store or locate; reference-type elements are not cloned.</param>
+    /// <returns>The index of any comparer-equal element, or -1 if absent.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int IndexOf(T item)
     {
@@ -889,11 +1006,12 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     }
 
     /// <summary>
-    /// Determines the insertion point for a specified item in the collection.
-    /// The insertion point is the arrayIndex where the item would be inserted if it were not already present.
+    /// Determines the insertion point for a specified item in the collection. The insertion point is the
+    /// arrayIndex where the item would be inserted if it were not already present.
     /// </summary>
-    /// <param name="item">The item for which to find the insertion point.</param>
-    /// <returns>The insertion point as a zero-based arrayIndex.</returns>
+    /// <param name="item">The element to store or locate; reference-type elements are not cloned.</param>
+    /// <returns>An index from zero through Count; an existing equal index or the insertion position that
+    /// preserves comparer order.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int InsertionPoint(T item)
     {
@@ -904,10 +1022,9 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <summary>
     /// Searches for the specified item in the sorted collection.
     /// </summary>
-    /// <param name="item">The item to search for.</param>
-    /// <returns>
-    /// The matching index or the bitwise complement of the insertion index.
-    /// </returns>
+    /// <param name="item">The element to store or locate; reference-type elements are not cloned.</param>
+    /// <returns>A non-negative logical index for a comparer-equal element; otherwise the bitwise complement of
+    /// its insertion position.</returns>
     public int Search(T item)
     {
         int low = _offset;
@@ -926,7 +1043,23 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         return ~(low - _offset);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Copies live elements into caller-owned storage.
+    /// </summary>
+    /// <param name="array">The caller-owned destination array; existing elements outside the copied range are
+    /// preserved.</param>
+    /// <param name="arrayIndex">The zero-based destination offset, from zero through array.Length; the remaining
+    /// space must hold Count elements.</param>
+    /// <exception cref="T:System.ArgumentNullException">array is null.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">arrayIndex is outside zero through
+    /// array.Length.</exception>
+    /// <exception cref="T:System.ArgumentException">The destination is too small or incompatible with the copied
+    /// elements.</exception>
+    /// <remarks>
+    /// Shallow-copies in comparer order; source contents are preserved when the destination does not alias source
+    /// storage. The caller retains ownership of the destination; unused destination cells are preserved.
+    /// Validation failures occur before copying; incompatible array elements can cause a partial copy.
+    /// </remarks>
     public void CopyTo(T[] array, int arrayIndex)
     {
         ChronicleGuard.ThrowIfNull(array, nameof(array));
@@ -936,7 +1069,23 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         Array.Copy(_innerArray, _offset, array, arrayIndex, _count);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Copies live elements into caller-owned storage.
+    /// </summary>
+    /// <param name="array">The caller-owned destination array; existing elements outside the copied range are
+    /// preserved.</param>
+    /// <param name="arrayIndex">The zero-based destination offset, from zero through array.Length; the remaining
+    /// space must hold Count elements.</param>
+    /// <exception cref="T:System.ArgumentNullException">array is null.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">arrayIndex is outside zero through
+    /// array.Length.</exception>
+    /// <exception cref="T:System.ArgumentException">The destination is too small or incompatible with the copied
+    /// elements.</exception>
+    /// <remarks>
+    /// Shallow-copies in comparer order; source contents are preserved when the destination does not alias source
+    /// storage. The caller retains ownership of the destination; unused destination cells are preserved.
+    /// Validation failures occur before copying; incompatible array elements can cause a partial copy.
+    /// </remarks>
     public void CopyTo(Array array, int arrayIndex)
     {
         ChronicleGuard.ThrowIfNull(array, nameof(array));
@@ -946,7 +1095,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
         Array.Copy(_innerArray, _offset, array, arrayIndex, _count);
     }
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public void CloneTo(ICollection<T> output)
     {
         ChronicleGuard.ThrowIfNull(output, nameof(output));
@@ -962,10 +1111,25 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     #region Enumerators
 
     /// <summary>
-    /// Returns an enumerator that iterates through <see cref="SwiftSortedList{T}"/>.
+    /// Returns an enumerator that iterates through <see cref="T:SwiftCollections.SwiftSortedList`1" />.
     /// </summary>
+    /// <returns>A value-type enumerator in comparer order.</returns>
+    /// <remarks>
+    /// Structural mutations invalidate MoveNext and Reset. Direct storage writes and indexer assignments bypass
+    /// the version check.
+    /// </remarks>
     public SwiftSorterEnumerator GetEnumerator() => new(this);
+    /// <summary>
+    /// Creates an enumerator through the implemented interface.
+    /// </summary>
+    /// <returns>An enumerator with the concrete collection's ordering and mutation rules. Interface dispatch may
+    /// box the value-type enumerator.</returns>
     IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
+    /// <summary>
+    /// Creates an enumerator through the implemented interface.
+    /// </summary>
+    /// <returns>An enumerator with the concrete collection's ordering and mutation rules. Interface dispatch may
+    /// box the value-type enumerator.</returns>
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
 

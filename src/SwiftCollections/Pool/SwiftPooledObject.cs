@@ -12,10 +12,14 @@ using Chronicler.Diagnostics;
 namespace SwiftCollections.Pool;
 
 /// <summary>
-/// A lease that wraps an object rented from an <see cref="ISwiftObjectPool{T}"/> and ensures it is automatically
-/// released back to the pool when disposed. Designed to simplify resource management and avoid manual release errors.
+/// Represents a rental lease whose disposal attempts at most one return to its pool.
 /// </summary>
 /// <typeparam name="T">The type of the object being pooled. Must be a reference type.</typeparam>
+/// <remarks>
+/// A lease returns its object at most once. Dispose marks the lease disposed and drops its references before
+/// Release; a throwing Release is not retried. Do not separately return the leased object or use it after
+/// disposal.
+/// </remarks>
 public sealed class SwiftPooledObject<T> : IDisposable where T : class
 {
     #region Fields
@@ -59,8 +63,8 @@ public sealed class SwiftPooledObject<T> : IDisposable where T : class
     /// Releases the rented object back to its pool.
     /// </summary>
     /// <remarks>
-    /// This method is automatically called when the <see cref="SwiftPooledObject{T}"/> goes out of scope in a
-    /// using block or when manually disposed.
+    /// Returns the rental at most once. Release exceptions propagate after the lease has irreversibly dropped
+    /// ownership references; later Dispose calls do nothing.
     /// </remarks>
     public void Dispose()
     {

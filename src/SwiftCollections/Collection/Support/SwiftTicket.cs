@@ -13,10 +13,10 @@ namespace SwiftCollections;
 /// Identifies an allocation in its originating ticket map by index and generation.
 /// </summary>
 /// <remarks>
-/// A <see cref="SwiftTicket"/> consists of an integer index and an unsigned generation value. 
+/// A <see cref="T:SwiftCollections.SwiftTicket" /> consists of an integer index and an unsigned generation value.
 /// This combination helps detect stale references when slots are reused. Tickets carry no collection identity;
 /// use them only with their originating map. Generation counters are finite.
-///</remarks>
+/// </remarks>
 public readonly struct SwiftTicket : IEquatable<SwiftTicket>
 {
     /// <summary>
@@ -30,48 +30,74 @@ public readonly struct SwiftTicket : IEquatable<SwiftTicket>
     public readonly uint Generation;
 
     /// <summary>
-    /// Initializes a new instance of the SwiftTicket class with the specified index and generation values.
+    /// Creates a ticket containing the supplied index and generation.
     /// </summary>
-    /// <param name="index">
-    /// The zero-based index that identifies the ticket. 
-    /// Must be greater than or equal to 0.
-    /// </param>
-    /// <param name="generation">
-    /// The generation value associated with the ticket. 
-    /// Used to distinguish between different versions of the same index.
-    /// </param>
+    /// <param name="index">The signed index stored verbatim; construction performs no validation.</param>
+    /// <param name="generation">The generation stored verbatim. No validation is performed; counters wrap modulo
+    /// 2^32.</param>
     public SwiftTicket(int index, uint generation)
     {
         Index = index;
         Generation = generation;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Compares the stored value components for equality.
+    /// </summary>
+    /// <param name="other">The ticket to compare by Index and Generation; an object of another type or null
+    /// compares unequal.</param>
+    /// <returns>true if the compared stored components are equal; false for null, other runtime types, or
+    /// different components.</returns>
     public bool Equals(SwiftTicket other)
         => Index == other.Index && Generation == other.Generation;
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Compares the stored value components for equality.
+    /// </summary>
+    /// <param name="obj">The ticket to compare by Index and Generation; an object of another type or null
+    /// compares unequal.</param>
+    /// <returns>true if the compared stored components are equal; false for null, other runtime types, or
+    /// different components.</returns>
     public override bool Equals(object? obj)
         => obj is SwiftTicket h && Equals(h);
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Returns a hash code for the stored value components.
+    /// </summary>
+    /// <returns>An Int32 hash suitable for lookup; equal values produce equal hashes within the running
+    /// process.</returns>
+    /// <remarks>
+    /// The hash is for in-process lookup; it is not a stable serialized or cross-process identifier.
+    /// </remarks>
     public override int GetHashCode()
         => HashCode.Combine(Index, Generation);
 
     /// <summary>
     /// Returns a string that represents the current ticket, including its index and generation values.
     /// </summary>
-    /// <returns>A string in the format "Ticket({Index}:{Generation})" that identifies the ticket by its index and generation.</returns>
+    /// <returns>A string in the format "Ticket({Index}:{Generation})" that identifies the ticket by its index and
+    /// generation.</returns>
     public override string ToString()
         => $"Ticket({Index}:{Generation})";
 
     /// <summary>
     /// Determines whether two SwiftTicket instances are equal.
     /// </summary>
+    /// <param name="left">The ticket value to compare; equality compares both Index and Generation, without map
+    /// identity.</param>
+    /// <param name="right">The ticket value to compare; equality compares both Index and Generation, without map
+    /// identity.</param>
+    /// <returns>true if Index and Generation both match; otherwise false. No map identity is compared.</returns>
     public static bool operator ==(SwiftTicket left, SwiftTicket right) => left.Equals(right);
 
     /// <summary>
     /// Determines whether two SwiftTicket instances are not equal.
     /// </summary>
+    /// <param name="left">The ticket value to compare; equality compares both Index and Generation, without map
+    /// identity.</param>
+    /// <param name="right">The ticket value to compare; equality compares both Index and Generation, without map
+    /// identity.</param>
+    /// <returns>true if Index and Generation differ in either component; otherwise false. No map identity is
+    /// compared.</returns>
     public static bool operator !=(SwiftTicket left, SwiftTicket right) => !(left == right);
 }

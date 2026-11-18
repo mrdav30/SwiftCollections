@@ -12,48 +12,48 @@ using MemoryPack;
 namespace SwiftCollections;
 
 /// <summary>
-/// Represents the immutable state of a two-dimensional array, including its dimensions and underlying data.
+/// Stores the dimensions and flattened cell data for a 2D array.
 /// </summary>
-/// <remarks>
-/// This struct is intended for scenarios where a snapshot of a 2D array's state is needed, such as
-/// serialization or state management. The data is stored in a one-dimensional array in row-major order. The struct is
-/// serializable and compatible with supported serialization frameworks.
-/// </remarks>
 /// <typeparam name="T">The type of elements stored in the array.</typeparam>
+/// <remarks>
+/// The readonly struct does not make its Data array immutable. Construction retains the array and performs no
+/// validation. Layout is x * Height + y. Collection State getters allocate snapshots; directly constructing this
+/// state does not copy data.
+/// </remarks>
 [Serializable]
 [MemoryPackable]
 public readonly partial struct Array2DState<T>
 {
     /// <summary>
-    /// Gets the width value represented by this field.
+    /// Stores the width in cells, without non-negative or product validation.
     /// </summary>
+
     [JsonInclude]
     [MemoryPackInclude]
     public readonly int Width;
 
     /// <summary>
-    /// Gets the height value represented by this field.
+    /// Stores the height in cells, without non-negative or product validation.
     /// </summary>
+
     [JsonInclude]
     [MemoryPackInclude]
     public readonly int Height;
 
     /// <summary>
-    /// Gets the underlying array of data elements contained in the collection.
+    /// Stores retained flattened data; the array is mutable and default state contains null.
     /// </summary>
     [JsonInclude]
     [MemoryPackInclude]
     public readonly T[] Data;
 
     /// <summary>
-    /// Initializes a new instance of the Array2DState class with the specified dimensions and data array.
+    /// Creates a state value by retaining the supplied arrays and metadata.
     /// </summary>
-    /// <param name="width">The number of columns in the two-dimensional array. Must be greater than zero.</param>
-    /// <param name="height">The number of rows in the two-dimensional array. Must be greater than zero.</param>
-    /// <param name="data">
-    /// The one-dimensional array containing the elements of the two-dimensional array, stored in row-major order. 
-    /// The length must be equal to width multiplied by height.
-    /// </param>
+    /// <param name="width">The recorded width; stored without validation.</param>
+    /// <param name="height">The recorded height; stored without validation.</param>
+    /// <param name="data">The flattened data, retained by reference without validation or copying. Use a non-null
+    /// array whose length equals the non-negative dimension product.</param>
     [JsonConstructor]
     [MemoryPackConstructor]
     public Array2DState(int width, int height, T[] data)

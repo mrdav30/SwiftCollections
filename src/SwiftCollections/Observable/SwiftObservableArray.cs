@@ -16,10 +16,15 @@ using MemoryPack;
 namespace SwiftCollections.Observable;
 
 /// <summary>
-/// Represents an array of observable properties, raising events whenever an element is updated.
-/// Designed for performance-critical scenarios in Unity game development.
+/// Stores observable property cells and forwards their value-change notifications.
 /// </summary>
 /// <typeparam name="TValue">The type of elements in the array.</typeparam>
+/// <remarks>
+/// Notifications are synchronous on the calling thread after mutation; subscriber exceptions propagate without
+/// rollback and can prevent subsequent notifications. No synchronization or reentrancy guard is provided.
+/// Supplied observable properties are retained and subscribed; do not replace array elements or share properties
+/// across owners with different indices.
+/// </remarks>
 [Serializable]
 [JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
@@ -30,8 +35,9 @@ public partial class SwiftObservableArray<TValue> : IStateBacked<SwiftArrayState
     /// <summary>
     /// Represents the collection of observable properties managed by this instance.
     /// </summary>
-    /// <remarks>Each element in the array corresponds to an individual observable property. 
-    /// The array may be null or empty if no properties are currently managed.
+    /// <remarks>
+    /// Each element in the array corresponds to an individual observable property. The array may be null or empty
+    /// if no properties are currently managed.
     /// </remarks>
     protected SwiftObservableProperty<TValue>[] _items;
 
@@ -39,8 +45,8 @@ public partial class SwiftObservableArray<TValue> : IStateBacked<SwiftArrayState
     /// Represents the event handler that is invoked when a property value changes on an item.
     /// </summary>
     /// <remarks>
-    /// This handler is typically used to subscribe to property change notifications for items within a collection or container.
-    /// Derived classes can use this field to manage event subscriptions for item property changes.
+    /// This handler is typically used to subscribe to property change notifications for items within a collection
+    /// or container. Derived classes can use this field to manage event subscriptions for item property changes.
     /// </remarks>
     protected PropertyChangedEventHandler _itemChangedHandler;
 
@@ -65,11 +71,13 @@ public partial class SwiftObservableArray<TValue> : IStateBacked<SwiftArrayState
     /// <summary>
     /// Initializes a new instance of the SwiftObservableArray class with the specified capacity.
     /// </summary>
+    /// <param name="capacity">The initial cell capacity; must be strictly positive.</param>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">capacity is zero or negative.</exception>
     /// <remarks>
-    /// Each element in the array is initialized with a new <see cref="SwiftObservableProperty{TValue}"/> instance.
-    /// The capacity determines the fixed size of the array and cannot be changed after construction.
+    /// Each element in the array is initialized with a new <see
+    /// cref="T:SwiftCollections.Observable.SwiftObservableProperty`1" /> instance. The capacity determines the
+    /// fixed size of the array and cannot be changed after construction.
     /// </remarks>
-    /// <param name="capacity">The number of elements the array can contain. Must be a positive integer.</param>
     public SwiftObservableArray(int capacity)
     {
         ChronicleGuard.ThrowIfNegativeOrZero(capacity, nameof(capacity));
@@ -90,11 +98,15 @@ public partial class SwiftObservableArray<TValue> : IStateBacked<SwiftArrayState
     /// <summary>
     /// Initializes a new instance of the SwiftObservableArray class with the specified observable properties.
     /// </summary>
+    /// <param name="observableProperties">The non-null array to retain directly. Each non-null property has its
+    /// Index changed and is subscribed; the array and property objects remain shared.</param>
+    /// <exception cref="T:System.ArgumentNullException">observableProperties is null.</exception>
+    /// <exception cref="T:System.NullReferenceException">An array entry is null; earlier entries may already have
+    /// been indexed/subscribed.</exception>
     /// <remarks>
-    /// Each property in the array is assigned its index and subscribed to change notifications.
-    /// Changes to any property will be observed by the array.
+    /// Each property in the array is assigned its index and subscribed to change notifications. Changes to any
+    /// property will be observed by the array.
     /// </remarks>
-    /// <param name="observableProperties">An array of <see cref="SwiftObservableProperty{TValue}"/> instances to be managed by the array. Cannot be null.</param>
     public SwiftObservableArray(SwiftObservableProperty<TValue>[] observableProperties)
     {
         ChronicleGuard.ThrowIfNull(observableProperties, nameof(observableProperties));
@@ -109,10 +121,13 @@ public partial class SwiftObservableArray<TValue> : IStateBacked<SwiftArrayState
         }
     }
 
-    ///  <summary>
-    ///  Initializes a new instance of the <see cref="SwiftObservableArray{TValue}"/> class with the specified <see cref="SwiftArrayState{TValue}"/>.
-    ///  </summary>
-    ///  <param name="state">The state containing the internal array, count, offset, and version for initialization.</param>
+    /// <summary>
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.Observable.SwiftObservableArray`1" />
+    /// class with the specified <see cref="T:SwiftCollections.SwiftArrayState`1" />.
+    /// </summary>
+    /// <param name="state">The state to shallow-copy; Items must be non-null. Event subscribers are not
+    /// serialized.</param>
+    /// <exception cref="T:System.ArgumentNullException">state.Items is null, including default state.</exception>
     [MemoryPackConstructor]
     public SwiftObservableArray(SwiftArrayState<TValue> state)
     {
@@ -129,6 +144,7 @@ public partial class SwiftObservableArray<TValue> : IStateBacked<SwiftArrayState
     /// <summary>
     /// Gets the total number of elements that the internal data structure can hold without resizing.
     /// </summary>
+    /// <value>The number of observable cells, equal to the retained property-array length.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Capacity => _items.Length;
@@ -136,7 +152,16 @@ public partial class SwiftObservableArray<TValue> : IStateBacked<SwiftArrayState
     /// <summary>
     /// Gets or sets the value at the specified index.
     /// </summary>
-    /// <param name="index">The zero-based index of the element to get or set. Must be within the valid range of the collection.</param>
+    /// <param name="index">The zero-based logical index; must address an existing cell or element.</param>
+    /// <value>The current element; assignment changes storage only when object.Equals reports a
+    /// difference.</value>
+    /// <exception cref="T:System.IndexOutOfRangeException">The getter index/key is absent or outside the
+    /// permitted range.</exception>
+    /// <remarks>
+    /// A changed cell value raises ElementChanged first, then PropertyChanged with the name Items[]. Events run
+    /// after mutation, on the calling thread; subscriber exceptions do not roll back the stored value and can
+    /// prevent the subsequent notification.
+    /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     public TValue this[int index]
@@ -155,11 +180,12 @@ public partial class SwiftObservableArray<TValue> : IStateBacked<SwiftArrayState
     }
 
     /// <summary>
-    /// Gets or sets the current state of the array, including the values of all items.
+    /// Gets a shallow snapshot of the observable cell values.
     /// </summary>
+    /// <value>A newly allocated item array; event handlers and observable wrappers are not part of the
+    /// snapshot.</value>
     /// <remarks>
-    /// Setting this property replaces the entire array state, including all item values and their order. 
-    /// Any existing item change handlers are reset when the state is set.
+    /// Restore creates fresh observable wrappers and subscriptions; referenced element objects remain shared.
     /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
@@ -203,10 +229,7 @@ public partial class SwiftObservableArray<TValue> : IStateBacked<SwiftArrayState
     /// <summary>
     /// Returns an array containing all elements in the collection.
     /// </summary>
-    /// <returns>
-    /// An array of type TValue that contains the values of the collection in order. 
-    /// The array will be empty if the collection contains no elements.
-    /// </returns>
+    /// <returns>A new array with shallow copies of each cell value.</returns>
     public TValue[] ToArray()
     {
         var array = new TValue[_items.Length];

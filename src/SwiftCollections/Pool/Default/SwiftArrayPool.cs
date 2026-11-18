@@ -15,10 +15,17 @@ using SwiftCollections.Lazy;
 namespace SwiftCollections.Pool;
 
 /// <summary>
-/// A thread-safe pool designed to manage arrays of a specific size. 
-/// The pool optimizes memory usage by reusing arrays, reducing allocations and improving performance.
+/// Caches reusable arrays in exact-length buckets with caller-managed ownership and lifecycle.
 /// </summary>
-/// <typeparam name="T">The type of elements in the arrays being pooled. Must have a parameterless constructor.</typeparam>
+/// <typeparam name="T">The type of elements in the arrays being pooled. Must have a parameterless
+/// constructor.</typeparam>
+/// <remarks>
+/// Rented objects have exclusive caller ownership until returned exactly once. Foreign objects and double returns
+/// are not detected and can break ownership/counts. Callback exceptions propagate; operations are not
+/// transactional. Concurrent storage does not make counters, max-size checks, callbacks or disposal atomic.
+/// Synchronize lifecycle operations externally. Each exact array length has its own bucket. A custom factory must
+/// return a non-null array of the requested length; length is not checked.
+/// </remarks>
 public sealed class SwiftArrayPool<T> : IDisposable where T : new()
 {
     #region Singleton Instance
@@ -32,6 +39,11 @@ public sealed class SwiftArrayPool<T> : IDisposable where T : new()
     /// <summary>
     /// Gets the shared instance of the pool.
     /// </summary>
+    /// <value>The process-wide lazily created pool for this closed generic type.</value>
+    /// <remarks>
+    /// The shared instance is reused and is not recreated after disposal. Prefer Clear for reusable cleanup;
+    /// disposing Shared affects every consumer.
+    /// </remarks>
     public static SwiftArrayPool<T> Shared => _instance.Value;
 
     #endregion
@@ -53,12 +65,19 @@ public sealed class SwiftArrayPool<T> : IDisposable where T : new()
     #region Constructor
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftArrayPool{T}"/> class with customizable behavior.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.Pool.SwiftArrayPool`1" /> class with
+    /// customizable behavior.
     /// </summary>
-    /// <param name="createFunc">A function used to create new arrays (default: creates arrays of the specified size).</param>
-    /// <param name="actionOnRelease">An action performed when an array is released back to the pool (default: clears the array).</param>
-    /// <param name="actionOnDestroy">An action performed when an array is removed from the pool (default: no action).</param>
-    /// <param name="poolMaxCapacity">The maximum number of arrays each pool can hold for a specific size (default: 100).</param>
+    /// <param name="createFunc">The retained factory, invoked only when a bucket is empty. Null uses new T[size];
+    /// custom arrays must have exactly the requested length.</param>
+    /// <param name="actionOnRelease">Optional retained callback invoked before an object is cached or destroyed.
+    /// Null selects Array.Clear over the entire array.</param>
+    /// <param name="actionOnDestroy">Optional retained callback invoked for overflow and Clear, not Dispose. Null
+    /// performs no destruction.</param>
+    /// <param name="poolMaxCapacity">The positive maximum number of inactive objects retained per exact-length
+    /// bucket; active rentals are not limited. The concurrent check is not an atomic hard bound.</param>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">The configured inactive capacity is zero or
+    /// negative.</exception>
     public SwiftArrayPool(
         Func<int, T[]>? createFunc = null,
         Action<T[]>? actionOnRelease = null,
@@ -83,21 +102,25 @@ public sealed class SwiftArrayPool<T> : IDisposable where T : new()
     /// <summary>
     /// Gets the function used to create new arrays.
     /// </summary>
+    /// <value>The retained factory used when creating arrays for a length bucket.</value>
     public Func<int, T[]> CreateFunc { get; }
 
     /// <summary>
     /// Gets the action performed when an array is released back to the pool.
     /// </summary>
+    /// <value>The retained reset callback; the default clears every array element.</value>
     public Action<T[]>? ActionOnRelease { get; }
 
     /// <summary>
     /// Gets the action performed when an array is removed from the pool.
     /// </summary>
+    /// <value>The optional overflow/Clear callback; Dispose does not invoke it.</value>
     public Action<T[]>? ActionOnDestroy { get; }
 
     /// <summary>
     /// Gets the maximum number of arrays each pool can hold for a specific size.
     /// </summary>
+    /// <value>The configured positive inactive limit for each exact-length bucket.</value>
     public int PoolMaxCapacity { get; }
 
     #endregion
@@ -107,9 +130,16 @@ public sealed class SwiftArrayPool<T> : IDisposable where T : new()
     /// <summary>
     /// Rents an array of the specified size from the pool. If no pool exists for the size, a new one is created.
     /// </summary>
-    /// <param name="size">The desired size of the array.</param>
-    /// <returns>An array of the specified size, either newly created or retrieved from the pool.</returns>
-    /// <exception cref="ArgumentException">Thrown if the specified size is less than or equal to 0.</exception>
+    /// <param name="size">The strictly positive requested array length; selects an exact-size bucket.</param>
+    /// <returns>A cached or newly created array for exclusive caller use; return it once to this pool.</returns>
+    /// <exception cref="T:System.ArgumentException">Thrown if the specified size is less than or equal to
+    /// 0.</exception>
+    /// <exception cref="T:System.ObjectDisposedException">This pool has been disposed.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">size is zero or negative.</exception>
+    /// <remarks>
+    /// Renting can invoke the factory and get callback. Collection wrappers ordinarily clear contents when
+    /// released, preserving capacity.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T[] Rent(int size)
     {
@@ -120,9 +150,18 @@ public sealed class SwiftArrayPool<T> : IDisposable where T : new()
     }
 
     /// <summary>
-    /// Releases an array back to the pool for reuse. If no pool exists for the array's size, it is cleared and discarded.
+    /// Releases an array back to the pool for reuse. If no pool exists for the array's size, it is cleared and
+    /// discarded.
     /// </summary>
-    /// <param name="array">The array to release back to the pool.</param>
+    /// <param name="array">The object to return exactly once; do not use it afterward. Null is ignored by this
+    /// wrapper.</param>
+    /// <exception cref="T:System.ObjectDisposedException">The pool is disposed; wrapper null handling occurs
+    /// after this check.</exception>
+    /// <remarks>
+    /// Ownership returns to the pool. The release callback runs before caching; overflow invokes the destroy
+    /// callback. Unrecognized array lengths are cleared and discarded without the custom callback; null/empty
+    /// arrays are ignored.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Release(T[] array)
     {
@@ -139,6 +178,11 @@ public sealed class SwiftArrayPool<T> : IDisposable where T : new()
     /// <summary>
     /// Clears all object pools, releasing any pooled arrays and resetting the state.
     /// </summary>
+    /// <remarks>
+    /// Drops cached inactive objects without reclaiming checked-out rentals. Does not instantiate an unused
+    /// backing pool. Does nothing after disposal when the concrete wrapper checks it. Array pools also discard
+    /// their length buckets.
+    /// </remarks>
     public void Clear()
     {
         if (_disposed) return;
@@ -170,9 +214,14 @@ public sealed class SwiftArrayPool<T> : IDisposable where T : new()
     #region IDisposable Implementation
 
     /// <summary>
-    /// Releases all resources used by the SwiftArrayPool.
-    /// It is important to call Dispose() to release pooled arrays, preventing potential memory leaks.
+    /// Releases all resources used by the SwiftArrayPool. It is important to call Dispose() to release pooled
+    /// arrays, preventing potential memory leaks.
     /// </summary>
+    /// <remarks>
+    /// Repeated calls do nothing. Clears initialized cached collections and disposes backing pools. Finish
+    /// rentals/leases before disposal; returning to an old disposed pool throws. Shared singleton instances are
+    /// not recreated.
+    /// </remarks>
     public void Dispose()
     {
         if (_disposed) return;
@@ -190,8 +239,8 @@ public sealed class SwiftArrayPool<T> : IDisposable where T : new()
     /// Releases the resources used by the SwiftArrayPool instance.
     /// </summary>
     /// <remarks>
-    /// This finalizer ensures that unmanaged resources are released if Dispose was not called explicitly. 
-    /// It is recommended to call Dispose to release resources deterministically.
+    /// This finalizer ensures that unmanaged resources are released if Dispose was not called explicitly. It is
+    /// recommended to call Dispose to release resources deterministically.
     /// </remarks>
     ~SwiftArrayPool() => Dispose();
 

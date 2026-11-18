@@ -11,11 +11,16 @@ using System.Threading;
 namespace SwiftCollections.Lazy;
 
 /// <summary>
-/// A lazily initialized disposable object.
-/// This class extends <see cref="Lazy{T}"/> to support <see cref="IDisposable"/> objects,
-/// ensuring proper resource cleanup when disposed.
+/// Lazily creates a value and supports disposal after initialization.
 /// </summary>
-/// <typeparam name="T">The type of the lazily initialized object, which must implement <see cref="IDisposable"/>.</typeparam>
+/// <typeparam name="T">The type of the lazily initialized object, which must implement <see
+/// cref="T:System.IDisposable" />.</typeparam>
+/// <remarks>
+/// Lazy initialization uses the selected Lazy&lt;T&gt; thread-safety mode. Disposal itself is not synchronized
+/// with initialization or other disposal calls. Disposing before value creation does nothing and does not prevent
+/// later initialization. Value remains accessible after disposal and can return a disposed object; coordinate
+/// ownership externally.
+/// </remarks>
 public class SwiftLazyDisposable<T> : Lazy<T>, IDisposable where T : IDisposable
 {
     #region Fields
@@ -31,64 +36,59 @@ public class SwiftLazyDisposable<T> : Lazy<T>, IDisposable where T : IDisposable
     #region Constructors
 
     /// <summary>
-    ///  Initializes a new instance of the <see cref="SwiftLazyDisposable{T}"/> class.
-    ///  When lazy initialization occurs, the default constructor is used.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.Lazy.SwiftLazyDisposable`1" /> class. When
+    /// lazy initialization occurs, the default constructor is used.
     /// </summary>
     public SwiftLazyDisposable() : base() { }
 
     /// <summary>
-    ///  Initializes a new instance of the <see cref="SwiftLazyDisposable{T}"/> class.
-    ///  When lazy initialization occurs, the default constructor of the target type
-    ///  and the specified initialization mode are used.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.Lazy.SwiftLazyDisposable`1" /> class. When
+    /// lazy initialization occurs, the default constructor of the target type and the specified initialization
+    /// mode are used.
     /// </summary>
-    /// <param name="isThreadSafe">
-    ///  true to make this instance usable concurrently by multiple threads;
-    ///  false to make the instance usable by only one thread at a time. 
-    /// </param>
+    /// <param name="isThreadSafe">true selects ExecutionAndPublication for initialization; false selects None.
+    /// This does not synchronize Dispose.</param>
     public SwiftLazyDisposable(bool isThreadSafe) : base(isThreadSafe) { }
 
     /// <summary>
-    ///  Initializes a new instance of the <see cref="SwiftLazyDisposable{T}"/> class
-    ///  that uses the default constructor of T and the specified thread-safety mode.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.Lazy.SwiftLazyDisposable`1" /> class that
+    /// uses the default constructor of T and the specified thread-safety mode.
     /// </summary>
-    /// <param name="mode">
-    ///  One of the enumeration values that specifies the thread safety mode. 
-    /// </param>
+    /// <param name="mode">The Lazy initialization mode; this does not define disposal synchronization.</param>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">mode is not a defined
+    /// LazyThreadSafetyMode.</exception>
     public SwiftLazyDisposable(LazyThreadSafetyMode mode) : base(mode) { }
 
     /// <summary>
-    ///  Initializes a new instance of the <see cref="SwiftLazyDisposable{T}"/> class.
-    ///  When lazy initialization occurs, the specified initialization function is used.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.Lazy.SwiftLazyDisposable`1" /> class. When
+    /// lazy initialization occurs, the specified initialization function is used.
     /// </summary>
-    /// <param name="valueFactory">
-    ///  The delegate that is invoked to produce the lazily initialized value when it is needed. 
-    /// </param>
+    /// <param name="valueFactory">The retained non-null factory; invoked according to Lazy initialization
+    /// rules.</param>
+    /// <exception cref="T:System.ArgumentNullException">valueFactory is null.</exception>
     public SwiftLazyDisposable(Func<T> valueFactory) : base(valueFactory) { }
 
     /// <summary>
-    ///  Initializes a new instance of the <see cref="SwiftLazyDisposable{T}"/> class.
-    ///  When lazy initialization occurs, the specified initialization function
-    ///  and initialization mode are used.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.Lazy.SwiftLazyDisposable`1" /> class. When
+    /// lazy initialization occurs, the specified initialization function and initialization mode are used.
     /// </summary>
-    /// <param name="valueFactory">
-    ///  The delegate that is invoked to produce the lazily initialized value when it is needed. 
-    /// </param>
-    /// <param name="isThreadSafe">
-    ///  true to make this instance usable concurrently by multiple threads;
-    ///  false to make this instance usable by only one thread at a time. 
-    /// </param>
+    /// <param name="valueFactory">The retained non-null factory; invoked according to Lazy initialization
+    /// rules.</param>
+    /// <param name="isThreadSafe">true selects ExecutionAndPublication for initialization; false selects None.
+    /// This does not synchronize Dispose.</param>
+    /// <exception cref="T:System.ArgumentNullException">valueFactory is null.</exception>
     public SwiftLazyDisposable(Func<T> valueFactory, bool isThreadSafe) : base(valueFactory, isThreadSafe) { }
 
     /// <summary>
-    ///  Initializes a new instance of the <see cref="SwiftLazyDisposable{T}"/> class
-    ///  using the specified initialization function and thread-safety mode.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.Lazy.SwiftLazyDisposable`1" /> class using
+    /// the specified initialization function and thread-safety mode.
     /// </summary>
-    /// <param name="valueFactory">
-    ///  The delegate that is invoked to produce the lazily initialized value when it is needed. 
-    /// </param>
-    /// <param name="mode">
-    ///  One of the enumeration values that specifies the thread safety mode. 
-    /// </param>
+    /// <param name="valueFactory">The retained non-null factory; invoked according to Lazy initialization
+    /// rules.</param>
+    /// <param name="mode">The Lazy initialization mode; this does not define disposal synchronization.</param>
+    /// <exception cref="T:System.ArgumentNullException">valueFactory is null.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">mode is not a defined
+    /// LazyThreadSafetyMode.</exception>
     public SwiftLazyDisposable(Func<T> valueFactory, LazyThreadSafetyMode mode) : base(valueFactory, mode) { }
 
     #endregion
@@ -98,14 +98,12 @@ public class SwiftLazyDisposable<T> : Lazy<T>, IDisposable where T : IDisposable
     /// <summary>
     /// Returns a string that represents the current state of the object.
     /// </summary>
+    /// <returns> A string representation of the value if it has been created; otherwise, a string indicating that
+    /// the value has not been created. </returns>
     /// <remarks>
-    /// This method provides a user-friendly description of the object's state, 
-    /// which can be useful for debugging or logging purposes.
+    /// This method provides a user-friendly description of the object's state, which can be useful for debugging
+    /// or logging purposes.
     /// </remarks>
-    /// <returns>
-    /// A string representation of the value if it has been created; otherwise, 
-    /// a string indicating that the value has not been created.
-    /// </returns>
     public override string ToString() => IsValueCreated ? Value.ToString() ?? string.Empty : "LazyDisposable (Not Created)";
 
     #endregion
@@ -113,9 +111,13 @@ public class SwiftLazyDisposable<T> : Lazy<T>, IDisposable where T : IDisposable
     #region IDisposable Implementation
 
     /// <summary>
-    /// Disposes the lazily initialized value if it has been created.
-    /// Ensures that disposal is only performed once.
+    /// Disposes an already created value on the first successful disposal path.
     /// </summary>
+    /// <remarks>
+    /// Does not force initialization. If no value exists, changes nothing; a later call can dispose a
+    /// subsequently created value. Marks disposed before calling T.Dispose, so a throwing disposal is not
+    /// retried. Concurrent Dispose calls are not guaranteed exactly once.
+    /// </remarks>
     public void Dispose()
     {
         if (_disposed || !this.IsValueCreated)
@@ -129,7 +131,7 @@ public class SwiftLazyDisposable<T> : Lazy<T>, IDisposable where T : IDisposable
     }
 
     /// <summary>
-    /// Finalizer to ensure disposal if Dispose() is never called.
+    /// Attempts to dispose an already created value during finalization.
     /// </summary>
     ~SwiftLazyDisposable() => Dispose();
 

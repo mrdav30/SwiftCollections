@@ -12,72 +12,72 @@ using MemoryPack;
 namespace SwiftCollections;
 
 /// <summary>
-/// Represents the immutable state of a generational map, including item storage, allocation status, generation tracking, and free index management.
+/// Stores explicit serialized state for the owning collection.
 /// </summary>
-/// <remarks>
-/// This struct is typically used to capture or transfer the complete state of a generational map for serialization, persistence, or inspection purposes. 
-/// All arrays are expected to be of the same length, and the struct is designed for efficient value-type usage. 
-/// The state is read-only and does not provide mutation operations.</remarks>
 /// <typeparam name="T">The type of elements stored in the map.</typeparam>
+/// <remarks>
+/// Readonly fields retain mutable arrays; this struct is not deeply immutable. Constructors retain arrays without
+/// copying, normalizing null array arguments to empty arrays. default(TState) bypasses constructors and leaves
+/// array fields null. Collection State getters allocate shallow snapshots; restore behavior and validation belong
+/// to each collection.
+/// </remarks>
 [Serializable]
 [MemoryPackable]
 public readonly partial struct SwiftTicketMapState<T>
 {
     /// <summary>
-    /// Gets the array of items contained in the collection.
+    /// Stores retained element data; array contents remain mutable and default state may contain null.
     /// </summary>
     [JsonInclude]
     [MemoryPackInclude]
     public readonly T[] Items;
 
     /// <summary>
-    /// Indicates which items in the collection are currently allocated.
+    /// Stores per-slot allocation flags; absent flags are treated as false during restore.
     /// </summary>
     [JsonInclude]
     [MemoryPackInclude]
     public readonly bool[] Allocated;
 
     /// <summary>
-    /// Gets the collection of generation values associated with this instance.
+    /// Stores generation history by slot; absent generations restore as zero.
     /// </summary>
     [JsonInclude]
     [MemoryPackInclude]
     public readonly uint[] Generations;
 
     /// <summary>
-    /// Gets the collection of indices that are currently available for allocation.
+    /// Stores the free-slot stack in bottom-to-top order; arrays may differ in length from item storage. Entries
+    /// must be unique and disjoint from allocated slots.
     /// </summary>
     [JsonInclude]
     [MemoryPackInclude]
     public readonly int[] FreeIndices;
 
     /// <summary>
-    /// Gets the peak value recorded during the measurement period.
+    /// Stores the exclusive high-water slot boundary, not the maximum live Count. Restore normalizes it into
+    /// capacity.
     /// </summary>
     [JsonInclude]
     [MemoryPackInclude]
     public readonly int Peak;
 
     /// <summary>
-    /// Initializes a new instance of the SwiftTicketMapState class with the specified items, allocation states, 
-    /// generation counters, free indices, and peak index.
+    /// Creates a state value by retaining the supplied arrays and metadata.
     /// </summary>
-    /// <param name="items">The array of items to be managed by the map. Cannot be null; an empty array is used if null is provided.</param>
-    /// <param name="allocated">
-    /// An array indicating which slots in the map are currently allocated.
-    /// Each element corresponds to an item in the items array. 
-    /// Cannot be null; an empty array is used if null is provided.
-    /// </param>
-    /// <param name="generations">
-    /// An array of generation counters for each slot in the map. 
-    /// Used to track the version or state of each item.
-    /// Cannot be null; an empty array is used if null is provided.
-    /// </param>
-    /// <param name="freeIndices">
-    /// An array of indices representing the free slots available for allocation. 
-    /// Cannot be null; an empty array is used if null is provided.
-    /// </param>
-    /// <param name="peak">The highest index that has been allocated in the map. Must be greater than or equal to zero.</param>
+    /// <param name="items">The items array, retained without copying. Null is normalized to an empty array;
+    /// contents are not validated.</param>
+    /// <param name="allocated">The allocated array, retained without copying. Null is normalized to an empty
+    /// array; contents are not validated.</param>
+    /// <param name="generations">The generations array, retained without copying. Null is normalized to an empty
+    /// array; contents are not validated.</param>
+    /// <param name="freeIndices">The freeIndices array, retained without copying. Null is normalized to an empty
+    /// array; contents are not validated.</param>
+    /// <param name="peak">The exclusive slot high-water boundary, stored without validation.</param>
+    /// <remarks>
+    /// Performs no consistency checks and allocates no snapshot copy. Mutating a supplied array mutates this
+    /// state.
+    /// </remarks>
     [JsonConstructor]
     [MemoryPackConstructor]
     public SwiftTicketMapState(

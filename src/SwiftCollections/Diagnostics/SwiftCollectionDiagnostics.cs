@@ -17,5 +17,10 @@ public static class SwiftCollectionDiagnostics
     /// <summary>
     /// Gets the shared SwiftCollections diagnostics channel.
     /// </summary>
+    /// <value>The process-wide mutable diagnostic channel named SwiftCollections.</value>
+    /// <remarks>
+    /// Configuration affects all library consumers using this channel; synchronization and output behavior belong
+    /// to Chronicler.Diagnostics.
+    /// </remarks>
     public static DiagnosticChannel Shared { get; } = new DiagnosticChannel("SwiftCollections");
 }

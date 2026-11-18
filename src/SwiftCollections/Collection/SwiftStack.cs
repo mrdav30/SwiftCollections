@@ -19,19 +19,15 @@ using SwiftCollections.Utility;
 namespace SwiftCollections;
 
 /// <summary>
-/// Represents a fast, array-based stack (LIFO - Last-In-First-Out) collection of objects.
-/// <para>
-/// The <c>SwiftStack&lt;T&gt;</c> class provides O(1) time complexity for <c>Push</c> and <c>Pop</c> operations,
-/// making it highly efficient for scenarios where performance is critical.
-/// It minimizes memory allocations by reusing internal arrays and offers methods
-/// like <c>FastClear</c> to quickly reset the stack without deallocating memory.
-/// </para>
-/// <para>
-/// This implementation is optimized for performance and does not perform versioning checks.
-/// Modifying the stack during enumeration may result in undefined behavior.
-/// </para>
+/// Stores elements in a resizable last-in, first-out stack.
 /// </summary>
 /// <typeparam name="T">Specifies the type of elements in the stack.</typeparam>
+/// <remarks>
+/// Copies are shallow. Instances require external synchronization. Structural operations advance an unchecked
+/// mutation version; enumerators check that version in MoveNext and Reset. Direct backing-array writes and
+/// indexer assignment bypass version checks. Enumeration is top-to-bottom; CopyTo, State, spans, and CloneTo use
+/// bottom-to-top storage order.
+/// </remarks>
 [Serializable]
 [JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
@@ -40,8 +36,8 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     #region Constants
 
     /// <summary>
-    /// The default initial capacity of the SwiftStack if none is specified.
-    /// Used to allocate a reasonable starting size to minimize resizing operations.
+    /// The default initial capacity of the SwiftStack if none is specified. Used to allocate a reasonable
+    /// starting size to minimize resizing operations.
     /// </summary>
     public const int DefaultCapacity = 8;
 
@@ -75,13 +71,16 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     #region Constructors
 
     /// <summary>
-    /// Initializes a new, empty instance of SwiftStack.
+    /// Creates an empty collection with no allocated element storage.
     /// </summary>
     public SwiftStack() : this(0) { }
 
     /// <summary>
     /// Initializes a new, empty instance of SwiftStack with the specified initial capacity.
     /// </summary>
+    /// <param name="capacity">The requested element capacity; zero starts empty, and a negative constructor
+    /// capacity uses the minimum allocation. Positive growth is rounded up; requests at or above 2^30 reach the
+    /// Int32 capacity sentinel.</param>
     public SwiftStack(int capacity)
     {
         if (capacity == 0)
@@ -94,13 +93,15 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftStack{T}"/> class that contains elements copied from the specified collection.
+    /// Creates a collection by shallow-copying an enumerable.
     /// </summary>
+    /// <param name="items">The elements to copy in source order; source storage is not retained. Null is
+    /// rejected.</param>
+    /// <exception cref="T:System.ArgumentNullException">items is null.</exception>
     /// <remarks>
-    /// The elements are copied onto the stack in the order they are returned by the enumerator of the collection, 
-    /// so that the last element in the collection becomes the top of the stack.
+    /// Known-count sources must report a stable count and remain unchanged while copied. Arbitrary enumerables
+    /// are supported. The source sequence is stored in enumeration order.
     /// </remarks>
-    /// <param name="items">The collection whose elements are copied to the new stack. Cannot be null.</param>
     public SwiftStack(IEnumerable<T> items)
     {
         ChronicleGuard.ThrowIfNull(items, nameof(items));
@@ -126,10 +127,15 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
         }
     }
 
-    ///  <summary>
-    ///  Initializes a new instance of the <see cref="SwiftStack{T}"/> class with the specified <see cref="SwiftArrayState{T}"/>.
-    ///  </summary>
-    ///  <param name="state">The state containing the internal array, count, offset, and version for initialization.</param>
+    /// <summary>
+    /// Restores a collection by shallow-copying its item state.
+    /// </summary>
+    /// <param name="state">The item state to shallow-copy into new storage; Items must be non-null.</param>
+    /// <exception cref="T:System.ArgumentNullException">state.Items is null, including a default
+    /// state.</exception>
+    /// <remarks>
+    /// Capacity and mutation version are reconstructed, not preserved. Items use bottom-to-top storage order.
+    /// </remarks>
     [MemoryPackConstructor]
     public SwiftStack(SwiftArrayState<T> state)
     {
@@ -141,40 +147,66 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
 
     #region Properties
 
-    /// <inheritdoc cref="_innerArray"/>
+    /// <summary>
+    /// Gets the live backing array, including unused capacity.
+    /// </summary>
+    /// <value>The live mutable backing storage, including unused slots.</value>
+    /// <remarks>
+    /// Only indices zero through Count minus one are live. Structural mutations can move elements or replace this
+    /// array. Old arrays remain detached after replacement. Writes bypass versioning.
+    /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     public T[] InnerArray => _innerArray;
 
-    /// <inheritdoc cref="_count"/>
+    /// <summary>
+    /// Gets the number of live elements.
+    /// </summary>
+    /// <value>The live count, excluding spare storage.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Count => _count;
 
     /// <summary>
-    /// Gets the total number of elements the SwiftQueue can hold without resizing.
-    /// Reflects the current allocated size of the internal array.
+    /// Gets the total number of elements the SwiftQueue can hold without resizing. Reflects the current allocated
+    /// size of the internal array.
     /// </summary>
+    /// <value>The allocated backing-array length; it may exceed Count.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Capacity => _innerArray.Length;
 
+    /// <summary>
+    /// Gets the interface IsReadOnly.
+    /// </summary>
+    /// <value>false.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     bool ICollection<T>.IsReadOnly => false;
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Gets whether collection access is automatically synchronized.
+    /// </summary>
+    /// <value>false.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public bool IsSynchronized => false;
 
+    /// <summary>
+    /// Gets the interface SyncRoot.
+    /// </summary>
+    /// <value>The owner's lazily allocated synchronization object.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     object ICollection.SyncRoot => _syncRoot ??= new object();
 
     /// <summary>
-    /// Gets the element at the specified arrayIndex.
+    /// Gets or sets the element at a logical index.
     /// </summary>
+    /// <param name="index">The zero-based logical index, from zero through Count minus one. Zero addresses the
+    /// bottom of the stack.</param>
+    /// <value>The element at index in bottom-to-top storage order.</value>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">index is outside the live range.</exception>
     [JsonIgnore]
     [MemoryPackIgnore]
     public T this[int index]
@@ -194,11 +226,12 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     }
 
     /// <summary>
-    /// Gets or sets the current state of the array, including its items and count.
+    /// Gets a shallow snapshot of the live elements.
     /// </summary>
+    /// <value>A new state containing a newly allocated array in bottom-to-top storage order.</value>
     /// <remarks>
-    /// Setting this property replaces the entire contents of the array with the items from the specified state. 
-    /// The setter is intended for internal use and may reset the array's version and capacity.
+    /// Element references remain shared. Capacity and version are not serialized. The setter is internal and
+    /// restores from copied Items.
     /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
@@ -238,13 +271,20 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
 
     #region Collection Manipulation
 
+    /// <summary>
+    /// Adds an element through the implemented collection interface.
+    /// </summary>
+    /// <param name="item">The element to compare, add or remove; reference values are not cloned.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void ICollection<T>.Add(T item) => Push(item);
 
     /// <summary>
     /// Inserts an object at the top of the SwiftStack.
     /// </summary>
-    /// <param name="item"></param>
+    /// <param name="item">The element to store or locate; reference-type elements are not cloned.</param>
+    /// <remarks>
+    /// Stores the supplied element without cloning; grows backing storage when needed.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Push(T item)
     {
@@ -257,7 +297,14 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// <summary>
     /// Pushes the elements of the specified span onto the stack in order.
     /// </summary>
-    /// <param name="items">The span whose elements should be pushed.</param>
+    /// <param name="items">The elements to copy in source order; source storage is not retained. An empty span
+    /// changes nothing.</param>
+    /// <remarks>
+    /// Copies and appends the supplied elements; source storage is not retained. The last supplied item becomes
+    /// the stack top. Empty input changes nothing. Enumerable sources must remain stable and report accurate
+    /// counts. Exceptions from enumeration, copying, or comparison can leave partial writes; there is no rollback
+    /// guarantee. Do not enumerate this collection as its own source while mutating it.
+    /// </remarks>
     public void PushRange(ReadOnlySpan<T> items)
     {
         if (items.Length == 0)
@@ -274,6 +321,13 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
         _version++;
     }
 
+    /// <summary>
+    /// Removes a matching element through the implemented interface.
+    /// </summary>
+    /// <param name="item">The element to compare, add or remove; reference values are not cloned.</param>
+    /// <returns>This implementation always throws.</returns>
+    /// <exception cref="T:System.NotSupportedException">Removal by value is unsupported; use Dequeue or
+    /// Pop.</exception>
     bool ICollection<T>.Remove(T item)
     {
         throw new NotSupportedException("Remove is not supported on Stack.");
@@ -282,7 +336,9 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// <summary>
     /// Removes and returns the object at the top of the SwiftStack.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>The top element; removed from the collection.</returns>
+    /// <exception cref="T:System.InvalidOperationException">The collection is empty; contents are
+    /// unchanged.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Pop()
     {
@@ -297,6 +353,10 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// <summary>
     /// Removes all elements from the SwiftStack, resetting its count to zero.
     /// </summary>
+    /// <remarks>
+    /// Empties the collection while preserving capacity. Ordinary clearing releases live references; references
+    /// previously hidden by FastClear can remain in spare storage.
+    /// </remarks>
     public void Clear()
     {
         if (_count == 0) return;
@@ -309,8 +369,12 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// <summary>
     /// Removes all elements, optionally releasing references throughout retained backing storage.
     /// </summary>
-    /// <param name="clearRetainedReferences">If true, also releases references outside the live range; otherwise uses ordinary clearing.</param>
-    /// <remarks>Capacity is preserved. Full reference cleanup can take time proportional to retained capacity.</remarks>
+    /// <param name="clearRetainedReferences">If true, also releases references outside the live range; otherwise
+    /// uses ordinary clearing.</param>
+    /// <remarks>
+    /// Empties the collection while preserving capacity. The Boolean overload also clears references outside the
+    /// live range when requested.
+    /// </remarks>
     public void Clear(bool clearRetainedReferences)
     {
         if (clearRetainedReferences && _clearReleasedSlots)
@@ -319,9 +383,13 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     }
 
     /// <summary>
-    /// Clears the SwiftStack without releasing the reference to the stored elements.
-    /// Use FastClear() when you want to quickly reset the list without reallocating memory.
+    /// Clears the SwiftStack without releasing the reference to the stored elements. Use FastClear() when you
+    /// want to quickly reset the list without reallocating memory.
     /// </summary>
+    /// <remarks>
+    /// Resets the logical count without clearing stored values. References can remain retained until overwritten,
+    /// reallocated, or Clear(true). Capacity is preserved.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void FastClear()
     {
@@ -336,12 +404,13 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// <summary>
     /// Ensures that the internal storage has at least the specified capacity, resizing if necessary.
     /// </summary>
+    /// <param name="capacity">The minimum element capacity. Values at or below zero normalize to one; requests at
+    /// or above 2^30 reach the Int32 capacity sentinel. Existing capacity is never reduced.</param>
     /// <remarks>
-    /// If the current capacity is less than the specified value, the internal storage is increased to 
-    /// the next power of two greater than or equal to <paramref name="capacity"/>. 
-    /// No action is taken if the current capacity is sufficient.
+    /// If the current capacity is less than the specified value, the internal storage is increased to the next
+    /// power of two greater than or equal to <paramref name="capacity" />. No action is taken if the current
+    /// capacity is sufficient.
     /// </remarks>
-    /// <param name="capacity">The minimum number of elements that the internal storage should be able to hold. Must be non-negative.</param>
     public void EnsureCapacity(int capacity)
     {
         capacity = SwiftHashTools.NextPowerOfTwo(capacity);
@@ -366,8 +435,8 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
 
 
     /// <summary>
-    /// Sets the capacity of a <see cref="SwiftStack{T}"/> to the actual 
-    /// number of elements it contains, rounded up to a nearby next power of 2 value.
+    /// Sets the capacity of a <see cref="T:SwiftCollections.SwiftStack`1" /> to the actual number of elements it
+    /// contains, rounded up to a nearby next power of 2 value.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void TrimCapacity()
@@ -387,7 +456,9 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// <summary>
     /// Returns the object at the top of the SwiftStack without removing it.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>The top element; contents are unchanged.</returns>
+    /// <exception cref="T:System.InvalidOperationException">The collection is empty; contents are
+    /// unchanged.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Peek()
     {
@@ -396,41 +467,54 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     }
 
     /// <summary>
-    /// Returns a string that represents the current stack, including its type and the number of elements it contains.
+    /// Returns a string that represents the current stack, including its type and the number of elements it
+    /// contains.
     /// </summary>
-    /// <returns>
-    /// A string containing the type name and the current element count if the stack is not empty; 
-    /// otherwise, a string indicating that the stack is empty.
-    /// </returns>
+    /// <returns> A string containing the type name and the current element count if the stack is not empty;
+    /// otherwise, a string indicating that the stack is empty. </returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override string ToString() => (uint)_count == 0 ? $"{typeof(SwiftStack<T>)}: Empty" : $"{typeof(SwiftStack<T>)}: Count = {_count}";
 
     /// <summary>
     /// Returns a mutable span over the populated portion of the stack.
     /// </summary>
+    /// <returns>A writable borrowed view over the live elements in bottom-to-top storage order.</returns>
+    /// <remarks>
+    /// No allocation or copy. Do not retain across structural mutations, capacity changes, or clearing; elements
+    /// can move, and replaced storage becomes detached. Writes bypass enumerator version checks.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Span<T> AsSpan() => _innerArray.AsSpan(0, _count);
 
     /// <summary>
     /// Returns a read-only span over the populated portion of the stack.
     /// </summary>
+    /// <returns>A read-only borrowed view over the live elements in bottom-to-top storage order.</returns>
+    /// <remarks>
+    /// No allocation or copy. Do not retain across structural mutations, capacity changes, or clearing; elements
+    /// can move, and replaced storage becomes detached. Read-only restricts this view, not mutations through the
+    /// owner.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ReadOnlySpan<T> AsReadOnlySpan() => _innerArray.AsSpan(0, _count);
 
     /// <summary>
     /// Copies the elements of the collection to the specified array, starting at the specified array index.
     /// </summary>
-    /// <param name="array">
-    /// The one-dimensional array that is the destination of the elements copied from the collection. 
-    /// The array must have zero-based indexing.</param>
-    /// <param name="arrayIndex">The zero-based index in the destination array at which copying begins.</param>
-    /// <exception cref="ArgumentOutOfRangeException">
-    /// Thrown when <paramref name="arrayIndex"/> is less than 0 or greater than the length of <paramref name="array"/>.
-    /// </exception>
-    /// <exception cref="ArgumentException">
-    /// Thrown when the number of elements in the source collection is greater than 
-    /// the available space from <paramref name="arrayIndex"/> to the end of <paramref name="array"/>.
-    /// </exception>
+    /// <param name="array">The caller-owned destination array; existing elements outside the copied range are
+    /// preserved.</param>
+    /// <param name="arrayIndex">The zero-based destination offset, from zero through array.Length; the remaining
+    /// space must hold Count elements.</param>
+    /// <exception cref="T:System.ArgumentNullException">array is null.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">arrayIndex is outside zero through
+    /// array.Length.</exception>
+    /// <exception cref="T:System.ArgumentException">The destination is too small or incompatible with the copied
+    /// elements.</exception>
+    /// <remarks>
+    /// Shallow-copies in bottom-to-top storage order; source contents are preserved when the destination does not
+    /// alias source storage. The caller retains ownership of the destination; unused destination cells are
+    /// preserved. Validation failures occur before copying; incompatible array elements can cause a partial copy.
+    /// </remarks>
     public void CopyTo(T[] array, int arrayIndex)
     {
         ChronicleGuard.ThrowIfNull(array, nameof(array));
@@ -443,7 +527,14 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     /// <summary>
     /// Copies the populated elements of the SwiftStack into the specified destination span.
     /// </summary>
-    /// <param name="destination">The destination span.</param>
+    /// <param name="destination">The caller-owned destination span with space for at least Count elements. Only
+    /// the first Count elements are overwritten.</param>
+    /// <exception cref="T:System.ArgumentException">destination is shorter than Count.</exception>
+    /// <remarks>
+    /// Shallow-copies in bottom-to-top storage order; source contents are preserved when the destination does not
+    /// alias source storage. The caller retains ownership of the destination; unused destination cells are
+    /// preserved. Validation failures occur before copying; incompatible array elements can cause a partial copy.
+    /// </remarks>
     public void CopyTo(Span<T> destination)
     {
         ChronicleGuard.ThrowIfArgument(destination.Length < _count, nameof(destination), "Destination span is not long enough.");
@@ -451,7 +542,23 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
         AsSpan().CopyTo(destination);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Copies live elements into caller-owned storage.
+    /// </summary>
+    /// <param name="array">The caller-owned destination array; existing elements outside the copied range are
+    /// preserved.</param>
+    /// <param name="arrayIndex">The zero-based destination offset, from zero through array.Length; the remaining
+    /// space must hold Count elements.</param>
+    /// <exception cref="T:System.ArgumentNullException">array is null.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">arrayIndex is outside zero through
+    /// array.Length.</exception>
+    /// <exception cref="T:System.ArgumentException">The destination is too small or incompatible with the copied
+    /// elements.</exception>
+    /// <remarks>
+    /// Shallow-copies in bottom-to-top storage order; source contents are preserved when the destination does not
+    /// alias source storage. The caller retains ownership of the destination; unused destination cells are
+    /// preserved. Validation failures occur before copying; incompatible array elements can cause a partial copy.
+    /// </remarks>
     public void CopyTo(Array array, int arrayIndex)
     {
         ChronicleGuard.ThrowIfNull(array, nameof(array));
@@ -471,7 +578,7 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
         }
     }
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public void CloneTo(ICollection<T> output)
     {
         output.Clear();
@@ -479,7 +586,11 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
             output.Add(_innerArray[i]);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Checks whether a matching live entry exists.
+    /// </summary>
+    /// <param name="item">The element to store or locate; reference-type elements are not cloned.</param>
+    /// <returns>true if an equal live element exists; otherwise false. Does not change contents.</returns>
     public bool Contains(T item)
     {
         EqualityComparer<T> comparer = EqualityComparer<T>.Default;
@@ -492,10 +603,13 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     }
 
     /// <summary>
-    /// Determines whether the <see cref="SwiftStack{T}"/> contains an element that matches the conditions defined by the specified predicate.
+    /// Determines whether the <see cref="T:SwiftCollections.SwiftStack`1" /> contains an element that matches the
+    /// conditions defined by the specified predicate.
     /// </summary>
-    /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
-    /// <returns><c>true</c> if the <see cref="SwiftStack{T}"/> contains one or more elements that match the specified predicate; otherwise, <c>false</c>.</returns>
+    /// <param name="match">The non-null predicate evaluated in top-to-bottom order. It must not mutate this
+    /// collection.</param>
+    /// <returns>true on the first matching predicate result; false if no live element matches.</returns>
+    /// <exception cref="T:System.ArgumentNullException">match is null.</exception>
     public bool Exists(Predicate<T> match)
     {
         ChronicleGuard.ThrowIfNull(match, nameof(match));
@@ -510,10 +624,14 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
     }
 
     /// <summary>
-    /// Searches for an element that matches the conditions defined by the specified predicate, and returns the first matching element in stack enumeration order.
+    /// Searches for an element that matches the conditions defined by the specified predicate, and returns the
+    /// first matching element in stack enumeration order.
     /// </summary>
-    /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
-    /// <returns>The first element that matches the conditions defined by the specified predicate, if found; otherwise, the default value for type <typeparamref name="T"/>.</returns>
+    /// <param name="match">The non-null predicate evaluated in top-to-bottom order. It must not mutate this
+    /// collection.</param>
+    /// <returns>The first matching element in top-to-bottom order, or default(T) when absent. A stored default
+    /// value is indistinguishable from failure.</returns>
+    /// <exception cref="T:System.ArgumentNullException">match is null.</exception>
     public T Find(Predicate<T> match)
     {
         ChronicleGuard.ThrowIfNull(match, nameof(match));
@@ -531,9 +649,26 @@ public sealed partial class SwiftStack<T> : IStateBacked<SwiftArrayState<T>>, IS
 
     #region Enumerators
 
-    /// <inheritdoc cref="IEnumerable.GetEnumerator()"/>
+    /// <summary>
+    /// Creates an enumerator over the live entries.
+    /// </summary>
+    /// <returns>A value-type enumerator in top-to-bottom order.</returns>
+    /// <remarks>
+    /// Structural mutations invalidate MoveNext and Reset. Direct storage writes and indexer assignments bypass
+    /// the version check.
+    /// </remarks>
     public SwiftStackEnumerator GetEnumerator() => new(this);
+    /// <summary>
+    /// Creates an enumerator through the implemented interface.
+    /// </summary>
+    /// <returns>An enumerator with the concrete collection's ordering and mutation rules. Interface dispatch may
+    /// box the value-type enumerator.</returns>
     IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
+    /// <summary>
+    /// Creates an enumerator through the implemented interface.
+    /// </summary>
+    /// <returns>An enumerator with the concrete collection's ordering and mutation rules. Interface dispatch may
+    /// box the value-type enumerator.</returns>
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
 

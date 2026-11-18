@@ -201,8 +201,10 @@ C# 14 is the default language version; runtime projects override it to C# 11 for
   - `src/SwiftCollections.FixedMathSharp`, tests, and benchmarks have nullable
     disabled.
   - Do not introduce broad nullable churn outside the touched area.
-- Public APIs should include XML docs unless the surrounding file clearly does
-  not.
+- Every authored public/protected API needs a concise XML summary and applicable
+  parameter, type-parameter, return and property-value contracts. Document
+  ownership, invalidation, ordering, failure mutation and relevant exceptions.
+  Use shared inherited comments only after checking the rendered reference.
 - Larger collection types often use `#region` blocks; preserve local style.
 - Avoid unrelated namespace or style changes. Keep cleanup explicit through the
   commands in `CONTRIBUTING.md`, excluding generated output.
@@ -213,6 +215,12 @@ C# 14 is the default language version; runtime projects override it to C# 11 for
   Test and benchmark files under `tests` do not carry license headers.
 - Keep conceptual documentation under `docs/api/guides`; preserve the existing
   `guides/OVERVIEW.html` entry route. Do not hand-edit generated `docs/api/obj`.
+- DocFX consumes both standard `Release/net10.0` DLLs and adjacent XML files.
+  Check emitted XML for both frameworks and Release/ReleaseLean separately;
+  account for generated serializer APIs, synthesized members and hidden explicit
+  interface implementations. Start inventory checks from clean generated
+  metadata/site directories; stale local files can survive a DocFX rebuild.
+  See `CONTRIBUTING.md` for the documentation workflow.
 - Leave work unstaged and uncommitted unless the user explicitly requests a
   commit.
 - Minimize XML/project-file formatting churn. Existing XML files mix tabs and

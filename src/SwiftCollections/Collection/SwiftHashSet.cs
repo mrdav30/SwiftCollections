@@ -19,20 +19,15 @@ using SwiftCollections.Utility;
 namespace SwiftCollections;
 
 /// <summary>
-/// Represents a high-performance set of unique values with efficient operations for addition, removal, and lookup
+/// Stores unique values in a resizable hash table.
 /// </summary>
 /// <typeparam name="T">The type of elements in the set.</typeparam>
 /// <remarks>
-/// The comparer is not serialized. After deserialization the set reverts
-/// to the same default comparer selection used by a new instance. String values
-/// use SwiftCollections' deterministic default comparer. Object values use a
-/// SwiftCollections comparer that hashes strings deterministically, while other
-/// object-value determinism still depends on the underlying value type's
-/// <see cref="object.GetHashCode()"/> implementation. Other types use
-/// <see cref="EqualityComparer{T}.Default"/>.
-/// 
-/// If a custom comparer is required it can be reapplied using
-/// <see cref="SetComparer(IEqualityComparer{T})"/>.
+/// Instances require external synchronization; keys and elements must keep equality/hash identity stable while
+/// stored. Copies are shallow. Enumeration follows hash slots, not insertion or sorted order. Resize, trim, and
+/// comparer changes can reorder entries. Recognized string/object comparers may switch to randomized
+/// collision-hardening after long probes; cross-process iteration order is not guaranteed. Custom comparers
+/// define their own determinism.
 /// </remarks>
 [Serializable]
 [JsonConverter(typeof(StateJsonConverterFactory))]
@@ -114,16 +109,27 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     #region Constructors
 
     /// <summary>
-    /// Initialize a new instance of <see cref="SwiftHashSet{T}"/> with customizable capacity and comparer for optimal performance tailored to your needs.
+    /// Initialize a new instance of <see cref="T:SwiftCollections.SwiftHashSet`1" /> with customizable capacity
+    /// and comparer for optimal performance tailored to your needs.
     /// </summary>
     public SwiftHashSet() : this(DefaultCapacity, null) { }
 
-    /// <inheritdoc cref="SwiftHashSet()"/>
+    /// <summary>
+    /// Creates a collection using the supplied initial capacity, contents, or equality comparer.
+    /// </summary>
+    /// <param name="comparer">The element equality comparer, retained by reference. Null selects the Swift
+    /// default.</param>
     public SwiftHashSet(IEqualityComparer<T>? comparer) : this(DefaultCapacity, comparer) { }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftHashSet{T}"/> class that is empty and has the default initial capacity.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.SwiftHashSet`1" /> class that is empty and
+    /// has the default initial capacity.
     /// </summary>
+    /// <param name="capacity">Requested storage capacity; values below DefaultCapacity use the minimum
+    /// allocation. Larger values round up. Keep requests below 2^30, where the capacity helper returns a
+    /// sentinel.</param>
+    /// <param name="comparer">The element equality comparer, retained by reference. Null selects the Swift
+    /// default.</param>
     public SwiftHashSet(int capacity, IEqualityComparer<T>? comparer = null)
     {
         Initialize(capacity, comparer);
@@ -133,10 +139,14 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftHashSet{T}"/> class that contains elements copied from the specified collection.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.SwiftHashSet`1" /> class that contains
+    /// elements copied from the specified collection.
     /// </summary>
-    /// <param name="collection">The collection whose elements are copied to the new set.</param>
-    /// <param name="comparer">The comparer to use when comparing elements.</param>
+    /// <param name="collection">The non-null source to enumerate and shallow-copy; source storage is not
+    /// retained. Equal duplicates keep the first inserted mapping.</param>
+    /// <param name="comparer">The element equality comparer, retained by reference. Null selects the Swift
+    /// default.</param>
+    /// <exception cref="T:System.ArgumentNullException">The source is null.</exception>
     public SwiftHashSet(IEnumerable<T> collection, IEqualityComparer<T>? comparer = null)
     {
         ChronicleGuard.ThrowIfNull(collection, nameof(collection));
@@ -152,10 +162,19 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
             InsertIfNotExists(item);
     }
 
-    ///  <summary>
-    ///  Initializes a new instance of the <see cref="SwiftHashSet{T}"/> class with the specified <see cref="SwiftArrayState{T}"/>.
-    ///  </summary>
-    ///  <param name="state">The state containing the internal array, count, offset, and version for initialization.</param>
+    /// <summary>
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.SwiftHashSet`1" /> class with the
+    /// specified <see cref="T:SwiftCollections.SwiftArrayState`1" />.
+    /// </summary>
+    /// <param name="state">The state whose non-null Items array is copied and indexed. Comparer and table layout
+    /// are not retained.</param>
+    /// <exception cref="T:System.ArgumentNullException">state.Items is null, including a default
+    /// state.</exception>
+    /// <remarks>
+    /// Copies non-null items into reconstructed storage using Swift default equality. Null items are skipped and
+    /// equal duplicates keep the first stored value. Custom comparers are not restored; unlike state restore,
+    /// enumerable construction rejects null elements.
+    /// </remarks>
     [MemoryPackConstructor]
     public SwiftHashSet(SwiftArrayState<T> state)
     {
@@ -170,25 +189,39 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     #region Properties
 
     /// <summary>
-    /// Gets the number of elements contained in the set.
+    /// Gets the number of live entries.
     /// </summary>
+    /// <value>The count of stored elements or mappings, excluding spare storage and deleted slots.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Count => _count;
 
-    /// <summary>Gets an upper bound on the physical entry slots inspected by a full enumeration.</summary>
-    /// <remarks>Includes holes left by removed entries. Keep the collection unchanged after sampling the bound.</remarks>
+    /// <summary>
+    /// Gets an upper bound on the physical entry slots inspected by a full enumeration.
+    /// </summary>
+    /// <value>One more than the highest tracked hash slot; may be one even when Count is zero and is not the live
+    /// element count.</value>
+    /// <remarks>
+    /// Includes holes left by removed entries. Keep the collection unchanged after sampling the bound.
+    /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int EnumerationSlotCount => _lastIndex + 1;
 
     /// <summary>
-    /// Gets the <see cref="IEqualityComparer{T}"/> object that is used to determine equality for the values in the set.
+    /// Gets the <see cref="T:System.Collections.Generic.IEqualityComparer`1" /> object that is used to determine
+    /// equality for the values in the set.
     /// </summary>
+    /// <value>The current equality comparer; it may change after explicit replacement or collision
+    /// hardening.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public IEqualityComparer<T> Comparer => _comparer;
 
+    /// <summary>
+    /// Gets the interface IsReadOnly.
+    /// </summary>
+    /// <value>false.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     bool ICollection<T>.IsReadOnly => false;
@@ -196,8 +229,10 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <summary>
     /// Gets the stored value that matches the specified key.
     /// </summary>
-    /// <param name="key">The lookup value used to find an equal element in the set.</param>
-    /// <exception cref="KeyNotFoundException">No matching value exists in the set.</exception>
+    /// <param name="key">The key to locate or store. Null is treated as absent by lookup/removal.</param>
+    /// <value>The stored element equal to key.</value>
+    /// <exception cref="T:System.Collections.Generic.KeyNotFoundException">No matching key exists on
+    /// get.</exception>
     [JsonIgnore]
     [MemoryPackIgnore]
     public T this[T key]
@@ -213,12 +248,14 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     }
 
     /// <summary>
-    /// Gets or sets the current state of the array, including its items and structure.
+    /// Gets a shallow item snapshot for serialization.
     /// </summary>
+    /// <value>A state containing copied live items in increasing hash-slot order; reference-type elements remain
+    /// shared.</value>
     /// <remarks>
-    /// Setting this property replaces the contents of the array with the items from the specified state. 
-    /// If the provided state is empty, the array is cleared. 
-    /// The setter is intended for internal use and may reset internal versioning.
+    /// Restore rebuilds storage and Swift default equality; capacity, hash slots, custom comparers and version
+    /// are not retained. Equal duplicates keep the first stored value, and null state items are skipped. The
+    /// enumerable constructor instead rejects null elements.
     /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
@@ -264,7 +301,13 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
 
     #region Collection Manipulation
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Adds an element or mapping without replacing an existing equal key.
+    /// </summary>
+    /// <param name="item">The element or value; stored reference values are not cloned.</param>
+    /// <returns>true if inserted; false if an equal key/element already exists. Existing contents are preserved
+    /// on duplicate rejection, but a load-threshold resize may already have occurred.</returns>
+    /// <exception cref="T:System.ArgumentNullException">A required key or element is null.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Add(T item)
     {
@@ -272,15 +315,22 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
         return InsertIfNotExists(item);
     }
 
+    /// <summary>
+    /// Adds an element through the implemented collection interface.
+    /// </summary>
+    /// <param name="item">The element to compare, add or remove; reference values are not cloned.</param>
     void ICollection<T>.Add(T item) => Add(item);
 
     /// <summary>
     /// Adds the elements of the specified collection to the set, ignoring null values and duplicates.
     /// </summary>
+    /// <param name="items">The non-null source to add; null elements are skipped and duplicates are ignored.
+    /// Self-add changes nothing.</param>
+    /// <exception cref="T:System.ArgumentNullException">items is null.</exception>
     /// <remarks>
-    /// If the source collection is the same instance as the set, the method returns without making any changes. 
-    /// The method preserves single-pass enumeration for sources that do not support multiple iterations.</remarks>
-    /// <param name="items">The collection of elements to add to the set. Elements that are null or already present in the set are ignored. Cannot be null.</param>
+    /// Adds distinct non-null elements without clearing existing contents. Enumeration failure can leave a
+    /// partially added prefix; capacity can grow even without new distinct elements.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void AddRange(IEnumerable<T> items)
     {
@@ -388,10 +438,10 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <summary>
     /// Removes the specified element from the set.
     /// </summary>
-    /// <param name="item">The element to remove from the set.</param>
-    /// <returns>
-    /// True if the element is successfully found and removed; otherwise, false.
-    /// </returns>
+    /// <param name="item">The element or value; stored reference values are not cloned.</param>
+    /// <returns>true if the matching entry was removed; false if absent, with contents unchanged. </returns>
+    /// <exception cref="T:System.ArgumentNullException">The required key, element or reverse value is
+    /// null.</exception>
     public bool Remove(T item)
     {
         ChronicleGuard.ThrowIfNullGeneric(item, nameof(item));
@@ -430,6 +480,10 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <summary>
     /// Removes all elements from the set.
     /// </summary>
+    /// <remarks>
+    /// Removes live entries while preserving capacity. Ordinary clearing resets active table metadata and stored
+    /// references.
+    /// </remarks>
     public void Clear()
     {
         if ((uint)_count == 0) return;
@@ -455,8 +509,12 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <summary>
     /// Removes all elements, optionally releasing references throughout retained backing storage.
     /// </summary>
-    /// <param name="clearRetainedReferences">If true, also releases references outside the live range; otherwise uses ordinary clearing.</param>
-    /// <remarks>Capacity is preserved. Full reference cleanup can take time proportional to retained capacity.</remarks>
+    /// <param name="clearRetainedReferences">If true, also releases references outside the live range; otherwise
+    /// uses ordinary clearing.</param>
+    /// <remarks>
+    /// Removes live entries while preserving capacity. The Boolean overload can additionally release references
+    /// in unused storage.
+    /// </remarks>
     public void Clear(bool clearRetainedReferences)
     {
         if (clearRetainedReferences && RuntimeHelpers.IsReferenceOrContainsReferences<Entry>())
@@ -500,6 +558,13 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <summary>
     /// Ensures that the set can hold up to the specified number of elements without resizing.
     /// </summary>
+    /// <param name="capacity">Requested storage capacity; values below DefaultCapacity use the minimum
+    /// allocation. Larger values round up. Keep requests below 2^30, where the capacity helper returns a
+    /// sentinel.</param>
+    /// <remarks>
+    /// Grows storage only when needed; existing values survive. Capacity is storage size, not an insertion count
+    /// guarantee. Keep requests below 2^30; large allocations may fail.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void EnsureCapacity(int capacity)
     {
@@ -548,8 +613,8 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     }
 
     /// <summary>
-    /// Sets the capacity of a <see cref="SwiftHashSet{T}"/> to the actual 
-    /// number of elements it contains, rounded up to a nearby next power of 2 value.
+    /// Sets the capacity of a <see cref="T:SwiftCollections.SwiftHashSet`1" /> to the actual number of elements
+    /// it contains, rounded up to a nearby next power of 2 value.
     /// </summary>
     public void TrimExcess()
     {
@@ -634,18 +699,19 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <summary>
     /// Determines whether the set contains the specified element.
     /// </summary>
-    /// <param name="item">The element to locate in the set.</param>
-    /// <returns>
-    /// True if the set contains the specified element; otherwise, false.
-    /// </returns>
+    /// <param name="item">The element or value; stored reference values are not cloned.</param>
+    /// <returns>true if a matching live entry exists; otherwise false. No mutation.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Contains(T item) => FindEntry(item) >= 0;
 
     /// <summary>
-    /// Determines whether the <see cref="SwiftHashSet{T}"/> contains an element that matches the conditions defined by the specified predicate.
+    /// Determines whether the <see cref="T:SwiftCollections.SwiftHashSet`1" /> contains an element that matches
+    /// the conditions defined by the specified predicate.
     /// </summary>
-    /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
-    /// <returns><c>true</c> if the <see cref="SwiftHashSet{T}"/> contains one or more elements that match the specified predicate; otherwise, <c>false</c>.</returns>
+    /// <param name="match">The non-null predicate evaluated over live entries in increasing hash-slot order; it
+    /// must not mutate this set.</param>
+    /// <returns>true if any live entry matches; otherwise false.</returns>
+    /// <exception cref="T:System.ArgumentNullException">match is null.</exception>
     public bool Exists(Predicate<T> match)
     {
         ChronicleGuard.ThrowIfNull(match, nameof(match));
@@ -660,10 +726,14 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     }
 
     /// <summary>
-    /// Searches for an element that matches the conditions defined by the specified predicate, and returns the first matching element.
+    /// Searches for an element that matches the conditions defined by the specified predicate, and returns the
+    /// first matching element.
     /// </summary>
-    /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
-    /// <returns>The first element that matches the conditions defined by the specified predicate, if found; otherwise, the default value for type <typeparamref name="T"/>.</returns>
+    /// <param name="match">The non-null predicate evaluated over live entries in increasing hash-slot order; it
+    /// must not mutate this set.</param>
+    /// <returns>The first matching live entry in increasing hash-slot order, or default(T) if none; a stored
+    /// default cannot be distinguished from absence by this result alone.</returns>
+    /// <exception cref="T:System.ArgumentNullException">match is null.</exception>
     public T Find(Predicate<T> match)
     {
         ChronicleGuard.ThrowIfNull(match, nameof(match));
@@ -680,6 +750,10 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <summary>
     /// Searches the set for a given value and returns the equal value it finds, if any.
     /// </summary>
+    /// <param name="expected">The value to locate under the set comparer; null is treated as absent.</param>
+    /// <param name="actual">Receives the stored equal value on success; default(T) on failure.</param>
+    /// <returns>true if a matching entry was found and the out value is valid; false if absent, with the out
+    /// value set to default. No mutation.</returns>
     public bool TryGetValue(T expected, out T actual)
     {
         int index = FindEntry(expected);
@@ -695,6 +769,18 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <summary>
     /// Copies the elements of the set to an array, starting at the specified array index.
     /// </summary>
+    /// <param name="array">The caller-owned destination; only the copied range is overwritten.</param>
+    /// <param name="arrayIndex">The zero-based destination offset, from zero through array.Length, with remaining
+    /// space for Count elements.</param>
+    /// <exception cref="T:System.ArgumentNullException">array is null.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">arrayIndex is outside zero through
+    /// array.Length.</exception>
+    /// <exception cref="T:System.ArgumentException">There is insufficient remaining space or the array shape/type
+    /// is unsupported.</exception>
+    /// <remarks>
+    /// Copies Count live entries in increasing hash-slot order into existing caller storage; does not append or
+    /// clear the destination. Incompatible array elements can leave a partial copy.
+    /// </remarks>
     public void CopyTo(T[] array, int arrayIndex)
     {
         ChronicleGuard.ThrowIfNull(array, nameof(array));
@@ -709,9 +795,17 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     }
 
     /// <summary>
-    /// Switches the hash set's comparer and rehashes all entries 
-    /// using the new comparer to redistribute them across <see cref="_entries"/>.
+    /// Switches the hash set's comparer and rehashes all entries using the new comparer to redistribute them
+    /// across <see cref="F:SwiftCollections.SwiftHashSet`1._entries" />.
     /// </summary>
+    /// <param name="comparer">The element equality comparer, retained by reference. Must be non-null and must not
+    /// collapse previously distinct stored keys or values.</param>
+    /// <exception cref="T:System.ArgumentNullException">A supplied comparer is null.</exception>
+    /// <remarks>
+    /// Retains the new comparer and rehashes existing entries without deduplicating newly equal keys. Changing
+    /// equality must preserve distinction among existing keys. Comparer exceptions can leave partial changes;
+    /// there is no rollback.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetComparer(IEqualityComparer<T>? comparer = null)
     {
@@ -812,8 +906,22 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <summary>
     /// Returns an enumerator that iterates through the set.
     /// </summary>
+    /// <returns>A value-type enumerator in increasing hash-slot order.</returns>
+    /// <remarks>
+    /// Mutation versions are checked by MoveNext and Reset. Ordering is not a persistence contract.
+    /// </remarks>
     public SwiftHashSetEnumerator GetEnumerator() => new(this);
+    /// <summary>
+    /// Creates an enumerator through the implemented interface.
+    /// </summary>
+    /// <returns>An enumerator with the concrete collection's ordering and mutation rules. Interface dispatch may
+    /// box the value-type enumerator.</returns>
     IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
+    /// <summary>
+    /// Creates an enumerator through the implemented interface.
+    /// </summary>
+    /// <returns>An enumerator with the concrete collection's ordering and mutation rules. Interface dispatch may
+    /// box the value-type enumerator.</returns>
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
 
@@ -822,7 +930,16 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
 
     #region ISet<T> Implementations
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Removes elements belonging to the other input.
+    /// </summary>
+    /// <param name="other">The non-null sequence whose distinct elements define the other set; the sequence is
+    /// consumed, not retained.</param>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Removes members of other; self-exclusion clears this set. Input is consumed without retaining its storage.
+    /// Enumeration or hashing failures may leave partial mutation; no rollback is guaranteed.
+    /// </remarks>
     public void ExceptWith(IEnumerable<T> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -839,7 +956,16 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
             Remove(item);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Retains elements belonging to both inputs.
+    /// </summary>
+    /// <param name="other">The non-null sequence whose distinct elements define the other set; the sequence is
+    /// consumed, not retained.</param>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Retains only members also in other; self-intersection changes nothing. Input is consumed without retaining
+    /// its storage. Enumeration or hashing failures may leave partial mutation; no rollback is guaranteed.
+    /// </remarks>
     public void IntersectWith(IEnumerable<T> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -860,7 +986,18 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
         }
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Checks for a subset with fewer distinct elements.
+    /// </summary>
+    /// <param name="other">The non-null sequence whose distinct elements define the other set; the sequence is
+    /// consumed, not retained.</param>
+    /// <returns>true if this set is a subset of other with fewer distinct elements; otherwise false. This set is
+    /// not mutated.</returns>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Uses this set's equality semantics. Duplicate input values do not change set membership; temporary set
+    /// allocation may occur.
+    /// </remarks>
     public bool IsProperSubsetOf(IEnumerable<T> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -877,7 +1014,18 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
         return true;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Checks for a superset with more distinct elements.
+    /// </summary>
+    /// <param name="other">The non-null sequence whose distinct elements define the other set; the sequence is
+    /// consumed, not retained.</param>
+    /// <returns>true if this set is a superset of other with more distinct elements; otherwise false. This set is
+    /// not mutated.</returns>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Uses this set's equality semantics. Duplicate input values do not change set membership; temporary set
+    /// allocation may occur.
+    /// </remarks>
     public bool IsProperSupersetOf(IEnumerable<T> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -894,7 +1042,18 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
         return true;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Checks whether all stored elements belong to the other input.
+    /// </summary>
+    /// <param name="other">The non-null sequence whose distinct elements define the other set; the sequence is
+    /// consumed, not retained.</param>
+    /// <returns>true if every element of this set belongs to other; otherwise false. This set is not
+    /// mutated.</returns>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Uses this set's equality semantics. Duplicate input values do not change set membership; temporary set
+    /// allocation may occur.
+    /// </remarks>
     public bool IsSubsetOf(IEnumerable<T> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -911,7 +1070,18 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
         return true;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Checks whether all other-input elements are stored here.
+    /// </summary>
+    /// <param name="other">The non-null sequence whose distinct elements define the other set; the sequence is
+    /// consumed, not retained.</param>
+    /// <returns>true if every distinct element of other belongs to this set; otherwise false. This set is not
+    /// mutated.</returns>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Uses this set's equality semantics. Duplicate input values do not change set membership; temporary set
+    /// allocation may occur.
+    /// </remarks>
     public bool IsSupersetOf(IEnumerable<T> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -925,7 +1095,17 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
         return true;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Checks whether at least one element is shared.
+    /// </summary>
+    /// <param name="other">The non-null sequence whose distinct elements define the other set; the sequence is
+    /// consumed, not retained.</param>
+    /// <returns>true if at least one element is shared; otherwise false. This set is not mutated.</returns>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Uses this set's equality semantics. Duplicate input values do not change set membership; temporary set
+    /// allocation may occur.
+    /// </remarks>
     public bool Overlaps(IEnumerable<T> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -937,7 +1117,18 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
         return false;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Checks whether both inputs contain the same distinct elements.
+    /// </summary>
+    /// <param name="other">The non-null sequence whose distinct elements define the other set; the sequence is
+    /// consumed, not retained.</param>
+    /// <returns>true if both sets contain exactly the same distinct elements; otherwise false. This set is not
+    /// mutated.</returns>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Uses this set's equality semantics. Duplicate input values do not change set membership; temporary set
+    /// allocation may occur.
+    /// </remarks>
     public bool SetEquals(IEnumerable<T> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -954,7 +1145,17 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
         return true;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Retains elements belonging to exactly one input.
+    /// </summary>
+    /// <param name="other">The non-null sequence whose distinct elements define the other set; the sequence is
+    /// consumed, not retained.</param>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Keeps elements belonging to exactly one input; duplicate input occurrences are treated once.
+    /// Self-comparison clears this set. Input is consumed without retaining its storage. Enumeration or hashing
+    /// failures may leave partial mutation; no rollback is guaranteed.
+    /// </remarks>
     public void SymmetricExceptWith(IEnumerable<T> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -974,7 +1175,17 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
         }
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Adds elements belonging to the other input.
+    /// </summary>
+    /// <param name="other">The non-null sequence whose distinct elements define the other set; the sequence is
+    /// consumed, not retained.</param>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Adds members of other, preserving existing members and ignoring duplicates. Input is consumed without
+    /// retaining its storage. Enumeration or hashing failures may leave partial mutation; no rollback is
+    /// guaranteed.
+    /// </remarks>
     public void UnionWith(IEnumerable<T> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));

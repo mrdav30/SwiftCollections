@@ -17,25 +17,21 @@ using SwiftCollections.Utility;
 namespace SwiftCollections;
 
 /// <summary>
-/// Represents a bidirectional dictionary that allows for efficient lookups in both directions,
-/// mapping keys to values and values back to keys. Both keys and values must be unique to maintain
-/// the integrity of the bidirectional relationship.
-/// Inherits from <see cref="SwiftDictionary{TKey, TValue}"/> and maintains a reverse map for reverse lookups.
+/// Represents a bidirectional dictionary that allows for efficient lookups in both directions, mapping keys to
+/// values and values back to keys. Both keys and values must be unique to maintain the integrity of the
+/// bidirectional relationship. Inherits from <see cref="T:SwiftCollections.SwiftDictionary`2" /> and maintains a
+/// reverse map for reverse lookups.
 /// </summary>
 /// <typeparam name="T1">The type of the keys in the forward dictionary.</typeparam>
 /// <typeparam name="T2">The type of the values in the forward dictionary.</typeparam>
 /// <remarks>
-/// The comparer is not serialized. After deserialization the dictionary reverts
-/// to the same default comparer selection used by a new instance for both the
-/// forward and reverse maps. String keys use SwiftCollections' deterministic
-/// default comparer. Object keys use a SwiftCollections comparer that hashes
-/// strings deterministically, while other object-key determinism still depends
-/// on the underlying key type's <see cref="object.GetHashCode()"/>
-/// implementation. Other key types use <see cref="EqualityComparer{T1}.Default"/>
-/// and <see cref="EqualityComparer{T2}.Default"/>.
-/// 
-/// If a custom comparer is required it can be reapplied using
-/// <see cref="SetComparer(IEqualityComparer{T1}, IEqualityComparer{T2})"/>.
+/// Instances require external synchronization; keys and elements must keep equality/hash identity stable while
+/// stored. Copies are shallow. Enumeration follows hash slots, not insertion or sorted order. Resize, trim, and
+/// comparer changes can reorder entries. Recognized string/object comparers may switch to randomized
+/// collision-hardening after long probes; cross-process iteration order is not guaranteed. Custom comparers
+/// define their own determinism. The reverse-map lock does not make the entire bidirectional dictionary
+/// thread-safe. Mutations through base-typed APIs can bypass reverse-map maintenance; use the bidirectional
+/// members consistently.
 /// </remarks>
 [Serializable]
 [JsonConverter(typeof(StateJsonConverterFactory))]
@@ -68,15 +64,19 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     #region Constructors
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftBiDictionary{T1, T2}"/> class that is empty and uses the default equality comparers for the key and value types.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.SwiftBiDictionary`2" /> class that is
+    /// empty and uses the default equality comparers for the key and value types.
     /// </summary>
     public SwiftBiDictionary() : this(null, null) { }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftBiDictionary{T1, T2}"/> class that is empty and uses the specified equality comparers for the key and value types.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.SwiftBiDictionary`2" /> class that is
+    /// empty and uses the specified equality comparers for the key and value types.
     /// </summary>
-    /// <param name="comparer1">The comparer to use for the keys.</param>
-    /// <param name="comparer2">The comparer to use for the values.</param>
+    /// <param name="comparer1">The key equality comparer, retained by reference. Null selects the Swift
+    /// default.</param>
+    /// <param name="comparer2">The reverse-value equality comparer, retained by reference. Null selects the Swift
+    /// default.</param>
     public SwiftBiDictionary(IEqualityComparer<T1>? comparer1, IEqualityComparer<T2>? comparer2) : base(DefaultCapacity, comparer1)
     {
         _reverseComparer = SwiftHashTools.GetDefaultEqualityComparer(comparer2);
@@ -84,17 +84,27 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftBiDictionary{T1, T2}"/> class that contains elements copied from the specified dictionary and uses the default equality comparers for the key and value types.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.SwiftBiDictionary`2" /> class that
+    /// contains elements copied from the specified dictionary and uses the default equality comparers for the key
+    /// and value types.
     /// </summary>
-    /// <param name="dictionary">The dictionary whose elements are copied to the new <see cref="SwiftBiDictionary{T1, T2}"/>.</param>
+    /// <param name="dictionary">The non-null source to enumerate and shallow-copy; source storage is not
+    /// retained. Equal duplicates keep the first inserted mapping.</param>
+    /// <exception cref="T:System.ArgumentNullException">The source is null.</exception>
     public SwiftBiDictionary(IDictionary<T1, T2> dictionary) : this(dictionary, null, null) { }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftBiDictionary{T1, T2}"/> class that contains elements copied from the specified dictionary and uses the specified equality comparers for the key and value types.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.SwiftBiDictionary`2" /> class that
+    /// contains elements copied from the specified dictionary and uses the specified equality comparers for the
+    /// key and value types.
     /// </summary>
-    /// <param name="dictionary">The dictionary whose elements are copied to the new <see cref="SwiftBiDictionary{T1, T2}"/>.</param>
-    /// <param name="comparer1">The comparer to use for the keys.</param>
-    /// <param name="comparer2">The comparer to use for the values.</param>
+    /// <param name="dictionary">The non-null source to enumerate and shallow-copy; source storage is not
+    /// retained. Equal duplicates keep the first inserted mapping.</param>
+    /// <param name="comparer1">The key equality comparer, retained by reference. Null selects the Swift
+    /// default.</param>
+    /// <param name="comparer2">The reverse-value equality comparer, retained by reference. Null selects the Swift
+    /// default.</param>
+    /// <exception cref="T:System.ArgumentNullException">The source is null.</exception>
     public SwiftBiDictionary(IDictionary<T1, T2> dictionary, IEqualityComparer<T1>? comparer1, IEqualityComparer<T2>? comparer2)
         : this(comparer1, comparer2)
     {
@@ -104,10 +114,18 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
             Add(kvp.Key, kvp.Value);
     }
 
-    ///  <summary>
-    ///  Initializes a new instance of the <see cref="SwiftBiDictionary{T1, T2}"/> class with the specified <see cref="SwiftDictionaryState{T1, T2}"/>.
-    ///  </summary>
-    ///  <param name="state">The state containing the internal array, count, offset, and version for initialization.</param>
+    /// <summary>
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.SwiftBiDictionary`2" /> class with the
+    /// specified <see cref="T:SwiftCollections.SwiftDictionaryState`2" />.
+    /// </summary>
+    /// <param name="state">The state whose non-null Items array is copied and indexed. Comparer and table layout
+    /// are not retained.</param>
+    /// <exception cref="T:System.NullReferenceException">state.Items is null, including a default
+    /// state.</exception>
+    /// <remarks>
+    /// Shallow-copies items and reconstructs default equality and storage. Duplicate equal keys/items keep the
+    /// first mapping; custom comparers are not restored.
+    /// </remarks>
     [MemoryPackConstructor]
     public SwiftBiDictionary(SwiftDictionaryState<T1, T2> state)
     {
@@ -124,8 +142,9 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     /// <summary>
     /// Gets an object that can be used to synchronize access to the reverse collection.
     /// </summary>
+    /// <value>A lazily allocated lock object. Callers must coordinate all related access themselves.</value>
     /// <remarks>
-    /// Use this object to lock the reverse collection during multithreaded operations to ensure thread safety. 
+    /// Use this object to lock the reverse collection during multithreaded operations to ensure thread safety.
     /// This property is intended for advanced scenarios where manual synchronization is required.
     /// </remarks>
     [JsonIgnore]
@@ -133,16 +152,22 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     public object ReverseSyncRoot => _reverseSyncRoot ??= new object();
 
     /// <summary>
-    /// Gets or sets the value associated with the specified key. Ensures that each value is unique within the collection.
+    /// Gets or sets the value associated with the specified key. Ensures that each value is unique within the
+    /// collection.
     /// </summary>
-    /// <remarks>
-    /// Setting a value that already exists in the collection will result in an exception, as each value must be unique. 
-    /// If the key does not exist, a new key-value pair is added. 
-    /// If the key exists and the value is unchanged, no operation is performed.
-    /// </remarks>
-    /// <param name="key">The key whose value to get or set. Cannot be null.</param>
+    /// <param name="key">The key to locate or store. Null is rejected.</param>
     /// <returns>The value associated with the specified key.</returns>
-    /// <exception cref="ArgumentException">Thrown when the specified value already exists in the collection.</exception>
+    /// <value>The stored value for key; assignment replaces an existing value or inserts an absent key.</value>
+    /// <exception cref="T:System.Collections.Generic.KeyNotFoundException">No matching key exists on
+    /// get.</exception>
+    /// <exception cref="T:System.ArgumentNullException">key or a required reverse value is null.</exception>
+    /// <exception cref="T:System.ArgumentException">The assigned value already belongs to another
+    /// key.</exception>
+    /// <remarks>
+    /// Setting a value that already exists in the collection will result in an exception, as each value must be
+    /// unique. If the key does not exist, a new key-value pair is added. If the key exists and the value is
+    /// unchanged, no operation is performed.
+    /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     public new T2 this[T1 key]
@@ -192,12 +217,13 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     }
 
     /// <summary>
-    /// Gets or sets the current state of the dictionary, including its items and configuration.
+    /// Gets a shallow item snapshot for serialization.
     /// </summary>
+    /// <value>A state containing copied live items in increasing hash-slot order; reference-type elements remain
+    /// shared.</value>
     /// <remarks>
-    /// Setting this property updates the internal reverse mapping and comparer to reflect the new state. 
-    /// The reverse mapping is rebuilt to ensure consistency with the updated state.
-    /// This property is intended for serialization and deserialization scenarios.
+    /// Restore rebuilds storage and default comparers; capacity, hash slots, custom comparers and version are not
+    /// serialized. Equal duplicate keys/items keep the first inserted entry. Reverse values must also be unique.
     /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
@@ -226,12 +252,15 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     #region Collection Manipulation
 
     /// <summary>
-    /// Removes the key-value pair from the <see cref="SwiftBiDictionary{T1, T2}"/>.
-    /// Also removes the corresponding value-key pair from the reverse map.
+    /// Removes the key-value pair from the <see cref="T:SwiftCollections.SwiftBiDictionary`2" />. Also removes
+    /// the corresponding value-key pair from the reverse map.
     /// </summary>
-    /// <param name="key">The key of the element to remove.</param>
-    /// <param name="value">The value of the element to remove.</param>
-    /// <returns><c>true</c> if the element is successfully found and removed; otherwise, <c>false</c>.</returns>
+    /// <param name="key">The key to locate or store. Null is rejected.</param>
+    /// <param name="value">The element or value; stored reference values are not cloned.</param>
+    /// <returns>true if the matching key/value pair was removed; false if absent, with contents unchanged.
+    /// </returns>
+    /// <exception cref="T:System.ArgumentNullException">The required key, element or reverse value is
+    /// null.</exception>
     public bool Remove(T1 key, T2 value)
     {
         ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
@@ -253,12 +282,14 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     #region Overrides
 
     /// <summary>
-    /// Adds the specified key and value to the <see cref="SwiftBiDictionary{T1, T2}"/>.
-    /// Also adds the value-key pair to the reverse map.
+    /// Adds the specified key and value to the <see cref="T:SwiftCollections.SwiftBiDictionary`2" />. Also adds
+    /// the value-key pair to the reverse map.
     /// </summary>
-    /// <param name="key">The key of the element to add.</param>
-    /// <param name="value">The value of the element to add.</param>
-    /// <exception cref="ArgumentException">An element with the same key or value already exists.</exception>
+    /// <param name="key">The key to locate or store. Null is rejected.</param>
+    /// <param name="value">The element or value; stored reference values are not cloned.</param>
+    /// <returns>true if the new one-to-one mapping was inserted; false if either key or reverse value already
+    /// exists, without mutation or resizing.</returns>
+    /// <exception cref="T:System.ArgumentNullException">A required key or element is null.</exception>
     public override bool Add(T1 key, T2 value)
     {
         ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
@@ -304,11 +335,13 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     }
 
     /// <summary>
-    /// Removes the value with the specified key from the <see cref="SwiftBiDictionary{T1, T2}"/>.
+    /// Removes the value with the specified key from the <see cref="T:SwiftCollections.SwiftBiDictionary`2" />.
     /// Also removes the corresponding key from the reverse map.
     /// </summary>
-    /// <param name="key">The key of the element to remove.</param>
-    /// <returns><c>true</c> if the element is successfully found and removed; otherwise, <c>false</c>.</returns>
+    /// <param name="key">The key to locate or store. Null is rejected.</param>
+    /// <returns>true if the matching entry was removed; false if absent, with contents unchanged. </returns>
+    /// <exception cref="T:System.ArgumentNullException">The required key, element or reverse value is
+    /// null.</exception>
     public override bool Remove(T1 key)
     {
         ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
@@ -325,9 +358,13 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     }
 
     /// <summary>
-    /// Removes all keys and values from the <see cref="SwiftBiDictionary{T1, T2}"/>.
-    /// Also clears the reverse map.
+    /// Removes all keys and values from the <see cref="T:SwiftCollections.SwiftBiDictionary`2" />. Also clears
+    /// the reverse map.
     /// </summary>
+    /// <remarks>
+    /// Removes live entries while preserving capacity. Ordinary clearing resets active table metadata and stored
+    /// references.
+    /// </remarks>
     public override void Clear()
     {
         base.Clear();
@@ -344,11 +381,16 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     /// <summary>
     /// Sets the comparers used to determine equality for keys and values in the dictionary.
     /// </summary>
-    /// <remarks>This method updates the internal comparers and rebuilds the reverse mapping using the
-    /// specified value comparer. The operation is thread-safe and locks the internal state during the update. Changing
-    /// comparers may affect key and value lookup behavior.</remarks>
-    /// <param name="comparer1">The equality comparer to use for keys of type T1. Cannot be null.</param>
-    /// <param name="comparer2">The equality comparer to use for values of type T2. Cannot be null.</param>
+    /// <param name="comparer1">The key equality comparer, retained by reference. Must be non-null and must not
+    /// collapse previously distinct stored keys or values.</param>
+    /// <param name="comparer2">The reverse-value equality comparer, retained by reference. Must be non-null and
+    /// must not collapse previously distinct stored keys or values.</param>
+    /// <exception cref="T:System.ArgumentNullException">A supplied comparer is null.</exception>
+    /// <remarks>
+    /// Retains the new comparer and rehashes existing entries without deduplicating newly equal keys. Changing
+    /// equality must preserve distinction among existing keys and reverse values. Comparer exceptions can leave
+    /// partial changes; there is no rollback.
+    /// </remarks>
     public void SetComparer(IEqualityComparer<T1> comparer1, IEqualityComparer<T2> comparer2)
     {
         ChronicleGuard.ThrowIfNull(comparer1, nameof(comparer1));
@@ -372,9 +414,11 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     /// <summary>
     /// Attempts to get the key associated with the specified value.
     /// </summary>
-    /// <param name="value">The value whose associated key is to be retrieved.</param>
-    /// <param name="key">When this method returns, contains the key associated with the specified value, if the key is found; otherwise, the default value for the type of the key.</param>
-    /// <returns><c>true</c> if the key was found; otherwise, <c>false</c>.</returns>
+    /// <param name="value">The element or value; stored reference values are not cloned.</param>
+    /// <param name="key">Receives the matching forward key on success; default(T1) on failure.</param>
+    /// <returns>true if a matching entry was found and the out value is valid; false if absent, with the out
+    /// value set to default. No mutation.</returns>
+    /// <exception cref="T:System.ArgumentNullException">value is null.</exception>
     public bool TryGetKey(T2 value, out T1 key)
     {
         ChronicleGuard.ThrowIfNullGeneric(value, nameof(value));
@@ -386,9 +430,11 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     /// <summary>
     /// Gets the key associated with the specified value.
     /// </summary>
-    /// <param name="value">The value whose associated key is to be retrieved.</param>
-    /// <returns>The key associated with the specified value.</returns>
-    /// <exception cref="KeyNotFoundException">The property is retrieved and <paramref name="value"/> does not exist in the reverse map.</exception>
+    /// <param name="value">The element or value; stored reference values are not cloned.</param>
+    /// <returns>The forward key associated with the supplied reverse value.</returns>
+    /// <exception cref="T:System.ArgumentNullException">value is null.</exception>
+    /// <exception cref="T:System.Collections.Generic.KeyNotFoundException">value has no reverse
+    /// mapping.</exception>
     public T1 GetKey(T2 value)
     {
         ChronicleGuard.ThrowIfNullGeneric(value, nameof(value));
@@ -398,10 +444,11 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     }
 
     /// <summary>
-    /// Determines whether the <see cref="SwiftBiDictionary{T1, T2}"/> contains the specified value.
+    /// Determines whether the <see cref="T:SwiftCollections.SwiftBiDictionary`2" /> contains the specified value.
     /// </summary>
-    /// <param name="value">The value to locate in the dictionary.</param>
-    /// <returns><c>true</c> if the dictionary contains an element with the specified value; otherwise, <c>false</c>.</returns>
+    /// <param name="value">The element or value; stored reference values are not cloned.</param>
+    /// <returns>true if a matching live entry exists; otherwise false. No mutation.</returns>
+    /// <exception cref="T:System.ArgumentNullException">value is null.</exception>
     public bool ContainsValue(T2 value)
     {
         ChronicleGuard.ThrowIfNullGeneric(value, nameof(value));

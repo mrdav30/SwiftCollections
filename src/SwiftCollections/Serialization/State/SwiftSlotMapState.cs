@@ -12,59 +12,63 @@ using MemoryPack;
 namespace SwiftCollections;
 
 /// <summary>
-/// Represents the state of a map in a fast allocation pool, including the items, allocation status, free indices, and peak usage count.
+/// Stores explicit serialized state for the owning collection.
 /// </summary>
-/// <remarks>
-/// This struct is typically used to capture or transfer the current state of a map-based memory pool.
-/// It provides direct access to the underlying arrays representing the items, their allocation status, and the indices of free slots. 
-/// The struct is serializable and designed for efficient state management in high-performance scenarios.
-/// </remarks>
 /// <typeparam name="T">The type of items stored in the map.</typeparam>
+/// <remarks>
+/// Readonly fields retain mutable arrays; this struct is not deeply immutable. Constructors retain arrays without
+/// copying, normalizing null array arguments to empty arrays. default(TState) bypasses constructors and leaves
+/// array fields null. Collection State getters allocate shallow snapshots; restore behavior and validation belong
+/// to each collection.
+/// </remarks>
 [Serializable]
 [MemoryPackable]
 public readonly partial struct SwiftSlotMapState<T>
 {
     /// <summary>
-    /// Gets the array of items contained in the collection.
+    /// Stores retained element data; array contents remain mutable and default state may contain null.
     /// </summary>
     [JsonInclude]
     [MemoryPackInclude]
     public readonly T[] Items;
 
     /// <summary>
-    /// Indicates which items in the collection are currently allocated.
+    /// Stores per-slot allocation flags; absent flags are treated as false during restore.
     /// </summary>
     [JsonInclude]
     [MemoryPackInclude]
     public readonly bool[] Allocated;
 
     /// <summary>
-    /// Gets the collection of indices that are currently available for allocation.
+    /// Stores the free-slot stack in bottom-to-top order; arrays may differ in length from item storage. Entries
+    /// must be unique and disjoint from allocated slots.
     /// </summary>
     [JsonInclude]
     [MemoryPackInclude]
     public readonly int[] FreeIndices;
 
     /// <summary>
-    /// Gets the maximum number of peaks detected or recorded.
+    /// Stores the exclusive high-water slot boundary, not the historical maximum live Count. Restore normalizes
+    /// it into capacity.
     /// </summary>
     [JsonInclude]
     [MemoryPackInclude]
     public readonly int PeakCount;
 
     /// <summary>
-    /// Initializes a new instance of the SwiftSlotMapState class with the specified items, allocation states, free indices, and peak count.
+    /// Creates a state value by retaining the supplied arrays and metadata.
     /// </summary>
-    /// <param name="items">The array of items contained in the map. Cannot be null; an empty array is used if null is provided.</param>
-    /// <param name="allocated">
-    /// An array indicating which items in the map are currently allocated. 
-    /// Cannot be null; an empty array is used if null is provided.
-    /// </param>
-    /// <param name="freeIndices">
-    /// An array of indices representing the positions of free items in the map. 
-    /// Cannot be null; an empty array is used if null is provided.
-    /// </param>
-    /// <param name="peakCount">The highest number of items that have been allocated in the map at any point.</param>
+    /// <param name="items">The items array, retained without copying. Null is normalized to an empty array;
+    /// contents are not validated.</param>
+    /// <param name="allocated">The allocated array, retained without copying. Null is normalized to an empty
+    /// array; contents are not validated.</param>
+    /// <param name="freeIndices">The freeIndices array, retained without copying. Null is normalized to an empty
+    /// array; contents are not validated.</param>
+    /// <param name="peakCount">The exclusive slot high-water boundary, stored without validation.</param>
+    /// <remarks>
+    /// Performs no consistency checks and allocates no snapshot copy. Mutating a supplied array mutates this
+    /// state.
+    /// </remarks>
     [JsonConstructor]
     [MemoryPackConstructor]
     public SwiftSlotMapState(T[] items, bool[] allocated, int[] freeIndices, int peakCount)

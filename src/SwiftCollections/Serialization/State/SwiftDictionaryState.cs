@@ -13,32 +13,34 @@ using MemoryPack;
 namespace SwiftCollections;
 
 /// <summary>
-/// Represents an immutable snapshot of the key-value pairs contained in a dictionary at a specific point in time.
+/// Stores explicit serialized state for the owning collection.
 /// </summary>
-/// <remarks>
-/// This struct is typically used to serialize or transfer the state of a dictionary. 
-/// The contents are read-only and reflect the state of the dictionary when the snapshot was taken.
-/// </remarks>
 /// <typeparam name="TKey">The type of keys in the dictionary.</typeparam>
 /// <typeparam name="TValue">The type of values in the dictionary.</typeparam>
+/// <remarks>
+/// Readonly fields retain mutable arrays; this struct is not deeply immutable. Constructors retain arrays without
+/// copying or validation. default(TState) bypasses constructors and leaves array fields null. Collection State
+/// getters allocate shallow snapshots; restore behavior and validation belong to each collection.
+/// </remarks>
 [Serializable]
 [MemoryPackable]
 public readonly partial struct SwiftDictionaryState<TKey, TValue>
 {
     /// <summary>
-    /// Gets the collection of key/value pairs contained in the object.
+    /// Stores retained element data; array contents remain mutable and default state may contain null.
     /// </summary>
     [JsonInclude]
     [MemoryPackInclude]
     public readonly KeyValuePair<TKey, TValue>[] Items;
 
     /// <summary>
-    /// Initializes a new instance of the SwiftDictionaryState class with the specified key-value pairs.
+    /// Creates a state value by retaining the supplied arrays and metadata.
     /// </summary>
+    /// <param name="items">The items array, retained without copying. Null is stored as supplied.</param>
     /// <remarks>
-    /// This constructor is typically used during deserialization to restore the state of the dictionary from a serialized array of key-value pairs.
+    /// Performs no consistency checks and allocates no snapshot copy. Mutating a supplied array mutates this
+    /// state.
     /// </remarks>
-    /// <param name="items">An array of key-value pairs to initialize the dictionary state. Cannot be null.</param>
     [JsonConstructor]
     [MemoryPackConstructor]
     public SwiftDictionaryState(KeyValuePair<TKey, TValue>[] items)

@@ -18,10 +18,15 @@ using MemoryPack;
 namespace SwiftCollections.Observable;
 
 /// <summary>
-/// Represents an observable extension of the high-performance <see cref="SwiftList{T}"/>.
-/// Notifies listeners of changes to its items and structure for reactive programming scenarios.
+/// Extends a list with synchronous notifications from its observable mutation members.
 /// </summary>
 /// <typeparam name="T">The type of elements in the list.</typeparam>
+/// <remarks>
+/// Notifications are synchronous on the calling thread after mutation; subscriber exceptions propagate without
+/// rollback and can prevent subsequent notifications. No synchronization or reentrancy guard is provided. Only
+/// the explicitly overridden/hidden mutation members raise notifications. Base-typed indexer writes, direct
+/// buffers, inherited FastClear, sort, reverse, and other non-overridden mutators can bypass notifications.
+/// </remarks>
 [Serializable]
 [JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
@@ -44,24 +49,34 @@ public partial class SwiftObservableList<T> : SwiftList<T>, IStateBacked<SwiftAr
     #region Constructors
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftObservableList{T}"/> class.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.Observable.SwiftObservableList`1" />
+    /// class.
     /// </summary>
     public SwiftObservableList() : base() { }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftObservableList{T}"/> class with the specified initial capacity.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.Observable.SwiftObservableList`1" /> class
+    /// with the specified initial capacity.
     /// </summary>
+    /// <param name="capacity">The initial cell capacity; zero starts empty; negative values use the base list
+    /// minimum allocation.</param>
     public SwiftObservableList(int capacity) : base(capacity) { }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftObservableList{T}"/> class that contains elements copied from the specified collection.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.Observable.SwiftObservableList`1" /> class
+    /// that contains elements copied from the specified collection.
     /// </summary>
+    /// <param name="collection">The elements to shallow-copy in source order. Null reference sources are
+    /// rejected. A source enumerable must remain stable during copying.</param>
     public SwiftObservableList(IEnumerable<T> collection) : base(collection) { }
 
-    ///  <summary>
-    ///  Initializes a new instance of the <see cref="SwiftObservableList{T}"/> class with the specified <see cref="SwiftArrayState{T}"/>.
-    ///  </summary>
-    ///  <param name="state">The state containing the internal array, count, offset, and version for initialization.</param>
+    /// <summary>
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.Observable.SwiftObservableList`1" /> class
+    /// with the specified <see cref="T:SwiftCollections.SwiftArrayState`1" />.
+    /// </summary>
+    /// <param name="state">The state to shallow-copy; Items must be non-null. Event subscribers are not
+    /// serialized.</param>
+    /// <exception cref="T:System.ArgumentNullException">state.Items is null, including default state.</exception>
     [MemoryPackConstructor]
     public SwiftObservableList(SwiftArrayState<T> state) : base(state) { }
 
@@ -70,9 +85,17 @@ public partial class SwiftObservableList<T> : SwiftList<T>, IStateBacked<SwiftAr
     #region Properties
 
     /// <summary>
-    /// Sets or gets the element at the specified index.
-    /// Raises collection change notifications on modification.
+    /// Sets or gets the element at the specified index. Raises collection change notifications on modification.
     /// </summary>
+    /// <param name="index">The zero-based logical index; must address an existing cell or element.</param>
+    /// <value>The current element; assignment changes storage only when object.Equals reports a
+    /// difference.</value>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">The getter index/key is absent or outside the
+    /// permitted range.</exception>
+    /// <remarks>
+    /// A successful change raises CollectionChanged/ElementChanged first, then PropertyChanged. Events run after
+    /// mutation and exceptions do not roll it back. Hidden indexers are bypassed by base-typed calls.
+    /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     public new T this[int index]
@@ -95,9 +118,13 @@ public partial class SwiftObservableList<T> : SwiftList<T>, IStateBacked<SwiftAr
     #region Methods
 
     /// <summary>
-    /// Adds an element to the end of the list.
-    /// Raises collection and property change notifications.
+    /// Adds an element to the end of the list. Raises collection and property change notifications.
     /// </summary>
+    /// <param name="item">The element to store or compare; reference values are not cloned.</param>
+    /// <remarks>
+    /// Mutates through the base implementation, then emits CollectionChanged(Add), followed by
+    /// PropertyChanged(Count). An event-handler exception leaves the added element present.
+    /// </remarks>
     public override void Add(T item)
     {
         base.Add(item);
@@ -108,10 +135,12 @@ public partial class SwiftObservableList<T> : SwiftList<T>, IStateBacked<SwiftAr
     /// <summary>
     /// Adds the elements of the specified collection to the end of the current collection.
     /// </summary>
+    /// <param name="items">The elements to shallow-copy in source order. Null reference sources are rejected. A
+    /// source enumerable must remain stable during copying.</param>
     /// <remarks>
-    /// Known-count sources reserve capacity before enumeration while preserving per-item notifications.
+    /// Appends in source order by calling Add for every element; raises one notification pair per added element.
+    /// Empty input raises none. Enumeration or subscriber failure leaves a partially appended prefix.
     /// </remarks>
-    /// <param name="items">The collection whose elements should be added to the end of the collection. Cannot be null.</param>
     public override void AddRange(IEnumerable<T> items)
     {
         ChronicleGuard.ThrowIfNull(items, nameof(items));
@@ -144,9 +173,15 @@ public partial class SwiftObservableList<T> : SwiftList<T>, IStateBacked<SwiftAr
     }
 
     /// <summary>
-    /// Adds the elements of the specified array to the end of the list.
-    /// Raises collection and property change notifications for each added item.
+    /// Adds the elements of the specified array to the end of the list. Raises collection and property change
+    /// notifications for each added item.
     /// </summary>
+    /// <param name="items">The elements to shallow-copy in source order. Null reference sources are rejected. A
+    /// source enumerable must remain stable during copying.</param>
+    /// <remarks>
+    /// Appends in source order by calling Add for every element; raises one notification pair per added element.
+    /// Empty input raises none. Enumeration or subscriber failure leaves a partially appended prefix.
+    /// </remarks>
     public override void AddRange(T[] items)
     {
         ChronicleGuard.ThrowIfNull(items, nameof(items));
@@ -154,9 +189,15 @@ public partial class SwiftObservableList<T> : SwiftList<T>, IStateBacked<SwiftAr
     }
 
     /// <summary>
-    /// Adds the elements of the specified span to the end of the list.
-    /// Raises collection and property change notifications for each added item.
+    /// Adds the elements of the specified span to the end of the list. Raises collection and property change
+    /// notifications for each added item.
     /// </summary>
+    /// <param name="items">The elements to shallow-copy in source order. Null reference sources are rejected. A
+    /// source enumerable must remain stable during copying.</param>
+    /// <remarks>
+    /// Appends in source order by calling Add for every element; raises one notification pair per added element.
+    /// Empty input raises none. Enumeration or subscriber failure leaves a partially appended prefix.
+    /// </remarks>
     public override void AddRange(ReadOnlySpan<T> items)
     {
         EnsureAdditionalCapacity(items.Length);
@@ -176,9 +217,15 @@ public partial class SwiftObservableList<T> : SwiftList<T>, IStateBacked<SwiftAr
     }
 
     /// <summary>
-    /// Removes the first occurrence of a specific object from the list.
-    /// Raises collection and property change notifications.
+    /// Removes the first occurrence of a specific object from the list. Raises collection and property change
+    /// notifications.
     /// </summary>
+    /// <param name="item">The element to store or compare; reference values are not cloned.</param>
+    /// <returns>true if one matching entry was removed; false if absent, with no notification.</returns>
+    /// <remarks>
+    /// On removal, raises CollectionChanged(Remove) then PropertyChanged(Count). A subscriber exception occurs
+    /// after the removal.
+    /// </remarks>
     public override bool Remove(T item)
     {
         int index = IndexOf(item);
@@ -195,9 +242,13 @@ public partial class SwiftObservableList<T> : SwiftList<T>, IStateBacked<SwiftAr
     }
 
     /// <summary>
-    /// Removes the element at the specified index.
-    /// Raises collection and property change notifications.
+    /// Removes the element at the specified index. Raises collection and property change notifications.
     /// </summary>
+    /// <param name="index">The zero-based logical index; must address an existing cell or element.</param>
+    /// <remarks>
+    /// Changes base storage, then raises the corresponding collection event followed by Count. Subscriber
+    /// exceptions leave the mutation applied.
+    /// </remarks>
     public override void RemoveAt(int index)
     {
         var removedItem = this[index];
@@ -209,12 +260,12 @@ public partial class SwiftObservableList<T> : SwiftList<T>, IStateBacked<SwiftAr
     /// <summary>
     /// Removes all elements from the collection that match the conditions defined by the specified predicate.
     /// </summary>
+    /// <param name="match">The non-null predicate; must not mutate this collection.</param>
+    /// <returns>The number removed; zero emits no notifications.</returns>
     /// <remarks>
-    /// Raises a collection changed event with the Reset action and notifies property changes if any elements are removed. 
-    /// This method is useful when you need to remove multiple items based on a condition and notify observers of the change.
+    /// Uses base compaction, then raises Reset and Count once if any item was removed. A throwing predicate can
+    /// leave partial compaction; no rollback is provided.
     /// </remarks>
-    /// <param name="match">The delegate that defines the conditions of the elements to remove. Cannot be null.</param>
-    /// <returns>The number of elements removed from the collection.</returns>
     public override int RemoveAll(Predicate<T> match)
     {
         int removedCount = base.RemoveAll(match);
@@ -229,9 +280,15 @@ public partial class SwiftObservableList<T> : SwiftList<T>, IStateBacked<SwiftAr
     }
 
     /// <summary>
-    /// Inserts an element into the list at the specified index.
-    /// Raises collection and property change notifications.
+    /// Inserts an element into the list at the specified index. Raises collection and property change
+    /// notifications.
     /// </summary>
+    /// <param name="index">The zero-based logical index; Count is also allowed when inserting.</param>
+    /// <param name="item">The element to store or compare; reference values are not cloned.</param>
+    /// <remarks>
+    /// Changes base storage, then raises the corresponding collection event followed by Count. Subscriber
+    /// exceptions leave the mutation applied.
+    /// </remarks>
     public override void Insert(int index, T item)
     {
         base.Insert(index, item);
@@ -240,9 +297,12 @@ public partial class SwiftObservableList<T> : SwiftList<T>, IStateBacked<SwiftAr
     }
 
     /// <summary>
-    /// Clears all elements from the list.
-    /// Raises a reset collection change notification.
+    /// Clears all elements from the list. Raises a reset collection change notification.
     /// </summary>
+    /// <remarks>
+    /// If non-empty, clears base storage then raises CollectionChanged(Reset), followed by
+    /// PropertyChanged(Count). Empty collections emit nothing; capacity is preserved.
+    /// </remarks>
     public override void Clear()
     {
         if (_count > 0)
@@ -258,9 +318,14 @@ public partial class SwiftObservableList<T> : SwiftList<T>, IStateBacked<SwiftAr
     #region Notifications
 
     /// <summary>
-    /// Raises the <see cref="PropertyChanged"/> event.
+    /// Raises the <see cref="E:SwiftCollections.Observable.SwiftObservableList`1.PropertyChanged" /> event.
     /// </summary>
-    /// <param name="propertyName">The name of the property that changed.</param>
+    /// <param name="propertyName">The property name placed in the event arguments. Forwarded as supplied,
+    /// including null/empty names at runtime.</param>
+    /// <remarks>
+    /// Invokes current subscribers synchronously. Exceptions propagate and stop dispatch; no reentrancy or
+    /// rollback guard is applied.
+    /// </remarks>
     protected virtual void OnPropertyChanged(string propertyName)
     {
         var handler = PropertyChanged;
@@ -268,8 +333,15 @@ public partial class SwiftObservableList<T> : SwiftList<T>, IStateBacked<SwiftAr
     }
 
     /// <summary>
-    /// Raises the <see cref="CollectionChanged"/> event for the specified action and items.
+    /// Raises the <see cref="E:SwiftCollections.Observable.SwiftObservableList`1.CollectionChanged" /> event for
+    /// the specified action and items.
     /// </summary>
+    /// <param name="args">The collection-change event arguments forwarded to subscribers without copying or
+    /// validation.</param>
+    /// <remarks>
+    /// Invokes current subscribers synchronously. Exceptions propagate and stop dispatch; no reentrancy or
+    /// rollback guard is applied.
+    /// </remarks>
     protected virtual void OnCollectionChanged(NotifyCollectionChangedEventArgs args)
     {
         var handler = CollectionChanged;

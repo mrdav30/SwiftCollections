@@ -19,36 +19,14 @@ using SwiftCollections.Utility;
 namespace SwiftCollections;
 
 /// <summary>
-/// Represents a high-performance map collection that assigns and manages stable integer indices
-/// for stored items. Provides O(1) insertion, removal, and lookup by internally generated index.
+/// Stores values in stable, reusable integer slots owned by the container.
 /// </summary>
-/// <remarks>
-/// Unlike <see cref="SwiftSparseMap{T}"/>, which requires callers to provide the key used to store values,
-/// <see cref="SwiftSlotMap{T}"/> internally generates and manages indices for each inserted item.
-///
-/// These indices remain stable for the lifetime of the item unless it is removed.
-///
-/// The container is optimized for scenarios requiring:
-/// <list type="bullet">
-///     <item>
-///         <description>Stable integer slots.</description>
-///     </item>
-///     <item>
-///         <description>Fast addition and removal.</description>
-///     </item>
-///     <item>
-///         <description>Array-backed storage; iteration scans allocated slots and skips holes.</description>
-///     </item>
-/// </list>
-///
-/// **Efficient Lookups Using Indices**:
-/// When you add items to the map using the <see cref="Add"/> method, it returns an arrayIndex that you can store externally.
-/// You can then use this arrayIndex to access the item directly via the indexer, and check if it's still present using the <see cref="IsAllocated"/> method.
-/// This approach allows for O(1) time complexity for lookups and existence checks, avoiding the need for O(n) searches using methods like <see cref="IndexOf"/> or <see cref="Contains"/>.
-///
-/// **Note**: iteration over the collection does not follow any guaranteed order and depends on internal allocation.
-/// </remarks>
 /// <typeparam name="T">Specifies the type of elements in the map.</typeparam>
+/// <remarks>
+/// Copies are shallow and instances require external synchronization. Enumeration follows increasing
+/// allocated-slot order. Slots remain stable until removal. Removed indices are reused in last-freed-first order;
+/// integer slots do not protect against stale references. Use SwiftTicketMap when generation checks are required.
+/// </remarks>
 [Serializable]
 [JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
@@ -95,14 +73,16 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
     #region Constructors
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftSlotMap{T}"/> class.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.SwiftSlotMap`1" /> class.
     /// </summary>
     public SwiftSlotMap() : this(DefaultCapacity) { }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftSlotMap{T}"/> class with the specified capacity.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.SwiftSlotMap`1" /> class with the
+    /// specified capacity.
     /// </summary>
-    /// <param name="capacity">The initial capacity of the map.</param>
+    /// <param name="capacity">The requested element capacity; values at or below DefaultCapacity use the minimum
+    /// allocation. Larger values round up.</param>
     public SwiftSlotMap(int capacity)
     {
         capacity = capacity <= DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(capacity);
@@ -110,10 +90,20 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
         _freeIndices = new SwiftIntStack(capacity);
     }
 
-    ///  <summary>
-    ///  Initializes a new instance of the <see cref="SwiftSlotMap{T}"/> class with the specified <see cref="SwiftArrayState{T}"/>.
-    ///  </summary>
-    ///  <param name="state">The state containing the internal array, count, offset, and version for initialization.</param>
+    /// <summary>
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.SwiftSlotMap`1" /> class with the
+    /// specified <see cref="T:SwiftCollections.SwiftArrayState`1" />.
+    /// </summary>
+    /// <param name="state">The state to restore by shallow-copying arrays. Null arrays are treated as empty; free
+    /// indices must be in range, unique and disjoint from allocated slots. Uniqueness/disjointness are not
+    /// validated.</param>
+    /// <exception cref="T:System.InvalidOperationException">A state free index is outside reconstructed
+    /// capacity.</exception>
+    /// <remarks>
+    /// Input arrays are copied, not retained. Default state is accepted as empty. Missing item values default;
+    /// missing allocation flags are false. Peak is normalized into capacity. Free-index duplicates or overlap
+    /// with live entries are not rejected and can corrupt later allocation.
+    /// </remarks>
     [MemoryPackConstructor]
     public SwiftSlotMap(SwiftSlotMapState<T> state)
     {
@@ -128,31 +118,37 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
     #region Properties
 
     /// <summary>
-    /// Gets the number of elements contained in the <see cref="SwiftSlotMap{T}"/>.
+    /// Gets the number of elements contained in the <see cref="T:SwiftCollections.SwiftSlotMap`1" />.
     /// </summary>
+    /// <value>The number of live entries, excluding gaps and spare storage.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Count => _count;
 
     /// <summary>
-    /// Gets the highest value recorded for the count during the lifetime of the object.
+    /// Gets the slot high-water boundary.
     /// </summary>
+    /// <value>One more than the highest reserved slot, not the historical maximum live Count. May include freed
+    /// gaps; trim can reduce it.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int PeakCount => _peakCount;
 
     /// <summary>
-    /// Gets the total capacity of the <see cref="SwiftSlotMap{T}"/>.
+    /// Gets the total capacity of the <see cref="T:SwiftCollections.SwiftSlotMap`1" />.
     /// </summary>
+    /// <value>The allocated slot-array length.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Capacity => _innerArray.Length;
 
     /// <summary>
-    /// Gets or sets the element at the specified arrayIndex.
-    /// Throws <see cref="InvalidOperationException"/> if the arrayIndex is invalid or unallocated.
+    /// Gets or sets the element at the specified arrayIndex. Throws <see
+    /// cref="T:System.InvalidOperationException" /> if the arrayIndex is invalid or unallocated.
     /// </summary>
-    /// <param name="index">The zero-based arrayIndex of the element to get or set.</param>
+    /// <param name="index">The zero-based slot index; must already be allocated.</param>
+    /// <value>The stored value. Setting replaces the allocated slot value and advances the version.</value>
+    /// <exception cref="T:System.InvalidOperationException">The slot is out of range or unallocated.</exception>
     [JsonIgnore]
     [MemoryPackIgnore]
     public T this[int index]
@@ -172,27 +168,38 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
         }
     }
 
-    ///<inheritdoc/>
+    /// <summary>
+    /// Gets whether the collection rejects all mutations.
+    /// </summary>
+    /// <value>false.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public bool IsReadOnly => false;
 
-    ///<inheritdoc/>
+    /// <summary>
+    /// Gets whether collection access is automatically synchronized.
+    /// </summary>
+    /// <value>false.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public bool IsSynchronized => false;
 
-    ///<inheritdoc/>
+    /// <summary>
+    /// Gets the external synchronization object.
+    /// </summary>
+    /// <value>A lazily allocated synchronization object; access is not locked automatically.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public object SyncRoot => _syncRoot ??= new object();
 
     /// <summary>
-    /// Gets or sets the current state of the map, including all items, allocation status, and free indices.
+    /// Gets a shallow snapshot of storage and allocation metadata.
     /// </summary>
+    /// <value>A state with copied arrays; referenced elements remain shared.</value>
     /// <remarks>
-    /// Use this property to capture or restore the complete state of the map, such as for serialization or checkpointing scenarios. 
-    /// Setting this property replaces the entire internal state, including items and allocation metadata.
+    /// Stores slot allocation, free-index stack and high-water metadata. Restore normalizes the high-water
+    /// boundary into capacity and tolerates missing arrays/default values. It validates free-index range but
+    /// trusts uniqueness and disjointness; use only consistent states.
     /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
@@ -293,8 +300,9 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
     /// <summary>
     /// Adds an item to the map and returns its arrayIndex.
     /// </summary>
-    /// <param name="item">The item to add.</param>
-    /// <returns>The arrayIndex where the item was added.</returns>
+    /// <param name="item">The value to store or locate; reference values are not cloned.</param>
+    /// <returns>The allocated slot index, reusing the most recently freed slot or extending the high-water
+    /// boundary.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int Add(T item)
     {
@@ -314,14 +322,25 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
         return index;
     }
 
+    /// <summary>
+    /// Adds an element through the implemented collection interface.
+    /// </summary>
+    /// <param name="item">The element to compare, add or remove; reference values are not cloned.</param>
     void ICollection<T>.Add(T item) => Add(item);
 
     /// <summary>
-    /// Inserts an item at the specified arrayIndex.
-    /// If an item already exists at that arrayIndex, it will be replaced.
+    /// Inserts an item at the specified arrayIndex. If an item already exists at that arrayIndex, it will be
+    /// replaced.
     /// </summary>
-    /// <param name="index">The arrayIndex at which to insert the item.</param>
-    /// <param name="item">The item to insert.</param>
+    /// <param name="item">The value to store or locate; reference values are not cloned.</param>
+    /// <param name="index">The non-negative slot to overwrite or allocate; absent slots are allocated and storage
+    /// grows when necessary. Keep index + 1 representable and within available array memory.</param>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">index is negative.</exception>
+    /// <remarks>
+    /// Overwrites an allocated slot or allocates an unallocated slot, growing storage if needed. Does not remove
+    /// that index from the free stack. Re-inserting a previously freed slot can make a later Add overwrite it;
+    /// avoid that sequence until the tracked defect is fixed.
+    /// </remarks>
     public void InsertAt(int index, T item)
     {
         ChronicleGuard.ThrowIfNegative(index, nameof(index));
@@ -341,8 +360,9 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
     /// <summary>
     /// Removes the first occurrence of a specific object from the map.
     /// </summary>
-    /// <param name="item">The object to remove.</param>
-    /// <returns><c>true</c> if item was successfully removed; otherwise, <c>false</c>.</returns>
+    /// <param name="item">The value to store or locate; reference values are not cloned.</param>
+    /// <returns>true if a matching live entry was removed; false if absent or invalid, with contents unchanged.
+    /// Freed slots are reused later.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryRemove(T item)
     {
@@ -352,11 +372,20 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
         return true;
     }
 
+    /// <summary>
+    /// Removes a matching element through the implemented interface.
+    /// </summary>
+    /// <param name="item">The element to compare, add or remove; reference values are not cloned.</param>
+    /// <returns>true if an entry was removed; false if absent.</returns>
     bool ICollection<T>.Remove(T item) => TryRemove(item);
 
     /// <summary>
     /// Removes the item at the specified arrayIndex if it has been allocated.
     /// </summary>
+    /// <param name="index">The zero-based slot index; negative or absent slots fail checked lookups without
+    /// mutation.</param>
+    /// <returns>true if a matching live entry was removed; false if absent or invalid, with contents unchanged.
+    /// Freed slots are reused later.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryRemoveAt(int index)
     {
@@ -371,7 +400,13 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
     /// <summary>
     /// Removes the item at the specified arrayIndex.
     /// </summary>
-    /// <param name="index">The arrayIndex of the item to remove.</param>
+    /// <param name="index">The zero-based slot index; must already be allocated.</param>
+    /// <exception cref="T:System.IndexOutOfRangeException">index is outside backing storage.</exception>
+    /// <remarks>
+    /// Unchecked fast path: directly clears the backing slot, decrements Count and pushes the index to the free
+    /// stack. Passing an unallocated slot corrupts Count/free metadata; use TryRemoveAt for unknown allocation
+    /// state.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void RemoveAt(int index)
     {
@@ -384,6 +419,10 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
     /// <summary>
     /// Removes all items from the map.
     /// </summary>
+    /// <remarks>
+    /// Empties the collection while preserving capacity. The Boolean overload also releases unused retained value
+    /// references when applicable.
+    /// </remarks>
     public void Clear()
     {
         if ((uint)_count == 0) return;
@@ -398,8 +437,12 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
     /// <summary>
     /// Removes all elements, optionally releasing references throughout retained backing storage.
     /// </summary>
-    /// <param name="clearRetainedReferences">If true, also releases references outside the live range; otherwise uses ordinary clearing.</param>
-    /// <remarks>Capacity is preserved. Full reference cleanup can take time proportional to retained capacity.</remarks>
+    /// <param name="clearRetainedReferences">If true, also releases references outside the live range; otherwise
+    /// uses ordinary clearing.</param>
+    /// <remarks>
+    /// Empties the collection while preserving capacity. The Boolean overload also releases unused retained value
+    /// references when applicable.
+    /// </remarks>
     public void Clear(bool clearRetainedReferences)
     {
         if (clearRetainedReferences && RuntimeHelpers.IsReferenceOrContainsReferences<T>())
@@ -417,12 +460,13 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
     /// <summary>
     /// Ensures that the internal storage has at least the specified capacity, expanding it if necessary.
     /// </summary>
+    /// <param name="capacity">The minimum storage length; requests at or below the current capacity change
+    /// nothing. Keep requests below 2^30 to avoid the capacity sentinel.</param>
     /// <remarks>
-    /// If the current capacity is less than the specified value, the internal storage is increased to 
-    /// the next power of two greater than or equal to the requested capacity. 
-    /// No action is taken if the current capacity is sufficient.
+    /// If the current capacity is less than the specified value, the internal storage is increased to the next
+    /// power of two greater than or equal to the requested capacity. No action is taken if the current capacity
+    /// is sufficient.
     /// </remarks>
-    /// <param name="capacity">The minimum number of elements that the internal storage should be able to hold. Must be a non-negative value.</param>
     public void EnsureCapacity(int capacity)
     {
         capacity = SwiftHashTools.NextPowerOfTwo(capacity);
@@ -493,9 +537,11 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
     /// <summary>
     /// Attempts to get the value at the specified arrayIndex.
     /// </summary>
-    /// <param name="key">The arrayIndex of the item to get.</param>
-    /// <param name="value">When this method returns, contains the value associated with the specified arrayIndex, if the arrayIndex is found; otherwise, the default value for the type of the value parameter.</param>
-    /// <returns><c>true</c> if the map contains an element at the specified arrayIndex; otherwise, <c>false</c>.</returns>
+    /// <param name="key">The zero-based slot index; negative or absent slots fail checked lookups without
+    /// mutation.</param>
+    /// <param name="value">Receives the stored value on success; default(T) on failure.</param>
+    /// <returns>true if the slot/token/ID identifies a live entry; false otherwise, with the out value set to
+    /// default(T). No mutation.</returns>
     public bool TryGetValue(int key, out T value)
     {
         if (!IsAllocated(key))
@@ -511,20 +557,25 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
     /// <summary>
     /// Determines whether the map contains a specific value.
     /// </summary>
-    /// <param name="item">The object to locate in the map.</param>
-    /// <returns><c>true</c> if item is found; otherwise, <c>false</c>.</returns>
+    /// <param name="item">The value to store or locate; reference values are not cloned.</param>
+    /// <returns>true if the requested live slot, token, ID or value exists; false for absent/out-of-range inputs.
+    /// No mutation.</returns>
     /// <remarks>
-    /// This method performs a linear search and has a time complexity of O(n).
-    /// It is recommended to store the indices returned by the <see cref="Add"/> method for faster lookups using the indexer.
+    /// This method performs a linear search and has a time complexity of O(n). It is recommended to store the
+    /// indices returned by the <see cref="M:SwiftCollections.SwiftSlotMap`1.Add(`0)" /> method for faster lookups
+    /// using the indexer.
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Contains(T item) => IndexOf(item) != -1;
 
     /// <summary>
-    /// Determines whether the <see cref="SwiftSlotMap{T}"/> contains an element that matches the conditions defined by the specified predicate.
+    /// Determines whether the <see cref="T:SwiftCollections.SwiftSlotMap`1" /> contains an element that matches
+    /// the conditions defined by the specified predicate.
     /// </summary>
-    /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
-    /// <returns><c>true</c> if the <see cref="SwiftSlotMap{T}"/> contains one or more elements that match the specified predicate; otherwise, <c>false</c>.</returns>
+    /// <param name="match">The non-null predicate evaluated over live values in slot order; it must not mutate
+    /// this instance.</param>
+    /// <returns>true if a live value matches the predicate; false if no match exists.</returns>
+    /// <exception cref="T:System.ArgumentNullException">match is null.</exception>
     public bool Exists(Predicate<T> match)
     {
         ChronicleGuard.ThrowIfNull(match, nameof(match));
@@ -546,10 +597,14 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
     }
 
     /// <summary>
-    /// Searches for an element that matches the conditions defined by the specified predicate, and returns the first matching element in map iteration order.
+    /// Searches for an element that matches the conditions defined by the specified predicate, and returns the
+    /// first matching element in map iteration order.
     /// </summary>
-    /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
-    /// <returns>The first element that matches the conditions defined by the specified predicate, if found; otherwise, the default value for type <typeparamref name="T"/>.</returns>
+    /// <param name="match">The non-null predicate evaluated over live values in slot order; it must not mutate
+    /// this instance.</param>
+    /// <returns>The first matching live value in slot order, or default(T) when absent; stored default values are
+    /// indistinguishable from absence.</returns>
+    /// <exception cref="T:System.ArgumentNullException">match is null.</exception>
     public T Find(Predicate<T> match)
     {
         ChronicleGuard.ThrowIfNull(match, nameof(match));
@@ -574,21 +629,23 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
     /// <summary>
     /// Determines whether the element at the specified index is currently allocated.
     /// </summary>
-    /// <param name="index">The zero-based index of the element to check. Must be greater than or equal to 0 and less than the length of the underlying array.</param>
-    /// <returns>true if the element at the specified index is allocated; otherwise, false.</returns>
+    /// <param name="index">The zero-based slot index; negative or absent slots fail checked lookups without
+    /// mutation.</param>
+    /// <returns>true if the requested live slot, token, ID or value exists; false for absent/out-of-range inputs.
+    /// No mutation.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool IsAllocated(int index) => !((uint)index >= (uint)_innerArray.Length) && _innerArray[index].IsUsed;
 
     /// <summary>
-    /// Searches for the specified object and returns the zero-based arrayIndex of the first occurrence within the map.
+    /// Searches for the specified object and returns the zero-based arrayIndex of the first occurrence within the
+    /// map.
     /// </summary>
-    /// <param name="item">The object to locate in the map.</param>
-    /// <returns>
-    /// The zero-based arrayIndex of the first occurrence of <paramref name="item"/> within the map, if found; otherwise, <c>-1</c>.
-    /// </returns>
+    /// <param name="item">The value to store or locate; reference values are not cloned.</param>
+    /// <returns>The first allocated slot containing an equal value, or -1 if absent. Gaps are skipped.</returns>
     /// <remarks>
-    /// This method performs a linear search and has a time complexity of O(n).
-    /// It is recommended to store the indices returned by the <see cref="Add"/> method for faster lookups using the indexer.
+    /// This method performs a linear search and has a time complexity of O(n). It is recommended to store the
+    /// indices returned by the <see cref="M:SwiftCollections.SwiftSlotMap`1.Add(`0)" /> method for faster lookups
+    /// using the indexer.
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int IndexOf(T item)
@@ -623,10 +680,19 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
     }
 
     /// <summary>
-    /// Copies the elements of the map to an <see cref="Array"/>, starting at a particular Array arrayIndex.
+    /// Copies the elements of the map to an <see cref="T:System.Array" />, starting at a particular Array
+    /// arrayIndex.
     /// </summary>
-    /// <param name="array">The one-dimensional Array that is the destination of the elements copied from map.</param>
-    /// <param name="arrayIndex">The zero-based arrayIndex in array at which copying begins.</param>
+    /// <param name="array">The caller-owned destination array; only the copied range is overwritten.</param>
+    /// <param name="arrayIndex">The zero-based destination offset with room for Count live values.</param>
+    /// <exception cref="T:System.ArgumentNullException">array is null.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">arrayIndex is outside zero through
+    /// array.Length.</exception>
+    /// <exception cref="T:System.ArgumentException">The remaining destination space is shorter than
+    /// Count.</exception>
+    /// <remarks>
+    /// Shallow-copies Count live values in increasing allocated-slot order without clearing the destination.
+    /// </remarks>
     public void CopyTo(T[] array, int arrayIndex)
     {
         ChronicleGuard.ThrowIfNull(array, nameof(array));
@@ -644,6 +710,15 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
         }
     }
 
+    /// <summary>
+    /// Copies live elements into a caller-owned array.
+    /// </summary>
+    /// <param name="array">The caller-owned, one-dimensional, zero-based destination array.</param>
+    /// <param name="arrayIndex">The zero-based destination offset with space for the live count.</param>
+    /// <remarks>
+    /// Uses concrete collection copy order and validation. The destination is overwritten only in the copied
+    /// range; incompatible elements can cause partial copying.
+    /// </remarks>
     void ICollection.CopyTo(Array array, int arrayIndex)
     {
         ChronicleGuard.ThrowIfNull(array, nameof(array));
@@ -670,7 +745,7 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
         }
     }
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public void CloneTo(ICollection<T> output)
     {
         output.Clear();
@@ -690,11 +765,24 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
     #region Enumerator
 
     /// <summary>
-    /// Returns an enumerator that iterates through the <see cref="SwiftSlotMap{T}"/>.
+    /// Returns an enumerator that iterates through the <see cref="T:SwiftCollections.SwiftSlotMap`1" />.
     /// </summary>
-    /// <returns>An enumerator for the map.</returns>
+    /// <returns>A value-type enumerator over live entries in increasing allocated-slot order.</returns>
+    /// <remarks>
+    /// MoveNext and Reset check the mutation version. Direct storage/ref writes bypass the version check.
+    /// </remarks>
     public SwiftSlotMapEnumerator GetEnumerator() => new(this);
+    /// <summary>
+    /// Creates an enumerator through the implemented interface.
+    /// </summary>
+    /// <returns>An enumerator with the concrete collection's ordering and mutation rules. Interface dispatch may
+    /// box the value-type enumerator.</returns>
     IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
+    /// <summary>
+    /// Creates an enumerator through the implemented interface.
+    /// </summary>
+    /// <returns>An enumerator with the concrete collection's ordering and mutation rules. Interface dispatch may
+    /// box the value-type enumerator.</returns>
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
 

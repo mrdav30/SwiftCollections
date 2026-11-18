@@ -17,10 +17,16 @@ using MemoryPack;
 namespace SwiftCollections.Observable;
 
 /// <summary>
-/// Represents a dictionary that notifies listeners of changes to its items and structure.
+/// Extends a dictionary with synchronous notifications from its observable mutation members.
 /// </summary>
 /// <typeparam name="TKey">The type of keys in the dictionary.</typeparam>
 /// <typeparam name="TValue">The type of values in the dictionary.</typeparam>
+/// <remarks>
+/// Notifications are synchronous on the calling thread after mutation; subscriber exceptions propagate without
+/// rollback and can prevent subsequent notifications. No synchronization or reentrancy guard is provided. Only
+/// the explicitly overridden/hidden mutation members raise notifications. Base-typed indexer writes, direct
+/// buffers, inherited FastClear, sort, reverse, and other non-overridden mutators can bypass notifications.
+/// </remarks>
 [Serializable]
 [JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
@@ -48,10 +54,13 @@ public partial class SwiftObservableDictionary<TKey, TValue> : SwiftDictionary<T
     /// </summary>
     public SwiftObservableDictionary() : base() { }
 
-    ///  <summary>
-    ///  Initializes a new instance of the <see cref="SwiftObservableDictionary{TKey, TValue}"/> class with the specified <see cref="SwiftDictionaryState{TKey, TValue}"/>.
-    ///  </summary>
-    ///  <param name="state">The state containing the internal array, count, offset, and version for initialization.</param>
+    /// <summary>
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.Observable.SwiftObservableDictionary`2" />
+    /// class with the specified <see cref="T:SwiftCollections.SwiftDictionaryState`2" />.
+    /// </summary>
+    /// <param name="state">The state to shallow-copy; Items must be non-null. Event subscribers are not
+    /// serialized.</param>
+    /// <exception cref="T:System.ArgumentNullException">state.Items is null, including default state.</exception>
     [MemoryPackConstructor]
     public SwiftObservableDictionary(SwiftDictionaryState<TKey, TValue> state) : base(state) { }
 
@@ -60,9 +69,19 @@ public partial class SwiftObservableDictionary<TKey, TValue> : SwiftDictionary<T
     #region Properties
 
     /// <summary>
-    /// Gets or sets the value associated with the specified key.
-    /// Raises property and collection change notifications.
+    /// Gets or sets the value associated with the specified key. Raises property and collection change
+    /// notifications.
     /// </summary>
+    /// <param name="key">The key to locate or insert; null is rejected for insertion and treated as absent by
+    /// base lookup.</param>
+    /// <value>The current element; assignment changes storage only when object.Equals reports a
+    /// difference.</value>
+    /// <exception cref="T:System.Collections.Generic.KeyNotFoundException">The getter index/key is absent or
+    /// outside the permitted range.</exception>
+    /// <remarks>
+    /// A successful change raises CollectionChanged/ElementChanged first, then PropertyChanged. Events run after
+    /// mutation and exceptions do not roll it back. Hidden indexers are bypassed by base-typed calls.
+    /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     public new TValue this[TKey key]
@@ -91,9 +110,19 @@ public partial class SwiftObservableDictionary<TKey, TValue> : SwiftDictionary<T
     #region Methods
 
     /// <summary>
-    /// Adds an element with the provided key and value to the dictionary.
-    /// Raises a collection change notification.
+    /// Adds an element with the provided key and value to the dictionary. Raises a collection change
+    /// notification.
     /// </summary>
+    /// <param name="key">The key to locate or insert; null is rejected for insertion and treated as absent by
+    /// base lookup.</param>
+    /// <param name="value">The value to store; reference values are retained without cloning.</param>
+    /// <returns>true if a mapping was inserted; false for an existing key. Notifications currently occur in
+    /// either case.</returns>
+    /// <remarks>
+    /// Mutates through the base implementation, then emits CollectionChanged(Add), followed by
+    /// PropertyChanged(Entries[]). The current implementation emits Add even when a duplicate key is rejected and
+    /// the Boolean result is false.
+    /// </remarks>
     public override bool Add(TKey key, TValue value)
     {
         bool result = base.Add(key, value);
@@ -103,9 +132,16 @@ public partial class SwiftObservableDictionary<TKey, TValue> : SwiftDictionary<T
     }
 
     /// <summary>
-    /// Removes the element with the specified key from the dictionary.
-    /// Raises a collection change notification if the key existed.
+    /// Removes the element with the specified key from the dictionary. Raises a collection change notification if
+    /// the key existed.
     /// </summary>
+    /// <param name="key">The key to locate or insert; null is rejected for insertion and treated as absent by
+    /// base lookup.</param>
+    /// <returns>true if one matching entry was removed; false if absent, with no notification.</returns>
+    /// <remarks>
+    /// On removal, raises CollectionChanged(Remove) then PropertyChanged(Entries[]). A subscriber exception
+    /// occurs after the removal.
+    /// </remarks>
     public override bool Remove(TKey key)
     {
         if (TryGetValue(key, out TValue value))
@@ -119,9 +155,12 @@ public partial class SwiftObservableDictionary<TKey, TValue> : SwiftDictionary<T
     }
 
     /// <summary>
-    /// Clears all elements from the dictionary.
-    /// Raises a reset collection change notification.
+    /// Clears all elements from the dictionary. Raises a reset collection change notification.
     /// </summary>
+    /// <remarks>
+    /// If non-empty, clears base storage then raises CollectionChanged(Reset), followed by
+    /// PropertyChanged(Count). Empty collections emit nothing; capacity is preserved.
+    /// </remarks>
     public override void Clear()
     {
         if (Count > 0)
@@ -137,9 +176,14 @@ public partial class SwiftObservableDictionary<TKey, TValue> : SwiftDictionary<T
     #region Notifications
 
     /// <summary>
-    /// Raises the <see cref="PropertyChanged"/> event.
+    /// Raises the <see cref="E:SwiftCollections.Observable.SwiftObservableDictionary`2.PropertyChanged" /> event.
     /// </summary>
-    /// <param name="propertyName">The name of the property that changed.</param>
+    /// <param name="propertyName">The property name placed in the event arguments. Forwarded as supplied,
+    /// including null/empty names at runtime.</param>
+    /// <remarks>
+    /// Invokes current subscribers synchronously. Exceptions propagate and stop dispatch; no reentrancy or
+    /// rollback guard is applied.
+    /// </remarks>
     protected virtual void OnPropertyChanged(string propertyName)
     {
         var handler = PropertyChanged;
@@ -147,8 +191,15 @@ public partial class SwiftObservableDictionary<TKey, TValue> : SwiftDictionary<T
     }
 
     /// <summary>
-    /// Raises the <see cref="CollectionChanged"/> event for the specified action and items.
+    /// Raises the <see cref="E:SwiftCollections.Observable.SwiftObservableDictionary`2.CollectionChanged" />
+    /// event for the specified action and items.
     /// </summary>
+    /// <param name="args">The collection-change event arguments forwarded to subscribers without copying or
+    /// validation.</param>
+    /// <remarks>
+    /// Invokes current subscribers synchronously. Exceptions propagate and stop dispatch; no reentrancy or
+    /// rollback guard is applied.
+    /// </remarks>
     protected virtual void OnCollectionChanged(NotifyCollectionChangedEventArgs args)
     {
         var handler = CollectionChanged;

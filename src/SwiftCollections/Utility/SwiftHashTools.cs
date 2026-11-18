@@ -75,23 +75,27 @@ public static class SwiftHashTools
     /// <summary>
     /// Determines whether the specified integer is a power of two.
     /// </summary>
-    /// <remarks>Zero and negative values are not considered powers of two.</remarks>
-    /// <param name="x">The integer value to test.</param>
-    /// <returns>true if the value of x is a power of two; otherwise, false.</returns>
+    /// <param name="x">The signed integer to test; the implementation tests its bit pattern.</param>
+    /// <returns>true when x has exactly one set bit and is not zero; this currently includes
+    /// Int32.MinValue.</returns>
+    /// <remarks>
+    /// The sign-bit case is a tracked defect relative to a positive-power-of-two interpretation. Zero and all
+    /// other negative inputs return false.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsPowerOfTwo(int x) => (x != 0) && ((x & (x - 1)) == 0);
 
     /// <summary>
-    /// Calculates the smallest power of two that is greater than or equal to the specified integer.
-    /// This method is used to ensure that capacities are powers of two, enabling optimizations
-    /// in indexing operations through bitwise arithmetic.
+    /// Calculates the smallest power of two that is greater than or equal to the specified integer. This method
+    /// is used to ensure that capacities are powers of two, enabling optimizations in indexing operations through
+    /// bitwise arithmetic.
     /// </summary>
-    /// <param name="value">The integer value for which to find the next power of two.</param>
-    /// <returns>The smallest power of two greater than or equal to <paramref name="value"/>.</returns>
+    /// <param name="value">The signed requested size; non-positive inputs normalize to one.</param>
+    /// <returns>One for non-positive inputs; the least power of two greater than or equal to positive inputs
+    /// below 2^30 (the result can equal 2^30); Int32.MaxValue for inputs at or above 2^30.</returns>
     /// <remarks>
-    /// If <paramref name="value"/> is less than or equal to zero, the method returns 1.
-    /// If <paramref name="value"/> is too large to represent as a power of two within an <c>int</c>,
-    /// the methods returns `int.Max`.
+    /// Int32.MaxValue is a sentinel and is not a power of two. Even exactly 2^30 returns that sentinel. Callers
+    /// that require bit-maskable capacities must handle this boundary explicitly.
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int NextPowerOfTwo(int value)
@@ -110,18 +114,17 @@ public static class SwiftHashTools
     }
 
     /// <summary>
-    /// Determines whether the specified comparer is a recognized, well-known equality comparer supported by the system.
+    /// Determines whether the specified comparer is a recognized, well-known equality comparer supported by the
+    /// system.
     /// </summary>
-    /// <remarks>
-    /// A well-known equality comparer is one that is commonly used and recognized by the system, 
-    /// such as the default equality comparers for string and object, or specific deterministic comparers. 
-    /// Use this method to check if a comparer is supported for optimized or special handling.
-    /// </remarks>
-    /// <param name="comparer">
-    /// The object to test as an equality comparer. 
-    /// This can be null or an instance of a supported equality comparer type.
-    /// </param>
+    /// <param name="comparer">The comparer object to inspect; null is accepted and selects fallback
+    /// behavior.</param>
     /// <returns>true if the comparer is a well-known equality comparer; otherwise, false.</returns>
+    /// <remarks>
+    /// A well-known equality comparer is one that is commonly used and recognized by the system, such as the
+    /// default equality comparers for string and object, or specific deterministic comparers. Use this method to
+    /// check if a comparer is supported for optimized or special handling.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsWellKnownEqualityComparer(object comparer)
     {
@@ -134,9 +137,18 @@ public static class SwiftHashTools
 
     /// <summary>
     /// Gets the default comparer used by SwiftCollections for the specified type when no comparer is supplied.
-    /// String keys are hashed deterministically. Object keys hash strings deterministically, while other object-key
-    /// determinism still depends on the underlying key type's <see cref="object.GetHashCode()"/> implementation.
+    /// String keys are hashed deterministically. Object keys hash strings deterministically, while other
+    /// object-key determinism still depends on the underlying key type's <see cref="M:System.Object.GetHashCode"
+    /// /> implementation.
     /// </summary>
+    /// <typeparam name="T">The element/key type whose default comparer is requested.</typeparam>
+    /// <returns>The shared deterministic string/object comparer for those exact types;
+    /// EqualityComparer&lt;T&gt;.Default for every other type.</returns>
+    /// <remarks>
+    /// String equality is ordinal and hashes use the explicit deterministic seed. Object comparers hash strings
+    /// deterministically, but other values rely on their own GetHashCode. Generic non-string types inherit their
+    /// runtime default hashing; stable cross-process hashes are not guaranteed for those types.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IEqualityComparer<T> GetDeterministicEqualityComparer<T>()
     {
@@ -152,6 +164,13 @@ public static class SwiftHashTools
     /// <summary>
     /// Gets the deterministic default comparer used by SwiftCollections for strings.
     /// </summary>
+    /// <returns>The shared default comparer when no seed or the built-in seed is used; otherwise a new comparer
+    /// with the supplied seed.</returns>
+    /// <remarks>
+    /// String equality is ordinal and hashes use the explicit deterministic seed. Object comparers hash strings
+    /// deterministically, but other values rely on their own GetHashCode. Generic non-string types inherit their
+    /// runtime default hashing; stable cross-process hashes are not guaranteed for those types.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IEqualityComparer<string> GetDeterministicStringEqualityComparer()
         => s_deterministicStringComparer;
@@ -159,6 +178,15 @@ public static class SwiftHashTools
     /// <summary>
     /// Gets a deterministic string comparer using the supplied seed.
     /// </summary>
+    /// <param name="seed">The explicit signed hash seed; no entropy is added by the deterministic comparer or
+    /// MurmurHash3. For CombineHashCodes the default is 5381.</param>
+    /// <returns>The shared default comparer when no seed or the built-in seed is used; otherwise a new comparer
+    /// with the supplied seed.</returns>
+    /// <remarks>
+    /// String equality is ordinal and hashes use the explicit deterministic seed. Object comparers hash strings
+    /// deterministically, but other values rely on their own GetHashCode. Generic non-string types inherit their
+    /// runtime default hashing; stable cross-process hashes are not guaranteed for those types.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IEqualityComparer<string> GetDeterministicStringEqualityComparer(int seed)
         => seed == DefaultDeterministicStringHashSeed
@@ -166,19 +194,35 @@ public static class SwiftHashTools
             : new SwiftDeterministicStringEqualityComparer(seed);
 
     /// <summary>
-    /// Gets the default comparer used by SwiftCollections for object keys.
-    /// Strings are hashed deterministically even when stored as objects. Other object keys still depend on their
-    /// runtime <see cref="object.GetHashCode()"/> implementations.
+    /// Gets the default comparer used by SwiftCollections for object keys. Strings are hashed deterministically
+    /// even when stored as objects. Other object keys still depend on their runtime <see
+    /// cref="M:System.Object.GetHashCode" /> implementations.
     /// </summary>
+    /// <returns>The shared default comparer when no seed or the built-in seed is used; otherwise a new comparer
+    /// with the supplied seed.</returns>
+    /// <remarks>
+    /// String equality is ordinal and hashes use the explicit deterministic seed. Object comparers hash strings
+    /// deterministically, but other values rely on their own GetHashCode. Generic non-string types inherit their
+    /// runtime default hashing; stable cross-process hashes are not guaranteed for those types.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IEqualityComparer<object> GetDeterministicObjectEqualityComparer()
         => s_deterministicObjectComparer;
 
     /// <summary>
-    /// Gets an object comparer using the supplied seed.
-    /// Strings are hashed deterministically even when stored as objects. Other object keys still depend on their
-    /// runtime <see cref="object.GetHashCode()"/> implementations.
+    /// Gets an object comparer using the supplied seed. Strings are hashed deterministically even when stored as
+    /// objects. Other object keys still depend on their runtime <see cref="M:System.Object.GetHashCode" />
+    /// implementations.
     /// </summary>
+    /// <param name="seed">The explicit signed hash seed; no entropy is added by the deterministic comparer or
+    /// MurmurHash3. For CombineHashCodes the default is 5381.</param>
+    /// <returns>The shared default comparer when no seed or the built-in seed is used; otherwise a new comparer
+    /// with the supplied seed.</returns>
+    /// <remarks>
+    /// String equality is ordinal and hashes use the explicit deterministic seed. Object comparers hash strings
+    /// deterministically, but other values rely on their own GetHashCode. Generic non-string types inherit their
+    /// runtime default hashing; stable cross-process hashes are not guaranteed for those types.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IEqualityComparer<object> GetDeterministicObjectEqualityComparer(int seed)
         => seed == DefaultDeterministicObjectHashSeed
@@ -190,21 +234,17 @@ public static class SwiftHashTools
         => comparer ?? GetDeterministicEqualityComparer<T>();
 
     /// <summary>
-    /// Returns an IEqualityComparer instance optimized for use with Swift serialization, based on the specified comparer.
+    /// Creates a randomized non-generic comparer for collision hardening.
     /// </summary>
+    /// <param name="comparer">The comparer object to inspect; null is accepted and selects fallback
+    /// behavior.</param>
+    /// <returns>A new randomized string comparer for recognized string comparers; otherwise a new randomized
+    /// object comparer, including null/unrecognized inputs.</returns>
     /// <remarks>
-    /// Use this method to obtain an equality comparer that ensures deterministic behavior when serializing with Swift. 
-    /// If the provided comparer is not recognized, a default Swift object equality comparer is returned.
+    /// Uses cryptographic entropy and does not preserve custom comparer equality semantics or deterministic hash
+    /// codes. This is the collision-hardening fallback used by recognized default table comparers, not a
+    /// serialization determinism helper.
     /// </remarks>
-    /// <param name="comparer">
-    /// The comparer object to evaluate. 
-    /// Determines which specialized Swift equality comparer to return. 
-    /// Can be an EqualityComparer for string or object, or a custom Swift deterministic comparer.
-    /// </param>
-    /// <returns>
-    /// An IEqualityComparer instance suitable for Swift serialization. 
-    /// Returns a specialized comparer for strings or objects, depending on the input.
-    /// </returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IEqualityComparer GetSwiftEqualityComparer(object comparer)
     {
@@ -245,6 +285,25 @@ public static class SwiftHashTools
     /// <summary>
     /// Combines the hash codes of the elements in a tuple using a DJB2-inspired mixing strategy.
     /// </summary>
+    /// <param name="tupled">The non-null tuple whose items are read in index order; null elements contribute
+    /// zero. The tuple is not retained or modified.</param>
+    /// <param name="seed">The explicit signed hash seed; no entropy is added by the deterministic comparer or
+    /// MurmurHash3. For CombineHashCodes the default is 5381.</param>
+    /// <param name="shift1">The initial left-shift count (default 16); C# masks Int32 shift counts to five bits,
+    /// including negative counts.</param>
+    /// <param name="shift2">The per-item left-shift count (default 5), masked to five bits.</param>
+    /// <param name="shift3">The arithmetic right-shift count (default 27), masked to five bits.</param>
+    /// <param name="factor3">The final signed mixing factor (default 1566083941); arithmetic wraps as
+    /// Int32.</param>
+    /// <returns>The signed Int32 mixed hash, with wrapping arithmetic; it is not guaranteed non-negative or
+    /// collision-free.</returns>
+    /// <exception cref="T:System.NullReferenceException">The tuple or array is null.</exception>
+    /// <remarks>
+    /// Results depend on input order and the input objects' GetHashCode implementations. Tuple mixing ends with
+    /// XOR, while array and integer overloads end with addition, so their results need not agree for the same
+    /// item hashes. Default object/string hashes can vary across processes; do not serialize this result as a
+    /// stable identity.
+    /// </remarks>
     public static int CombineHashCodes(
         this ITuple tupled,
         int seed = 5381,
@@ -274,6 +333,25 @@ public static class SwiftHashTools
     /// <summary>
     /// Combines the hash codes of a set of objects using a DJB2-inspired mixing strategy.
     /// </summary>
+    /// <param name="values">The non-null object array, read in order without retaining or modifying it. Null
+    /// elements contribute zero; the params form can allocate an array at the call site.</param>
+    /// <param name="seed">The explicit signed hash seed; no entropy is added by the deterministic comparer or
+    /// MurmurHash3. For CombineHashCodes the default is 5381.</param>
+    /// <param name="shift1">The initial left-shift count (default 16); C# masks Int32 shift counts to five bits,
+    /// including negative counts.</param>
+    /// <param name="shift2">The per-item left-shift count (default 5), masked to five bits.</param>
+    /// <param name="shift3">The arithmetic right-shift count (default 27), masked to five bits.</param>
+    /// <param name="factor3">The final signed mixing factor (default 1566083941); arithmetic wraps as
+    /// Int32.</param>
+    /// <returns>The signed Int32 mixed hash, with wrapping arithmetic; it is not guaranteed non-negative or
+    /// collision-free.</returns>
+    /// <exception cref="T:System.NullReferenceException">The tuple or array is null.</exception>
+    /// <remarks>
+    /// Results depend on input order and the input objects' GetHashCode implementations. Tuple mixing ends with
+    /// XOR, while array and integer overloads end with addition, so their results need not agree for the same
+    /// item hashes. Default object/string hashes can vary across processes; do not serialize this result as a
+    /// stable identity.
+    /// </remarks>
     public static int CombineHashCodes(
         this object[] values,
         int seed = 5381,
@@ -303,11 +381,32 @@ public static class SwiftHashTools
     /// <summary>
     /// Combines the hash codes of the provided objects using a DJB2-inspired mixing strategy.
     /// </summary>
+    /// <param name="values">The non-null object array, read in order without retaining or modifying it. Null
+    /// elements contribute zero; the params form can allocate an array at the call site.</param>
+    /// <returns>The signed Int32 mixed hash, with wrapping arithmetic; it is not guaranteed non-negative or
+    /// collision-free.</returns>
+    /// <exception cref="T:System.NullReferenceException">The tuple or array is null.</exception>
+    /// <remarks>
+    /// Results depend on input order and the input objects' GetHashCode implementations. Tuple mixing ends with
+    /// XOR, while array and integer overloads end with addition, so their results need not agree for the same
+    /// item hashes. Default object/string hashes can vary across processes; do not serialize this result as a
+    /// stable identity.
+    /// </remarks>
     public static int CombineHashCodes(params object[] values) => values.CombineHashCodes();
 
     /// <summary>
     /// Combines two integer hash codes without allocating the object-array params path.
     /// </summary>
+    /// <param name="value1">The first already computed integer hash code.</param>
+    /// <param name="value2">The second already computed integer hash code.</param>
+    /// <returns>The signed Int32 mixed hash, with wrapping arithmetic; it is not guaranteed non-negative or
+    /// collision-free.</returns>
+    /// <remarks>
+    /// Results depend on input order and the input objects' GetHashCode implementations. Tuple mixing ends with
+    /// XOR, while array and integer overloads end with addition, so their results need not agree for the same
+    /// item hashes. Default object/string hashes can vary across processes; do not serialize this result as a
+    /// stable identity.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int CombineHashCodes(
         int value1,
@@ -330,6 +429,17 @@ public static class SwiftHashTools
     /// <summary>
     /// Combines three integer hash codes without allocating the object-array params path.
     /// </summary>
+    /// <param name="value1">The first already computed integer hash code.</param>
+    /// <param name="value2">The second already computed integer hash code.</param>
+    /// <param name="value3">The third already computed integer hash code.</param>
+    /// <returns>The signed Int32 mixed hash, with wrapping arithmetic; it is not guaranteed non-negative or
+    /// collision-free.</returns>
+    /// <remarks>
+    /// Results depend on input order and the input objects' GetHashCode implementations. Tuple mixing ends with
+    /// XOR, while array and integer overloads end with addition, so their results need not agree for the same
+    /// item hashes. Default object/string hashes can vary across processes; do not serialize this result as a
+    /// stable identity.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int CombineHashCodes(
         int value1,
@@ -354,6 +464,18 @@ public static class SwiftHashTools
     /// <summary>
     /// Combines four integer hash codes without allocating the object-array params path.
     /// </summary>
+    /// <param name="value1">The first already computed integer hash code.</param>
+    /// <param name="value2">The second already computed integer hash code.</param>
+    /// <param name="value3">The third already computed integer hash code.</param>
+    /// <param name="value4">The fourth already computed integer hash code.</param>
+    /// <returns>The signed Int32 mixed hash, with wrapping arithmetic; it is not guaranteed non-negative or
+    /// collision-free.</returns>
+    /// <remarks>
+    /// Results depend on input order and the input objects' GetHashCode implementations. Tuple mixing ends with
+    /// XOR, while array and integer overloads end with addition, so their results need not agree for the same
+    /// item hashes. Default object/string hashes can vary across processes; do not serialize this result as a
+    /// stable identity.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int CombineHashCodes(
         int value1,
@@ -387,11 +509,18 @@ public static class SwiftHashTools
     }
 
     /// <summary>
-    /// Computes a hash code for a string using the MurmurHash3 algorithm, incorporating entropy for randomization.
+    /// Computes a seeded MurmurHash3-style hash of UTF-16 string storage.
     /// </summary>
-    /// <param name="key">The string to hash.</param>
-    /// <param name="seed">The seed value for the hash function.</param>
-    /// <returns>An integer hash code for the string.</returns>
+    /// <param name="key">The non-null UTF-16 string to hash; read without mutation or retention.</param>
+    /// <param name="seed">The explicit signed hash seed; no entropy is added by the deterministic comparer or
+    /// MurmurHash3. For CombineHashCodes the default is 5381.</param>
+    /// <returns>The computed hash with its sign bit cleared, from zero through Int32.MaxValue.</returns>
+    /// <exception cref="T:System.ArgumentNullException">key is null.</exception>
+    /// <remarks>
+    /// Adds no random entropy beyond the supplied seed. Pairs of UTF-16 characters are loaded as native-endian
+    /// UInt32 values, so cross-endian identity is not guaranteed. Empty strings are supported; the algorithm uses
+    /// character count rather than UTF-16 byte count.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static unsafe int MurmurHash3(string key, int seed)
     {

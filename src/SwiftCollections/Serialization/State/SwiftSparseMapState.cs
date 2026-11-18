@@ -12,42 +12,45 @@ using MemoryPack;
 namespace SwiftCollections;
 
 /// <summary>
-/// Represents the immutable state of a sparse map, containing the dense keys and associated values.
+/// Stores explicit serialized state for the owning collection.
 /// </summary>
-/// <remarks>
-/// This structure is typically used to serialize or inspect the contents of a sparse map. 
-/// The arrays are guaranteed to be non-null, but may be empty if the map contains no elements.
-/// </remarks>
 /// <typeparam name="T">The type of values stored in the sparse map.</typeparam>
+/// <remarks>
+/// Readonly fields retain mutable arrays; this struct is not deeply immutable. Constructors retain arrays without
+/// copying, normalizing null array arguments to empty arrays. default(TState) bypasses constructors and leaves
+/// array fields null. Collection State getters allocate shallow snapshots; restore behavior and validation belong
+/// to each collection.
+/// </remarks>
 [Serializable]
 [MemoryPackable]
 public readonly partial struct SwiftSparseMapState<T>
 {
     /// <summary>
-    /// Gets the collection of dense keys associated with this instance.
+    /// Stores retained IDs in dense order; valid restored IDs must be distinct, non-negative and below
+    /// Int32.MaxValue.
     /// </summary>
     [JsonInclude]
     [MemoryPackInclude]
     public readonly int[] DenseKeys;
 
     /// <summary>
-    /// Gets the array containing the dense values for this instance.
+    /// Stores retained values parallel to DenseKeys; restored array lengths must agree.
     /// </summary>
     [JsonInclude]
     [MemoryPackInclude]
     public readonly T[] DenseValues;
 
     /// <summary>
-    /// Initializes a new instance of the SwiftSparseMapState class with the specified dense keys and values.
+    /// Creates a state value by retaining the supplied arrays and metadata.
     /// </summary>
-    /// <param name="denseKeys">
-    /// An array of integers representing the dense keys to initialize the map with. 
-    /// If null, an empty array is used.
-    /// </param>
-    /// <param name="denseValues">
-    /// An array of values of type T corresponding to the dense keys. 
-    /// If null, an empty array is used.
-    /// </param>
+    /// <param name="denseKeys">The denseKeys array, retained without copying. Null is normalized to an empty
+    /// array; contents are not validated.</param>
+    /// <param name="denseValues">The denseValues array, retained without copying. Null is normalized to an empty
+    /// array; contents are not validated.</param>
+    /// <remarks>
+    /// Performs no consistency checks and allocates no snapshot copy. Mutating a supplied array mutates this
+    /// state.
+    /// </remarks>
     [JsonConstructor]
     [MemoryPackConstructor]
     public SwiftSparseMapState(int[] denseKeys, T[] denseValues)

@@ -19,25 +19,14 @@ using SwiftCollections.Utility;
 namespace SwiftCollections;
 
 /// <summary>
-/// Represents a high-performance set that stores unique values in a densely packed array
-/// while providing O(1) lookups via an internal hash map.
+/// Stores unique values in dense storage with hash-based membership.
 /// </summary>
-/// <remarks>
-/// <para>
-/// <see cref="SwiftPackedSet{T}"/> maintains values in a contiguous array for extremely
-/// cache-friendly iteration while using a hash-based lookup table to guarantee fast
-/// membership tests and removals.
-/// </para>
-/// <para>
-/// Removal uses a swap-back strategy that keeps the dense storage contiguous but does not
-/// preserve ordering. As a result, iteration order is not guaranteed to remain stable.
-/// </para>
-/// <para>
-/// This structure is commonly used in high-performance systems such as ECS (Entity Component Systems)
-/// where dense iteration speed is critical.
-/// </para>
-/// </remarks>
 /// <typeparam name="T">The type of elements contained in the set.</typeparam>
+/// <remarks>
+/// Instances require external synchronization; keys and elements must keep equality/hash identity stable while
+/// stored. Copies are shallow. Removal swaps the last dense element into the removed slot, so indices and
+/// ordering are unstable. Do not write Dense directly; doing so bypasses the membership lookup.
+/// </remarks>
 [Serializable]
 [JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
@@ -79,15 +68,13 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <summary>
     /// Initializes a new instance of the SwiftPackedSet class with the specified initial capacity.
     /// </summary>
+    /// <param name="capacity">Requested storage capacity; values below DefaultCapacity use the minimum
+    /// allocation. Larger values round up. Keep requests below 2^30, where the capacity helper returns a
+    /// sentinel.</param>
     /// <remarks>
-    /// The actual capacity is rounded up to the next power of two greater than or equal to the specified value, 
+    /// The actual capacity is rounded up to the next power of two greater than or equal to the specified value,
     /// unless the specified value is less than or equal to the default capacity.
     /// </remarks>
-    /// <param name="capacity">
-    /// The initial number of elements that the set can contain before resizing. 
-    /// If less than or equal to the default capacity, the default capacity is used. 
-    /// Must be non-negative.
-    /// </param>
     public SwiftPackedSet(int capacity)
     {
         capacity = capacity <= DefaultCapacity
@@ -101,7 +88,14 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <summary>
     /// Initializes a new instance of the SwiftPackedSet class with the specified array state.
     /// </summary>
-    /// <param name="state">The state object that provides the initial data and configuration for the set. Cannot be null.</param>
+    /// <param name="state">The state whose non-null Items array is copied and indexed. Items must be non-null and
+    /// unique under Swift default equality.</param>
+    /// <exception cref="T:System.ArgumentNullException">state.Items is null, including a default
+    /// state.</exception>
+    /// <remarks>
+    /// Shallow-copies items and reconstructs default equality and storage. Duplicate items are not validated
+    /// against the dense count; supply unique non-null items.
+    /// </remarks>
     [MemoryPackConstructor]
     public SwiftPackedSet(SwiftArrayState<T> state)
     {
@@ -116,8 +110,9 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     #region Properties
 
     /// <summary>
-    /// Gets the number of elements contained in the collection.
+    /// Gets the number of live entries.
     /// </summary>
+    /// <value>The count of stored elements or mappings, excluding spare storage and deleted slots.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Count => _count;
@@ -125,6 +120,8 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <summary>
     /// Gets the total number of elements that the collection can hold without resizing.
     /// </summary>
+    /// <value>The allocated number of storage slots; insertion can resize before this many entries are
+    /// live.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Capacity => _dense.Length;
@@ -132,11 +129,15 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <summary>
     /// Gets a value indicating whether access to the collection is synchronized (thread safe).
     /// </summary>
+    /// <value>false.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public bool IsSynchronized => false;
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Gets the external synchronization object.
+    /// </summary>
+    /// <value>A lazily allocated lock object. Callers must coordinate all related access themselves.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public object SyncRoot => _syncRoot ??= new object();
@@ -144,21 +145,32 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <summary>
     /// Gets the underlying dense array of elements.
     /// </summary>
+    /// <value>The live dense backing array; only indices below Count are live.</value>
+    /// <remarks>
+    /// Borrowed mutable storage, including unused slots. Mutations can reorder elements; capacity changes detach
+    /// old arrays. Writing values directly can corrupt the lookup invariant and bypass version checks.
+    /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     public T[] Dense => _dense;
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Gets whether the collection rejects all mutations.
+    /// </summary>
+    /// <value>false.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public bool IsReadOnly => false;
 
     /// <summary>
-    /// Gets or sets the current state of the array, including its items and order.
+    /// Gets a shallow item snapshot for serialization.
     /// </summary>
+    /// <value>A state containing copied live items in dense storage order; reference-type elements remain
+    /// shared.</value>
     /// <remarks>
-    /// Use this property to capture or restore the array's contents and structure. 
-    /// Setting this property replaces the entire array with the provided state.
+    /// Restore rebuilds storage and default comparers; capacity, hash slots, custom comparers and version are not
+    /// serialized. Packed state requires distinct non-null values; duplicate state entries are currently copied
+    /// into dense storage without deduplication.
     /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
@@ -202,20 +214,31 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
 
     #region Core Operations
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Checks whether a matching live entry exists.
+    /// </summary>
+    /// <param name="value">The element or value; stored reference values are not cloned.</param>
+    /// <returns>true if a matching live entry exists; otherwise false. No mutation.</returns>
     public bool Contains(T value)
         => _lookup.ContainsKey(value);
 
     /// <summary>
     /// Returns a read-only span over the populated dense portion of the set.
     /// </summary>
+    /// <returns>A borrowed read-only span of the first Count dense elements.</returns>
+    /// <remarks>
+    /// No copy or allocation. Removal reorders dense elements and growth detaches old storage. Do not retain
+    /// across mutations; read-only does not freeze owner writes.
+    /// </remarks>
     public ReadOnlySpan<T> AsReadOnlySpan() => _dense.AsSpan(0, _count);
 
     /// <summary>
-    /// Determines whether the <see cref="SwiftPackedSet{T}"/> contains an element that matches the conditions defined by the specified predicate.
+    /// Determines whether the <see cref="T:SwiftCollections.SwiftPackedSet`1" /> contains an element that matches
+    /// the conditions defined by the specified predicate.
     /// </summary>
-    /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
-    /// <returns><c>true</c> if the <see cref="SwiftPackedSet{T}"/> contains one or more elements that match the specified predicate; otherwise, <c>false</c>.</returns>
+    /// <param name="match">The non-null predicate evaluated in dense order; must not mutate this set.</param>
+    /// <returns>true if a predicate match exists; otherwise false.</returns>
+    /// <exception cref="T:System.ArgumentNullException">match is null.</exception>
     public bool Exists(Predicate<T> match)
     {
         ChronicleGuard.ThrowIfNull(match, nameof(match));
@@ -230,10 +253,13 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     }
 
     /// <summary>
-    /// Searches for an element that matches the conditions defined by the specified predicate, and returns the first matching element in dense iteration order.
+    /// Searches for an element that matches the conditions defined by the specified predicate, and returns the
+    /// first matching element in dense iteration order.
     /// </summary>
-    /// <param name="match">The predicate that defines the conditions of the element to search for.</param>
-    /// <returns>The first element that matches the conditions defined by the specified predicate, if found; otherwise, the default value for type <typeparamref name="T"/>.</returns>
+    /// <param name="match">The non-null predicate evaluated in dense order; must not mutate this set.</param>
+    /// <returns>The first dense-order match, or default(T) if none; a stored default is indistinguishable from
+    /// absence.</returns>
+    /// <exception cref="T:System.ArgumentNullException">match is null.</exception>
     public T Find(Predicate<T> match)
     {
         ChronicleGuard.ThrowIfNull(match, nameof(match));
@@ -247,7 +273,13 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
         return default!;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Adds an element or mapping without replacing an existing equal key.
+    /// </summary>
+    /// <param name="value">The element or value; stored reference values are not cloned.</param>
+    /// <returns>true if inserted; false for an existing equal element, with contents and capacity
+    /// unchanged.</returns>
+    /// <exception cref="T:System.ArgumentNullException">A required key or element is null.</exception>
     public bool Add(T value)
     {
         if (_lookup.ContainsKey(value))
@@ -264,9 +296,18 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
         return true;
     }
 
+    /// <summary>
+    /// Adds an element through the implemented collection interface.
+    /// </summary>
+    /// <param name="item">The element to compare, add or remove; reference values are not cloned.</param>
     void ICollection<T>.Add(T item) => Add(item);
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Removes one matching live entry.
+    /// </summary>
+    /// <param name="value">The element or value; stored reference values are not cloned.</param>
+    /// <returns>true if the matching element was removed using swap-back; false for an absent or null value, with
+    /// contents unchanged.</returns>
     public bool Remove(T value)
     {
         if (!_lookup.TryGetValue(value, out int index))
@@ -290,7 +331,13 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
         return true;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Removes all live entries while preserving reusable capacity.
+    /// </summary>
+    /// <remarks>
+    /// Removes live entries while preserving capacity. Ordinary clearing resets active table metadata and stored
+    /// references.
+    /// </remarks>
     public void Clear()
     {
         if (_count == 0) return;
@@ -306,8 +353,12 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <summary>
     /// Removes all elements, optionally releasing references throughout retained backing storage.
     /// </summary>
-    /// <param name="clearRetainedReferences">If true, also releases references outside the live range; otherwise uses ordinary clearing.</param>
-    /// <remarks>Capacity is preserved. Full reference cleanup can take time proportional to retained capacity.</remarks>
+    /// <param name="clearRetainedReferences">If true, also releases references outside the live range; otherwise
+    /// uses ordinary clearing.</param>
+    /// <remarks>
+    /// Removes live entries while preserving capacity. The Boolean overload can additionally release references
+    /// in unused storage.
+    /// </remarks>
     public void Clear(bool clearRetainedReferences)
     {
         if (clearRetainedReferences && _clearReleasedSlots)
@@ -325,12 +376,13 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <summary>
     /// Ensures that the internal storage has at least the specified capacity, expanding it if necessary.
     /// </summary>
+    /// <param name="capacity">Requested storage capacity; values below DefaultCapacity use the minimum
+    /// allocation. Larger values round up. Keep requests below 2^30, where the capacity helper returns a
+    /// sentinel.</param>
     /// <remarks>
-    /// If the current capacity is less than the specified value, the internal storage is resized to
-    /// the next power of two greater than or equal to the specified capacity. 
-    /// Existing elements are preserved.
+    /// Grows storage only when needed; existing values survive. Capacity is storage size, not an insertion count
+    /// guarantee. Keep requests below 2^30; large allocations may fail.
     /// </remarks>
-    /// <param name="capacity">The minimum number of elements that the internal storage should be able to hold. Must be non-negative.</param>
     public void EnsureCapacity(int capacity)
     {
         int newCapacity = SwiftHashTools.NextPowerOfTwo(capacity);
@@ -347,9 +399,25 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
 
     #region Enumeration
 
-    /// <inheritdoc cref="IEnumerable.GetEnumerator()"/>
+    /// <summary>
+    /// Creates an enumerator over the live entries.
+    /// </summary>
+    /// <returns>A value-type enumerator in dense storage order.</returns>
+    /// <remarks>
+    /// Mutation versions are checked by MoveNext and Reset. Ordering is not a persistence contract.
+    /// </remarks>
     public SwiftPackedSetEnumerator GetEnumerator() => new(this);
+    /// <summary>
+    /// Creates an enumerator through the implemented interface.
+    /// </summary>
+    /// <returns>An enumerator with the concrete collection's ordering and mutation rules. Interface dispatch may
+    /// box the value-type enumerator.</returns>
     IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
+    /// <summary>
+    /// Creates an enumerator through the implemented interface.
+    /// </summary>
+    /// <returns>An enumerator with the concrete collection's ordering and mutation rules. Interface dispatch may
+    /// box the value-type enumerator.</returns>
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
 
@@ -358,7 +426,7 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
 
     #region Clone
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public void CloneTo(ICollection<T> output)
     {
         ChronicleGuard.ThrowIfNull(output, nameof(output));
@@ -369,7 +437,21 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
             output.Add(_dense[i]);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Copies live elements into caller-owned storage.
+    /// </summary>
+    /// <param name="array">The caller-owned destination; only the copied range is overwritten.</param>
+    /// <param name="arrayIndex">The zero-based destination offset, from zero through array.Length, with remaining
+    /// space for Count elements.</param>
+    /// <exception cref="T:System.ArgumentNullException">array is null.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">arrayIndex is outside zero through
+    /// array.Length.</exception>
+    /// <exception cref="T:System.ArgumentException">There is insufficient remaining space or the array shape/type
+    /// is unsupported.</exception>
+    /// <remarks>
+    /// Copies Count live entries in dense storage order into existing caller storage; does not append or clear
+    /// the destination. Incompatible array elements can leave a partial copy.
+    /// </remarks>
     public void CopyTo(T[] array, int arrayIndex)
     {
         ChronicleGuard.ThrowIfNull(array, nameof(array));
@@ -383,7 +465,16 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
 
     #region ISet<T> Implementations
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Removes elements belonging to the other input.
+    /// </summary>
+    /// <param name="other">The non-null sequence whose distinct elements define the other set; the sequence is
+    /// consumed, not retained.</param>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Removes members of other; self-exclusion clears this set. Input is consumed without retaining its storage.
+    /// Enumeration or hashing failures may leave partial mutation; no rollback is guaranteed.
+    /// </remarks>
     public void ExceptWith(IEnumerable<T> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -400,7 +491,16 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
             Remove(item);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Retains elements belonging to both inputs.
+    /// </summary>
+    /// <param name="other">The non-null sequence whose distinct elements define the other set; the sequence is
+    /// consumed, not retained.</param>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Retains only members also in other; self-intersection changes nothing. Input is consumed without retaining
+    /// its storage. Enumeration or hashing failures may leave partial mutation; no rollback is guaranteed.
+    /// </remarks>
     public void IntersectWith(IEnumerable<T> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -418,7 +518,18 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
         }
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Checks for a subset with fewer distinct elements.
+    /// </summary>
+    /// <param name="other">The non-null sequence whose distinct elements define the other set; the sequence is
+    /// consumed, not retained.</param>
+    /// <returns>true if this set is a subset of other with fewer distinct elements; otherwise false. This set is
+    /// not mutated.</returns>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Uses this set's equality semantics. Duplicate input values do not change set membership; temporary set
+    /// allocation may occur.
+    /// </remarks>
     public bool IsProperSubsetOf(IEnumerable<T> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -435,7 +546,18 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
         return true;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Checks for a superset with more distinct elements.
+    /// </summary>
+    /// <param name="other">The non-null sequence whose distinct elements define the other set; the sequence is
+    /// consumed, not retained.</param>
+    /// <returns>true if this set is a superset of other with more distinct elements; otherwise false. This set is
+    /// not mutated.</returns>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Uses this set's equality semantics. Duplicate input values do not change set membership; temporary set
+    /// allocation may occur.
+    /// </remarks>
     public bool IsProperSupersetOf(IEnumerable<T> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -452,7 +574,18 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
         return true;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Checks whether all stored elements belong to the other input.
+    /// </summary>
+    /// <param name="other">The non-null sequence whose distinct elements define the other set; the sequence is
+    /// consumed, not retained.</param>
+    /// <returns>true if every element of this set belongs to other; otherwise false. This set is not
+    /// mutated.</returns>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Uses this set's equality semantics. Duplicate input values do not change set membership; temporary set
+    /// allocation may occur.
+    /// </remarks>
     public bool IsSubsetOf(IEnumerable<T> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -469,7 +602,18 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
         return true;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Checks whether all other-input elements are stored here.
+    /// </summary>
+    /// <param name="other">The non-null sequence whose distinct elements define the other set; the sequence is
+    /// consumed, not retained.</param>
+    /// <returns>true if every distinct element of other belongs to this set; otherwise false. This set is not
+    /// mutated.</returns>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Uses this set's equality semantics. Duplicate input values do not change set membership; temporary set
+    /// allocation may occur.
+    /// </remarks>
     public bool IsSupersetOf(IEnumerable<T> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -481,7 +625,17 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
         return true;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Checks whether at least one element is shared.
+    /// </summary>
+    /// <param name="other">The non-null sequence whose distinct elements define the other set; the sequence is
+    /// consumed, not retained.</param>
+    /// <returns>true if at least one element is shared; otherwise false. This set is not mutated.</returns>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Uses this set's equality semantics. Duplicate input values do not change set membership; temporary set
+    /// allocation may occur.
+    /// </remarks>
     public bool Overlaps(IEnumerable<T> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -493,7 +647,18 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
         return false;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Checks whether both inputs contain the same distinct elements.
+    /// </summary>
+    /// <param name="other">The non-null sequence whose distinct elements define the other set; the sequence is
+    /// consumed, not retained.</param>
+    /// <returns>true if both sets contain exactly the same distinct elements; otherwise false. This set is not
+    /// mutated.</returns>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Uses this set's equality semantics. Duplicate input values do not change set membership; temporary set
+    /// allocation may occur.
+    /// </remarks>
     public bool SetEquals(IEnumerable<T> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -510,7 +675,17 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
         return true;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Retains elements belonging to exactly one input.
+    /// </summary>
+    /// <param name="other">The non-null sequence whose distinct elements define the other set; the sequence is
+    /// consumed, not retained.</param>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Keeps elements belonging to exactly one input; duplicate input occurrences are treated once.
+    /// Self-comparison clears this set. Input is consumed without retaining its storage. Enumeration or hashing
+    /// failures may leave partial mutation; no rollback is guaranteed.
+    /// </remarks>
     public void SymmetricExceptWith(IEnumerable<T> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));
@@ -530,7 +705,17 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
         }
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Adds elements belonging to the other input.
+    /// </summary>
+    /// <param name="other">The non-null sequence whose distinct elements define the other set; the sequence is
+    /// consumed, not retained.</param>
+    /// <exception cref="T:System.ArgumentNullException">other is null.</exception>
+    /// <remarks>
+    /// Adds members of other, preserving existing members and ignoring duplicates. Input is consumed without
+    /// retaining its storage. Enumeration or hashing failures may leave partial mutation; no rollback is
+    /// guaranteed.
+    /// </remarks>
     public void UnionWith(IEnumerable<T> other)
     {
         ChronicleGuard.ThrowIfNull(other, nameof(other));

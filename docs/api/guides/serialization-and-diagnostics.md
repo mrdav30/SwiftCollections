@@ -29,6 +29,13 @@ writes a `State` property and invokes the collection's explicit state
 constructor when restoring it. State validation belongs to that collection; this
 is distinct from populating an existing `IRecordable` runtime shell.
 
+Readonly state structs are not deeply immutable. Their constructors retain
+supplied arrays; some normalize null arrays to empty arrays, while default
+struct values bypass those constructors. Collection `State` getters allocate
+shallow snapshots, so their array storage is independent but referenced elements
+remain shared. Validate externally supplied dimensions, IDs and free-slot
+metadata against the concrete collection's restore contract.
+
 The factory discovers the declared state contract with reflection and compiles a
 constructor delegate. A state value is an explicit schema, not an arbitrary
 object-graph discovery mechanism. See the
@@ -53,6 +60,11 @@ SwiftList<int> restored = JsonSerializer.Deserialize<SwiftList<int>>(json)!;
 For dictionaries and sets, comparers are not serialized. Restoring state selects
 the collection's default comparer; reapply a custom comparer explicitly when
 required. Do not use runtime hash codes as a persisted identity.
+
+`SwiftSortedList<T>` also restores the default comparer, but does not re-sort its
+stored items. Restore only default-ordered items, or install the original custom
+comparer before performing ordering-dependent operations. A descending snapshot
+restored under the default ascending comparer can otherwise fail lookup.
 
 ## Diagnostics
 

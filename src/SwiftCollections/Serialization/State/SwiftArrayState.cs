@@ -12,28 +12,33 @@ using MemoryPack;
 namespace SwiftCollections;
 
 /// <summary>
-/// Represents an immutable snapshot of an array of items of the specified type.
+/// Stores explicit serialized state for the owning collection.
 /// </summary>
-/// <remarks>
-/// This struct is intended for scenarios where a value-type representation of an array is needed, such as serialization or state management. 
-/// The array referenced by the Items field should not be modified after construction to preserve immutability.
-/// </remarks>
 /// <typeparam name="T">The type of elements contained in the array.</typeparam>
+/// <remarks>
+/// Readonly fields retain mutable arrays; this struct is not deeply immutable. Constructors retain arrays without
+/// copying or validation. default(TState) bypasses constructors and leaves array fields null. Collection State
+/// getters allocate shallow snapshots; restore behavior and validation belong to each collection.
+/// </remarks>
 [Serializable]
 [MemoryPackable]
 public readonly partial struct SwiftArrayState<T>
 {
     /// <summary>
-    /// Gets the array of items contained in the collection.
+    /// Stores retained element data; array contents remain mutable and default state may contain null.
     /// </summary>
     [JsonInclude]
     [MemoryPackInclude]
     public readonly T[] Items;
 
     /// <summary>
-    /// Initializes a new instance of the SwiftArrayState class with the specified items.
+    /// Creates a state value by retaining the supplied arrays and metadata.
     /// </summary>
-    /// <param name="items">The array of items to initialize the state with. Cannot be null.</param>
+    /// <param name="items">The items array, retained without copying. Null is stored as supplied.</param>
+    /// <remarks>
+    /// Performs no consistency checks and allocates no snapshot copy. Mutating a supplied array mutates this
+    /// state.
+    /// </remarks>
     [JsonConstructor]
     [MemoryPackConstructor]
     public SwiftArrayState(T[] items)

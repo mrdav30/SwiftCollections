@@ -19,38 +19,14 @@ using SwiftCollections.Utility;
 namespace SwiftCollections;
 
 /// <summary>
-/// Represents a high-performance sparse map that stores values indexed by externally supplied integer keys.
-/// Provides O(1) Add, Remove, Contains, and lookup operations while maintaining densely packed storage
-/// for cache-friendly iteration.
+/// Stores values for externally owned non-negative integer IDs in parallel dense arrays.
 /// </summary>
-/// <remarks>
-/// Unlike <see cref="SwiftSlotMap{T}"/>, which internally assigns and manages item indices,
-/// <see cref="SwiftSparseMap{T}"/> is externally keyed. The caller supplies the integer key
-/// (for example, an entity ID or handle) used to index the value.
-///
-/// Internally, the container maintains:
-/// <list type="bullet">
-///     <item>
-///         <description>A sparse lookup table mapping keys to dense indices.</description>
-///     </item>
-///     <item>
-///         <description>A dense array of keys.</description>
-///     </item>
-///     <item>
-///         <description>A dense array of values.</description>
-///     </item>
-/// </list>
-///
-/// Removal uses a swap-back strategy to keep dense storage contiguous. As a result,
-/// iteration order is not guaranteed to remain stable.
-///
-/// Keys are used as direct indices into the sparse lookup table, so memory usage scales
-/// with the highest stored key rather than the number of stored values. This container is
-/// intended for compact, non-negative IDs such as entity handles or slot indices. It is
-/// not a good fit for arbitrary hashes or widely spaced keys; for those workloads prefer
-/// <c>SwiftDictionary&lt;TKey, TValue&gt;</c>.
-/// </remarks>
 /// <typeparam name="T">Value type stored by key.</typeparam>
+/// <remarks>
+/// Copies are shallow and instances require external synchronization. Enumeration follows dense order. Removal
+/// swaps the final dense entry into the gap; dense indices are unstable. Sparse storage scales with the highest
+/// ID, not Count. Direct key writes corrupt membership and bypass version checks.
+/// </remarks>
 [Serializable]
 [JsonConverter(typeof(StateJsonConverterFactory))]
 [MemoryPackable]
@@ -104,11 +80,11 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     /// <summary>
     /// Initializes a new sparse map with the specified sparse and dense capacities.
     /// </summary>
-    /// <param name="sparseCapacity">
-    /// Initial sparse lookup capacity. This should track the highest expected key plus one,
-    /// not the number of stored values.
-    /// </param>
-    /// <param name="denseCapacity">Initial dense storage capacity for values.</param>
+    /// <param name="sparseCapacity">The requested sparse lookup length (largest ID plus one); zero permits
+    /// initially empty storage and negative constructor capacities are rejected.</param>
+    /// <param name="denseCapacity">The requested element storage capacity; zero permits initially empty storage
+    /// and negative constructor capacities are rejected.</param>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">A requested capacity is negative.</exception>
     public SwiftSparseMap(int sparseCapacity, int denseCapacity)
     {
         ChronicleGuard.ThrowIfNegative(sparseCapacity, nameof(sparseCapacity));
@@ -132,7 +108,16 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     /// <summary>
     /// Initializes a new instance of the SwiftSparseMap class using the specified state.
     /// </summary>
-    /// <param name="state">The state object that provides the initial configuration and data for the map. Cannot be null.</param>
+    /// <param name="state">The state to restore by shallow-copying arrays. Null item arrays are rejected; IDs
+    /// must be unique, non-negative and below Int32.MaxValue.</param>
+    /// <exception cref="T:System.ArgumentNullException">A required state array is null.</exception>
+    /// <exception cref="T:System.ArgumentException">Dense key/value lengths differ, a key is negative, or a key
+    /// is duplicated.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">A key is Int32.MaxValue and cannot be directly
+    /// indexed.</exception>
+    /// <remarks>
+    /// Input arrays are copied, not retained. Default state has null arrays and is rejected.
+    /// </remarks>
     [MemoryPackConstructor]
     public SwiftSparseMap(SwiftSparseMapState<T> state)
     {
@@ -150,6 +135,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     /// <summary>
     /// Gets the number of elements contained in the collection.
     /// </summary>
+    /// <value>The number of live entries, excluding gaps and spare storage.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Count => _count;
@@ -157,14 +143,16 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     /// <summary>
     /// Capacity of the dense arrays (Keys/Values storage).
     /// </summary>
+    /// <value>The allocated dense-array length; only the first Count entries are live.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int DenseCapacity => _denseKeys.Length;
 
     /// <summary>
-    /// Capacity of the sparse array (max key+1 that can be mapped without resizing).
-    /// Memory usage grows with this capacity.
+    /// Capacity of the sparse array (max key+1 that can be mapped without resizing). Memory usage grows with this
+    /// capacity.
     /// </summary>
+    /// <value>The lookup-array length; directly indexed IDs must be below this length or require growth.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int SparseCapacity => _sparse.Length;
@@ -172,6 +160,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     /// <summary>
     /// Gets a value indicating whether access to the collection is synchronized (thread safe).
     /// </summary>
+    /// <value>false.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public bool IsSynchronized => false;
@@ -179,9 +168,10 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     /// <summary>
     /// Gets an object that can be used to synchronize access to the collection.
     /// </summary>
+    /// <value>A lazily allocated synchronization object; access is not locked automatically.</value>
     /// <remarks>
-    /// Use this object to lock the collection during multithreaded operations to ensure thread safety. 
-    /// The returned object is unique to this collection instance.
+    /// Use this object to lock the collection during multithreaded operations to ensure thread safety. The
+    /// returned object is unique to this collection instance.
     /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
@@ -190,8 +180,10 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     /// <summary>
     /// Returns the dense keys array (valid range: [0..Count)).
     /// </summary>
+    /// <value>A borrowed array including spare slots in dense order.</value>
     /// <remarks>
-    /// Prefer collection APIs. Direct key mutation must preserve the dense/sparse lookup invariants; invalid edits may fail fast.
+    /// No copy or allocation. Structural operations can reorder or replace dense storage; do not retain across
+    /// them. Key writes are not validated and can corrupt the sparse lookup.
     /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
@@ -200,10 +192,10 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     /// <summary>
     /// Gets a span containing the keys currently stored in the collection.
     /// </summary>
+    /// <value>A borrowed span of Count live entries in dense order.</value>
     /// <remarks>
-    /// The returned span provides a view of the underlying key data and reflects the current state of the collection. 
-    /// Prefer collection APIs. Direct key mutation must preserve the dense/sparse lookup invariants; invalid edits may fail fast.
-    /// The span is only valid as long as the underlying collection is not modified.
+    /// No copy or allocation. Structural operations can reorder or replace dense storage; do not retain across
+    /// them. Key writes are not validated and can corrupt the sparse lookup.
     /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
@@ -212,6 +204,11 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     /// <summary>
     /// Returns the dense values array (valid range: [0..Count)).
     /// </summary>
+    /// <value>A borrowed array including spare slots in dense order.</value>
+    /// <remarks>
+    /// No copy or allocation. Structural operations can reorder or replace dense storage; do not retain across
+    /// them. Value writes are visible immediately and bypass enumerator version checks.
+    /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     public T[] DenseValues => _denseValues;
@@ -219,20 +216,26 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     /// <summary>
     /// Gets a span containing the current values in the collection.
     /// </summary>
+    /// <value>A borrowed span of Count live entries in dense order.</value>
     /// <remarks>
-    /// The returned span reflects the live contents of the collection up to the current count.
-    /// Modifying the span will update the underlying collection data. 
-    /// The span length is equal to the number of elements currently stored.
+    /// No copy or allocation. Structural operations can reorder or replace dense storage; do not retain across
+    /// them. Value writes are visible immediately and bypass enumerator version checks.
     /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     public Span<T> Values => _denseValues.AsSpan(0, _count);
 
     /// <summary>
-    /// Gets/sets the value for a key. Setting:
-    /// - overwrites if present
-    /// - inserts if not present
+    /// Gets/sets the value for a key. Setting: - overwrites if present - inserts if not present
     /// </summary>
+    /// <param name="key">The externally owned non-negative ID, below Int32.MaxValue; inserting requires lookup
+    /// storage proportional to ID plus one.</param>
+    /// <value>The stored value. Setting an absent key inserts it; setting an existing key replaces its
+    /// value.</value>
+    /// <exception cref="T:System.Collections.Generic.KeyNotFoundException">The getter key is absent, negative, or
+    /// outside the sparse lookup.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">An insertion key is negative or
+    /// Int32.MaxValue.</exception>
     [JsonIgnore]
     [MemoryPackIgnore]
     public T this[int key]
@@ -269,12 +272,12 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     }
 
     /// <summary>
-    /// Gets or sets the current state of the sparse map, including the used dense keys and values.
+    /// Gets a shallow snapshot of storage and allocation metadata.
     /// </summary>
+    /// <value>A state with copied arrays; referenced elements remain shared.</value>
     /// <remarks>
-    /// The state includes only the active elements in the map. 
-    /// Setting this property replaces the current contents with the provided state. 
-    /// The setter is intended for internal use, such as serialization or deserialization scenarios.
+    /// Stores live dense entries in order and rebuilds sparse membership on restore. Negative/duplicate IDs and
+    /// inconsistent map key/value lengths are rejected.
     /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
@@ -350,8 +353,10 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     /// <summary>
     /// Determines whether the collection contains the specified key.
     /// </summary>
-    /// <param name="key">The key to locate in the collection.</param>
-    /// <returns>true if the collection contains an element with the specified key; otherwise, false.</returns>
+    /// <param name="key">The externally owned non-negative ID, below Int32.MaxValue; inserting requires lookup
+    /// storage proportional to ID plus one.</param>
+    /// <returns>true if the requested live slot, token, ID or value exists; false for absent/out-of-range inputs.
+    /// No mutation.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ContainsKey(int key)
     {
@@ -360,9 +365,14 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     }
 
     /// <summary>
-    /// Adds a key/value only if the key is not present.
-    /// Returns false if already present.
+    /// Adds a key/value only if the key is not present. Returns false if already present.
     /// </summary>
+    /// <param name="key">The externally owned non-negative ID, below Int32.MaxValue; inserting requires lookup
+    /// storage proportional to ID plus one.</param>
+    /// <param name="value">The value to store without cloning.</param>
+    /// <returns>true if inserted; false if the ID already exists, preserving the existing value. TryAdd still
+    /// throws for invalid ID ranges or allocation failure.</returns>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">The ID is negative or Int32.MaxValue.</exception>
     public bool TryAdd(int key, T value)
     {
         EnsureSparseCapacity(GetRequiredSparseCapacity(key));
@@ -381,20 +391,25 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     }
 
     /// <summary>
-    /// Adds or overwrites (same behavior as indexer set).
+    /// Inserts or overwrites the value for an ID.
     /// </summary>
+    /// <param name="key">The externally owned non-negative ID, below Int32.MaxValue; inserting requires lookup
+    /// storage proportional to ID plus one.</param>
+    /// <param name="value">The value to store without cloning.</param>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">The ID is negative or Int32.MaxValue.</exception>
+    /// <remarks>
+    /// This Add form is an upsert. Use TryAdd to preserve an existing mapping.
+    /// </remarks>
     public void Add(int key, T value) => this[key] = value;
 
     /// <summary>
     /// Attempts to retrieve the value associated with the specified key.
     /// </summary>
-    /// <param name="key">The key whose associated value is to be retrieved.</param>
-    /// <param name="value">
-    /// When this method returns, contains the value associated with the specified key, if the key is found; 
-    /// otherwise, the default value for the type parameter <typeparamref name="T"/>. 
-    /// This parameter is passed uninitialized.
-    /// </param>
-    /// <returns>true if the key was found and its value was retrieved; otherwise, false.</returns>
+    /// <param name="key">The externally owned non-negative ID, below Int32.MaxValue; inserting requires lookup
+    /// storage proportional to ID plus one.</param>
+    /// <param name="value">Receives the stored value on success; default(T) on failure.</param>
+    /// <returns>true if the slot/token/ID identifies a live entry; false otherwise, with the out value set to
+    /// default(T). No mutation.</returns>
     public bool TryGetValue(int key, out T value)
     {
         if ((uint)key < (uint)_sparse.Length)
@@ -414,8 +429,10 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     /// <summary>
     /// Removes the element with the specified key from the collection, if it exists.
     /// </summary>
-    /// <param name="key">The key of the element to remove. Must be a non-negative integer within the valid range of keys.</param>
-    /// <returns>true if the element is successfully found and removed; otherwise, false.</returns>
+    /// <param name="key">The externally owned non-negative ID, below Int32.MaxValue; inserting requires lookup
+    /// storage proportional to ID plus one.</param>
+    /// <returns>true if a matching live entry was removed; false if absent or invalid, with contents unchanged.
+    /// Swap-back removal can change dense order.</returns>
     public bool Remove(int key)
     {
         if ((uint)key >= (uint)_sparse.Length) return false;
@@ -449,8 +466,8 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     /// Removes all keys and values from the collection.
     /// </summary>
     /// <remarks>
-    /// After calling this method, the collection will be empty and its Count property will be zero.
-    /// This method does not reduce the capacity of the underlying storage.
+    /// Empties the collection while preserving capacity. The Boolean overload also releases unused retained value
+    /// references when applicable.
     /// </remarks>
     public void Clear()
     {
@@ -473,8 +490,12 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     /// <summary>
     /// Removes all elements, optionally releasing references throughout retained backing storage.
     /// </summary>
-    /// <param name="clearRetainedReferences">If true, also releases references outside the live range; otherwise uses ordinary clearing.</param>
-    /// <remarks>Capacity is preserved. Full reference cleanup can take time proportional to retained capacity.</remarks>
+    /// <param name="clearRetainedReferences">If true, also releases references outside the live range; otherwise
+    /// uses ordinary clearing.</param>
+    /// <remarks>
+    /// Empties the collection while preserving capacity. The Boolean overload also releases unused retained value
+    /// references when applicable.
+    /// </remarks>
     public void Clear(bool clearRetainedReferences)
     {
         if (clearRetainedReferences && RuntimeHelpers.IsReferenceOrContainsReferences<T>())
@@ -489,12 +510,13 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     /// <summary>
     /// Ensures that the internal dense storage has at least the specified capacity, expanding it if necessary.
     /// </summary>
+    /// <param name="capacity">The minimum storage length; requests at or below the current capacity change
+    /// nothing. Keep requests below 2^30 to avoid the capacity sentinel.</param>
     /// <remarks>
-    /// If the current capacity is less than the specified value, the internal storage is resized to accommodate at least that many elements. 
-    /// Existing elements are preserved. 
-    /// The capacity is increased to the next power of two greater than or equal to the requested capacity for performance reasons.
+    /// If the current capacity is less than the specified value, the internal storage is resized to accommodate
+    /// at least that many elements. Existing elements are preserved. The capacity is increased to the next power
+    /// of two greater than or equal to the requested capacity for performance reasons.
     /// </remarks>
-    /// <param name="capacity">The minimum number of elements that the dense storage must be able to hold. Must be non-negative.</param>
     public void EnsureDenseCapacity(int capacity)
     {
         if (capacity <= _denseKeys.Length) return;
@@ -522,12 +544,13 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     /// <summary>
     /// Ensures that the internal sparse array has a capacity at least as large as the specified value.
     /// </summary>
+    /// <param name="capacity">The minimum storage length; requests at or below the current capacity change
+    /// nothing. Keep requests below 2^30 to avoid the capacity sentinel.</param>
     /// <remarks>
-    /// If the current capacity is less than the specified value, the internal storage is resized to accommodate at least that many elements. 
-    /// Existing elements are preserved. 
-    /// The capacity is increased to the next power of two greater than or equal to the requested capacity for performance reasons.
+    /// If the current capacity is less than the specified value, the internal storage is resized to accommodate
+    /// at least that many elements. Existing elements are preserved. The capacity is increased to the next power
+    /// of two greater than or equal to the requested capacity for performance reasons.
     /// </remarks>
-    /// <param name="capacity">The minimum required capacity for the internal sparse array. Must be non-negative.</param>
     public void EnsureSparseCapacity(int capacity)
     {
         if (capacity <= _sparse.Length) return;
@@ -548,12 +571,13 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     }
 
     /// <summary>
-    /// Reduces the memory usage of the collection by resizing internal storage to fit the current number of elements as closely as possible.
+    /// Reduces the memory usage of the collection by resizing internal storage to fit the current number of
+    /// elements as closely as possible.
     /// </summary>
     /// <remarks>
-    /// Call this method to minimize the collection's memory footprint after removing a significant number of elements. 
-    /// This operation may improve memory efficiency but can be an expensive operation if the collection is large. 
-    /// The method does not affect the logical contents of the collection.
+    /// Call this method to minimize the collection's memory footprint after removing a significant number of
+    /// elements. This operation may improve memory efficiency but can be an expensive operation if the collection
+    /// is large. The method does not affect the logical contents of the collection.
     /// </remarks>
     public void TrimExcess()
     {
@@ -596,9 +620,25 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
 
     #region Enumeration
 
-    /// <inheritdoc cref="IEnumerable.GetEnumerator()"/>
+    /// <summary>
+    /// Creates an enumerator over the live entries.
+    /// </summary>
+    /// <returns>A value-type enumerator over live entries in dense order.</returns>
+    /// <remarks>
+    /// MoveNext and Reset check the mutation version. Direct storage/ref writes bypass the version check.
+    /// </remarks>
     public SwiftSparseMapEnumerator GetEnumerator() => new(this);
+    /// <summary>
+    /// Creates an enumerator through the implemented interface.
+    /// </summary>
+    /// <returns>An enumerator with the concrete collection's ordering and mutation rules. Interface dispatch may
+    /// box the value-type enumerator.</returns>
     IEnumerator<KeyValuePair<int, T>> IEnumerable<KeyValuePair<int, T>>.GetEnumerator() => GetEnumerator();
+    /// <summary>
+    /// Creates an enumerator through the implemented interface.
+    /// </summary>
+    /// <returns>An enumerator with the concrete collection's ordering and mutation rules. Interface dispatch may
+    /// box the value-type enumerator.</returns>
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
 
@@ -608,21 +648,18 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     #region Helpers
 
     /// <summary>
-    /// Retrieves the dense representation of the collection as parallel arrays of keys and values, along with the number of elements contained.
+    /// Retrieves the dense representation of the collection as parallel arrays of keys and values, along with the
+    /// number of elements contained.
     /// </summary>
+    /// <param name="keys">Receives the borrowed dense backing array; only indices below count are live. Do not
+    /// modify keys.</param>
+    /// <param name="values">Receives the borrowed dense value array; only indices below count are live. Writes
+    /// bypass versioning.</param>
+    /// <param name="count">Receives the number of live entries in the returned arrays at this instant.</param>
     /// <remarks>
-    /// The arrays returned may be larger than the actual number of elements. 
-    /// Only the first <paramref name="count"/> entries in each array are valid and should be used.
+    /// Returns borrowed storage without allocation. Structural mutation can reorder or replace these arrays;
+    /// count is a snapshot, not a live binding. Do not write key arrays or retain views across mutation.
     /// </remarks>
-    /// <param name="keys">
-    /// When this method returns, contains an array of keys representing the dense mapping. 
-    /// The array length is at least as large as the number of elements returned in <paramref name="count"/>.
-    /// </param>
-    /// <param name="values">
-    /// When this method returns, contains an array of values corresponding to the keys in <paramref name="keys"/>. 
-    /// The array length is at least as large as the number of elements returned in <paramref name="count"/>.
-    /// </param>
-    /// <param name="count">When this method returns, contains the number of valid key-value pairs in the dense arrays.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void GetDense(out int[] keys, out T[] values, out int count)
     {
@@ -634,12 +671,12 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     /// <summary>
     /// Replaces the destination list contents with this map's keys in dense iteration order.
     /// </summary>
+    /// <param name="destination">The caller-owned list, cleared before receiving copied IDs; source storage is
+    /// not retained by the list.</param>
+    /// <exception cref="T:System.ArgumentNullException">destination is null.</exception>
     /// <remarks>
-    /// The destination list is reused and only grows when its current capacity is smaller than
-    /// <see cref="Count"/>. Use <see cref="CopySortedKeysTo(SwiftList{int})"/> when stable ascending
-    /// key order is required.
+    /// Clears destination before copying IDs in current dense order. The source remains unchanged.
     /// </remarks>
-    /// <param name="destination">The caller-owned list that receives the keys.</param>
     public void CopyKeysTo(SwiftList<int> destination)
     {
         ChronicleGuard.ThrowIfNull(destination, nameof(destination));
@@ -651,11 +688,12 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
     /// <summary>
     /// Replaces the destination list contents with this map's keys sorted in ascending order.
     /// </summary>
+    /// <param name="destination">The caller-owned list, cleared before receiving copied IDs; source storage is
+    /// not retained by the list.</param>
+    /// <exception cref="T:System.ArgumentNullException">destination is null.</exception>
     /// <remarks>
-    /// This method is intended for reusable hot-path scratch buffers that need deterministic key order
-    /// without constructing a persistent sorted collection.
+    /// Clears destination before copying IDs in ascending numeric order. The source remains unchanged.
     /// </remarks>
-    /// <param name="destination">The caller-owned list that receives the sorted keys.</param>
     public void CopySortedKeysTo(SwiftList<int> destination)
     {
         CopyKeysTo(destination);
@@ -683,7 +721,7 @@ public sealed partial class SwiftSparseMap<T> : IStateBacked<SwiftSparseMapState
         return slot - 1;
     }
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public void CloneTo(ICollection<T> output)
     {
         ChronicleGuard.ThrowIfNull(output, nameof(output));

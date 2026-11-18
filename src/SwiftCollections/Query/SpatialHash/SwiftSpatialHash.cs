@@ -15,10 +15,20 @@ using SwiftCollections.Utility;
 namespace SwiftCollections.Query;
 
 /// <summary>
-/// Represents a mutable spatial hash that indexes keyed bounding volumes into deterministic integer grid cells.
+/// Indexes keyed bounds in grid cells using a supplied or built-in volume mapper.
 /// </summary>
-/// <typeparam name="TKey">The key used to identify each stored entry.</typeparam>
-/// <typeparam name="TVolume">The volume type used for broad-phase registration and queries.</typeparam>
+/// <typeparam name="TKey">The stable key type; equality and hashing must remain unchanged while
+/// indexed.</typeparam>
+/// <typeparam name="TVolume">The value-type volume backend providing consistent intersection, union, equality and
+/// cost operations.</typeparam>
+/// <remarks>
+/// Mutable runtime index: synchronize all access externally, including queries that use shared scratch/stamps.
+/// Key and volume callbacks must not reenter or mutate the index. Bounds are copied and keys are retained;
+/// changing a key's equality/hash breaks lookup. Query ordering depends on current topology and mutation history;
+/// it is not sorted or a serialized order guarantee. Determinism requires deterministic keys, input order and
+/// volume/mapping arithmetic. A key is indexed once; duplicate Insert updates its bounds and returns false. A
+/// query adds each matching stored key once, independently of keys already in the destination.
+/// </remarks>
 public class SwiftSpatialHash<TKey, TVolume>
     where TKey : notnull
     where TVolume : struct, IBoundVolume<TVolume>
@@ -36,21 +46,28 @@ public class SwiftSpatialHash<TKey, TVolume>
     private int _queryStamp;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftSpatialHash{TKey, TVolume}"/> class.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.Query.SwiftSpatialHash`2" /> class.
     /// </summary>
-    /// <param name="capacity">The initial entry capacity.</param>
-    /// <param name="cellMapper">The mapper that projects volumes into deterministic cell coordinates.</param>
+    /// <param name="capacity">The requested initial storage length in entries. Non-positive values normalize to
+    /// one; growth rounds up. Keep capacities below 2^30 and within available array memory.</param>
+    /// <param name="cellMapper">The non-null mapper retained by reference. It must return consistent inclusive
+    /// ranges for insertion, update, removal and querying, without mutating this index.</param>
+    /// <exception cref="T:System.ArgumentNullException">The supplied backend is null.</exception>
     public SwiftSpatialHash(int capacity, ISpatialHashCellMapper<TVolume> cellMapper)
         : this(capacity, cellMapper, SwiftSpatialHashOptions.Default)
     {
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftSpatialHash{TKey, TVolume}"/> class.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.Query.SwiftSpatialHash`2" /> class.
     /// </summary>
-    /// <param name="capacity">The initial entry capacity.</param>
-    /// <param name="cellMapper">The mapper that projects volumes into deterministic cell coordinates.</param>
-    /// <param name="options">Spatial hash query options.</param>
+    /// <param name="capacity">The requested initial storage length in entries. Non-positive values normalize to
+    /// one; growth rounds up. Keep capacities below 2^30 and within available array memory.</param>
+    /// <param name="cellMapper">The non-null mapper retained by reference. It must return consistent inclusive
+    /// ranges for insertion, update, removal and querying, without mutating this index.</param>
+    /// <param name="options">The options copied by value. Default property padding is one;
+    /// default(SwiftSpatialHashOptions) padding is zero.</param>
+    /// <exception cref="T:System.ArgumentNullException">The supplied backend is null.</exception>
     public SwiftSpatialHash(int capacity, ISpatialHashCellMapper<TVolume> cellMapper, SwiftSpatialHashOptions options)
     {
         ChronicleGuard.ThrowIfNull(cellMapper, nameof(cellMapper));
@@ -68,19 +85,29 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// <summary>
     /// Gets the number of active entries stored in the spatial hash.
     /// </summary>
+    /// <value>The number of indexed distinct keys.</value>
     public int Count => _count;
 
     /// <summary>
     /// Gets the options used by this spatial hash.
     /// </summary>
+    /// <value>The constructor-supplied options value; later changes to the caller's copy have no effect.</value>
     public SwiftSpatialHashOptions Options { get; }
 
     /// <summary>
-    /// Inserts a new entry or replaces the bounds of an existing key.
+    /// Inserts a key and copied bounds, or updates the bounds of an existing key.
     /// </summary>
-    /// <param name="key">The entry key.</param>
-    /// <param name="bounds">The entry bounds.</param>
-    /// <returns><c>true</c> when a new key was added; <c>false</c> when an existing key was replaced.</returns>
+    /// <param name="key">The non-null stable key to insert or locate; reference keys are retained, not
+    /// cloned.</param>
+    /// <param name="bounds">The volume in the same caller-defined coordinate space and units as other indexed
+    /// bounds; copied by value. No transform is applied.</param>
+    /// <returns>true for a new key; false for an existing key whose bounds have nevertheless been
+    /// updated.</returns>
+    /// <exception cref="T:System.ArgumentNullException">key is null.</exception>
+    /// <remarks>
+    /// This operation is not transactional if key hashing, volume operations, mapping, or allocation throws.
+    /// Existing bounds may be relocated even though false is returned.
+    /// </remarks>
     public bool Insert(TKey key, TVolume bounds)
     {
         ChronicleGuard.ThrowIfNull(key, nameof(key));
@@ -104,8 +131,11 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// <summary>
     /// Removes an entry from the spatial hash.
     /// </summary>
-    /// <param name="key">The entry key.</param>
-    /// <returns><c>true</c> when the key existed and was removed; otherwise, <c>false</c>.</returns>
+    /// <param name="key">The non-null stable key to insert or locate; reference keys are retained, not
+    /// cloned.</param>
+    /// <returns>true if one matching indexed entry was removed; false if absent, with entries
+    /// unchanged.</returns>
+    /// <exception cref="T:System.ArgumentNullException">The key is null.</exception>
     public bool Remove(TKey key)
     {
         ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
@@ -125,9 +155,17 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// <summary>
     /// Updates the bounds for an existing entry.
     /// </summary>
-    /// <param name="key">The entry key.</param>
-    /// <param name="newBounds">The replacement bounds.</param>
-    /// <returns><c>true</c> when the key existed; otherwise, <c>false</c>.</returns>
+    /// <param name="key">The non-null stable key to insert or locate; reference keys are retained, not
+    /// cloned.</param>
+    /// <param name="newBounds">Replacement bounds in the same coordinate space; copied by value. No transform is
+    /// applied.</param>
+    /// <returns>true if the key exists, including unchanged bounds; false if absent, without changing
+    /// entries.</returns>
+    /// <exception cref="T:System.ArgumentNullException">The key is null.</exception>
+    /// <remarks>
+    /// Updates one matching key's bounds; absent keys change nothing. Bounds are copied by value; the caller's
+    /// original is not retained. Callback/allocation failures can leave partial mutation.
+    /// </remarks>
     public bool UpdateEntryBounds(TKey key, TVolume newBounds)
     {
         ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
@@ -142,6 +180,10 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// <summary>
     /// Determines whether the spatial hash contains the specified key.
     /// </summary>
+    /// <param name="key">The non-null stable key to insert or locate; reference keys are retained, not
+    /// cloned.</param>
+    /// <returns>true if the key is indexed; otherwise false. No entries change.</returns>
+    /// <exception cref="T:System.ArgumentNullException">key is null.</exception>
     public bool Contains(TKey key)
     {
         ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
@@ -151,6 +193,13 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// <summary>
     /// Attempts to retrieve the bounds registered for the supplied key.
     /// </summary>
+    /// <param name="key">The non-null stable key to insert or locate; reference keys are retained, not
+    /// cloned.</param>
+    /// <param name="bounds">Receives a copy of the stored bounds on success; default(TVolume) when the key is
+    /// absent.</param>
+    /// <returns>true if the key is indexed and bounds is valid; false if absent, with bounds set to default. No
+    /// entries change.</returns>
+    /// <exception cref="T:System.ArgumentNullException">key is null.</exception>
     public bool TryGetBounds(TKey key, out TVolume bounds)
     {
         ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
@@ -169,6 +218,17 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// <summary>
     /// Queries the spatial hash and returns only entries whose bounds intersect the supplied query volume.
     /// </summary>
+    /// <param name="queryBounds">The query region in the index coordinate space, copied by value; it is not
+    /// retained or transformed.</param>
+    /// <param name="results">The caller-owned mutable collection to append matching keys to. Existing entries are
+    /// preserved; no deduplication against pre-existing entries is performed.</param>
+    /// <exception cref="T:System.ArgumentNullException">results is null.</exception>
+    /// <remarks>
+    /// Appends without clearing results. Empty/no-hit queries preserve existing entries. Destination Add or
+    /// volume/backend exceptions can leave partially appended output; no rollback is provided. Do not mutate the
+    /// index from result callbacks. Visits cells in increasing X, then Y, then Z (Z fastest), suppressing repeat
+    /// visits of the same stored entry. Tests actual volume intersection after candidate gathering.
+    /// </remarks>
     public void Query(TVolume queryBounds, ICollection<TKey> results)
     {
         ChronicleGuard.ThrowIfNull(results, nameof(results));
@@ -178,6 +238,18 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// <summary>
     /// Queries the spatial hash using the supplied query volume plus the configured neighborhood padding.
     /// </summary>
+    /// <param name="queryBounds">The query region in the index coordinate space, copied by value; it is not
+    /// retained or transformed.</param>
+    /// <param name="results">The caller-owned mutable collection to append matching keys to. Existing entries are
+    /// preserved; no deduplication against pre-existing entries is performed.</param>
+    /// <exception cref="T:System.ArgumentNullException">results is null.</exception>
+    /// <remarks>
+    /// Appends without clearing results. Empty/no-hit queries preserve existing entries. Destination Add or
+    /// volume/backend exceptions can leave partially appended output; no rollback is provided. Do not mutate the
+    /// index from result callbacks. Visits cells in increasing X, then Y, then Z (Z fastest), suppressing repeat
+    /// visits of the same stored entry. Returns cell-neighborhood candidates without testing actual bounds
+    /// intersection; padding is clipped to Int32 cell-coordinate limits.
+    /// </remarks>
     public void QueryNeighborhood(TVolume queryBounds, ICollection<TKey> results)
     {
         ChronicleGuard.ThrowIfNull(results, nameof(results));
@@ -187,6 +259,14 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// <summary>
     /// Collects every entry registered in one already-mapped spatial cell.
     /// </summary>
+    /// <param name="cell">The signed integer cell coordinate to inspect; copied by value.</param>
+    /// <param name="results">The caller-owned mutable collection to append matching keys to. Existing entries are
+    /// preserved; no deduplication against pre-existing entries is performed.</param>
+    /// <exception cref="T:System.ArgumentNullException">results is null.</exception>
+    /// <remarks>
+    /// Appends all stored candidates for one cell, without testing point/volume intersection and without clearing
+    /// results. A stored entry occupies a cell at most once; existing destination duplicates are not removed.
+    /// </remarks>
     protected void CollectCellCandidates(
         SwiftSpatialHashCellIndex cell,
         ICollection<TKey> results)
@@ -202,6 +282,12 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// <summary>
     /// Ensures the spatial hash can store the specified number of entries without growing its entry storage.
     /// </summary>
+    /// <param name="capacity">The requested initial storage length in entries. Non-positive values normalize to
+    /// one; growth rounds up. Keep capacities below 2^30 and within available array memory.</param>
+    /// <remarks>
+    /// Grows only when the normalized requested length exceeds existing storage. No entries are removed; borrowed
+    /// arrays can be detached. Capacity is entry storage, not a no-allocation guarantee for later mutations.
+    /// </remarks>
     public void EnsureCapacity(int capacity)
     {
         capacity = SwiftHashTools.NextPowerOfTwo(capacity);
@@ -214,6 +300,10 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// <summary>
     /// Removes all entries and cell registrations from the spatial hash.
     /// </summary>
+    /// <remarks>
+    /// Removes all entries and retained keys while preserving reusable entry capacity. Clears occupied-cell lists
+    /// and query stamps; subsequent inserts can allocate cell lists.
+    /// </remarks>
     public void Clear()
     {
         if (_count == 0)

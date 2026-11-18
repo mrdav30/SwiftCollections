@@ -39,8 +39,11 @@ repository.
 2. Add or update tests for behavior changes, including edge cases and
    serialization state when relevant.
 3. Benchmark performance-sensitive changes against the current implementation.
-4. Add concise XML documentation for new public APIs and update the overview,
-   README, or generated API landing pages when behavior changes.
+4. Document authored public/protected APIs, including applicable parameters,
+   generic parameters, returns, property values, lifecycle and failure contracts.
+   Verify inherited comments in the rendered reference. Update conceptual guides
+   or authored landing-page overrides when behavior changes; do not edit generated
+   API pages.
 5. Do not commit `bin/`, `obj/`, test results, coverage reports, NuGet packages,
    or BenchmarkDotNet artifacts.
 
@@ -180,12 +183,37 @@ dotnet test SwiftCollections.slnx --configuration Release --no-build
 dotnet test SwiftCollections.slnx --configuration ReleaseLean --no-build
 ```
 
-Build the API site after a Release build:
+Build the API site after a Release build, using the pinned tool manifest at the
+repository root (`dotnet-tools.json`):
 
 ```bash
 dotnet tool restore
 dotnet tool run docfx docs/api/docfx.json --warningsAsErrors
 ```
+
+DocFX reads `SwiftCollections.dll` / `SwiftCollections.xml` and
+`SwiftCollections.FixedMathSharp.dll` / `SwiftCollections.FixedMathSharp.xml`
+from each project's `bin/Release/net10.0` directory. It does not select Lean or
+`netstandard2.1` metadata. Both projects emit identically named DLL/XML files in
+`bin/{Release,ReleaseLean}/{netstandard2.1,net10.0}`; check all eight assembly/XML
+pairs when changing shared API documentation. Standard-only generated
+MemoryPack APIs are not part of the Lean surface.
+
+For an inventory or reference check, start with empty generated directories
+`docs/api/obj/api` and `docs/api/obj/_site`; move previous output aside if it must
+be retained. DocFX rebuilding alone can leave pages for removed APIs. Inspect
+representative generated HTML for each family and comment pattern, and run the
+local-link and reference smoke checks in `.github/workflows/coverage.yml`.
+That workflow's publication policy remains the source of truth.
+
+Reconcile authored symbols (including protected members, partial declarations,
+operators, indexers and nested types) with generated metadata and emitted XML.
+Account separately for explicit interface members hidden by DocFX, synthesized
+constructors and generated serializer APIs. A successful build with no XML
+warnings does not prove every applicable tag or contract is present. Keep
+documentation-only investigations separate from runtime fixes and maintained
+regression tests; preserve portable reproducers, observed behavior and contract
+decisions directly in the relevant issue-tracker entries.
 
 See [AGENTS.md](AGENTS.md) for repository architecture, testing patterns,
 serialization boundaries, and benchmark guidance.

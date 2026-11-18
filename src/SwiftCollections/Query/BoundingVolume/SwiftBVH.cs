@@ -17,11 +17,16 @@ namespace SwiftCollections.Query;
 /// <summary>
 /// Represents a Bounding Volume Hierarchy (BVH) optimized for spatial queries.
 /// </summary>
+/// <typeparam name="TKey">The stable key type; equality and hashing must remain unchanged while
+/// indexed.</typeparam>
+/// <typeparam name="TVolume">The value-type volume backend providing consistent intersection, union, equality and
+/// cost operations.</typeparam>
 /// <remarks>
-/// <para>
-/// This class is not thread-safe. Concurrent access from multiple threads must be
-/// serialized externally (e.g., with a lock or by limiting access to a single thread).
-/// </para>
+/// Mutable runtime index: synchronize all access externally, including queries that use shared scratch/stamps.
+/// Key and volume callbacks must not reenter or mutate the index. Bounds are copied and keys are retained;
+/// changing a key's equality/hash breaks lookup. Query ordering depends on current topology and mutation history;
+/// it is not sorted or a serialized order guarantee. Determinism requires deterministic keys, input order and
+/// volume/mapping arithmetic. BVH permits duplicate-key leaves; use unique keys for duplicate-free results.
 /// </remarks>
 public class SwiftBVH<TKey, TVolume>
     where TKey : notnull
@@ -51,8 +56,12 @@ public class SwiftBVH<TKey, TVolume>
     #region Constructor
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftBVH{TKey, TVolume}"/> class with the specified capacity.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.Query.SwiftBVH`2" /> class with the
+    /// specified capacity.
     /// </summary>
+    /// <param name="capacity">The requested initial storage length in nodes, including internal nodes.
+    /// Non-positive values normalize to one; growth rounds up. Keep capacities below 2^30 and within available
+    /// array memory.</param>
     public SwiftBVH(int capacity)
     {
         capacity = SwiftHashTools.NextPowerOfTwo(capacity);
@@ -72,14 +81,22 @@ public class SwiftBVH<TKey, TVolume>
     /// <summary>
     /// Gets the underlying pool of nodes used in the BVH.
     /// </summary>
+    /// <value>The live owned node array, including inactive storage.</value>
     /// <remarks>
-    /// Prefer BVH APIs. Direct structural mutation must preserve tree invariants; invalid edits may fail fast.
+    /// Borrow for inspection only. Direct writes can corrupt topology, key lookup and counts. Growth replaces the
+    /// array; previously held arrays become detached. Node indices are reused after removal and clear.
     /// </remarks>
     public SwiftBVHNode<TKey, TVolume>[] NodePool => _nodePool;
 
     /// <summary>
     /// Gets the root node of the BVH.
     /// </summary>
+    /// <value>A value copy of the allocated root node, or SwiftBVHNode.Default for an empty/unallocated
+    /// root.</value>
+    /// <remarks>
+    /// Changing this returned struct does not change the tree. Child indices address NodePool and can be
+    /// invalidated or reused by mutation.
+    /// </remarks>
     public SwiftBVHNode<TKey, TVolume> RootNode => _rootNodeIndex >= 0 && _nodePool[_rootNodeIndex].IsAllocated
         ? _nodePool[_rootNodeIndex]
         : SwiftBVHNode<TKey, TVolume>.Default;
@@ -87,11 +104,13 @@ public class SwiftBVH<TKey, TVolume>
     /// <summary>
     /// Gets the index of the root node in the BVH.
     /// </summary>
+    /// <value>The current root's node-pool index; -1 when the tree is empty.</value>
     public int RootNodeIndex => _rootNodeIndex;
 
     /// <summary>
     /// Gets the total number of leaf nodes in the BVH.
     /// </summary>
+    /// <value>The number of indexed leaves, including separately inserted duplicate keys.</value>
     public int Count => _leafCount;
 
     #endregion
@@ -138,9 +157,18 @@ public class SwiftBVH<TKey, TVolume>
     }
 
     /// <summary>
-    /// Inserts a bounding volume with an associated value into the BVH.
-    /// Ensures tree balance and updates hash buckets.
+    /// Inserts a key and copied bounds.
     /// </summary>
+    /// <param name="value">The non-null stable key to insert or locate; reference keys are retained, not
+    /// cloned.</param>
+    /// <param name="bounds">The volume in the same caller-defined coordinate space and units as other indexed
+    /// bounds; copied by value. No transform is applied.</param>
+    /// <returns>true after allocating a new leaf, including when the key already exists.</returns>
+    /// <remarks>
+    /// Duplicate keys allocate additional leaves; lookup/update/removal resolve one matching leaf. Null keys are
+    /// not rejected here and can create leaves that guarded lookup/removal cannot address. Key/volume/allocation
+    /// failures can leave partial mutation; the operation is not transactional.
+    /// </remarks>
     public bool Insert(TKey value, TVolume bounds)
     {
         int newNodeIndex = AllocateNode(value, bounds, true); // Allocate new node as a leaf
@@ -262,9 +290,18 @@ public class SwiftBVH<TKey, TVolume>
     }
 
     /// <summary>
-    /// Updates the bounding volume of a node and propagates changes up the tree.
-    /// Ensures consistency in parent bounds and subtree sizes.
+    /// Updates the bounding volume of a node and propagates changes up the tree. Ensures consistency in parent
+    /// bounds and subtree sizes.
     /// </summary>
+    /// <param name="value">The non-null stable key to insert or locate; reference keys are retained, not
+    /// cloned.</param>
+    /// <param name="newBounds">Replacement bounds in the same coordinate space; copied by value. No transform is
+    /// applied.</param>
+    /// <exception cref="T:System.ArgumentNullException">The key is null.</exception>
+    /// <remarks>
+    /// Updates one matching key's bounds; absent keys change nothing. Bounds are copied by value; the caller's
+    /// original is not retained. Callback/allocation failures can leave partial mutation.
+    /// </remarks>
     public void UpdateEntryBounds(TKey value, TVolume newBounds)
     {
         ChronicleGuard.ThrowIfNullGeneric(value, nameof(value));
@@ -299,9 +336,14 @@ public class SwiftBVH<TKey, TVolume>
     }
 
     /// <summary>
-    /// Removes a value and its associated bounding volume from the BVH.
-    /// Updates tree structure and clears hash bucket entries.
+    /// Removes a value and its associated bounding volume from the BVH. Updates tree structure and clears hash
+    /// bucket entries.
     /// </summary>
+    /// <param name="value">The non-null stable key to insert or locate; reference keys are retained, not
+    /// cloned.</param>
+    /// <returns>true if one matching indexed entry was removed; false if absent, with entries
+    /// unchanged.</returns>
+    /// <exception cref="T:System.ArgumentNullException">The key is null.</exception>
     public bool Remove(TKey value)
     {
         ChronicleGuard.ThrowIfNullGeneric(value, nameof(value));
@@ -402,6 +444,13 @@ public class SwiftBVH<TKey, TVolume>
     /// <summary>
     /// Ensures the BVH has sufficient capacity, resizing the node pool and buckets if needed.
     /// </summary>
+    /// <param name="capacity">The requested initial storage length in nodes, including internal nodes.
+    /// Non-positive values normalize to one; growth rounds up. Keep capacities below 2^30 and within available
+    /// array memory.</param>
+    /// <remarks>
+    /// Grows only when the normalized requested length exceeds existing storage. No entries are removed; borrowed
+    /// arrays can be detached. Capacity is node storage, not a no-allocation guarantee for later mutations.
+    /// </remarks>
     public void EnsureCapacity(int capacity)
     {
         capacity = SwiftHashTools.NextPowerOfTwo(capacity);
@@ -453,9 +502,22 @@ public class SwiftBVH<TKey, TVolume>
     }
 
     /// <summary>
-    /// Queries the BVH for values whose bounding volumes intersect with the specified volume.
-    /// Uses a stack-based approach for efficient traversal.
+    /// Queries the BVH for values whose bounding volumes intersect with the specified volume. Uses a stack-based
+    /// approach for efficient traversal.
     /// </summary>
+    /// <param name="queryBounds">The query region in the index coordinate space, copied by value; it is not
+    /// retained or transformed.</param>
+    /// <param name="results">The caller-owned mutable collection to append matching keys to. Existing entries are
+    /// preserved; no deduplication against pre-existing entries is performed.</param>
+    /// <exception cref="T:System.ArgumentNullException">results is null.</exception>
+    /// <exception cref="T:System.InvalidOperationException">Traversal encounters an unallocated node, indicating
+    /// invalid tree state.</exception>
+    /// <remarks>
+    /// Appends without clearing results. Empty/no-hit queries preserve existing entries. Destination Add or
+    /// volume/backend exceptions can leave partially appended output; no rollback is provided. Do not mutate the
+    /// index from result callbacks. Visits right subtrees before left because traversal uses a stack. May append
+    /// duplicate keys if duplicate leaves were inserted. Internal traversal scratch can grow and allocate.
+    /// </remarks>
     public void Query(TVolume queryBounds, ICollection<TKey> results)
     {
         ChronicleGuard.ThrowIfNull(results, nameof(results));
@@ -466,13 +528,26 @@ public class SwiftBVH<TKey, TVolume>
         Query(queryBounds, results, nodeStack.Array);
     }
 
-    /// <summary>Appends matching values using caller-owned storage without growing either buffer.</summary>
+    /// <summary>
+    /// Appends matching values using caller-owned storage without growing either buffer.
+    /// </summary>
+    /// <param name="queryBounds">The query region in the index coordinate space, copied by value; it is not
+    /// retained or transformed.</param>
+    /// <param name="results">The caller-owned mutable collection to append matching keys to. Existing entries are
+    /// preserved; no deduplication against pre-existing entries is performed.</param>
+    /// <param name="traversal">Caller-owned scratch span with at least Count integers, disjoint from results
+    /// backing storage. Its contents may be overwritten and are not retained.</param>
+    /// <returns>true when traversal completed, including zero hits; false if traversal.Length or spare result
+    /// capacity is less than Count, leaving results and scratch unchanged.</returns>
+    /// <exception cref="T:System.ArgumentNullException">results is null.</exception>
+    /// <exception cref="T:System.ArgumentException">results is a SwiftList subclass or traversal overlaps its
+    /// integer backing array.</exception>
+    /// <exception cref="T:System.InvalidOperationException">Traversal encounters an unallocated tree
+    /// node.</exception>
     /// <remarks>
-    /// Requires one stack slot and one spare result slot for every live leaf.
-    /// Insufficient storage returns false and leaves the results unchanged.
-    /// Matching values use the same traversal order as the ordinary query.
-    /// Pass a plain <see cref="SwiftList{T}"/> to prevent virtual add callbacks during traversal.
-    /// The traversal span must be independent of the result array.
+    /// Requires a plain SwiftList, not a subclass. Checks worst-case space for all leaves, even if few would
+    /// match. Appends in the same order as Query without growing buffers. Insufficient space is the only false
+    /// result; invalid storage throws. Runtime volume/tree errors can leave partial output.
     /// </remarks>
     public bool TryQuery(TVolume queryBounds, SwiftList<TKey> results, Span<int> traversal)
     {
@@ -522,9 +597,14 @@ public class SwiftBVH<TKey, TVolume>
     }
 
     /// <summary>
-    /// Finds the index of a node by its value in the BVH using hash buckets.
-    /// Returns -1 if the value is not found.
+    /// Finds the index of a node by its value in the BVH using hash buckets. Returns -1 if the value is not
+    /// found.
     /// </summary>
+    /// <param name="value">The non-null stable key to insert or locate; reference keys are retained, not
+    /// cloned.</param>
+    /// <returns>The physical node index of one matching leaf, or -1 if absent. Indices can be reused after
+    /// mutation.</returns>
+    /// <exception cref="T:System.ArgumentNullException">value is null.</exception>
     public int FindEntry(TKey value)
     {
         ChronicleGuard.ThrowIfNullGeneric(value, nameof(value));
@@ -534,6 +614,10 @@ public class SwiftBVH<TKey, TVolume>
     /// <summary>
     /// Clears the BVH, resetting all nodes, buckets, and metadata.
     /// </summary>
+    /// <remarks>
+    /// Removes all entries and retained keys while preserving reusable entry capacity. Resets key lookup and
+    /// free-index metadata. Previously obtained node indices/views are no longer valid.
+    /// </remarks>
     public void Clear()
     {
         if (RootNodeIndex == -1) return;

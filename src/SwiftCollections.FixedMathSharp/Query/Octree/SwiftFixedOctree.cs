@@ -11,16 +11,29 @@ using FixedMathSharp;
 namespace SwiftCollections.Query;
 
 /// <summary>
-/// Represents a fixed-point octree optimized for deterministic hierarchical spatial queries.
+/// Indexes fixed-point bounds in a subdivided bounded world region.
 /// </summary>
+/// <typeparam name="T">The stable key type; equality and hashing must remain unchanged while indexed.</typeparam>
+/// <remarks>
+/// Mutable runtime index: synchronize all access externally, including queries that use shared scratch/stamps.
+/// Key and volume callbacks must not reenter or mutate the index. Bounds are copied and keys are retained;
+/// changing a key's equality/hash breaks lookup. Query ordering depends on current topology and mutation history;
+/// it is not sorted or a serialized order guarantee. Determinism requires deterministic keys, input order and
+/// volume/mapping arithmetic. A key is indexed once; duplicate Insert updates its bounds and returns false. A
+/// query adds each matching stored key once, independently of keys already in the destination.
+/// </remarks>
 public sealed class SwiftFixedOctree<T> : SwiftOctree<T, FixedBoundVolume>
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="SwiftFixedOctree{T}"/> class.
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.Query.SwiftFixedOctree`1" /> class.
     /// </summary>
-    /// <param name="worldBounds">The immutable world bounds covered by the octree.</param>
-    /// <param name="options">Backend-neutral octree options.</param>
-    /// <param name="minNodeSize">The minimum child-node axis length allowed for fixed-point subdivision.</param>
+    /// <param name="worldBounds">The fixed root region in caller coordinates, copied by value. All inserted entry
+    /// bounds must be fully contained, including their boundaries.</param>
+    /// <param name="options">The options copied by value. default(SwiftOctreeOptions) yields depth/capacity zero
+    /// and merging false; the tree does not validate it.</param>
+    /// <param name="minNodeSize">The strictly positive minimum child edge length in bounds coordinate units,
+    /// required on every axis before subdivision. Both fixed-point halves must meet it.</param>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">The cell/node size is not positive.</exception>
     public SwiftFixedOctree(FixedBoundVolume worldBounds, SwiftOctreeOptions options, Fixed64 minNodeSize)
         : base(worldBounds, options, new FixedBoundVolumeOctreePartitioner(minNodeSize))
     { }

@@ -21,21 +21,16 @@ namespace SwiftCollections;
 
 
 /// <summary>
-/// A high-performance, memory-efficient dictionary providing lightning-fast O(1) operations for addition, retrieval, and removal, optimized to outperform standard dictionaries.
+/// Stores unique keys and associated values in a resizable hash table.
 /// </summary>
 /// <typeparam name="TKey">Specifies the type of keys in the dictionary.</typeparam>
 /// <typeparam name="TValue">Specifies the type of values in the dictionary.</typeparam>
 /// <remarks>
-/// The comparer is not serialized. After deserialization the dictionary reverts
-/// to the same default comparer selection used by a new instance. String keys
-/// use SwiftCollections' deterministic default comparer. Object keys use a
-/// SwiftCollections comparer that hashes strings deterministically, while other
-/// object-key determinism still depends on the underlying key type's
-/// <see cref="object.GetHashCode()"/> implementation. Other key types use
-/// <see cref="EqualityComparer{TKey}.Default"/>.
-/// 
-/// If a custom comparer is required it can be reapplied using
-/// <see cref="SetComparer(IEqualityComparer{TKey})"/>.
+/// Instances require external synchronization; keys and elements must keep equality/hash identity stable while
+/// stored. Copies are shallow. Enumeration follows hash slots, not insertion or sorted order. Resize, trim, and
+/// comparer changes can reorder entries. Recognized string/object comparers may switch to randomized
+/// collision-hardening after long probes; cross-process iteration order is not guaranteed. Custom comparers
+/// define their own determinism.
 /// </remarks>
 [Serializable]
 [JsonConverter(typeof(StateJsonConverterFactory))]
@@ -67,6 +62,10 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// <summary>
     /// The array containing the entries of the dictionary.
     /// </summary>
+    /// <remarks>
+    /// Derived implementations must preserve entry flags, tombstones, hashes, Count, table masks and mutation
+    /// version. Replacing or mutating this array alone does not update those invariants.
+    /// </remarks>
     protected internal Entry[] _entries;
 
     /// <summary>
@@ -111,8 +110,8 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     private int _maxStepCount;
 
     /// <summary>
-    /// A version counter used to track modifications to the dictionary.
-    /// Incremented on mutations to detect changes during enumeration and ensure enumerator validity.
+    /// A version counter used to track modifications to the dictionary. Incremented on mutations to detect
+    /// changes during enumeration and ensure enumerator validity.
     /// </summary>
     [NonSerialized]
     protected uint _version;
@@ -128,11 +127,19 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     #region Constructors
 
     /// <summary>
-    /// Initialize a new instance of <see cref="SwiftDictionary{TKey, TValue}"/> with customizable capacity and comparer for optimal performance tailored to your needs.
+    /// Initialize a new instance of <see cref="T:SwiftCollections.SwiftDictionary`2" /> with customizable
+    /// capacity and comparer for optimal performance tailored to your needs.
     /// </summary>
     public SwiftDictionary() : this(DefaultCapacity, null) { }
 
-    /// <inheritdoc cref="SwiftDictionary()"/>
+    /// <summary>
+    /// Creates a collection using the supplied initial capacity, contents, or equality comparer.
+    /// </summary>
+    /// <param name="capacity">Requested storage capacity; values below DefaultCapacity use the minimum
+    /// allocation. Larger values round up. Keep requests below 2^30, where the capacity helper returns a
+    /// sentinel.</param>
+    /// <param name="comparer">The key equality comparer, retained by reference. Null selects the Swift
+    /// default.</param>
     public SwiftDictionary(int capacity, IEqualityComparer<TKey>? comparer = null)
     {
         Initialize(capacity, comparer);
@@ -141,7 +148,14 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         ChronicleGuard.ThrowIfNull(_comparer, nameof(_comparer));
     }
 
-    /// <inheritdoc cref="SwiftDictionary()"/>
+    /// <summary>
+    /// Creates a collection using the supplied initial capacity, contents, or equality comparer.
+    /// </summary>
+    /// <param name="dictionary">The non-null source to enumerate and shallow-copy; source storage is not
+    /// retained. Equal duplicates keep the first inserted mapping.</param>
+    /// <param name="comparer">The key equality comparer, retained by reference. Null selects the Swift
+    /// default.</param>
+    /// <exception cref="T:System.ArgumentNullException">The source is null.</exception>
     public SwiftDictionary(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey>? comparer = null)
     {
         ChronicleGuard.ThrowIfNull(dictionary, nameof(dictionary));
@@ -155,7 +169,14 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
             InsertIfNotExist(kvp.Key, kvp.Value);
     }
 
-    /// <inheritdoc cref="SwiftDictionary()"/>
+    /// <summary>
+    /// Creates a collection using the supplied initial capacity, contents, or equality comparer.
+    /// </summary>
+    /// <param name="collection">The non-null source to enumerate and shallow-copy; source storage is not
+    /// retained. Equal duplicates keep the first inserted mapping.</param>
+    /// <param name="comparer">The key equality comparer, retained by reference. Null selects the Swift
+    /// default.</param>
+    /// <exception cref="T:System.ArgumentNullException">The source is null.</exception>
     public SwiftDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey>? comparer = null)
     {
         ChronicleGuard.ThrowIfNull(collection, nameof(collection));
@@ -172,10 +193,18 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
             InsertIfNotExist(kvp.Key, kvp.Value);
     }
 
-    ///  <summary>
-    ///  Initializes a new instance of the <see cref="SwiftDictionary{TKey, TValue}"/> class with the specified <see cref="SwiftDictionaryState{TKey, TValue}"/>.
-    ///  </summary>
-    ///  <param name="state">The state containing the internal array, count, offset, and version for initialization.</param>
+    /// <summary>
+    /// Initializes a new instance of the <see cref="T:SwiftCollections.SwiftDictionary`2" /> class with the
+    /// specified <see cref="T:SwiftCollections.SwiftDictionaryState`2" />.
+    /// </summary>
+    /// <param name="state">The state whose non-null Items array is copied and indexed. Comparer and table layout
+    /// are not retained.</param>
+    /// <exception cref="T:System.ArgumentNullException">state.Items is null, including a default
+    /// state.</exception>
+    /// <remarks>
+    /// Shallow-copies items and reconstructs default equality and storage. Duplicate equal keys/items keep the
+    /// first mapping; custom comparers are not restored.
+    /// </remarks>
     [MemoryPackConstructor]
     public SwiftDictionary(SwiftDictionaryState<TKey, TValue> state)
     {
@@ -190,21 +219,29 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     #region Properties
 
     /// <summary>
-    /// Gets the number of elements contained in the dictionary.
+    /// Gets the number of live entries.
     /// </summary>
+    /// <value>The count of stored elements or mappings, excluding spare storage and deleted slots.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Count => _count;
 
     /// <summary>
-    /// Gets the total number of elements that the collection can hold without resizing.
+    /// Gets the allocated number of hash-table storage slots.
     /// </summary>
+    /// <value>The allocated number of storage slots; insertion can resize before this many entries are
+    /// live.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public int Capacity => _entries.Length;
 
-    /// <summary>Gets the maximum entry probes in a single key lookup.</summary>
-    /// <remarks>Does not include the cost of the key comparer. Sample again after resizing.</remarks>
+    /// <summary>
+    /// Gets the maximum entry probes in a single key lookup.
+    /// </summary>
+    /// <value>Twice the current table capacity, the cumulative-square lookup probe bound.</value>
+    /// <remarks>
+    /// Does not include the cost of the key comparer. Sample again after resizing.
+    /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     public uint LookupProbeLimit => (uint)_entries.Length * 2;
@@ -212,6 +249,8 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// <summary>
     /// Gets the equality comparer used to determine equality of keys in the collection.
     /// </summary>
+    /// <value>The current equality comparer; it may change after explicit replacement or collision
+    /// hardening.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public IEqualityComparer<TKey> Comparer => _comparer;
@@ -219,11 +258,15 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// <summary>
     /// Gets or sets the value associated with the specified key.
     /// </summary>
+    /// <param name="key">The key to locate or store. Null is treated as absent by lookup/removal.</param>
+    /// <value>The stored value for key; assignment replaces an existing value or inserts an absent key.</value>
+    /// <exception cref="T:System.Collections.Generic.KeyNotFoundException">No matching key exists on
+    /// get.</exception>
+    /// <exception cref="T:System.ArgumentNullException">A null key is inserted by the setter.</exception>
     /// <remarks>
-    /// Getting a value with a key that does not exist will throw an exception. 
-    /// Setting a value for a key that does not exist will add a new entry with the specified key and value.
+    /// Getting a value with a key that does not exist will throw an exception. Setting a value for a key that
+    /// does not exist will add a new entry with the specified key and value.
     /// </remarks>
-    /// <param name="key">The key whose value to get or set.</param>
     [JsonIgnore]
     [MemoryPackIgnore]
     public TValue this[TKey key]
@@ -249,7 +292,13 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         }
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Gets or sets the interface indexed value.
+    /// </summary>
+    /// <param name="obj">The key object; null is rejected and incompatible types are treated as absent by
+    /// lookup/removal.</param>
+    /// <value>The indexed element. Uses the concrete public indexer after converting supplied values to its
+    /// generic types.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     object? IDictionary.this[object obj]
@@ -294,11 +343,25 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     [MemoryPackIgnore]
     private KeyCollection? _keyCollection;
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Gets a read-only view of the dictionary keys.
+    /// </summary>
+    /// <value>A cached read-only view of the keys associated with this dictionary.</value>
+    /// <remarks>
+    /// The view keeps the dictionary alive and is not a snapshot. Count reads current dictionary state; the view
+    /// also captures the original entry array, which becomes stale after reallocation. Reacquiring the cached
+    /// property does not refresh it. Do not rely on CopyTo or value membership after resize, trim, or rehash
+    /// until the tracked view defect is corrected.
+    /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     public ICollection<TKey> Keys => _keyCollection ??= new KeyCollection(this);
 
+    /// <summary>
+    /// Gets the interface Keys.
+    /// </summary>
+    /// <value>The same cached view returned by the public Keys property, with its storage-lifetime
+    /// limitations.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     ICollection IDictionary.Keys => _keyCollection ??= new KeyCollection(this);
@@ -310,39 +373,73 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     [MemoryPackIgnore]
     private ValueCollection? _valueCollection;
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Gets a read-only view of the dictionary values.
+    /// </summary>
+    /// <value>A cached read-only view of the values associated with this dictionary.</value>
+    /// <remarks>
+    /// The view keeps the dictionary alive and is not a snapshot. Count reads current dictionary state; the view
+    /// also captures the original entry array, which becomes stale after reallocation. Reacquiring the cached
+    /// property does not refresh it. Do not rely on CopyTo or value membership after resize, trim, or rehash
+    /// until the tracked view defect is corrected.
+    /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     public ICollection<TValue> Values => _valueCollection ??= new ValueCollection(this);
 
+    /// <summary>
+    /// Gets the interface Values.
+    /// </summary>
+    /// <value>The same cached view returned by the public Values property, with its storage-lifetime
+    /// limitations.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     ICollection IDictionary.Values => _valueCollection ??= new ValueCollection(this);
 
+    /// <summary>
+    /// Gets the interface IsReadOnly.
+    /// </summary>
+    /// <value>false.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     bool ICollection<KeyValuePair<TKey, TValue>>.IsReadOnly => false;
 
+    /// <summary>
+    /// Gets the interface IsReadOnly.
+    /// </summary>
+    /// <value>false.</value>
     [JsonIgnore]
     [MemoryPackIgnore] bool IDictionary.IsReadOnly => false;
+    /// <summary>
+    /// Gets the interface IsFixedSize.
+    /// </summary>
+    /// <value>false.</value>
     bool IDictionary.IsFixedSize => false;
 
+    /// <summary>
+    /// Gets the interface IsSynchronized.
+    /// </summary>
+    /// <value>false; callers synchronize access externally.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     bool ICollection.IsSynchronized => false;
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Gets the external synchronization object.
+    /// </summary>
+    /// <value>A lazily allocated lock object. Callers must coordinate all related access themselves.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     public object SyncRoot => _syncRoot ??= new object();
 
     /// <summary>
-    /// Gets or sets the current state of the dictionary, including all key-value pairs.
+    /// Gets a shallow item snapshot for serialization.
     /// </summary>
+    /// <value>A state containing copied live items in increasing hash-slot order; reference-type elements remain
+    /// shared.</value>
     /// <remarks>
-    /// The state can be used to serialize or restore the contents of the dictionary. 
-    /// Setting this property replaces the entire contents of the dictionary with the provided state. 
-    /// The setter is intended for internal use and is not accessible to external callers.
+    /// Restore rebuilds storage and default comparers; capacity, hash slots, custom comparers and version are not
+    /// serialized. Equal duplicate keys/items keep the first inserted entry.
     /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
@@ -390,12 +487,11 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// <summary>
     /// Attempts to add the specified key and value to the dictionary.
     /// </summary>
-    /// <param name="key">The key of the element to add.</param>
-    /// <param name="value">The value of the element to add.</param>
-    /// <returns>
-    /// true if the key/value pair was added to the dictionary successfully; 
-    /// false if the key already exists.
-    /// </returns>
+    /// <param name="key">The key to locate or store. Null is rejected.</param>
+    /// <param name="value">The element or value; stored reference values are not cloned.</param>
+    /// <returns>true if inserted; false if an equal key/element already exists. Existing contents are preserved
+    /// on duplicate rejection, but a load-threshold resize may already have occurred.</returns>
+    /// <exception cref="T:System.ArgumentNullException">A required key or element is null.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public virtual bool Add(TKey key, TValue value)
     {
@@ -403,12 +499,37 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         return InsertIfNotExist(key, value);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Adds an element or mapping without replacing an existing equal key.
+    /// </summary>
+    /// <param name="item">The key/value pair, compared by key comparer and default value equality.</param>
+    /// <exception cref="T:System.ArgumentNullException">A required key or element is null.</exception>
+    /// <remarks>
+    /// Delegates to the Boolean Add form and ignores duplicate rejection; duplicate keys do not throw.
+    /// </remarks>
     public void Add(KeyValuePair<TKey, TValue> item) => Add(item.Key, item.Value);
 
+    /// <summary>
+    /// Adds an element through the implemented collection interface.
+    /// </summary>
+    /// <param name="key">The key to locate or store; must match the generic key type.</param>
+    /// <param name="value">The supplied value; must convert to the concrete generic type.</param>
     void IDictionary<TKey, TValue>.Add(TKey key, TValue value) => Add(key, value);
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Adds an element or mapping without replacing an existing equal key.
+    /// </summary>
+    /// <param name="key">The key to locate or store. Null is rejected.</param>
+    /// <param name="value">The element or value; stored reference values are not cloned.</param>
+    /// <exception cref="T:System.ArgumentNullException">A reference-type key is null, or null is supplied for a
+    /// value type that disallows it.</exception>
+    /// <exception cref="T:System.NullReferenceException">key is null and TKey is a non-nullable value type;
+    /// unboxing occurs before insertion.</exception>
+    /// <exception cref="T:System.ArgumentException">A key/value object cannot be converted to its required
+    /// generic type.</exception>
+    /// <remarks>
+    /// Delegates to the Boolean Add form and ignores duplicate rejection; duplicate keys do not throw.
+    /// </remarks>
     public void Add(object key, object? value)
     {
         ChronicleGuard.ThrowIfNullAndNullsAreIllegal(value, default(TValue));
@@ -432,13 +553,13 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     }
 
     /// <summary>
-    /// Inserts a key/value pair into the dictionary. If the key already exists and 
+    /// Inserts a key/value pair into the dictionary. If the key already exists and
     /// pair is added, or the method returns false if the key already exists.
     /// </summary>
     /// <param name="key">The key to insert or update.</param>
     /// <param name="value">The value to insert or update.</param>
     /// <returns>
-    /// true if the key/value pair was added to the dictionary successfully; 
+    /// true if the key/value pair was added to the dictionary successfully;
     /// false if the key already exists.
     /// </returns>
     /// <exception cref="ArgumentNullException">Thrown when the key is null.</exception>
@@ -505,7 +626,11 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         return true;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Removes one matching live entry.
+    /// </summary>
+    /// <param name="key">The key to locate or store. Null is treated as absent by lookup/removal.</param>
+    /// <returns>true if the matching entry was removed; false if absent, with contents unchanged. </returns>
     public virtual bool Remove(TKey key)
     {
         if (_KeyCanBeNull && key is null) return false;
@@ -542,13 +667,23 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         return false; // Item not found after full loop
     }
 
+    /// <summary>
+    /// Removes a matching element through the implemented interface.
+    /// </summary>
+    /// <param name="obj">The key object; null is rejected and incompatible types are treated as absent by
+    /// lookup/removal.</param>
     void IDictionary.Remove(object obj)
     {
         ChronicleGuard.ThrowIfNull(obj, nameof(obj));
         if (obj is TKey key) Remove(key);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Removes one matching live entry.
+    /// </summary>
+    /// <param name="item">The key/value pair, compared by key comparer and default value equality.</param>
+    /// <returns>true if the matching key/value pair was removed; false if absent, with contents unchanged.
+    /// </returns>
     public bool Remove(KeyValuePair<TKey, TValue> item)
     {
         int index = FindEntry(item.Key);
@@ -560,7 +695,13 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         return false;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Removes all live entries while preserving reusable capacity.
+    /// </summary>
+    /// <remarks>
+    /// Removes live entries while preserving capacity. Ordinary clearing resets active table metadata and stored
+    /// references.
+    /// </remarks>
     public virtual void Clear()
     {
         if ((uint)_count == 0) return;
@@ -587,8 +728,12 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// <summary>
     /// Removes all elements, optionally releasing references throughout retained backing storage.
     /// </summary>
-    /// <param name="clearRetainedReferences">If true, also releases references outside the live range; otherwise uses ordinary clearing.</param>
-    /// <remarks>Capacity is preserved. Full reference cleanup can take time proportional to retained capacity.</remarks>
+    /// <param name="clearRetainedReferences">If true, also releases references outside the live range; otherwise
+    /// uses ordinary clearing.</param>
+    /// <remarks>
+    /// Removes live entries while preserving capacity. The Boolean overload can additionally release references
+    /// in unused storage.
+    /// </remarks>
     public void Clear(bool clearRetainedReferences)
     {
         if (clearRetainedReferences && RuntimeHelpers.IsReferenceOrContainsReferences<Entry>())
@@ -616,9 +761,15 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// <summary>
     /// Ensures that the dictionary can hold up to the specified number of entries, if not it resizes.
     /// </summary>
-    /// <param name="capacity">The minimum capacity to ensure.</param>
+    /// <param name="capacity">Requested storage capacity; values below DefaultCapacity use the minimum
+    /// allocation. Larger values round up. Keep requests below 2^30, where the capacity helper returns a
+    /// sentinel.</param>
     /// <returns>The new capacity of the dictionary.</returns>
-    /// <exception cref="ArgumentOutOfRangeException">The capacity is less than zero.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">The capacity is less than zero.</exception>
+    /// <remarks>
+    /// Grows storage only when needed; existing values survive. Capacity is storage size, not an insertion count
+    /// guarantee. Keep requests below 2^30; large allocations may fail.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void EnsureCapacity(int capacity)
     {
@@ -666,8 +817,8 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     }
 
     /// <summary>
-    /// Sets the capacity of a <see cref="SwiftDictionary{TKey, TValue}"/> to the actual 
-    /// number of elements it contains, rounded up to a nearby next power of 2 value.
+    /// Sets the capacity of a <see cref="T:SwiftCollections.SwiftDictionary`2" /> to the actual number of
+    /// elements it contains, rounded up to a nearby next power of 2 value.
     /// </summary>
     public void TrimExcess()
     {
@@ -753,11 +904,18 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// <summary>
     /// Determines whether the dictionary contains an element with the specified key.
     /// </summary>
-    /// <param name="key">The key to locate in the dictionary.</param>
-    /// <returns>true if the dictionary contains an element with the specified key; otherwise, false.</returns>
+    /// <param name="key">The key to locate or store. Null is treated as absent by lookup/removal.</param>
+    /// <returns>true if a matching live entry exists; otherwise false. No mutation.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ContainsKey(TKey key) => FindEntry(key) >= 0;
 
+    /// <summary>
+    /// Checks membership through the implemented interface.
+    /// </summary>
+    /// <param name="obj">The key object; null is rejected and incompatible types are treated as absent by
+    /// lookup/removal.</param>
+    /// <returns>true if an equal live entry exists; false otherwise. Uses the concrete collection's equality
+    /// rules.</returns>
     bool IDictionary.Contains(object obj)
     {
         ChronicleGuard.ThrowIfNull(obj, nameof(obj));
@@ -766,7 +924,12 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         return false;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Checks whether a matching live entry exists.
+    /// </summary>
+    /// <param name="item">The key/value pair, compared by key comparer and default value equality.</param>
+    /// <returns>true if a matching live pair exists using key and default value equality; otherwise false. No
+    /// mutation.</returns>
     public bool Contains(KeyValuePair<TKey, TValue> item)
     {
         int index = FindEntry(item.Key);
@@ -775,7 +938,13 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         return false;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Attempts to retrieve the stored value for a key.
+    /// </summary>
+    /// <param name="key">The key to locate or store. Null is treated as absent by lookup/removal.</param>
+    /// <param name="value">Receives the stored value on success; default(TValue) on failure.</param>
+    /// <returns>true if a matching entry was found and the out value is valid; false if absent, with the out
+    /// value set to default. No mutation.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(TKey key, out TValue value)
     {
@@ -792,16 +961,18 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// <summary>
     /// Copies the elements of the collection to the specified array, starting at the given array index.
     /// </summary>
-    /// <param name="array">
-    /// The one-dimensional array of key/value pairs that is the destination of the elements copied from the collection.
-    /// The array must have zero-based indexing.
-    /// </param>
-    /// <param name="arrayIndex">The zero-based index in the destination array at which copying begins.</param>
-    /// <exception cref="ArgumentOutOfRangeException">Thrown if arrayIndex is less than 0 or greater than the length of array.</exception>
-    /// <exception cref="ArgumentException">
-    /// Thrown if the number of elements in the source collection is greater than the available space from arrayIndex to
-    /// the end of the destination array.
-    /// </exception>
+    /// <param name="array">The caller-owned destination; only the copied range is overwritten.</param>
+    /// <param name="arrayIndex">The zero-based destination offset, from zero through array.Length, with remaining
+    /// space for Count elements.</param>
+    /// <exception cref="T:System.ArgumentNullException">array is null.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">arrayIndex is outside zero through
+    /// array.Length.</exception>
+    /// <exception cref="T:System.ArgumentException">There is insufficient remaining space or the array shape/type
+    /// is unsupported.</exception>
+    /// <remarks>
+    /// Copies Count live entries in increasing hash-slot order into existing caller storage; does not append or
+    /// clear the destination. Incompatible array elements can leave a partial copy.
+    /// </remarks>
     public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
     {
         ChronicleGuard.ThrowIfNull(array, nameof(array));
@@ -815,7 +986,21 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         }
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Copies live elements into caller-owned storage.
+    /// </summary>
+    /// <param name="array">The caller-owned destination; only the copied range is overwritten.</param>
+    /// <param name="arrayIndex">The zero-based destination offset, from zero through array.Length, with remaining
+    /// space for Count elements.</param>
+    /// <exception cref="T:System.ArgumentNullException">array is null.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">arrayIndex is outside zero through
+    /// array.Length.</exception>
+    /// <exception cref="T:System.ArgumentException">There is insufficient remaining space or the array shape/type
+    /// is unsupported.</exception>
+    /// <remarks>
+    /// Copies Count live entries in increasing hash-slot order into existing caller storage; does not append or
+    /// clear the destination. Incompatible array elements can leave a partial copy.
+    /// </remarks>
     public void CopyTo(Array array, int arrayIndex)
     {
         ChronicleGuard.ThrowIfNull(array, nameof(array));
@@ -868,7 +1053,14 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// <summary>
     /// Sets a new comparer for the dictionary and rehashes the entries.
     /// </summary>
-    /// <param name="comparer">The new comparer to use.</param>
+    /// <param name="comparer">The key equality comparer, retained by reference. Must be non-null and must not
+    /// collapse previously distinct stored keys or values.</param>
+    /// <exception cref="T:System.ArgumentNullException">A supplied comparer is null.</exception>
+    /// <remarks>
+    /// Retains the new comparer and rehashes existing entries without deduplicating newly equal keys. Changing
+    /// equality must preserve distinction among existing keys. Comparer exceptions can leave partial changes;
+    /// there is no rollback.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetComparer(IEqualityComparer<TKey> comparer)
     {
@@ -935,8 +1127,9 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// <summary>
     /// Finds the array index of the entry with the specified key.
     /// </summary>
-    /// <param name="key">The key to locate in the dictionary.</param>
-    /// <returns>The array index of the entry if found; otherwise, -1, including for a null key.</returns>
+    /// <param name="key">The key to locate or store. Null is treated as absent by lookup/removal.</param>
+    /// <returns>The physical hash slot of a matching key; -1 when absent, including a null reference key. No
+    /// mutation.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected int FindEntry(TKey key)
     {
@@ -968,21 +1161,32 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
 
     #region IEnumerable Implementation
 
-    /// <inheritdoc cref="IEnumerable.GetEnumerator()"/>
+    /// <summary>
+    /// Creates an enumerator over the live entries.
+    /// </summary>
+    /// <returns>A value-type enumerator in increasing hash-slot order.</returns>
+    /// <remarks>
+    /// Mutation versions are checked by MoveNext and Reset. Ordering is not a persistence contract.
+    /// </remarks>
     public SwiftDictionaryEnumerator GetEnumerator() => new(this);
+    /// <summary>
+    /// Creates an enumerator through the implemented interface.
+    /// </summary>
+    /// <returns>An enumerator with the concrete collection's ordering and mutation rules. Interface dispatch may
+    /// box the value-type enumerator.</returns>
     IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator() => GetEnumerator();
+    /// <summary>
+    /// Creates an enumerator through the implemented interface.
+    /// </summary>
+    /// <returns>An enumerator with the concrete collection's ordering and mutation rules. Interface dispatch may
+    /// box the value-type enumerator.</returns>
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    /// <summary>
+    /// Creates an enumerator through the implemented interface.
+    /// </summary>
+    /// <returns>An enumerator with the concrete collection's ordering and mutation rules. Interface dispatch may
+    /// box the value-type enumerator.</returns>
     IDictionaryEnumerator IDictionary.GetEnumerator() => new SwiftDictionaryEnumerator(this, true);
-
-
-
-    #endregion
-
-    #region Key & Value Collections
-
-
-
-
 
     #endregion
 }
