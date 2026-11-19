@@ -10,7 +10,7 @@ feature-work plans.
 
 ## Tracker Rules
 
-- Issue IDs use `SC-Issue-NNN`. The next available ID is `SC-Issue-021`.
+- Issue IDs use `SC-Issue-NNN`. The next available ID is `SC-Issue-022`.
 - Assign an ID at intake and preserve it through closure; never delete or reuse
   IDs. Check Git history before advancing or repairing the counter. Unknown
   historical IDs stay reserved rather than acquiring an inferred cause.
@@ -70,6 +70,32 @@ must be distinguished from the original failure. Reproducer inputs, output,
 diagnosis, decisions and reopening criteria stay with their owning issue.
 
 ## Active Issues
+
+### SC-Issue-021 - Persist collection comparers across serializers
+
+<a id="sc-issue-021"></a>
+
+- **Status / priority:** Planned API feature / P2; implementation not started.
+- **Opened:** 2026-11-19, following the SC-Issue-010 trusted-state contract
+  decision and the explicit request for comparer persistence.
+- **Scope / impact:** Preserve supported ordering and equality/hash rules before
+  collection population in normal direct/nested JSON and standard MemoryPack
+  serialization. Cover all collection families, both runtime frameworks
+  (`netstandard2.1`, `net10.0`) and standard/Lean package graphs; Lean retains
+  JSON without a MemoryPack dependency. Losing comparison metadata can change
+  lookup semantics or discard custom-distinct entries.
+- **Disposition:** Keep raw-state schemas and their trusted restoration path.
+  Design versioned comparison metadata, explicit custom registrations and clear
+  unsupported/unknown-codec failures at persistence boundaries. Do not add
+  registry work to collection hot paths or reinstate the rejected ordering scan.
+  SC-Issue-010 remains a historical contract closure, not a persistence fix.
+- **Next action:** Complete Phase 0 decisions and baselines, then prove one
+  sorted-list family through both serializers and compatible target graphs
+  before expanding. Explicitly settle legacy formats, effective hash fallback,
+  nested adapter integration and actual Unity compatibility.
+- **Plan / acceptance:** [Comparer persistence plan](comparer-persistence-plan.md)
+  owns the inventory, decisions, phases, validation and performance gates. No
+  implementation, performance acceptance or release is claimed by this intake.
 
 ### SC-Issue-011 - Power-of-two recognition accepts a negative input
 
