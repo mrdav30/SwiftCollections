@@ -957,6 +957,201 @@ public class SwiftSortedListTests
         Assert.Equal((large.Capacity - large.Count) >> 1, large.Offset);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(3)]
+    [InlineData(9)]
+    public void StateRestore_CopiesItemsWithoutChangingOrder(int count)
+    {
+        int[] items = CreateDescendingRange(count);
+        int[] original = (int[])items.Clone();
+
+        var restored = new SwiftSortedList<int>(new SwiftArrayState<int>(items));
+
+        if (count != 0)
+            Assert.NotSame(items, restored.InnerArray);
+        Assert.Equal(original, restored.AsReadOnlySpan().ToArray());
+        Assert.Equal(original, items);
+        Assert.Same(Comparer<int>.Default, restored.Comparer);
+        Assert.Equal(0u, restored.Version);
+        Assert.Equal(count == 0 ? 0 : (restored.Capacity - count) >> 1, restored.Offset);
+    }
+
+    [Fact]
+    public void StateRestore_DefaultOrderedItemsSupportLookupAndMutation()
+    {
+        int[] items = { int.MinValue, 0, 2, 2, int.MaxValue };
+
+        var restored = new SwiftSortedList<int>(new SwiftArrayState<int>(items));
+
+        AssertDefaultOrderCanContinue(restored, items);
+        Assert.Equal(new[] { int.MinValue, 0, 2, 2, int.MaxValue }, items);
+    }
+
+    [Fact]
+    public void StateRestore_CustomComparerMustBeEstablishedBeforeContinuedUse()
+    {
+        var source = new SwiftSortedList<int>(new[] { 1, 2, 3 }, DescendingIntComparer.Instance);
+        var state = source.State;
+
+        var restored = new SwiftSortedList<int>(state);
+
+        AssertCustomOrderCanContinue(restored);
+        Assert.Equal(new[] { 3, 2, 1 }, source.AsReadOnlySpan().ToArray());
+        Assert.Equal(new[] { 3, 2, 1 }, state.Items);
+        Assert.Same(DescendingIntComparer.Instance, source.Comparer);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void StateItemsConstructor_EstablishesSelectedOrderingWithoutMutatingSnapshot(bool descending)
+    {
+        int[] items = { 3, 1, 2, 2 };
+        IComparer<int> comparer = descending ? DescendingIntComparer.Instance : Comparer<int>.Default;
+
+        var restored = new SwiftSortedList<int>(new SwiftArrayState<int>(items).Items, comparer);
+
+        Assert.Same(comparer, restored.Comparer);
+        Assert.Equal(descending ? new[] { 3, 2, 2, 1 } : new[] { 1, 2, 2, 3 }, restored.AsReadOnlySpan().ToArray());
+        bool containsTwo = restored.Contains(2);
+        Assert.True(containsTwo);
+        restored.Add(4);
+        Assert.Equal(descending ? new[] { 4, 3, 2, 2, 1 } : new[] { 1, 2, 2, 3, 4 }, restored.AsReadOnlySpan().ToArray());
+        Assert.Equal(new[] { 3, 1, 2, 2 }, items);
+        Assert.NotSame(items, restored.InnerArray);
+    }
+
+    [Fact]
+    public void StateRestore_OverwriteResetsComparerAndCopiesPayloadWithoutSorting()
+    {
+        var restored = new SwiftSortedList<int>(64, DescendingIntComparer.Instance) { 42, 41 };
+        int[] oldStorage = restored.InnerArray;
+        int oldOffset = restored.Offset;
+
+        restored.State = new SwiftArrayState<int>(new[] { 5, 3, 1, 3 });
+
+        Assert.NotSame(oldStorage, restored.InnerArray);
+        Assert.Equal(0u, restored.Version);
+        Assert.Equal(8, restored.Capacity);
+        Assert.Equal(2, restored.Offset);
+        Assert.Equal(42, oldStorage[oldOffset]);
+        Assert.Equal(41, oldStorage[oldOffset + 1]);
+        Assert.Same(Comparer<int>.Default, restored.Comparer);
+        Assert.Equal(new[] { 5, 3, 1, 3 }, restored.AsReadOnlySpan().ToArray());
+    }
+
+    [Fact]
+    public void StateRestore_DefaultStatePreservesNullRejection()
+    {
+        Assert.Throws<ArgumentNullException>(() => new SwiftSortedList<int>(default(SwiftArrayState<int>)));
+    }
+
+    [Fact]
+    public void StateRestore_NonComparableReferencesAndNullsRemainShallow()
+    {
+        object first = new object();
+        object second = new object();
+        object[] items = { first, null, second };
+
+        var restored = new SwiftSortedList<object>(new SwiftArrayState<object>(items));
+
+        Assert.NotSame(items, restored.InnerArray);
+        Assert.Same(first, restored[0]);
+        Assert.Null(restored[1]);
+        Assert.Same(second, restored[2]);
+        items[0] = new object();
+        Assert.Same(first, restored[0]);
+        Assert.Same(Comparer<object>.Default, restored.Comparer);
+    }
+
+    [Fact]
+    public void StateRestore_ThrowingComparableIsNeverInvoked()
+    {
+        var items = new[] { new ThrowingRestoreItem(), new ThrowingRestoreItem(), new ThrowingRestoreItem() };
+        var state = new SwiftArrayState<ThrowingRestoreItem>(items);
+
+        var restored = new SwiftSortedList<ThrowingRestoreItem>(state);
+        var overwritten = new SwiftSortedList<ThrowingRestoreItem>();
+        overwritten.State = state;
+
+        Assert.Equal(items, restored.AsReadOnlySpan().ToArray());
+        Assert.Equal(items, overwritten.AsReadOnlySpan().ToArray());
+        Assert.NotSame(items, restored.InnerArray);
+        Assert.NotSame(items, overwritten.InnerArray);
+    }
+
+    [Fact]
+    public void StateRestore_JsonCustomComparerMustBeReappliedBeforeContinuedUse()
+    {
+        var source = new SwiftSortedList<int>(new[] { 1, 2, 3 }, DescendingIntComparer.Instance);
+
+        var restored = JsonSerializer.Deserialize<SwiftSortedList<int>>(JsonSerializer.Serialize(source));
+
+        AssertCustomOrderCanContinue(restored);
+        Assert.Equal(new[] { 3, 2, 1 }, source.AsReadOnlySpan().ToArray());
+    }
+
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
+    [Fact]
+    public void StateRestore_MemoryPackCreateAndOverwriteRequireComparerAfterRestoration()
+    {
+        var source = new SwiftSortedList<int>(new[] { 1, 2, 3 }, DescendingIntComparer.Instance);
+        byte[] bytes = MemoryPackSerializer.Serialize(source);
+        var restored = MemoryPackSerializer.Deserialize<SwiftSortedList<int>>(bytes);
+        var overwritten = new SwiftSortedList<int>(64, DescendingIntComparer.Instance) { 99 };
+
+        MemoryPackSerializer.Deserialize(bytes, ref overwritten);
+
+        AssertCustomOrderCanContinue(restored);
+        AssertCustomOrderCanContinue(overwritten);
+        Assert.Equal(new[] { 3, 2, 1 }, source.AsReadOnlySpan().ToArray());
+    }
+#endif
+
+    private static void AssertCustomOrderCanContinue(SwiftSortedList<int> restored)
+    {
+        Assert.Same(Comparer<int>.Default, restored.Comparer);
+        Assert.Equal(new[] { 3, 2, 1 }, restored.AsReadOnlySpan().ToArray());
+
+        restored.SetComparer(DescendingIntComparer.Instance);
+
+        Assert.Same(DescendingIntComparer.Instance, restored.Comparer);
+        bool containsOne = restored.Contains(1);
+        Assert.True(containsOne);
+        Assert.Equal(2, restored.IndexOf(1));
+        restored.Add(4);
+        Assert.Equal(new[] { 4, 3, 2, 1 }, restored.AsReadOnlySpan().ToArray());
+        Assert.True(restored.Remove(2));
+        Assert.Equal(new[] { 4, 3, 1 }, restored.AsReadOnlySpan().ToArray());
+    }
+
+    private static void AssertDefaultOrderCanContinue(SwiftSortedList<int> restored, int[] expected)
+    {
+        Assert.Same(Comparer<int>.Default, restored.Comparer);
+        Assert.Equal(expected.Length, restored.Count);
+        Assert.Equal(expected, restored.AsReadOnlySpan().ToArray());
+        Assert.Equal<int>(expected, restored);
+        foreach (int item in expected)
+        {
+            bool containsItem = restored.Contains(item);
+            Assert.True(containsItem);
+            int index = restored.IndexOf(item);
+            Assert.InRange(index, 0, restored.Count - 1);
+            Assert.Equal(item, restored[index]);
+        }
+
+        var oracle = new List<int>(expected) { 7 };
+        oracle.AddRange(new[] { -2, 6, 2 });
+        oracle.Sort();
+        restored.Add(7);
+        restored.AddRange(new[] { -2, 6, 2 });
+        Assert.Equal(oracle.ToArray(), restored.AsReadOnlySpan().ToArray());
+        Assert.Equal(oracle.Remove(2), restored.Remove(2));
+        Assert.Equal(oracle.ToArray(), restored.AsReadOnlySpan().ToArray());
+    }
+
     [Fact]
     public void AddRange_EmptyNonCollectionEnumerable_ShouldDoNothing()
     {
@@ -1162,6 +1357,11 @@ public class SwiftSortedListTests
     }
 
     #endregion
+
+    private sealed class ThrowingRestoreItem : IComparable<ThrowingRestoreItem>
+    {
+        public int CompareTo(ThrowingRestoreItem other) => throw new ArithmeticException("Comparison must not occur during state restoration.");
+    }
 
     private sealed class DescendingIntComparer : IComparer<int>
     {

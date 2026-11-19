@@ -202,8 +202,10 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// <exception cref="T:System.ArgumentNullException">state.Items is null, including a default
     /// state.</exception>
     /// <remarks>
-    /// Shallow-copies items and reconstructs default equality and storage. Duplicate equal keys/items keep the
-    /// first mapping; custom comparers are not restored.
+    /// Shallow-copies items and reconstructs default equality and storage. Duplicate equal keys keep the
+    /// first mapping; custom comparers are not restored. To preserve custom key equality, construct from
+    /// state.Items with the desired comparer instead. Changing the comparer after restore cannot recover
+    /// entries already discarded under default equality.
     /// </remarks>
     [MemoryPackConstructor]
     public SwiftDictionary(SwiftDictionaryState<TKey, TValue> state)
@@ -439,7 +441,9 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// shared.</value>
     /// <remarks>
     /// Restore rebuilds storage and default comparers; capacity, hash slots, custom comparers and version are not
-    /// serialized. Equal duplicate keys/items keep the first inserted entry.
+    /// serialized. Equal duplicate keys keep the first inserted entry. To preserve custom equality, pass the
+    /// snapshot's Items and the desired comparer to the enumerable constructor before any insertion; a later
+    /// SetComparer call cannot recover discarded entries.
     /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
@@ -1054,12 +1058,13 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// Sets a new comparer for the dictionary and rehashes the entries.
     /// </summary>
     /// <param name="comparer">The key equality comparer, retained by reference. Must be non-null and must not
-    /// collapse previously distinct stored keys or values.</param>
+    /// collapse previously distinct stored keys.</param>
     /// <exception cref="T:System.ArgumentNullException">A supplied comparer is null.</exception>
     /// <remarks>
     /// Retains the new comparer and rehashes existing entries without deduplicating newly equal keys. Changing
     /// equality must preserve distinction among existing keys. Comparer exceptions can leave partial changes;
-    /// there is no rollback.
+    /// there is no rollback. Passing the current comparer instance does nothing. This does not recover entries
+    /// discarded by an earlier state restore using different equality; use comparer-aware construction instead.
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetComparer(IEqualityComparer<TKey> comparer)

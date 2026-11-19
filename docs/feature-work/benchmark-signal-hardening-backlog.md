@@ -14,7 +14,7 @@ feature-work plan and link it from the signal.
 ## Intake Rules
 
 - Signal IDs use `SC-Benchmark-NNN`. The next available ID is
-  `SC-Benchmark-004`.
+  `SC-Benchmark-005`.
 - Assign an ID at intake and never reuse it, including after closure or
   promotion. Check this file's history before changing the counter.
 - Open a signal from an actual benchmark, allocation guard, profiler capture, or
@@ -80,9 +80,68 @@ making a new performance claim.
 
 ## Active Signals
 
-None. Creating this tracker does not establish a new regression or measurement.
+None.
 
 ## Closed Signals
+
+### SC-Benchmark-004 - Sorted-state order validation
+
+- **Discovered / closed:** 2026-11-18 / 2026-11-19; automatic validation and
+  sorting rejected by contract decision for
+  [SC-Issue-010](issue-tracker.md#sc-issue-010---sorted-list-restore-loses-its-ordering-invariant).
+- **Owner / environment:** `SwiftSortedList<int>.State`; baseline
+  `31cd3eec80dff86b95f8cab621cc7ca281b4e7cc` versus the rejected SC-Issue-010 prototypes.
+  Published dependencies (`UseLocalLsfStack=false`), Release/net10.0, SDK 10.0.302,
+  runtime 10.0.10, Windows x64, Intel Core i7-9700K.
+- **Workload:** Construct a sorted list from an ascending item state containing
+  integers 0..Count-1. Compared payloads are the original unchecked copy,
+  unconditional sorting of the copied live segment, and the proposed adjacent
+  order check with sorting only on inversion. The source state is reused;
+  constructed objects escape to a static sink. Four complete processes per
+  payload run in baseline/sort/checked/checked/sort/baseline order, twice.
+- **Procedure:** Prime state and enumerable constructors for 500 ms before
+  cases; warm each case for 2,000 calls. Time 100,000 calls for counts 0/1/8,
+  20,000 for 128, and 2,000 for 4,096, excluding setup and forced GC. Stopwatch
+  measures elapsed time; current-thread allocated bytes measure allocation.
+  Loaded assembly hashes distinguish payloads. The probe also covers reversed
+  state and the existing correct enumerable constructor. Old reversed-state
+  restore is omitted from latency comparisons because it does not produce the
+  default-ordered output required by the sorting controls.
+
+| Ordered item count | Old unchecked median (range), ns | Unconditional sort median (range), ns | Proposed check median (range), ns | Bytes/call, all |
+| --- | --- | --- | --- | --- |
+| 8 | 40.37 (39.24–42.37) | 52.36 (51.86–64.62) | 35.78 (30.95–36.70) | 112 |
+| 128 | 63.34 (62.99–70.77) | 324.06 (320.19–356.54) | 102.08 (95.64–103.17) | 592 |
+| 4,096 | 827.00 (817.70–834.60) | 17,976.53 (17,770.85–18,689.55) | 2,256.15 (2,171.35–2,277.50) | 16,464 |
+
+- **Rejected behavior / cost:** The validation prototype performs Count-1 adjacent
+  comparisons on ordered nonempty state and sorts on inversion. It avoids an
+  unconditional full sort, but retains about
+  1.43 microseconds of validation cost for 4,096 integers compared with the old
+  unchecked copy. Allocation is unchanged. Reversed 4,096-item prototype restore
+  measured median 34,990.05 ns (34,177.90–35,116.00), versus 35,063.70 ns
+  (34,466.00–35,208.65) for the existing correct enumerable constructor in the
+  same payload. Both allocate 16,464 bytes and produce ascending values.
+- **Decision / limits:** Preserve the original copy-only trusted-state restore;
+  neither prototype is part of the final change. The original reversed payload
+  is incompatible with default binary lookup, rather than an input restore must
+  normalize. Callers choose `new SwiftSortedList<T>(state.Items, desiredComparer)`
+  when ordering must be established. The prototype's comparison-failure
+  atomicity and validation promises are also withdrawn. Measurements describe
+  local integer microbenchmarks, not other types, comparer costs, JITs,
+  architectures or full deserialization pipelines. No new timing claim is made
+  for the documentation-only disposition.
+- **Reopen:** An agreed requirement to accept unordered state, persist comparer
+  identity, or validate an external trust boundary warrants separately scoped
+  API and performance work. There is no pending acceptance of validation cost.
+
+For a focused rerun, use the console setup in the
+[issue tracker](issue-tracker.md#reproducing-active-issues) against each source
+version with the inputs and procedure above:
+
+```powershell
+dotnet run --project ../SwiftCollectionsRepro/SwiftCollectionsRepro.csproj -c Release -p:UseLocalLsfStack=false
+```
 
 ### SC-Benchmark-003 - List-to-list copy capacity
 

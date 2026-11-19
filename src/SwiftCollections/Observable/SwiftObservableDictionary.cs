@@ -61,6 +61,11 @@ public partial class SwiftObservableDictionary<TKey, TValue> : SwiftDictionary<T
     /// <param name="state">The state to shallow-copy; Items must be non-null. Event subscribers are not
     /// serialized.</param>
     /// <exception cref="T:System.ArgumentNullException">state.Items is null, including default state.</exception>
+    /// <remarks>
+    /// Uses Swift default key equality and keeps the first mapping for each equal key. Custom comparers are not
+    /// serialized. To preserve custom equality, create an empty observable dictionary, call SetComparer, then add
+    /// the state pairs. Applying the comparer after restore cannot recover discarded mappings.
+    /// </remarks>
     [MemoryPackConstructor]
     public SwiftObservableDictionary(SwiftDictionaryState<TKey, TValue> state) : base(state) { }
 

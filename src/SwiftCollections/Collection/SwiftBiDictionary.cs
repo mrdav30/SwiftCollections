@@ -123,8 +123,10 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     /// <exception cref="T:System.NullReferenceException">state.Items is null, including a default
     /// state.</exception>
     /// <remarks>
-    /// Shallow-copies items and reconstructs default equality and storage. Duplicate equal keys/items keep the
-    /// first mapping; custom comparers are not restored.
+    /// Shallow-copies items and reconstructs Swift default equality for both directions. Pairs are inserted in
+    /// state-array order; a pair whose key or reverse value already exists is skipped. Custom comparers are not
+    /// restored. To preserve them, create an empty dictionary with both desired comparers, then add each state
+    /// pair. Changing comparers after restore cannot recover skipped pairs.
     /// </remarks>
     [MemoryPackConstructor]
     public SwiftBiDictionary(SwiftDictionaryState<T1, T2> state)
@@ -222,8 +224,10 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     /// <value>A state containing copied live items in increasing hash-slot order; reference-type elements remain
     /// shared.</value>
     /// <remarks>
-    /// Restore rebuilds storage and default comparers; capacity, hash slots, custom comparers and version are not
-    /// serialized. Equal duplicate keys/items keep the first inserted entry. Reverse values must also be unique.
+    /// Restore rebuilds storage and Swift default equality in both directions; capacity, hash slots, custom
+    /// comparers and version are not serialized. Pairs with an already inserted equal key or reverse value are
+    /// skipped. To preserve custom equality, create an empty dictionary with both desired comparers before
+    /// adding the snapshot pairs; applying comparers after restore cannot recover skipped pairs.
     /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
@@ -389,7 +393,8 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     /// <remarks>
     /// Retains the new comparer and rehashes existing entries without deduplicating newly equal keys. Changing
     /// equality must preserve distinction among existing keys and reverse values. Comparer exceptions can leave
-    /// partial changes; there is no rollback.
+    /// partial changes; there is no rollback. Passing both current comparer instances does nothing. This does
+    /// not recover pairs discarded during an earlier state restore using different equality.
     /// </remarks>
     public void SetComparer(IEqualityComparer<T1> comparer1, IEqualityComparer<T2> comparer2)
     {

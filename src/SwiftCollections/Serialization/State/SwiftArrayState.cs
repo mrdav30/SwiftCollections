@@ -19,6 +19,8 @@ namespace SwiftCollections;
 /// Readonly fields retain mutable arrays; this struct is not deeply immutable. Constructors retain arrays without
 /// copying or validation. default(TState) bypasses constructors and leaves array fields null. Collection State
 /// getters allocate shallow snapshots; restore behavior and validation belong to each collection.
+/// This state contains no comparer. Sorted-list items must satisfy the restoring owner's ordering contract;
+/// set uniqueness is interpreted using that owner's equality rules.
 /// </remarks>
 [Serializable]
 [MemoryPackable]

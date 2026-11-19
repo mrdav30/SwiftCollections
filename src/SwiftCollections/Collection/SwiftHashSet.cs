@@ -173,7 +173,9 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <remarks>
     /// Copies non-null items into reconstructed storage using Swift default equality. Null items are skipped and
     /// equal duplicates keep the first stored value. Custom comparers are not restored; unlike state restore,
-    /// enumerable construction rejects null elements.
+    /// enumerable construction rejects null elements. To preserve custom equality, pass state.Items and the
+    /// desired comparer to the enumerable constructor before insertion. A later comparer change cannot recover
+    /// items already discarded under default equality.
     /// </remarks>
     [MemoryPackConstructor]
     public SwiftHashSet(SwiftArrayState<T> state)
@@ -255,7 +257,8 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <remarks>
     /// Restore rebuilds storage and Swift default equality; capacity, hash slots, custom comparers and version
     /// are not retained. Equal duplicates keep the first stored value, and null state items are skipped. The
-    /// enumerable constructor instead rejects null elements.
+    /// enumerable constructor instead rejects null elements. To preserve custom equality, construct from Items
+    /// with the desired comparer; applying it after restore cannot recover discarded items.
     /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
@@ -799,12 +802,13 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// across <see cref="F:SwiftCollections.SwiftHashSet`1._entries" />.
     /// </summary>
     /// <param name="comparer">The element equality comparer, retained by reference. Must be non-null and must not
-    /// collapse previously distinct stored keys or values.</param>
+    /// collapse previously distinct stored items.</param>
     /// <exception cref="T:System.ArgumentNullException">A supplied comparer is null.</exception>
     /// <remarks>
-    /// Retains the new comparer and rehashes existing entries without deduplicating newly equal keys. Changing
-    /// equality must preserve distinction among existing keys. Comparer exceptions can leave partial changes;
-    /// there is no rollback.
+    /// Retains the new comparer and rehashes existing entries without deduplicating newly equal items. Changing
+    /// equality must preserve distinction among existing items. Comparer exceptions can leave partial changes;
+    /// there is no rollback. Passing the current comparer instance does nothing. This does not recover items
+    /// discarded by an earlier state restore using different equality; use comparer-aware construction instead.
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetComparer(IEqualityComparer<T>? comparer = null)

@@ -12,6 +12,43 @@ namespace SwiftCollections.Tests;
 
 public class SwiftBiDictionaryTests
 {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void StateRestore_CustomDistinctKeysOrValuesNeedComparersBeforeInsertion(bool equalKeys)
+    {
+        var comparer = EqualityComparer<string>.Create((x, y) => ReferenceEquals(x, y), _ => 0);
+        string firstKey = new('k', 1);
+        string secondKey = new(equalKeys ? 'k' : 'l', 1);
+        string firstValue = new('v', 1);
+        string secondValue = new(equalKeys ? 'w' : 'v', 1);
+        var source = new SwiftBiDictionary<string, string>(comparer, comparer)
+        {
+            { firstKey, firstValue },
+            { secondKey, secondValue }
+        };
+        SwiftDictionaryState<string, string> state = source.State;
+
+        var defaultRestore = new SwiftBiDictionary<string, string>(state);
+        Assert.Single(defaultRestore);
+        Assert.Same(state.Items[0].Key, defaultRestore.State.Items[0].Key);
+        Assert.Same(state.Items[0].Value, defaultRestore.State.Items[0].Value);
+        defaultRestore.SetComparer(comparer, comparer);
+        Assert.Single(defaultRestore);
+
+        var restored = new SwiftBiDictionary<string, string>(comparer, comparer);
+        foreach (KeyValuePair<string, string> item in state.Items)
+            restored.Add(item.Key, item.Value);
+
+        Assert.Equal(2, restored.Count);
+        Assert.Same(firstValue, restored[firstKey]);
+        Assert.Same(secondValue, restored[secondKey]);
+        Assert.Same(firstKey, restored.GetKey(firstValue));
+        Assert.Same(secondKey, restored.GetKey(secondValue));
+        Assert.Equal(2, source.Count);
+        Assert.Equal(2, state.Items.Length);
+    }
+
     [Fact]
     public void BiDictionary_Add_DuplicateValues_Test()
     {

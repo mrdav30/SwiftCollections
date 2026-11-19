@@ -15,6 +15,30 @@ public class SwiftDictionaryTests
 {
 
     [Fact]
+    public void StateRestore_CustomDistinctKeysNeedComparerBeforeInsertion()
+    {
+        var comparer = EqualityComparer<string>.Create((x, y) => ReferenceEquals(x, y), _ => 0);
+        string first = new('x', 1);
+        string second = new('x', 1);
+        var source = new SwiftDictionary<string, int>(8, comparer) { { first, 1 }, { second, 2 } };
+        SwiftDictionaryState<string, int> state = source.State;
+
+        var defaultRestore = new SwiftDictionary<string, int>(state);
+        Assert.Single(defaultRestore);
+        Assert.Same(state.Items[0].Key, defaultRestore.State.Items[0].Key);
+        Assert.Equal(state.Items[0].Value, defaultRestore[first]);
+        defaultRestore.SetComparer(comparer);
+        Assert.Single(defaultRestore);
+
+        var restored = new SwiftDictionary<string, int>(state.Items, comparer);
+        Assert.Equal(2, restored.Count);
+        Assert.Equal(1, restored[first]);
+        Assert.Equal(2, restored[second]);
+        Assert.Equal(2, source.Count);
+        Assert.Equal(2, state.Items.Length);
+    }
+
+    [Fact]
     public void WrappedCollisionChain_LookupAndRemovalReachEveryEntry()
     {
         var comparer = new SelectiveIntHashComparer((0, 3), (1, 3), (2, 0), (3, 0), (4, 3));

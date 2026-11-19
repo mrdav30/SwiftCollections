@@ -14,6 +14,31 @@ namespace SwiftCollections.Tests;
 public class SwiftHashSetTests
 {
     [Fact]
+    public void StateRestore_CustomDistinctItemsNeedComparerBeforeInsertion()
+    {
+        var comparer = EqualityComparer<string>.Create((x, y) => ReferenceEquals(x, y), _ => 0);
+        string first = new('x', 1);
+        string second = new('x', 1);
+        var source = new SwiftHashSet<string>(comparer) { first, second };
+        SwiftArrayState<string> state = source.State;
+
+        var defaultRestore = new SwiftHashSet<string>(state);
+        Assert.Single(defaultRestore);
+        Assert.Same(state.Items[0], defaultRestore.State.Items[0]);
+        defaultRestore.SetComparer(comparer);
+        Assert.Single(defaultRestore);
+
+        var restored = new SwiftHashSet<string>(state.Items, comparer);
+        Assert.Equal(2, restored.Count);
+        bool containsFirst = restored.Contains(first);
+        bool containsSecond = restored.Contains(second);
+        Assert.True(containsFirst);
+        Assert.True(containsSecond);
+        Assert.Equal(2, source.Count);
+        Assert.Equal(2, state.Items.Length);
+    }
+
+    [Fact]
     public void EnumerationSlotCount_IncludesHolesBeforeLiveEntries()
     {
         var set = new SwiftHashSet<int>();

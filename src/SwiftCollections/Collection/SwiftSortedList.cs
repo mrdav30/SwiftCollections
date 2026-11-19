@@ -175,15 +175,19 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     }
 
     /// <summary>
-    /// Restores a collection by shallow-copying its item state.
+    /// Restores a collection by shallow-copying trusted item state without comparing or sorting it.
     /// </summary>
-    /// <param name="state">The item state to shallow-copy into new storage; Items must be non-null.</param>
+    /// <param name="state">The item state to shallow-copy into new storage; Items must be non-null. Ordering-dependent
+    /// operations require items ordered under the active comparer, which restore resets to Comparer&lt;T&gt;.Default.</param>
     /// <exception cref="T:System.ArgumentNullException">state.Items is null, including a default
     /// state.</exception>
     /// <remarks>
     /// Capacity and mutation version are reconstructed, not preserved. The comparer resets to
-    /// Comparer&lt;T&gt;.Default, but restored items are not re-sorted. Supply state already ordered by that
-    /// comparer; custom-comparer snapshots may violate lookup invariants.
+    /// Comparer&lt;T&gt;.Default; payload order and duplicates are preserved without validation. For custom-comparer
+    /// snapshots or unordered items, use new SwiftSortedList&lt;T&gt;(state.Items, desiredComparer) to copy and sort
+    /// once with the requested comparer. Alternatively, call SetComparer with a different comparer immediately
+    /// after restore, before lookup or mutation; setting the existing comparer is a no-op. Setting a comparer
+    /// before assigning State does not preserve it. Comparer semantics must remain consistent during use.
     /// </remarks>
     [MemoryPackConstructor]
     public SwiftSortedList(SwiftArrayState<T> state)
@@ -300,7 +304,9 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <value>A new state containing a newly allocated array in comparer order.</value>
     /// <remarks>
     /// Element references remain shared. Capacity and version are not serialized. The comparer is not serialized;
-    /// restoring uses Comparer&lt;T&gt;.Default without sorting.
+    /// restoring copies the exact payload order and selects Comparer&lt;T&gt;.Default without comparing or sorting.
+    /// Items must be ordered under the active comparer before ordering-dependent operations. To establish custom
+    /// ordering explicitly, construct from State.Items and the desired comparer; this copies and sorts once.
     /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
@@ -883,6 +889,7 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// <remarks>
     /// Reorders live storage in place; equal items have no stable tie order. A throwing comparer can leave
     /// partially reordered contents and the new comparer installed. Direct storage views observe the changes.
+    /// Passing the current comparer instance does nothing; this is not a force-sort operation.
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetComparer(IComparer<T> comparer)

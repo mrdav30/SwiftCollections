@@ -93,8 +93,8 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <exception cref="T:System.ArgumentNullException">state.Items is null, including a default
     /// state.</exception>
     /// <remarks>
-    /// Shallow-copies items and reconstructs default equality and storage. Duplicate items are not validated
-    /// against the dense count; supply unique non-null items.
+    /// Shallow-copies trusted items and reconstructs storage using Swift default equality. There is no custom
+    /// comparer API. Duplicate items are not validated against the dense count; supply unique non-null items.
     /// </remarks>
     [MemoryPackConstructor]
     public SwiftPackedSet(SwiftArrayState<T> state)
@@ -168,9 +168,9 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <value>A state containing copied live items in dense storage order; reference-type elements remain
     /// shared.</value>
     /// <remarks>
-    /// Restore rebuilds storage and default comparers; capacity, hash slots, custom comparers and version are not
-    /// serialized. Packed state requires distinct non-null values; duplicate state entries are currently copied
-    /// into dense storage without deduplication.
+    /// Restore rebuilds storage using Swift default equality; this type has no custom comparer API. Capacity,
+    /// hash slots and version are not serialized. Packed state requires distinct non-null values; duplicate state
+    /// entries are copied into dense storage without deduplication.
     /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
