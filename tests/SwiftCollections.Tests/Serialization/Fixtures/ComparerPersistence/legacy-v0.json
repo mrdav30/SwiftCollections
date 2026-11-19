@@ -1,0 +1,328 @@
+{
+  "fixtureSchemaVersion": 1,
+  "capturedOn": "2026-11-19",
+  "purpose": "Frozen legacy inputs, not a guarantee of the future persistence format or desired custom-comparer behavior.",
+  "producer": {
+    "sourceRevision": "a5371dc1caa9e1b81b631ac9ce88d5f03933ebc2",
+    "configuration": "Release",
+    "framework": "net10.0",
+    "dependencyMode": "published packages; actual SwiftCollections project reference",
+    "runtime": ".NET 10.0.10",
+    "os": "Microsoft Windows 10.0.26300",
+    "architecture": "X64",
+    "stopwatchFrequency": 10000000,
+    "core": {
+      "name": "SwiftCollections",
+      "version": "0.0.0.0",
+      "informationalVersion": "0.0.0+a5371dc1caa9e1b81b631ac9ce88d5f03933ebc2",
+      "file": "SwiftCollections.dll",
+      "sha256": "E861146868CD22834FA5CE2FE48B9A675242CC44282D655DD4663152A1B83900"
+    },
+    "memoryPack": {
+      "name": "MemoryPack.Core",
+      "version": "1.21.4.0",
+      "informationalVersion": "1.21.4+0f2fe0827907940768293b7bb81b9605a7d8cba8",
+      "file": "MemoryPack.Core.dll",
+      "sha256": "6DC7785EEA92DC72B9EA4D9D9B08C585CE87C11EC6B8388D00A179AF694CF6BE"
+    },
+    "chronicler": {
+      "name": "Chronicler",
+      "version": "1.0.0.0",
+      "informationalVersion": "1.0.0+Branch.main.Sha.c45f9ab53913e5b1692f0717733425e0f4defeb2.c45f9ab53913e5b1692f0717733425e0f4defeb2",
+      "file": "Chronicler.dll",
+      "sha256": "2847F7C0663E4FF69B59D031E689F57493F07C053BEDF68CFF2C5D73EE70FD73"
+    },
+    "memoryPackPackage": "1.21.4",
+    "culture": "",
+    "sourceChanges": "Clean source/index at capture; Phase 0 adds only documentation and fixture data."
+  },
+  "nestedSchema": "FixtureEnvelope<T>: Label string followed by Value T; Label is the literal fixed-envelope.",
+  "cases": [
+    {
+      "id": "sorted-descending",
+      "type": "SwiftCollections.SwiftSortedList`1[System.Int32]",
+      "contract": "Source comparer is descending; legacy load copies 13,0,-7 and defaults comparer. Do not run ordering-dependent operations on that incompatible state.",
+      "source": "count=3;items=13,0,-7;defaultComparer=False",
+      "jsonObserved": "count=3;items=13,0,-7;defaultComparer=True",
+      "memoryPackObserved": "count=3;items=13,0,-7;defaultComparer=True",
+      "jsonBytes": 29,
+      "memoryPackBytes": 18,
+      "nestedJsonBytes": 64,
+      "nestedMemoryPackBytes": 41,
+      "jsonSha256": "F7A0A0DC1F786DB06A36F988130735D535BAD9185D1B1218A89F360F537992FB",
+      "memoryPackSha256": "492E7699C8950AC5D122063B6DF86A2EA3A26011A76FA07597D244381F65B7B5",
+      "nestedJsonSha256": "02E298211E4E90B7D7F06CA40A0911A5282106A5ADC0F6FEDD6BF52ED754E32F",
+      "nestedMemoryPackSha256": "B15B740841D985787C4FA796E33C7797E702F3AD48F2D9A89E9D290B3EC77DC8",
+      "payloads": {
+        "json": "{\"State\":{\"Items\":[13,0,-7]}}",
+        "memoryPackBase64": "AQEDAAAADQAAAAAAAAD5////",
+        "nestedJson": "{\"Label\":\"fixed-envelope\",\"Value\":{\"State\":{\"Items\":[13,0,-7]}}}",
+        "nestedMemoryPackBase64": "AvH///8OAAAAZml4ZWQtZW52ZWxvcGUBAQMAAAANAAAAAAAAAPn///8="
+      }
+    },
+    {
+      "id": "sorted-custom-only",
+      "type": "SwiftCollections.SwiftSortedList`1[OrderToken]",
+      "contract": "OrderToken has no default comparison; load succeeds without comparing, but custom comparison is lost.",
+      "source": "count=2;keys=2,-1;defaultComparer=False",
+      "jsonObserved": "count=2;keys=2,-1;defaultComparer=True",
+      "memoryPackObserved": "count=2;keys=2,-1;defaultComparer=True",
+      "jsonBytes": 74,
+      "memoryPackBytes": 44,
+      "nestedJsonBytes": 109,
+      "nestedMemoryPackBytes": 67,
+      "jsonSha256": "4863DC318E6CA13B8DC20A95BB331067E2B2217E49F2B1999470DFBC8CF0CDFE",
+      "memoryPackSha256": "5DDA2B611AAC35789EFE051CFC7E7636CB119D38EDF3AB4FAD65E4A22067E9C8",
+      "nestedJsonSha256": "FEBAB8CE7C078ED883C81A7A132464943499018F95AE6AC9563E5BF54ECF294B",
+      "nestedMemoryPackSha256": "85CD8EB70F183F69EBAD614AB797265CDCBA764CEE8AEB1FD3C68F711A4AB4EA",
+      "payloads": {
+        "json": "{\"State\":{\"Items\":[{\"Key\":2,\"Name\":\"two\"},{\"Key\":-1,\"Name\":\"minus-one\"}]}}",
+        "memoryPackBase64": "AQECAAAAAgIAAAD8////AwAAAHR3bwL/////9v///wkAAABtaW51cy1vbmU=",
+        "nestedJson": "{\"Label\":\"fixed-envelope\",\"Value\":{\"State\":{\"Items\":[{\"Key\":2,\"Name\":\"two\"},{\"Key\":-1,\"Name\":\"minus-one\"}]}}}",
+        "nestedMemoryPackBase64": "AvH///8OAAAAZml4ZWQtZW52ZWxvcGUBAQIAAAACAgAAAPz///8DAAAAdHdvAv/////2////CQAAAG1pbnVzLW9uZQ=="
+      }
+    },
+    {
+      "id": "dictionary-identity",
+      "type": "SwiftCollections.SwiftDictionary`2[System.String,System.Int32]",
+      "contract": "Source Count2, reference equality and constant hash; legacy Count1 keeps first state pair value=11. Text and values are fixed; no identity address is persisted.",
+      "source": "count=2;values=11,22",
+      "jsonObserved": "count=1;values=11",
+      "memoryPackObserved": "count=1;values=11",
+      "jsonBytes": 73,
+      "memoryPackBytes": 38,
+      "nestedJsonBytes": 108,
+      "nestedMemoryPackBytes": 61,
+      "jsonSha256": "3913737A207C1AB5933EA363E904D59D7A492AEF38DB2F097489EEF71F1C63B5",
+      "memoryPackSha256": "52860D161B736668331C8DD79A0339F7E371AB47F808755D9CC9D8D0FB432B83",
+      "nestedJsonSha256": "52A15C1E67337DD2E0D8CFF9C68F43DB2E0CC728846EE7B5C0ED1A5A67F8F234",
+      "nestedMemoryPackSha256": "9B04C9651CA17F3AC5DA9036652FC23C813EC59F298F7E175FD459162B6D1C66",
+      "payloads": {
+        "json": "{\"State\":{\"Items\":[{\"Key\":\"same\",\"Value\":11},{\"Key\":\"same\",\"Value\":22}]}}",
+        "memoryPackBase64": "AQECAAAA+////wQAAABzYW1lCwAAAPv///8EAAAAc2FtZRYAAAA=",
+        "nestedJson": "{\"Label\":\"fixed-envelope\",\"Value\":{\"State\":{\"Items\":[{\"Key\":\"same\",\"Value\":11},{\"Key\":\"same\",\"Value\":22}]}}}",
+        "nestedMemoryPackBase64": "AvH///8OAAAAZml4ZWQtZW52ZWxvcGUBAQIAAAD7////BAAAAHNhbWULAAAA+////wQAAABzYW1lFgAAAA=="
+      }
+    },
+    {
+      "id": "hashset-identity",
+      "type": "SwiftCollections.SwiftHashSet`1[System.String]",
+      "contract": "Source Count2; legacy Count1.",
+      "source": "count=2;items=same,same",
+      "jsonObserved": "count=1;items=same",
+      "memoryPackObserved": "count=1;items=same",
+      "jsonBytes": 35,
+      "memoryPackBytes": 30,
+      "nestedJsonBytes": 70,
+      "nestedMemoryPackBytes": 53,
+      "jsonSha256": "A5BAE5C8BF88409CE7B6E95B87979AA5ED276688154CD9C232F051C1205784C9",
+      "memoryPackSha256": "D007654AB7A401ADEDC2B250B0CF5E3E89BBBCFCCC8FE5F9D2470509FF6157FB",
+      "nestedJsonSha256": "0DCDD086C2E9EA4088A4832528706C3FD92CC2DA415A229EC9155E9978220FF2",
+      "nestedMemoryPackSha256": "8AAACCA40ED94417A0C51810EE0DC1E457F8D7937508BD01BE51C909C18CD0FD",
+      "payloads": {
+        "json": "{\"State\":{\"Items\":[\"same\",\"same\"]}}",
+        "memoryPackBase64": "AQECAAAA+////wQAAABzYW1l+////wQAAABzYW1l",
+        "nestedJson": "{\"Label\":\"fixed-envelope\",\"Value\":{\"State\":{\"Items\":[\"same\",\"same\"]}}}",
+        "nestedMemoryPackBase64": "AvH///8OAAAAZml4ZWQtZW52ZWxvcGUBAQIAAAD7////BAAAAHNhbWX7////BAAAAHNhbWU="
+      }
+    },
+    {
+      "id": "bidictionary-key-identity",
+      "type": "SwiftCollections.SwiftBiDictionary`2[System.String,System.String]",
+      "contract": "Both source comparers use reference equality; legacy Count1 retains first state pair same=left. Fine equality applied afterward cannot recover the second pair.",
+      "source": "count=2;pairs=same=left;same=right",
+      "jsonObserved": "count=1;pairs=same=left",
+      "memoryPackObserved": "count=1;pairs=same=left",
+      "jsonBytes": 82,
+      "memoryPackBytes": 55,
+      "nestedJsonBytes": 117,
+      "nestedMemoryPackBytes": 78,
+      "jsonSha256": "301DE255EB0ED46724E84E3AE2DED70869A3BCCBA20217A004D86469C560CFB9",
+      "memoryPackSha256": "0E4E460DEB55E18DD94FC1D7BF6FF1FCD750D3DFA0606E6066CF8422B1866EAF",
+      "nestedJsonSha256": "DF19F3EB07E752303745D675CA827089167191B44D1CE4C900385BD1735C1364",
+      "nestedMemoryPackSha256": "46848C9A07D56A19E29DF557A9FBBD512E9D2AF6095E1A64EE280B654EA09477",
+      "payloads": {
+        "json": "{\"State\":{\"Items\":[{\"Key\":\"same\",\"Value\":\"left\"},{\"Key\":\"same\",\"Value\":\"right\"}]}}",
+        "memoryPackBase64": "AQECAAAA+////wQAAABzYW1l+////wQAAABsZWZ0+////wQAAABzYW1l+v///wUAAAByaWdodA==",
+        "nestedJson": "{\"Label\":\"fixed-envelope\",\"Value\":{\"State\":{\"Items\":[{\"Key\":\"same\",\"Value\":\"left\"},{\"Key\":\"same\",\"Value\":\"right\"}]}}}",
+        "nestedMemoryPackBase64": "AvH///8OAAAAZml4ZWQtZW52ZWxvcGUBAQIAAAD7////BAAAAHNhbWX7////BAAAAGxlZnT7////BAAAAHNhbWX6////BQAAAHJpZ2h0"
+      }
+    },
+    {
+      "id": "bidictionary-reverse-identity",
+      "type": "SwiftCollections.SwiftBiDictionary`2[System.String,System.String]",
+      "contract": "Both source comparers use reference equality; legacy Count1 retains first state pair left=same. Fine equality applied afterward cannot recover the second pair.",
+      "source": "count=2;pairs=left=same;right=same",
+      "jsonObserved": "count=1;pairs=left=same",
+      "memoryPackObserved": "count=1;pairs=left=same",
+      "jsonBytes": 82,
+      "memoryPackBytes": 55,
+      "nestedJsonBytes": 117,
+      "nestedMemoryPackBytes": 78,
+      "jsonSha256": "9CC9747B435038E667C47CF59412CEB9689EB0BB3A198E3F95438B56DDF6EC88",
+      "memoryPackSha256": "FC3B172F0573AF5BA072C07774EDCD868ED7410988D17ED28CA4612CC9F9A36D",
+      "nestedJsonSha256": "224E089A2295B51248963761E9D3048C3343989134F573D7C33CF9B08D82606B",
+      "nestedMemoryPackSha256": "43D7E404E449F2C38CF76930346F815D40AD8B24DD573159E9B59BE364427E9D",
+      "payloads": {
+        "json": "{\"State\":{\"Items\":[{\"Key\":\"left\",\"Value\":\"same\"},{\"Key\":\"right\",\"Value\":\"same\"}]}}",
+        "memoryPackBase64": "AQECAAAA+////wQAAABsZWZ0+////wQAAABzYW1l+v///wUAAAByaWdodPv///8EAAAAc2FtZQ==",
+        "nestedJson": "{\"Label\":\"fixed-envelope\",\"Value\":{\"State\":{\"Items\":[{\"Key\":\"left\",\"Value\":\"same\"},{\"Key\":\"right\",\"Value\":\"same\"}]}}}",
+        "nestedMemoryPackBase64": "AvH///8OAAAAZml4ZWQtZW52ZWxvcGUBAQIAAAD7////BAAAAGxlZnT7////BAAAAHNhbWX6////BQAAAHJpZ2h0+////wQAAABzYW1l"
+      }
+    },
+    {
+      "id": "dictionary-seeded",
+      "type": "SwiftCollections.SwiftDictionary`2[System.String,System.Int32]",
+      "contract": "Explicit seed=-1234567; alpha sourceHash=1208186387, legacyDefaultHash=1073536057. Payload persists state order only, not seed. Bytes are fixtures for this producing build, not canonical table layout.",
+      "source": "count=2;alpha=101;alphaHash=1208186387",
+      "jsonObserved": "count=2;alpha=101;alphaHash=1073536057",
+      "memoryPackObserved": "count=2;alpha=101;alphaHash=1073536057",
+      "jsonBytes": 76,
+      "memoryPackBytes": 39,
+      "nestedJsonBytes": 111,
+      "nestedMemoryPackBytes": 62,
+      "jsonSha256": "DFC6DB7B08BA53CEB2978E6F2870B061872F1FDD74A02E20893C230905CF7313",
+      "memoryPackSha256": "DAC16740F14A2D815236B89748CAA158330C937A903A5493EE73AEF60C4F82B2",
+      "nestedJsonSha256": "1C7C3C435421897637E1BEDD7D9C7CAB125EE95B0DA963C88FEDC92AB7046927",
+      "nestedMemoryPackSha256": "CDF9A38BF64044604BD4E7E0E4F5CC05BCE392833BA25E2CBD11E115DF6F2701",
+      "payloads": {
+        "json": "{\"State\":{\"Items\":[{\"Key\":\"alpha\",\"Value\":101},{\"Key\":\"beta\",\"Value\":202}]}}",
+        "memoryPackBase64": "AQECAAAA+v///wUAAABhbHBoYWUAAAD7////BAAAAGJldGHKAAAA",
+        "nestedJson": "{\"Label\":\"fixed-envelope\",\"Value\":{\"State\":{\"Items\":[{\"Key\":\"alpha\",\"Value\":101},{\"Key\":\"beta\",\"Value\":202}]}}}",
+        "nestedMemoryPackBase64": "AvH///8OAAAAZml4ZWQtZW52ZWxvcGUBAQIAAAD6////BQAAAGFscGhhZQAAAPv///8EAAAAYmV0YcoAAAA="
+      }
+    },
+    {
+      "id": "list-default",
+      "type": "SwiftCollections.SwiftList`1[System.Int32]",
+      "contract": "Comparer-free sequence control.",
+      "source": "count=4;items=-2147483648,0,17,2147483647",
+      "jsonObserved": "count=4;items=-2147483648,0,17,2147483647",
+      "memoryPackObserved": "count=4;items=-2147483648,0,17,2147483647",
+      "jsonBytes": 49,
+      "memoryPackBytes": 22,
+      "nestedJsonBytes": 84,
+      "nestedMemoryPackBytes": 45,
+      "jsonSha256": "E795D01348541877EABB92D5FF69C1B596A3B770BAE8D891A5B496972AA59D35",
+      "memoryPackSha256": "9E3047F83125BB3BA89475F59BD70464D7B3A9F94B69CBDC4009E9797FB378CB",
+      "nestedJsonSha256": "7C6D428E06719F09FD757CFFB0F7642622C47174A85CC88489343EA2EF12AC70",
+      "nestedMemoryPackSha256": "30617F35A703B3149E5C74D4904676E13FCBE9D1E72AAB80BB8815DCAAD228D9",
+      "payloads": {
+        "json": "{\"State\":{\"Items\":[-2147483648,0,17,2147483647]}}",
+        "memoryPackBase64": "AQEEAAAAAAAAgAAAAAARAAAA////fw==",
+        "nestedJson": "{\"Label\":\"fixed-envelope\",\"Value\":{\"State\":{\"Items\":[-2147483648,0,17,2147483647]}}}",
+        "nestedMemoryPackBase64": "AvH///8OAAAAZml4ZWQtZW52ZWxvcGUBAQQAAAAAAACAAAAAABEAAAD///9/"
+      }
+    },
+    {
+      "id": "list-empty",
+      "type": "SwiftCollections.SwiftList`1[System.Int32]",
+      "contract": "Empty owner, distinct from null.",
+      "source": "count=0",
+      "jsonObserved": "count=0",
+      "memoryPackObserved": "count=0",
+      "jsonBytes": 22,
+      "memoryPackBytes": 6,
+      "nestedJsonBytes": 57,
+      "nestedMemoryPackBytes": 29,
+      "jsonSha256": "FEAAD59334C5AB6E1963F961B626F0477D4F7475A6A31863D90572CF00B9268E",
+      "memoryPackSha256": "1A71797CAB8ED23C72233B7706B166A33049E4E87DFBC55B9E252F9C1843ECA6",
+      "nestedJsonSha256": "E3597BD67DEDDE20830BD9F73803FA7A0D8C458D87F769B3F950BFDC1B5602B0",
+      "nestedMemoryPackSha256": "27E28DA0D89C70D1796D02FBF5F4F53BDB70A48338E6BA6E7BCD0D8342621C1F",
+      "payloads": {
+        "json": "{\"State\":{\"Items\":[]}}",
+        "memoryPackBase64": "AQEAAAAA",
+        "nestedJson": "{\"Label\":\"fixed-envelope\",\"Value\":{\"State\":{\"Items\":[]}}}",
+        "nestedMemoryPackBase64": "AvH///8OAAAAZml4ZWQtZW52ZWxvcGUBAQAAAAA="
+      }
+    },
+    {
+      "id": "list-null",
+      "type": "SwiftCollections.SwiftList`1[System.Int32]",
+      "contract": "Null owner control.",
+      "source": "null",
+      "jsonObserved": "null",
+      "memoryPackObserved": "null",
+      "jsonBytes": 4,
+      "memoryPackBytes": 1,
+      "nestedJsonBytes": 39,
+      "nestedMemoryPackBytes": 24,
+      "jsonSha256": "74234E98AFE7498FB5DAF1F36AC2D78ACC339464F950703B8C019892F982B90B",
+      "memoryPackSha256": "A8100AE6AA1940D0B663BB31CD466142EBBDBD5187131B92D93818987832EB89",
+      "nestedJsonSha256": "84164C4BE71051E8890A7EA129977FF6BCAFC2B471F1E292F0B31E5B2853B814",
+      "nestedMemoryPackSha256": "CC27AF18978B8D06DBF8DEC73FA65AB9612DEA560D5AFFCFFE8B0725CA7D10A4",
+      "payloads": {
+        "json": "null",
+        "memoryPackBase64": "/w==",
+        "nestedJson": "{\"Label\":\"fixed-envelope\",\"Value\":null}",
+        "nestedMemoryPackBase64": "AvH///8OAAAAZml4ZWQtZW52ZWxvcGX/"
+      }
+    },
+    {
+      "id": "sorted-empty",
+      "type": "SwiftCollections.SwiftSortedList`1[System.Int32]",
+      "contract": "Empty custom owner still loses its comparer.",
+      "source": "count=0;defaultComparer=False",
+      "jsonObserved": "count=0;defaultComparer=True",
+      "memoryPackObserved": "count=0;defaultComparer=True",
+      "jsonBytes": 22,
+      "memoryPackBytes": 6,
+      "nestedJsonBytes": 57,
+      "nestedMemoryPackBytes": 29,
+      "jsonSha256": "FEAAD59334C5AB6E1963F961B626F0477D4F7475A6A31863D90572CF00B9268E",
+      "memoryPackSha256": "1A71797CAB8ED23C72233B7706B166A33049E4E87DFBC55B9E252F9C1843ECA6",
+      "nestedJsonSha256": "E3597BD67DEDDE20830BD9F73803FA7A0D8C458D87F769B3F950BFDC1B5602B0",
+      "nestedMemoryPackSha256": "27E28DA0D89C70D1796D02FBF5F4F53BDB70A48338E6BA6E7BCD0D8342621C1F",
+      "payloads": {
+        "json": "{\"State\":{\"Items\":[]}}",
+        "memoryPackBase64": "AQEAAAAA",
+        "nestedJson": "{\"Label\":\"fixed-envelope\",\"Value\":{\"State\":{\"Items\":[]}}}",
+        "nestedMemoryPackBase64": "AvH///8OAAAAZml4ZWQtZW52ZWxvcGUBAQAAAAA="
+      }
+    },
+    {
+      "id": "array-state",
+      "type": "SwiftCollections.SwiftArrayState`1[System.Int32]",
+      "contract": "Shared items-only DTO control.",
+      "source": "items=3,-5",
+      "jsonObserved": "items=3,-5",
+      "memoryPackObserved": "items=3,-5",
+      "jsonBytes": 16,
+      "memoryPackBytes": 13,
+      "nestedJsonBytes": 51,
+      "nestedMemoryPackBytes": 36,
+      "jsonSha256": "D39B14F6C3689AB02E1F22BF7FC0A0E629D70CA786120A94964FF16726986BD6",
+      "memoryPackSha256": "725D1FD30BA46DC3479861FC6F9B4AB4D1A41D0EA3F56E633E2848B8BA01CB02",
+      "nestedJsonSha256": "8D64F10E7B0190F59DF4B75B3DE701A64FDDA954CAC2C65802C084EC99D1317F",
+      "nestedMemoryPackSha256": "1144CBFC9BCF5122D69AB8BE22DB03BC4F68DCBB82EBC7489989A368DA5086A3",
+      "payloads": {
+        "json": "{\"Items\":[3,-5]}",
+        "memoryPackBase64": "AQIAAAADAAAA+////w==",
+        "nestedJson": "{\"Label\":\"fixed-envelope\",\"Value\":{\"Items\":[3,-5]}}",
+        "nestedMemoryPackBase64": "AvH///8OAAAAZml4ZWQtZW52ZWxvcGUBAgAAAAMAAAD7////"
+      }
+    },
+    {
+      "id": "array-state-default",
+      "type": "SwiftCollections.SwiftArrayState`1[System.Int32]",
+      "contract": "Default raw DTO, distinct from an empty array; it is not a valid collection restore input.",
+      "source": "items=null",
+      "jsonObserved": "items=null",
+      "memoryPackObserved": "items=null",
+      "jsonBytes": 14,
+      "memoryPackBytes": 5,
+      "nestedJsonBytes": 49,
+      "nestedMemoryPackBytes": 28,
+      "jsonSha256": "63EA6E3E3F9EF91CA92E5405DC9F37EBB19B1D247CBABDFE299095360212FE6A",
+      "memoryPackSha256": "8335A113CBCA7DB3861F7212E72FE8A3B0867B46AA079D8B7ACA13624B851748",
+      "nestedJsonSha256": "FAC7C7AAA803B7F86EE14CEEF8A6292C03AF962B2636A9C919856FE5E5FAD56B",
+      "nestedMemoryPackSha256": "A270C2CEA832E9FB799DC482711994B50E1F89B397204CC5A6F3B1E411FEAF5F",
+      "payloads": {
+        "json": "{\"Items\":null}",
+        "memoryPackBase64": "Af////8=",
+        "nestedJson": "{\"Label\":\"fixed-envelope\",\"Value\":{\"Items\":null}}",
+        "nestedMemoryPackBase64": "AvH///8OAAAAZml4ZWQtZW52ZWxvcGUB/////w=="
+      }
+    }
+  ]
+}

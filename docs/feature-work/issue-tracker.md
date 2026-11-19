@@ -75,7 +75,7 @@ diagnosis, decisions and reopening criteria stay with their owning issue.
 
 <a id="sc-issue-021"></a>
 
-- **Status / priority:** Planned API feature / P2; implementation not started.
+- **Status / priority:** Phase 0 complete / P2; Phase 1 implementation not started.
 - **Opened:** 2026-11-19, following the SC-Issue-010 trusted-state contract
   decision and the explicit request for comparer persistence.
 - **Scope / impact:** Preserve supported ordering and equality/hash rules before
@@ -85,17 +85,26 @@ diagnosis, decisions and reopening criteria stay with their owning issue.
   JSON without a MemoryPack dependency. Losing comparison metadata can change
   lookup semantics or discard custom-distinct entries.
 - **Disposition:** Keep raw-state schemas and their trusted restoration path.
-  Design versioned comparison metadata, explicit custom registrations and clear
+  Freeze strict v1 comparison metadata, explicit legacy migration, typed custom
+  registrations/factories and clear
   unsupported/unknown-codec failures at persistence boundaries. Do not add
   registry work to collection hot paths or reinstate the rejected ordering scan.
   SC-Issue-010 remains a historical contract closure, not a persistence fix.
-- **Next action:** Complete Phase 0 decisions and baselines, then prove one
-  sorted-list family through both serializers and compatible target graphs
-  before expanding. Explicitly settle legacy formats, effective hash fallback,
-  nested adapter integration and actual Unity compatibility.
+- **Phase 0 evidence:** Thirteen legacy families / 52 exact payloads are tracked.
+  The transport model passes modern and matched standard-2.1 graphs; actual
+  Unity 6000.3.9f1 Mono smoke suites pass standard 25/25 and Lean 24/24. Baseline
+  solution tests pass core 1578/1543 plus companion 43 each. All 6240 planned
+  warm baseline samples completed; these are calibration, not accepted future
+  overhead budgets. The plan preserves protocol, factory-recognition, fallback
+  and compatibility decisions and their limits.
+- **Next action:** Implement and independently review the real SortedList
+  family through normal direct/nested serializers, explicit legacy migration
+  and compatible target graphs before expanding. No scan/re-sort is added to
+  trusted restore. IL2CPP, production reconstruction, new-code coverage and
+  first-slice performance acceptance remain later gates.
 - **Plan / acceptance:** [Comparer persistence plan](comparer-persistence-plan.md)
   owns the inventory, decisions, phases, validation and performance gates. No
-  implementation, performance acceptance or release is claimed by this intake.
+  production implementation, performance acceptance or release is claimed here.
 
 ### SC-Issue-011 - Power-of-two recognition accepts a negative input
 
