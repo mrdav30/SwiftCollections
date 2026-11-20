@@ -9,14 +9,29 @@ namespace SwiftCollections.Tests;
 
 public class SwiftHashToolsTests
 {
+    [Theory]
+    [InlineData(int.MinValue, false)]
+    [InlineData(int.MinValue + 1, false)]
+    [InlineData(-(1 << 30), false)]
+    [InlineData(-16, false)]
+    [InlineData(-1, false)]
+    [InlineData(0, false)]
+    [InlineData(1, true)]
+    [InlineData(2, true)]
+    [InlineData(3, false)]
+    [InlineData(16, true)]
+    [InlineData((1 << 30) - 1, false)]
+    [InlineData(1 << 30, true)]
+    [InlineData((1 << 30) + 1, false)]
+    [InlineData(int.MaxValue, false)]
+    public void IsPowerOfTwo_RecognizesOnlyPositivePowers(int value, bool expected)
+    {
+        Assert.Equal(expected, SwiftHashTools.IsPowerOfTwo(value));
+    }
+
     [Fact]
     public void PowerHelpers_HandleBoundaryValues()
     {
-        Assert.False(SwiftHashTools.IsPowerOfTwo(0));
-        Assert.False(SwiftHashTools.IsPowerOfTwo(3));
-        Assert.True(SwiftHashTools.IsPowerOfTwo(1));
-        Assert.True(SwiftHashTools.IsPowerOfTwo(16));
-
         Assert.Equal(1, SwiftHashTools.NextPowerOfTwo(-5));
         Assert.Equal(1, SwiftHashTools.NextPowerOfTwo(0));
         Assert.Equal(1, SwiftHashTools.NextPowerOfTwo(1));

@@ -82,17 +82,13 @@ public static class SwiftHashTools
     }
 
     /// <summary>
-    /// Determines whether the specified integer is a power of two.
+    /// Determines whether the specified integer is a positive power of two.
     /// </summary>
-    /// <param name="x">The signed integer to test; the implementation tests its bit pattern.</param>
-    /// <returns>true when x has exactly one set bit and is not zero; this currently includes
-    /// Int32.MinValue.</returns>
-    /// <remarks>
-    /// The sign-bit case is a tracked defect relative to a positive-power-of-two interpretation. Zero and all
-    /// other negative inputs return false.
-    /// </remarks>
+    /// <param name="x">The signed integer to test.</param>
+    /// <returns>true when x is positive and has exactly one set bit; otherwise, false. Zero and all negative
+    /// inputs return false.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool IsPowerOfTwo(int x) => (x != 0) && ((x & (x - 1)) == 0);
+    public static bool IsPowerOfTwo(int x) => (x > 0) && ((x & (x - 1)) == 0);
 
     /// <summary>
     /// Calculates the smallest power of two that is greater than or equal to the specified integer. This method
