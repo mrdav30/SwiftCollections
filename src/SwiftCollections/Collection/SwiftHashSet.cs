@@ -800,8 +800,7 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     }
 
     /// <summary>
-    /// Switches the hash set's comparer and rehashes all entries using the new comparer to redistribute them
-    /// across <see cref="F:SwiftCollections.SwiftHashSet`1._entries" />.
+    /// Switches the hash set's comparer and rehashes its stored entries.
     /// </summary>
     /// <param name="comparer">The element equality comparer, retained by reference. Must be non-null and must not
     /// collapse previously distinct stored items.</param>

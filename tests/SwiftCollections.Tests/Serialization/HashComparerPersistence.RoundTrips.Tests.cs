@@ -1,6 +1,7 @@
 using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text.Json;
 using SwiftCollections.Observable;
 using SwiftCollections.Serialization;
@@ -129,6 +130,57 @@ public partial class HashComparerPersistenceTests
         Assert.IsType<SwiftObservableDictionary<PersistenceHashKey, int>>(restoredObservable);
         Assert.Single(RoundTrip(restoredBidirectional, binary, registry));
         Assert.Equal(3, RoundTrip(restoredObservable, binary, registry).Count);
+    }
+
+    [Theory]
+    [MemberData(nameof(Formats))]
+    public void EmptyAndLargeBidirectionalOwnersRestoreHeterogeneousCustomRulesAndContinueGrowing(bool binary)
+    {
+        var forward = new PersistenceHashKeyComparer(-7719);
+        IEqualityComparer<string> reverse = CreateReverseComparer();
+        var registry = new SwiftComparerRegistryBuilder()
+            .RegisterEquality<PersistenceHashKey>("test.key.identity", 1, forward,
+                static rule => Int32Configuration(((PersistenceHashKeyComparer)rule).Seed),
+                static bytes => (new PersistenceHashKeyComparer(BinaryPrimitives.ReadInt32LittleEndian(bytes.Span)), 4))
+            .RegisterEquality<string>("test.value.ignore-case", 1, reverse,
+                static _ => ReadOnlyMemory<byte>.Empty, static _ => (CreateReverseComparer(), 0)).Build();
+
+        foreach (int count in new[] { 0, 257 })
+        {
+            var source = new SwiftBiDictionary<PersistenceHashKey, string>(forward, reverse);
+            for (int i = 0; i < count; i++) Assert.True(source.Add(Key(i), Value(i)));
+
+            var restored = RoundTrip(source, binary, registry);
+
+            Assert.Equal(count, restored.Count);
+            Assert.Equal(-7719, Assert.IsType<PersistenceHashKeyComparer>(restored.Comparer).Seed);
+            if (count != 0)
+            {
+                Assert.Equal(count - 1, restored.GetKey(Alias(count - 1)).Identity);
+                Assert.True(restored.Remove(Key(0)));
+                Assert.False(restored.TryGetKey(Alias(0), out _));
+                Assert.False(restored.Add(Key(count), Alias(count - 1)));
+            }
+            for (int i = count; i < count + 257; i++) Assert.True(restored.Add(Key(i), Value(i)));
+
+            var recaptured = RoundTrip(restored, binary, registry);
+
+            Assert.Equal(count + 257 - (count == 0 ? 0 : 1), recaptured.Count);
+            for (int i = count == 0 ? 0 : 1; i < count + 257; i++)
+            {
+                Assert.Equal(Value(i), recaptured[Key(i)]);
+                Assert.Equal(i, recaptured.GetKey(Alias(i)).Identity);
+            }
+            Assert.Equal(count, source.Count);
+            if (count != 0) Assert.Equal(0, source.GetKey(Alias(0)).Identity);
+        }
+
+        static string Value(int identity) => "value/" + identity.ToString(CultureInfo.InvariantCulture);
+        static string Alias(int identity) => "VALUE/" + identity.ToString(CultureInfo.InvariantCulture);
+        static IEqualityComparer<string> CreateReverseComparer()
+            => EqualityComparer<string>.Create(
+                static (left, right) => StringComparer.OrdinalIgnoreCase.Equals(left, right),
+                static value => StringComparer.OrdinalIgnoreCase.GetHashCode(value));
     }
 
     [Theory]

@@ -128,8 +128,8 @@ Serialization guidance:
   serializer contract. Follow the serialization guide for codecs and the
   version-one-only breaking format; do not add legacy readers or fallback.
 - State-backed collections should preserve state constructors and state structs.
-- `net10.0` builds use System.Text.Json converter implementations where
-  supported.
+- Comparer-aware JSON converters compile for `netstandard2.1` and `net10.0`
+  in standard and Lean builds.
 - Shared MemoryPack and interpolated-handler compatibility attributes come from
   Chronicler packages. Preserve existing package/target preprocessor patterns.
   The dictionary-specific internal nullability annotation stays with its

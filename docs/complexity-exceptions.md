@@ -67,7 +67,7 @@ in standard, Lean and Debug builds.
 
 Dictionary and HashSet restoration each retain a defensive `2 * capacity`
 probe-exhaustion throw. These are the only uncovered lines/branches in the
-Phase 2 core coverage record. The local arrays do not escape, contain no
+core coverage record. The local arrays do not escape, contain no
 tombstones, and are sized above item count before population. For power-of-two
 capacity N, cumulative-square probing visits every slot within 2N attempts
 (the second N positions shift the first N by N/2 modulo N, giving coverage by

@@ -203,7 +203,11 @@ and wire validation in their existing helpers; keep owner-specific table
 invariants in the owner. Supply a registry through JSON options or MemoryPack's
 per-operation services; keep lookup and mutation free of persistence work.
 Use matching `netstandard2.1` plugin dependencies in the existing
-SwiftCollections-Unity smoke-test host.
+SwiftCollections-Unity smoke-test host. Check Standard/Lean JSON interchange
+and semantic wire interchange between supported target frameworks. Use
+independent old/new reader controls to verify the intended format break.
+Validate actual Unity Mono and IL2CPP separately; Mono success does not
+establish stripping or AOT support.
 See the [serialization guide](docs/api/guides/serialization-and-diagnostics.md)
 for codecs, closed JSON metadata and explicit formatter bootstrap.
 

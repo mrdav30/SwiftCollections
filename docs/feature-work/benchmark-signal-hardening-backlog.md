@@ -82,9 +82,9 @@ making a new performance claim.
 
 ### SC-Benchmark-006 - Unattributed native exit during persistence measurement
 
-- **Discovered / status:** 2026-11-20; unreproduced in bounded replays. Open
-  measurement-reliability follow-up, not a confirmed collection defect or a
-  reopened SC-Benchmark-005 timing gate.
+- **Discovered / status:** 2026-11-20; intermittent failures with unresolved
+  attribution. Open measurement-reliability follow-up, not a confirmed collection
+  defect or a reopened SC-Benchmark-005 timing gate.
 - **Source / environment:** Phase 2 working tree over
   `4fedfa1` before replacing the shared JSON descriptor arrays with a fixed
   tuple. Standard net10.0 core SHA256
@@ -115,12 +115,41 @@ making a new performance claim.
   from address 0x48 in unresolved code, with System.Text.Json frames below
   exception dispatch. This does not identify the originating managed method or
   establish whether it was an owner operation, validation or final JSON output.
+- **Phase 3 controls — 2026-11-20:** A larger decode-only batch also failed on
+  the committed Phase 2 baseline `b6c1953d2a81570bae8f97ab9c53a64e0edb5d0a`,
+  before executing the candidate optimization. Core SHA256
+  `BAE679CB7276D410900758CF4362119D8C9376685231BDAD0B3A1B1697445AFD`,
+  optimized caller `64D160A5CE8ED6639D386FA8FE6AC68419EAAA42ADB3CF1FB1561897EB2267ED`.
+  Use the same default-int dictionary/bidictionary inputs, fix count at 65536,
+  measure decode only, warm eight calls after each forced full GC, and perform
+  five samples of 32 calls. Validate every mapping outside timing, retain the
+  decoded owner, and keep the original JSON array captured by the decode
+  delegate. Keep CPU2, normal priority and disabled tiering. One process failed
+  with an access violation in `Utf8JsonReader.ConsumeString`; a later fresh
+  baseline process failed with a wrapped `NullReferenceException` in
+  `Utf8JsonReader.Read` during warmup. The latter stack identifies Dictionary's
+  nested `JsonSerializer.Deserialize<TState>(ref reader, options)` call, through
+  the parameterized key/value constructor, before collection population. Binary
+  operations had not run. This is not evidence that both incidents share a
+  root cause, or that the allocation optimization fixes either failure.
+  A CDB replay completed all 20 batch rows without capturing an AV. Separate
+  plain-BCL pair-array, raw-state and baseline-owner drivers each completed 200
+  decodes with full-content checks and GC boundaries every 40 operations.
+  Two additional framework-only nested-reader controls, using the same ref-reader
+  delegation with no Swift/Chronicler/MemoryPack references, completed 200 decodes
+  each. These controls do not reliably reproduce or attribute the fault.
+  ClrMD 3.1 with the matching DAC could not resolve the original small dump's
+  code address. Exclude failures and diagnostic runs from timings; passing
+  controls do not establish a fix. The final balanced binary-only comparison
+  completed eight processes/80 rows, and the final full boundary matrix
+  completed eight processes/1728 rows. The focused JSON batch remains an
+  unresolved reliability limit rather than an accepted performance sample.
 - **Attribution / next action:** No concrete driver/owner memory misuse was
   found in independent review. The synchronous managed-array driver uses no
   manual readers, unsafe pointers or borrowed buffers. Do not attribute this
-  to the tuple allocation improvement, call it a known baseline failure, or
-  add speculative runtime changes. Resolve the original managed frame from
-  the dump if possible; on recurrence collect first-chance context and
+  to the tuple allocation improvement, infer that the original Phase 2 incident
+  was a known baseline failure from the later Phase 3 controls, or add
+  speculative runtime changes. On recurrence collect first-chance context and
   operation/progress before assigning ownership or promoting a confirmed
   implementation defect. Retain this unresolved reliability limit for
   Phase 3/release review.

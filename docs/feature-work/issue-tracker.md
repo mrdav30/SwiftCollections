@@ -75,10 +75,10 @@ diagnosis, decisions and reopening criteria stay with their owning issue.
 
 <a id="sc-issue-021"></a>
 
-- **Status / priority:** Phases 1 and 2 implemented and verified as of
-  2026-11-20 / P2. Version-one owner persistence covers all five comparer-aware
-  families; the overall issue remains open for Phase 3 and the recorded
-  measurement-reliability limit.
+- **Status / priority:** All five families implemented; Phase 3 local
+  compatibility/build/coverage/package/reference checks pass as of 2026-11-20 / P2.
+  The issue remains open for actual IL2CPP/stripping, hosted/release readiness
+  and the recorded measurement-reliability limit.
 - **Opened:** 2026-11-19, following the SC-Issue-010 trusted-state contract
   decision and the explicit request for comparer persistence.
 - **Scope / impact:** Preserve supported ordering and equality/hash rules before
@@ -178,16 +178,34 @@ diagnosis, decisions and reopening criteria stay with their owning issue.
   decode allocation falls through pre-sized construction. The
   [Phase 2 record](comparer-persistence-plan.md#phase-2-execution-record--2026-11-20)
   preserves inputs, hashes, costs, exclusions and review results.
+- **Phase 3 evidence:** Independent old/new readers, all 16 target/variant
+  combinations and 32 Windows/Linux exchanges pass; configured captures and
+  continuation traces agree across fresh processes. Final Unity Mono checks
+  pass both variants with reflection-disabled JSON and standard MemoryPack.
+  Full Release/Lean/Debug builds pass; tests are 1791/1688/1789 core plus 43
+  companion each, with all reachable coverage. All eight assembly/XML pairs
+  match packages; complete authored/compiled inventories and clean rendered
+  references pass. The hardening review removes BiDictionary's temporary reverse
+  array through shared specialized population, saving 524312 bytes at 65536
+  int/int entries. Local large binary medians improve about 2.3%/6.2% for
+  Dictionary/BiDictionary; tiny boundary timings remain mixed. Independent
+  code/render reviews find no remaining confirmed defect. Both IL2CPP builds
+  are blocked by missing MSVC/Windows SDK; no player/AOT success is claimed.
+  See the [Phase 3 record](comparer-persistence-plan.md#phase-3-execution-record--2026-11-20)
+  for complete inputs, adverse variants, raw counts, exclusions and limits.
 - **Measurement reliability:** One earlier disposable measurement process ended
   with a native access violation. A recovered Windows minidump confirms its
   invocation and fatal CLR exception handling with System.Text.Json callers,
-  but the originating managed method is unresolved. Identical-core replays,
-  a debugger replay and the final matrix complete without establishing a fix
-  or ownership. [SC-Benchmark-006](benchmark-signal-hardening-backlog.md#sc-benchmark-006---unattributed-native-exit-during-persistence-measurement)
+  but that dump's originating managed method is unresolved. Two additional
+  larger Phase 3 baseline JSON batches fail in the nested Utf8JsonReader path.
+  Replays and independent controls complete without establishing a fix, common
+  cause or ownership. [SC-Benchmark-006](benchmark-signal-hardening-backlog.md#sc-benchmark-006---unattributed-native-exit-during-persistence-measurement)
   retains this separate unresolved limit. No speculative runtime fix is added.
-- **Next action:** Complete Phase 3 full reader/cross-runtime interoperability,
-  supported IL2CPP/stripping, hosted/release readiness and the reliability review.
-  The overall issue stays open; no release or full-feature completion is claimed.
+- **Next action:** Install the C++ compiler and Windows SDK 10.0.19041.0+,
+  build/run both actual High-stripping IL2CPP players, disposition the additional
+  baseline reader failures tracked in SC-Benchmark-006, and obtain hosted/release
+  evidence after authorized promotion. The overall issue stays open; no release
+  or full-feature completion is claimed.
 - **Plan / acceptance:** [Comparer persistence plan](comparer-persistence-plan.md)
   owns the inventory, decisions, phases, validation and performance gates.
   The former plan-only fixture directory is removed; maintained tests consume

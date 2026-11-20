@@ -22,10 +22,7 @@ public partial class SwiftBiDictionary<T1, T2> where T1 : notnull where T2 : not
     private SwiftBiDictionary(SwiftDictionaryState<T1, T2> state, IEqualityComparer<T1> forward,
         IEqualityComparer<T2> configuredReverse, IEqualityComparer<T2> effectiveReverse) : base(state, forward)
     {
-        var reverseItems = new KeyValuePair<T2, T1>[state.Items.Length];
-        for (int i = 0; i < reverseItems.Length; i++)
-            reverseItems[i] = new KeyValuePair<T2, T1>(state.Items[i].Value, state.Items[i].Key);
-        _reverseMap = SwiftDictionary<T2, T1>.RestoreTrusted(new SwiftDictionaryState<T2, T1>(reverseItems), effectiveReverse);
+        _reverseMap = SwiftDictionary<T2, T1>.RestoreReversedTrusted(state, effectiveReverse);
         _reverseComparer = configuredReverse;
     }
 }

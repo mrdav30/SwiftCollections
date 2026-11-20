@@ -1,9 +1,10 @@
 # Comparer Persistence Plan
 
-- **Status:** Phases 1 and 2 implemented and verified as of 2026-11-20;
-  comparer-aware persistence covers sorted lists and all four hash/inherited
-  families. SC-Issue-021 remains open for Phase 3 compatibility/release gates
-  and the separately recorded measurement-reliability limit.
+- **Status:** All five comparer-aware families are implemented. Phase 3 local
+  compatibility, build, coverage, package and reference checks pass as of
+  2026-11-20. Actual IL2CPP execution is blocked by missing native tools;
+  SC-Issue-021 remains open for that gate, hosted/release readiness and the
+  separately recorded measurement-reliability limit.
 - **Created:** 2026-11-19.
 - **Owner:** SwiftCollections; coordinate with Chronicler only where its shared
   serialization boundary needs an extension.
@@ -413,9 +414,9 @@ recover that missing information.
 | Writer/input | Reader | Disposition / evidence |
 | --- | --- | --- |
 | Legacy owner, no descriptors | Legacy reader | Existing behavior, including comparer loss; 52 frozen direct/nested payloads checked. |
-| Legacy non-null owner | New strict reader | Reject; implemented for SortedList. No legacy reader or migration helper is provided. |
+| Legacy non-null owner | New strict reader | Reject for all five owners; independently checked with actual historical writers. No legacy reader or migration helper is provided. |
 | Selected v1 framing | Legacy direct/nested reader | Reject; observed for JSON and MemoryPack with actual old readers. |
-| V1 writer | New strict reader | Supported-rule round trip implemented for SortedList; remaining families pending. |
+| V1 writer | New strict reader | All five owners checked across both target assets, Standard/Lean JSON, Windows/Linux and actual Unity Mono. IL2CPP remains unverified. |
 | Comparerless owner or raw DTO | Existing matching reader | Format unchanged; no new metadata contract. |
 | Null owner | Matching nullable reader | Null remains null; no comparison rule exists to restore. |
 
@@ -510,11 +511,13 @@ the supported IL2CPP consumer remains a separate acceptance gate.
 
 ### 3. Compatibility, performance and closeout
 
-- [ ] Complete old/new fixture matrix, independent-reader checks, cross-TFM
-  semantic round trips and actual supported Unity Mono/IL2CPP validation.
-- [ ] Run full standard/Lean/Debug builds, behavior tests, independent assembly
+- [x] Complete old/new fixture matrix, independent-reader checks, cross-TFM
+  semantic round trips and actual supported Unity Mono validation.
+- [ ] Complete actual supported IL2CPP/High-stripping player validation; both
+  attempted builds require the missing C++ compiler and Windows SDK.
+- [x] Run full standard/Lean/Debug builds, behavior tests, independent assembly
   coverage, package checks and reference documentation checks.
-- [ ] Publish concise per-phase results and unresolved limits here. Update
+- [x] Publish concise per-phase results and unresolved limits here. Update
   evergreen serialization guidance, authored XML and migration notes only for
   the implemented contract; preserve CI selection/publication policy.
 - [ ] Close SC-Issue-021 only after all in-scope owners and required gates are
@@ -1328,3 +1331,195 @@ production callers; no maintained probe framework or speculative later-family
 abstraction is added.
 SC-Issue-021 stays open for Phase 3; SC-Benchmark-005 remains closed under its
 existing user disposition. No release or full-feature completion is claimed.
+
+
+## Phase 3 execution record — 2026-11-20
+
+**Disposition:** Local verification and the Phase 1–2 hardening review are
+complete. Keep the overall feature open: actual IL2CPP players did not build
+because native prerequisites are absent, SC-Benchmark-006 remains unattributed,
+and hosted CI/release promotion has not been executed. No release, universal
+AOT support or universal timing equivalence is claimed.
+
+### Optimization and independent review
+
+Start from clean revision `b6c1953d2a81570bae8f97ab9c53a64e0edb5d0a` with
+published dependencies. Independent reviews covered typed registration and weak
+recapture, callback/configuration ownership, strict bounded metadata, all five
+owner transports, duplicate/null/collision behavior, private publication and
+post-load mutation. No new confirmed implementation defect was found. The
+rendered review found one incorrect private-field link in `HashSet.SetComparer`;
+its summary now describes stored entries directly.
+
+BiDictionary now constructs its reverse table directly from the original state
+snapshot, eliminating the projected `KeyValuePair<T2,T1>[]`. Dictionary retains
+one population loop, with direct/reversed spans and pair selection before any
+comparer callback. No new fields, public APIs, per-item delegates, normal
+lookup/mutation work, raw-state changes or fallback algorithms are introduced.
+The new behavior test covers empty/257-entry heterogeneous custom rules,
+reverse aliases/uniqueness, removal, growth across another capacity boundary,
+post-load recapture and unchanged source owners in JSON and standard MemoryPack.
+This is an allocation optimization, so there is no claimed failing correctness
+regression before the change.
+
+A first shared-loop version saved the array but cost about 6.4% on large plain
+Dictionary binary restore in four balanced processes per version. Keep that
+adverse result. Selecting a pair once was insufficient. Final construction
+specializes the shared loop inside the two persistence constructors, with the
+constructors retained as call boundaries. JIT inspection confirms removal of
+the direct loop's direction work without copying population into every
+serializer. In the observed `int/int` specialization, the direct/reverse bodies
+are 941/1028 native bytes; the sampled JSON/binary restoration call graph grows
+about 940 native bytes overall. An intermediate unbounded-inline variant
+expanded serializer bodies and was rejected. These are compiler observations
+for this profile, not requirements on another JIT or Mono.
+
+Use the Phase 2 default-int four-owner protocol, keys `0..N-1`, values `3*k+1`,
+`N=0,1,8,128,4096,65536`, same optimized caller and matching dependency graph
+with only the core DLL exchanged. Windows x64 build 26300, i7-9700K, SDK
+10.0.302/runtime 10.0.10, CPU2, normal priority, tiering disabled, no competing
+build/test/editor/profiler. Final ABBA per variant completes eight processes /
+1728 checked intervals. The removed allocation is exactly `24+8*N` bytes for
+this `int/int` pair on this host: 24/32/88/1048/32792/524312 bytes at the six
+counts, for either decode transport. Wire lengths, encoder allocation and
+ordinary non-bidirectional allocation remain unchanged. Tiny boundary timings
+are mixed: standard BiDictionary binary medians are 279.3→283.75 ns empty,
+290.65→302.65 ns at one item, and 371.2→376.9 ns at eight. These short intervals
+do not establish a fixed latency penalty or zero overhead.
+
+A separate binary-only ABBAABBA comparison at 65536 items uses eight warmup
+calls, five samples of 32 decodes per process and four complete processes per
+version, with full mapping checks outside timing. All 80 rows complete:
+
+| Owner | Baseline process-median ns (range) | Final process-median ns (range) | Allocated bytes, before → after |
+| --- | ---: | ---: | ---: |
+| Dictionary | 555955 (549916–568053) | 542983 (540303–547869) | 2621664 → 2621664 |
+| BiDictionary | 925641 (924459–934259) | 868688 (854906–886725) | 5243432 → 4719120 |
+
+Measured core SHA256s are standard
+`DCEFAE713786E479C0A4EB9D6358DABF76CE82F3BC0906CF44F2170549D0699A`
+and Lean `C5EBC940F23FFD9396B941199CA69A15DE70070BC95DC9B3F867030B1B913DF6`;
+baselines are `BAE679CB7276D410900758CF4362119D8C9376685231BDAD0B3A1B1697445AFD`
+and `0802D3F984DA94BCA55A8945E824FFCD062D8736E832E5E05172C97DDA8F8702`.
+Later line-ending/XML cleanup is followed by fresh full builds/tests; metadata
+inspection verifies identical executable IL, signatures and method attributes
+for the measured/final implementations (1535 standard / 1412 Lean bodies on
+net10.0, and 1607/1418 in the actual netstandard Mono plugin graphs).
+No maintained benchmark infrastructure or dependency change is added. Runtime
+algorithm growth is 17 lines across two existing files; the HashSet XML correction
+removes one documentation line, tests add 52 lines, and no maintained file is new.
+Revisit specialization if a supported compiler loses the measured benefit or
+code size/representative restore cost becomes material.
+
+### Compatibility and determinism
+
+Four independently selected complete graphs combine Standard/Lean and actual
+`net10.0`/`netstandard2.1` core assets. Standard runs use the matching net8 or
+netstandard MemoryPack asset respectively; the isolated execution host is
+CoreCLR 10.0.10, not a claim that netstandard is a runtime. JSON uses the host's
+System.Text.Json 10.0.10. Each writer captures five families × null/empty/one/three
+items × direct/generated-nested shapes: 80 records standard, 40 Lean. Custom
+ordering includes ties; typed modulo equality exercises both BiDictionary roles.
+Readers check rules, full contents, lookup/add/remove continuation and observable
+notifications. All 16 Windows reader/writer combinations pass.
+
+Ubuntu 24.04.1 x64 under WSL runs an isolated portable, SHA512-verified official
+.NET 10.0.10 runtime; there is no global install. All 16 Windows→Linux and
+16 Linux→Windows reader combinations pass. Two fresh captures per graph per OS
+agree byte-for-byte for this configured integer fixture, and canonical semantic
+traces agree across all 48 combinations. This does not promise hash iteration
+or universal hash-byte determinism. Built-in/default/seed/full-entropy,
+noncomparable, callback and invalid-input coverage remains in maintained tests
+and the Unity smoke controls.
+
+Independent historical readers/writers use `bf69e21` for SortedList and
+`4fedfa1` for hash families. Their own 16/64-record controls pass; historical
+readers reject all current non-null direct/nested envelopes, and all four current
+graphs reject their old non-null records. Null stays null. Final captures match
+the initial independent-reader inputs. Raw DTO/comparerless wire contracts
+remain unchanged; the Phase 2 exact-byte controls remain applicable.
+
+Actual Unity 6000.3.9f1 Mono passes with matching netstandard plugins for both
+variants. The subsequent XML-only correction leaves all executable IL identical;
+final builds, tests, packages and references are checked again. With JSON reflection disabled before use, generated contexts and
+explicit closed creators exercise all five owners, custom ordering/equality
+factories, scalar/array/list/nested shapes, recapture and continuation. Standard
+also executes explicitly registered MemoryPack owners, generated nesting,
+truncation rejection and unchanged existing reference on failure. These composed
+runtime checks supplement the earlier 29/27 EditMode suite results.
+
+Both actual Windows64 IL2CPP Release/High-stripping build attempts fail before
+producing a player. Unity reports no compatible installation with C++ tools and
+no Windows SDK 10.0.19041.0 or newer; installed Visual Studio 2026 instances lack
+MSVC. The editor's IL2CPP modules alone are insufficient. Install the native
+prerequisites, then build and execute both stripped players to close this gate.
+Native Unity field/JsonUtility formats remain explicitly separate adapter scope.
+The Unity package checkout has no tracked edits.
+
+### Build, coverage, packages and reference
+
+Package mode (`UseLocalLsfStack=false`) is used throughout. The existing solution
+build/test commands pass Release, ReleaseLean and Debug with zero build warnings
+or errors. Final core test totals are 1791/1688/1789 respectively, companion 43
+each; no skips. Final error-level format verification and `git diff --check`
+pass. Full reachable coverage is preserved without new exclusions:
+
+| Configuration | Core lines | Core branches | Core executable methods | Companion lines / branches / methods |
+| --- | ---: | ---: | ---: | ---: |
+| Release | 6081/6083 | 2886/2888 | 1261/1261 | 121/121; 62/62; 35/35 |
+| ReleaseLean | 5887/5889 | 2810/2812 | 1220/1220 | 121/121; 62/62; 35/35 |
+| Debug | 8027/8029 | 2894/2896 | 1261/1261 | 155/155; 62/62; 35/35 |
+
+The only raw gaps are the two proven unreachable fresh-table exhaustion throws,
+now Dictionary.Persistence line 68 and HashSet.Persistence line 38. The
+[complexity register](../complexity-exceptions.md#fresh-table-persistence-guards)
+preserves the capacity/probe proof and reopening condition.
+
+All four package IDs contain byte-equal built DLL/XML pairs for both TFMs:
+`SwiftCollections.dll/.xml` and `SwiftCollections.FixedMathSharp.dll/.xml`,
+Release/ReleaseLean × net10.0/netstandard2.1, eight assembly/XML pairs in total.
+Standard/Lean companion dependencies select their matching core and FixedMathSharp
+families; Lean has no MemoryPack runtime dependency (its Chronicler shim remains).
+No package, target or CI selection/publication policy changes.
+
+The complete authored audit finds 946 core members standard, 931 Lean and 30
+companion members per target, with zero missing applicable tags or reconciliation
+gaps. Compiled core inventories are 1392/1311 IDs: 218 accessors, 126 authored
+explicit-interface implementations and 36 synthesized members are accounted
+separately; standard adds 66 generated serializer IDs (explicit-interface forms
+on net10.0, public generated forms on netstandard2.1). Fifteen authored MemoryPack
+members are excluded in Lean. Companion has 36 IDs: 30 authored, five accessors
+and one synthesized. Operators, indexers, nested types and partials are reconciled.
+Adjacent XML has 1179/1164 core entries and 30 companion entries per target;
+internal comments are not miscounted as public API. The site selects standard
+net10.0, so the other assets are checked through emitted XML/metadata separately.
+Fresh DocFX generation passes with zero warnings; all 104 HTML pages and 1626
+local paths/fragments resolve. Ninety-four assertions inspect representative
+rendered owner, registry, creator, property, exception and inherited contracts. External Chronicler `IStateBacked` and
+MemoryPack interface/reader/writer/serialization-exception labels have no xref maps
+and remain plain text; local canonical-interface links resolve. Inherited inventory
+is nine CloneTo members plus BoundVolume.Union/BoundsEquals, each in four target
+combinations. Contributor guidance now reflects both JSON targets and the
+separate Mono/IL2CPP gates.
+
+### Failures, limits and next action
+
+Two larger decode-batch processes fail on JSON in the committed baseline before
+the candidate executes: one native access violation and one wrapped reader
+NullReferenceException. Their observed nested reader path, revisions, inputs,
+controls and exclusions are preserved in
+[SC-Benchmark-006](benchmark-signal-hardening-backlog.md#sc-benchmark-006---unattributed-native-exit-during-persistence-measurement).
+A debugger replay, plain-BCL/raw-state/owner controls and two additional pure-BCL
+nested-reader controls (200 decodes each) pass without proving a fix or ownership.
+An interrupted disposable host copy was rebuilt and verified before acceptance;
+its incomplete launch and diagnostic runs are excluded. No speculative runtime
+workaround or maintained regression for an unconfirmed cause is added.
+
+No confirmed defect or test failure is attributable to the selected optimization;
+the baseline reader failures remain unattributed. Actual IL2CPP/stripping, native reliability disposition, hosted CI and authorized
+release promotion remain pending. Keep SC-Issue-021 and the required completion
+checkboxes open until these gates have evidence or explicit disposition. Keep
+SC-Benchmark-005's accepted Phase 1 timing decision unchanged. Do not reopen the
+trusted-state SC-Issue-010 contract or add a compatibility reader. Further timing
+investigation needs a representative attributable regression, not another small
+context-sensitive microbenchmark alone.

@@ -7,6 +7,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Chronicler.Diagnostics;
 using SwiftCollections.Utility;
 
@@ -16,27 +17,46 @@ public partial class SwiftDictionary<TKey, TValue> where TKey : notnull
 {
     internal virtual bool HasAdditionalComparerRoles => false;
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
     internal SwiftDictionary(SwiftDictionaryState<TKey, TValue> state, IEqualityComparer<TKey> comparer)
     {
         _entries = null!;
         _comparer = comparer;
-        RestoreEntries(state, comparer);
+        ChronicleGuard.ThrowIfNull(state.Items, nameof(state));
+        RestoreEntries(state.Items, default, comparer);
     }
 
     internal static SwiftDictionary<TKey, TValue> RestoreTrusted(SwiftDictionaryState<TKey, TValue> state,
         IEqualityComparer<TKey> comparer) => new(state, comparer);
 
-    // Used only while constructing an unpublished owner, including inherited dictionary families.
-    internal void RestoreEntries(SwiftDictionaryState<TKey, TValue> state, IEqualityComparer<TKey> comparer)
+    internal static SwiftDictionary<TKey, TValue> RestoreReversedTrusted(SwiftDictionaryState<TValue, TKey> state,
+        IEqualityComparer<TKey> comparer) => new(state.Items, comparer);
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private SwiftDictionary(ReadOnlySpan<KeyValuePair<TValue, TKey>> reverseItems, IEqualityComparer<TKey> comparer)
     {
-        ChronicleGuard.ThrowIfNull(state.Items, nameof(state));
+        _entries = null!;
+        _comparer = comparer;
+        RestoreEntries(default, reverseItems, comparer);
+    }
+
+    // Specialize direction in the constructors without duplicating this loop in every serializer.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void RestoreEntries(ReadOnlySpan<KeyValuePair<TKey, TValue>> items,
+        ReadOnlySpan<KeyValuePair<TValue, TKey>> reverseItems, IEqualityComparer<TKey> comparer)
+    {
         ChronicleGuard.ThrowIfNull(comparer, nameof(comparer));
-        int capacity = SwiftHashTools.GetPersistenceCapacity(state.Items.Length, DefaultCapacity, 82);
+        bool reverse = !reverseItems.IsEmpty;
+        int count = reverse ? reverseItems.Length : items.Length;
+        int capacity = SwiftHashTools.GetPersistenceCapacity(count, DefaultCapacity, 82);
         var entries = new Entry[capacity];
         int mask = capacity - 1, last = 0, maximumStep = 0;
-        foreach (KeyValuePair<TKey, TValue> item in state.Items)
+        for (int i = 0; i < count; i++)
         {
-            ChronicleGuard.ThrowIfNullGeneric(item.Key, nameof(state));
+            KeyValuePair<TKey, TValue> item = reverse
+                ? new KeyValuePair<TKey, TValue>(reverseItems[i].Value, reverseItems[i].Key)
+                : items[i];
+            ChronicleGuard.ThrowIfNullGeneric(item.Key, "state");
             int hash = comparer.GetHashCode(item.Key) & 0x7FFFFFFF;
             int index = hash & mask, step = 1;
             uint limit = (uint)capacity * 2;
@@ -57,7 +77,7 @@ public partial class SwiftDictionary<TKey, TValue> where TKey : notnull
         _entries = entries;
         _comparer = comparer;
         _entryMask = mask;
-        _count = state.Items.Length;
+        _count = count;
         _lastIndex = last;
         _maxStepCount = maximumStep;
         _nextResizeCount = (uint)(capacity * _LoadFactorThreshold);
