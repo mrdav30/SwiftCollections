@@ -80,11 +80,18 @@ making a new performance claim.
 
 ## Active Signals
 
+None.
+
+## Closed Signals
+
 ### SC-Benchmark-006 - Unattributed native exit during persistence measurement
 
-- **Discovered / status:** 2026-11-20; intermittent failures with unresolved
-  attribution. Open measurement-reliability follow-up, not a confirmed collection
-  defect or a reopened SC-Benchmark-005 timing gate.
+- **Discovered / closed:** 2026-11-20 / 2026-11-20; closed by a bounded
+  no-source-change decision. The frozen baseline failure reproduces, but its
+  cause remains unresolved; current Standard/Lean controls pass and review finds
+  no attributable source defect. This is not a crash fix, exoneration of earlier
+  IO or a reopened SC-Benchmark-005 timing gate. Closure evidence and reopening
+  criteria follow the historical checkpoints below.
 - **Source / environment:** Phase 2 working tree over
   `4fedfa1` before replacing the shared JSON descriptor arrays with a fixed
   tuple. Standard net10.0 core SHA256
@@ -182,15 +189,16 @@ making a new performance claim.
   the same BCL bulk-write-barrier helper with length 112. No SwiftCollections,
   Chronicler or MemoryPack is loaded; all thirty million copies pass. This
   bounds the investigation but does not reproduce or exonerate the earlier IO.
-- **Disposition:** The user delegated final judgment on the Phase 3 reliability
+- **Initial Phase 3 disposition (superseded below):** The user delegated final
+  judgment on the Phase 3 reliability
   gate. Close feature implementation acceptance after its required checks, and
   retain SC-Benchmark-006 as this separate open release-reliability follow-up.
   No crash fix or confirmed runtime/environment defect is claimed. No production
   workaround, unsafe-code suppression, maintained probe tests or profiler-policy
   changes were added. Reopen feature acceptance for a confirmed attributable
   defect; review this open risk before release promotion.
-- **Attribution / next action:** No concrete driver/owner memory misuse was
-  found in independent review. The synchronous managed-array driver uses no
+- **Initial attribution / planned isolation:** No concrete driver/owner memory
+  misuse was found in independent review. The synchronous managed-array driver uses no
   manual readers, unsafe pointers or borrowed buffers. Do not attribute this
   to the tuple allocation improvement, infer that the original Phase 2 incident
   was a known baseline failure from the later Phase 3 controls, or add
@@ -201,7 +209,88 @@ making a new performance claim.
   it fails. Keep this unresolved risk in release review; passing selected-current
   and independent controls do not prove a fix.
 
-## Closed Signals
+- **Signal closeout — 2026-11-20:** The user requested a source-focused,
+  bounded investigation. Starting checkout was clean at
+  `21b85acdd19edaa7b2ab9e3a3958cdc6e7deb3fb`; runtime/test source is unchanged
+  from `cab616d0b741afae56ed207261683881254fcc23`. Reuse the 65536-entry
+  protocol above in a disposable optimized net10.0 caller, limiting construction
+  and serialization to BiDictionary JSON. Remove every MemoryPack IO call and
+  all other owner workloads; keep default serializer options and the captured
+  managed byte array alive in the decode delegate. Serialize once, validate an
+  initial decode, then run five samples of eight warmups and 32 decodes with the
+  same forced-GC boundaries and forward/reverse checks. Expected: five completed
+  rows and normal exit per process, 201 decodes per completed process. Check
+  each warmup count and each measured batch's count checksum; check all key/value
+  mappings and reverse lookups on the retained warmup/sample result and
+  unchanged source. This is a modified
+  isolation caller, not the identical historical replay.
+- **Recreation / identities:** Build that caller against the frozen `b6c1953`
+  Standard core, then copy the entire execution graph and replace only the core
+  DLL with selected-current Standard. Build Lean separately with
+  `SWIFTCOLLECTIONS_DISABLE_MEMORYPACK` and the matching Lean dependencies.
+  Commands are `dotnet build <probe.csproj> -c Release -p:UseLocalLsfStack=false
+  -p:CoreAssemblyPath=<frozen-core.dll> -o <baseline-graph>` and the corresponding
+  `ReleaseLean` build against current Lean. Run each fresh process with
+  `$env:DOTNET_TieredCompilation='0'` and
+  `cdb -logo <fresh-log> -cf <collector-commands> dotnet --fx-version 10.0.10
+  <caller.dll> <fresh-result.json>`. Use the calibrated AV/CLR commands above;
+  add `sxe -c ".echo PROCESS_EXIT; .lastevent; q" epr` before `g` to capture the
+  target exit code. Retain CPU2, normal priority and workstation/nonconcurrent
+  GC. SDK/runtime, Windows build and published dependency versions match the
+  recorded environment above. Standard caller SHA256 is
+  `6F8AFE96BDE6BD71B5A163CAC429667AC88E0623FF03B6C97F0AD29B7AA05025`;
+  Lean caller is
+  `C8728641E399027CD272D9E878A22EB825E8897614DB48C18792A623150F87F9`.
+  Standard baseline/current core hashes remain `BAE679CB…5AFD` /
+  `807CDB2E…529E` as recorded in full above; current Lean core is
+  `B634802D6B0847A2095F8B67F212EA2711B58981293F3CC440F91642CBEFB75D`.
+  Inspect loaded caller/core hashes, runtime, complete results and target exits;
+  debugger success alone is insufficient. Lean must not load MemoryPack.Core.
+- **Bounded results:** Execute two frozen-baseline, two current Standard and
+  two current Lean processes, stopping baseline repetition on the useful
+  second-run failure. Baseline first run passes five rows; second captures a
+  first-chance native AV and exits `0x80131506` (internal CLR error), with no
+  completed result. Both current Standard and both current Lean processes exit
+  zero and pass five rows each: 20 current rows / 804 current decodes. Across
+  all completed processes, 25 rows pass; the failed baseline's partial work is
+  not accepted. All six target exits and collector output were inspected, with
+  no AV or unhandled CLR event in the passing processes. Both disposable caller
+  builds finish with zero warnings/errors. No diagnostic timing is used as
+  performance evidence. No additional replay, runtime/CPU sweep or stress loop
+  is needed for this disposition.
+- **New capture / limits:** This recurrence needs no preceding Dictionary or
+  MemoryPack serialization/deserialization. The Standard graph still contains
+  MemoryPack; this does not prove its initialization or earlier historical IO
+  harmless, or assign one cause to every incident. The first-chance snapshot
+  again faults at `Buffer::BulkMoveWithWriteBarrier+0x100`, this time under
+  `System.Text.Json.ReadStack.Push` while reading nested key/value state, before
+  this decode's collection restoration. Destination `0xc07d57cd80` is writable
+  stack below heap-low `0x1ebe1800000` (high `0x1fbd9400000`), length `0x70`,
+  yet the not-in-heap flag is zero. The invalid read `0x1eb5a937b39` equals
+  card-table base `0x1eb4283d040` plus `(destination >> 11)`. Offline exception
+  and default contexts agree. These inconsistent native facts do not identify
+  the cause or prove a runtime/environment defect.
+- **Source review / decision:** Independent review plus coordinator checks
+  find no concrete misuse in synchronous ref-reader delegation, bounded JSON
+  metadata stack buffers, managed-array forward/reverse reconstruction or
+  authored MemoryPack state IO. The eight-byte comparer header view is consumed
+  immediately after `GetSpanReference(8)` and is not retained or written; the
+  [MemoryPack 1.21.4 reader](https://github.com/Cysharp/MemoryPack/blob/1.21.4/src/MemoryPack.Core/MemoryPackReader.cs#L68-L137)
+  supplies the requested contiguous bytes or throws. This fixture
+  does not use unsafe string hashing. The review does not audit the entire CLR
+  or provider implementation or exclude an intermittent defect. Close as a
+  documented no-source-change decision under the user's bounded scope. No
+  production workaround, API/dependency/CI change, maintained probe or regression
+  test is justified without a source defect. Current controlled executions pass;
+  they do not establish that the historical failure is fixed.
+- **Reopening / next action:** No further investigation or implementation
+  work is queued. Reopen for a supported current-code recurrence with exact
+  input, loaded identities and useful original context, a concrete source
+  memory/lifetime defect, or evidence that changes release-risk assessment.
+  Promote a confirmed collection/provider defect to its owning issue tracker
+  and add a failing production-behavior regression before fixing it. Keep the
+  unexplained historical failure visible in release review; closure ends this
+  investigation, not the underlying uncertainty.
 
 ### SC-Benchmark-005 - Comparer-persistence hot timing acceptance
 

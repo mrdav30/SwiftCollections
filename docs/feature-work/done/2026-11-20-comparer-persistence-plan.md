@@ -2,8 +2,9 @@
 
 - **Status:** Completed implementation and validation, 2026-11-20. All five
   families pass the required local, actual Mono/IL2CPP and hosted build/test
-  gates. SC-Issue-021 is resolved. SC-Benchmark-006 remains an explicit open
-  release-reliability follow-up under the closeout disposition below. No package
+  gates. SC-Issue-021 is resolved. SC-Benchmark-006 subsequently closed by a
+  [bounded no-source-change decision](../benchmark-signal-hardening-backlog.md#sc-benchmark-006---unattributed-native-exit-during-persistence-measurement);
+  its historical native failure remains unexplained. No package
   release or universal runtime/AOT guarantee is claimed.
 - **Created:** 2026-11-19.
 - **Owner:** SwiftCollections; coordinate with Chronicler only where its shared
@@ -1534,12 +1535,24 @@ context-sensitive microbenchmark alone.
 **Disposition:** Implementation acceptance and SC-Issue-021 are complete. The
 user authorized pushing the five existing commits through
 `cab616d0b741afae56ed207261683881254fcc23` after local checks, and delegated
-judgment on the remaining reliability gate. Keep SC-Benchmark-006 open as a
-separate release-reliability follow-up: no attributable collection defect was
+judgment on the remaining reliability gate. SC-Benchmark-006 was initially kept
+open as a separate release-reliability follow-up: no attributable collection defect was
 established, no speculative workaround is justified, and passing current
 controls do not prove the intermittent baseline crash fixed. Review that risk
 before release promotion. Reopen implementation acceptance for a confirmed
 attributable defect or failed supported consumer contract.
+
+**Subsequent SC-Benchmark-006 disposition — 2026-11-20:** The requested bounded
+source-focused investigation is complete. Isolated BiDictionary JSON reproduces
+the frozen baseline's native CLR failure without preceding binary IO. Both
+current Standard and both current Lean processes pass 201 decodes each, with
+five validated samples per process. Source review finds no attributable memory
+or lifetime defect; no production change is justified. Close the signal by a
+documented no-source-change decision, with its historical evidence and reopening
+criteria retained in the [benchmark backlog](../benchmark-signal-hardening-backlog.md#sc-benchmark-006---unattributed-native-exit-during-persistence-measurement).
+This supersedes the initial open-follow-up status above. The cause remains
+unresolved, no crash fix or source exoneration is claimed, and its uncertainty
+remains visible in release review.
 
 ### Native toolchain and actual players
 
