@@ -186,6 +186,10 @@ dotnet restore SwiftCollections.slnx --property:Configuration=ReleaseLean
 dotnet build SwiftCollections.slnx --configuration ReleaseLean --no-restore
 ```
 
+After changing `UseLocalLsfStack`, restore again with the selected mode and
+configuration before using `--no-restore`; existing intermediate assets can still
+refer to the other dependency graph.
+
 Run both test configurations:
 
 ```bash
@@ -207,7 +211,11 @@ SwiftCollections-Unity smoke-test host. Check Standard/Lean JSON interchange
 and semantic wire interchange between supported target frameworks. Use
 independent old/new reader controls to verify the intended format break.
 Validate actual Unity Mono and IL2CPP separately; Mono success does not
-establish stripping or AOT support.
+establish stripping or AOT support. On Windows, install Desktop development
+with C++ (Visual Studio or Build Tools), the MSVC x64/x86 compiler and a Windows
+SDK meeting the selected Unity version's requirements. Verify the actual player
+backend and stripping level, process exit and result, and disable/assert JSON
+reflection before serializer initialization when testing generated metadata.
 See the [serialization guide](docs/api/guides/serialization-and-diagnostics.md)
 for codecs, closed JSON metadata and explicit formatter bootstrap.
 

@@ -95,7 +95,7 @@ making a new performance claim.
   `DOTNET_TieredCompilation=0`.
 - **Portable reproducer / observed result:** Use the four-family default-int
   boundary protocol in the
-  [Phase 2 record](comparer-persistence-plan.md#phase-2-execution-record--2026-11-20).
+  [Phase 2 record](done/2026-11-20-comparer-persistence-plan.md#phase-2-execution-record--2026-11-20).
   Build one optimized caller against the Phase 1 core, copy its graph and
   replace only the core DLL; launch `dotnet <caller.dll> <fresh-output.json>`.
   One current-core process in the initial ABBA attempt printed
@@ -127,10 +127,13 @@ making a new performance claim.
   delegate. Keep CPU2, normal priority and disabled tiering. One process failed
   with an access violation in `Utf8JsonReader.ConsumeString`; a later fresh
   baseline process failed with a wrapped `NullReferenceException` in
-  `Utf8JsonReader.Read` during warmup. The latter stack identifies Dictionary's
-  nested `JsonSerializer.Deserialize<TState>(ref reader, options)` call, through
-  the parameterized key/value constructor, before collection population. Binary
-  operations had not run. This is not evidence that both incidents share a
+  `Utf8JsonReader.Read` during warmup. The latter stack identifies the nested
+  `JsonSerializer.Deserialize<TState>(ref reader, options)` call, through the
+  parameterized key/value constructor, before collection population. Correction:
+  its frozen caller's `Program.Main` line 51 calls BiDictionary, after the
+  Dictionary JSON and binary sequence. Earlier binary IO cannot be excluded as
+  a contributor. The first short fatal trace alone does not identify its family.
+  This is not evidence that both incidents share a
   root cause, or that the allocation optimization fixes either failure.
   A CDB replay completed all 20 batch rows without capturing an AV. Separate
   plain-BCL pair-array, raw-state and baseline-owner drivers each completed 200
@@ -144,6 +147,48 @@ making a new performance claim.
   completed eight processes/80 rows, and the final full boundary matrix
   completed eight processes/1728 rows. The focused JSON batch remains an
   unresolved reliability limit rather than an accepted performance sample.
+- **Calibrated closeout capture — 2026-11-20:** After installing MSVC/SDK,
+  pin the original caller to runtime 10.0.10 (`dotnet --fx-version 10.0.10`),
+  tiering disabled, CPU2, normal priority, workstation/nonconcurrent GC. The
+  collector first captured a native read at address 0x8 in a non-inlined null
+  field read, saved full memory, then allowed the CLR to catch NRE and complete.
+  Use `sxe av` with `.exr -1; .ecxr; kb; .dump /ma /u <fresh-name>; gn` and an
+  unhandled CLR/AV capture; parent debugger success is insufficient.
+  Two frozen baseline processes completed 20/20 rows each; the third reproduced
+  an AV and supplied a full first-chance snapshot. Replay stopped there rather
+  than completing the fourth planned baseline. Two selected-current processes
+  completed 20/20 rows each with the same caller and no AV or unhandled CLR
+  event; current
+  core hash `807CDB2EAB4B463B2BF9924A2AB224509E28495500DF695249343856DAC2529E`.
+- **Operation and native evidence:** The full snapshot has twelve completed
+  samples and a 65536-entry BiDictionary in the retained sink: BiDictionary JSON
+  sample three, after all five Dictionary JSON and five Dictionary binary
+  samples. The fault is `coreclr!Buffer::BulkMoveWithWriteBarrier+0x100`, inside
+  card marking under `System.Text.Json.ReadStack.Pop`. Its 112-byte destination
+  `0xa69d77de28` is writable stack below heap-low `0x1e4a1400000`, yet the
+  helper's not-in-heap flag is zero. The fault address `0x1e4583f873b` equals
+  card-table base `0x1e4436bd840` plus `(destination >> 11)` and is unallocated.
+  Offline exception/default contexts agree; 576 captured helper-code bytes
+  match the installed runtime and the call target is its proper entry.
+  ReadStack has a valid four-frame array/count two; Current differs from its
+  expected source frame and contains an invalid `PolymorphicJsonTypeInfo=0x1`.
+  These observations do not distinguish earlier corruption, context/control-flow
+  trouble or a runtime defect, and do not establish one cause for all incidents.
+- **Independent copy control:** Three fresh framework-only processes completed
+  ten million 112-byte managed-reference frame copies each, checking all fourteen
+  fields. Use a heap `Frame[]`, local stack Frame, and
+  `array.AsSpan(index,1).CopyTo(MemoryMarshal.CreateSpan(ref local,1))`; allocate
+  64 KiB every 4096 iterations and force full GC every 200000. JIT output confirms
+  the same BCL bulk-write-barrier helper with length 112. No SwiftCollections,
+  Chronicler or MemoryPack is loaded; all thirty million copies pass. This
+  bounds the investigation but does not reproduce or exonerate the earlier IO.
+- **Disposition:** The user delegated final judgment on the Phase 3 reliability
+  gate. Close feature implementation acceptance after its required checks, and
+  retain SC-Benchmark-006 as this separate open release-reliability follow-up.
+  No crash fix or confirmed runtime/environment defect is claimed. No production
+  workaround, unsafe-code suppression, maintained probe tests or profiler-policy
+  changes were added. Reopen feature acceptance for a confirmed attributable
+  defect; review this open risk before release promotion.
 - **Attribution / next action:** No concrete driver/owner memory misuse was
   found in independent review. The synchronous managed-array driver uses no
   manual readers, unsafe pointers or borrowed buffers. Do not attribute this
@@ -151,8 +196,10 @@ making a new performance claim.
   was a known baseline failure from the later Phase 3 controls, or add
   speculative runtime changes. On recurrence collect first-chance context and
   operation/progress before assigning ownership or promoting a confirmed
-  implementation defect. Retain this unresolved reliability limit for
-  Phase 3/release review.
+  implementation defect. The next discriminating slice is BiDictionary JSON
+  without preceding binary IO, followed by a matching first-chance capture if
+  it fails. Keep this unresolved risk in release review; passing selected-current
+  and independent controls do not prove a fix.
 
 ## Closed Signals
 
@@ -161,7 +208,7 @@ making a new performance claim.
 - **Discovered / closed:** 2026-11-19 / 2026-11-20; no actionable hot-path
   regression identified. The user explicitly accepted the remaining timing
   uncertainty and closed
-  [SC-Issue-021 Phase 1](comparer-persistence-plan.md#phase-1-execution-record--2026-11-19)
+  [SC-Issue-021 Phase 1](done/2026-11-20-comparer-persistence-plan.md#phase-1-execution-record--2026-11-19)
   performance acceptance after the bounded investigation below. This is a
   documented no-change decision, not a collection algorithm fix or a claim of
   universal timing equivalence. Phase 2 implementation is separate work.
@@ -394,7 +441,7 @@ Stop hardware-counter escalation and broad microbenchmark reruns for this
 signal. No source padding, forced alignment, comparer replacement or Search
 restructuring is justified. Further optimization should target reproducible
 cost in the implemented persistence boundary or representative callers.
-See the [Phase 1 closeout](comparer-persistence-plan.md#phase-1-closeout--2026-11-20).
+See the [Phase 1 closeout](done/2026-11-20-comparer-persistence-plan.md#phase-1-closeout--2026-11-20).
 
 **Reopening criteria:** Reopen for a repeatable, meaningful regression in a
 representative caller under recorded runtime settings, equivalent inputs and

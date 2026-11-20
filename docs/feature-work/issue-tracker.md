@@ -71,146 +71,6 @@ diagnosis, decisions and reopening criteria stay with their owning issue.
 
 ## Active Issues
 
-### SC-Issue-021 - Persist collection comparers across serializers
-
-<a id="sc-issue-021"></a>
-
-- **Status / priority:** All five families implemented; Phase 3 local
-  compatibility/build/coverage/package/reference checks pass as of 2026-11-20 / P2.
-  The issue remains open for actual IL2CPP/stripping, hosted/release readiness
-  and the recorded measurement-reliability limit.
-- **Opened:** 2026-11-19, following the SC-Issue-010 trusted-state contract
-  decision and the explicit request for comparer persistence.
-- **Scope / impact:** Preserve supported ordering and equality/hash rules before
-  collection population in normal direct/nested JSON and standard MemoryPack
-  serialization. Cover all collection families, both runtime frameworks
-  (`netstandard2.1`, `net10.0`) and standard/Lean package graphs; Lean retains
-  JSON without a MemoryPack dependency. Losing comparison metadata can change
-  lookup semantics or discard custom-distinct entries.
-- **Disposition:** Keep raw-state schemas and their trusted restoration path.
-  Freeze strict v1 comparison metadata, typed custom
-  registrations/factories and clear
-  unsupported/unknown-codec failures at persistence boundaries. Do not add
-  registry work to collection hot paths or reinstate the rejected ordering scan.
-  SC-Issue-010 remains a historical contract closure, not a persistence fix.
-  The user superseded the initial legacy-helper design during pre-commit review:
-  owner persistence supports only version one as an intentional breaking change,
-  with no legacy reader, migration helper or default fallback. Reopen that
-  disposition only for an explicit compatibility requirement and agreed evidence.
-- **Phase 0 evidence:** Thirteen legacy families / 52 exact payloads were captured;
-  the sorted-list legacy bytes now live directly in executable rejection tests.
-  The transport model passes modern and matched standard-2.1 graphs; actual
-  Unity 6000.3.9f1 Mono smoke suites pass standard 25/25 and Lean 24/24. Baseline
-  solution tests pass core 1578/1543 plus companion 43 each. All 6240 planned
-  warm baseline samples completed; these are calibration, not accepted future
-  overhead budgets. The plan preserves protocol, factory-recognition, fallback
-  and compatibility decisions and their limits.
-- **Initial Phase 1 evidence (before pre-commit review):** The actual sorted-list family preserves supported
-  rules through strict-v1 direct/nested JSON and standard MemoryPack, with typed
-  factories and configured lambda recapture. The initial explicit migration
-  helper is removed by the pre-commit decision above. Raw
-  state remains copy-only. From baseline
-  `bf69e2152dff02f5f9f3ad335afcddf7560b4e81`, the two intended unsupported-capture
-  regressions fail before the change and pass afterward. Release/ReleaseLean/Debug
-  solution builds pass without warnings; core tests 1702/1632/1700 and companion
-  43 each pass with full reachable line/branch/method coverage. Both assemblies
-  and XMLs at both TFMs match all four package outputs. Clean-generated DocFX
-  and local-path/fragment checks pass; actual Unity 6000.3.9f1 Mono smoke passes
-  26 standard / 25 Lean cases using the production standard-2.1 plugins.
-  Independent runtime reviews found no remaining correctness issue.
-  These counts describe the initial snapshot, including the removed helper;
-  the post-review validation below supersedes that snapshot.
-- **Performance disposition — 2026-11-20:** The user accepts the measured fixed
-  serialization cost and, after the bounded hot-path investigation, explicitly
-  accepts the remaining native-context timing uncertainty to close Phase 1.
-  [SC-Benchmark-005](benchmark-signal-hardening-backlog.md#sc-benchmark-005---comparer-persistence-hot-timing-acceptance)
-  closes as no actionable hot-path regression identified. Preserve adverse
-  timings and attribution limits; there is no equal-cycle or universal timing
-  equivalence claim. No algorithmic work or warm allocation was added in the
-  inspected hot paths, and no repeatable meaningful caller elapsed-time
-  regression attributable to the implementation was established. Reopen for an
-  attributable representative-caller regression, hot allocation or behavior
-  defect. Later families require their own evidence.
-- **Pre-commit review:** The user removed the migration helper and selected
-  v1-only owner records as an intentional breaking format. Legacy literals now
-  test strict rejection. Independent reviews found no remaining correctness
-  issue; new tests protect reference identity, factory-buffer isolation and
-  segmented configurations. Empty JSON configurations skip 10,928 bytes of
-  scratch work; the focused empty-owner decode median improves about 12%, with
-  unchanged allocation, without making a hot-path claim. Current
-  Release/ReleaseLean/Debug core tests pass 1704/1635/1702, companion 43 each,
-  with full reachable line/branch/method coverage and zero build warnings.
-  All target/package XML checks and clean reference checks pass; updated Unity
-  smoke remains 26/25. The plan preserves the current counts and measurement
-  limits. SC-Benchmark-005 was open at that review checkpoint and is now closed
-  by the separate performance disposition above.
-- **Hot-path isolation:** At `cbd9a734082d7a002699766937b79dc547a8cebb`,
-  optimized direct callers and a fixed-binary JIT-policy counterfactual
-  demonstrate timing sensitivity to the execution context. Standard token-pair
-  cycles change from -6.1% to +9.4% relative to baseline across alignment
-  policies; optimized Lean is about -0.1% in both. Longer Standard string churn
-  retains +3.4% cycles despite lower wall time. No algorithm defect or justified
-  runtime fix was found. All 798 corrected timing/control intervals pass
-  behavior, zero timed allocation and no-GC checks. Fresh Release/ReleaseLean
-  builds pass both TFMs without warnings; tests pass 1704/1635 core plus 43
-  companion each. The benchmark signal preserves inputs, exclusions, denied
-  hardware tracing and remaining attribution limits. The user accepts those
-  limits for Phase 1; hardware tracing is no longer a closure requirement.
-- **Phase 1 closeout:** All Phase 1 tasks are checked in the
-  [2026-11-20 closeout](comparer-persistence-plan.md#phase-1-closeout--2026-11-20).
-  This documentation-only decision reuses the recorded validation of
-  `cbd9a734082d7a002699766937b79dc547a8cebb`; it adds no runtime changes or new
-  validation runs. Previous uncommitted benchmark work is preserved.
-- **Phase 2 evidence:** Dictionary, HashSet, BiDictionary and ObservableDictionary
-  preserve typed equality through shared registry and transport helpers. Fresh
-  table construction uses no new entropy; all three bidirectional roles survive
-  actual collision fallback and subsequent mutation. Observable replacement is
-  private and notification-free. Raw DTOs and ordinary hot loops are unchanged.
-  Four initial unsupported-save regressions fail before implementation and pass
-  after it. Release/Lean/Debug builds pass both TFMs without warnings; core tests
-  pass 1789/1687/1787 and companion 43 each. All reachable coverage is complete;
-  the two unreachable probe-exhaustion guards and raw counts are documented.
-  All four packages match their assembly/XML outputs, the complete authored core
-  XML inventory has no tag gaps, and clean DocFX/rendered link checks pass.
-  Unity Mono smoke passes 29/27. Fourteen comparerless families retain 42 exact
-  payloads across variants. The final boundary comparison completes 1728 checked
-  intervals; descriptor-array allocations were removed and large bidictionary
-  decode allocation falls through pre-sized construction. The
-  [Phase 2 record](comparer-persistence-plan.md#phase-2-execution-record--2026-11-20)
-  preserves inputs, hashes, costs, exclusions and review results.
-- **Phase 3 evidence:** Independent old/new readers, all 16 target/variant
-  combinations and 32 Windows/Linux exchanges pass; configured captures and
-  continuation traces agree across fresh processes. Final Unity Mono checks
-  pass both variants with reflection-disabled JSON and standard MemoryPack.
-  Full Release/Lean/Debug builds pass; tests are 1791/1688/1789 core plus 43
-  companion each, with all reachable coverage. All eight assembly/XML pairs
-  match packages; complete authored/compiled inventories and clean rendered
-  references pass. The hardening review removes BiDictionary's temporary reverse
-  array through shared specialized population, saving 524312 bytes at 65536
-  int/int entries. Local large binary medians improve about 2.3%/6.2% for
-  Dictionary/BiDictionary; tiny boundary timings remain mixed. Independent
-  code/render reviews find no remaining confirmed defect. Both IL2CPP builds
-  are blocked by missing MSVC/Windows SDK; no player/AOT success is claimed.
-  See the [Phase 3 record](comparer-persistence-plan.md#phase-3-execution-record--2026-11-20)
-  for complete inputs, adverse variants, raw counts, exclusions and limits.
-- **Measurement reliability:** One earlier disposable measurement process ended
-  with a native access violation. A recovered Windows minidump confirms its
-  invocation and fatal CLR exception handling with System.Text.Json callers,
-  but that dump's originating managed method is unresolved. Two additional
-  larger Phase 3 baseline JSON batches fail in the nested Utf8JsonReader path.
-  Replays and independent controls complete without establishing a fix, common
-  cause or ownership. [SC-Benchmark-006](benchmark-signal-hardening-backlog.md#sc-benchmark-006---unattributed-native-exit-during-persistence-measurement)
-  retains this separate unresolved limit. No speculative runtime fix is added.
-- **Next action:** Install the C++ compiler and Windows SDK 10.0.19041.0+,
-  build/run both actual High-stripping IL2CPP players, disposition the additional
-  baseline reader failures tracked in SC-Benchmark-006, and obtain hosted/release
-  evidence after authorized promotion. The overall issue stays open; no release
-  or full-feature completion is claimed.
-- **Plan / acceptance:** [Comparer persistence plan](comparer-persistence-plan.md)
-  owns the inventory, decisions, phases, validation and performance gates.
-  The former plan-only fixture directory is removed; maintained tests consume
-  the required legacy sorted-list literals directly.
-
 ### SC-Issue-011 - Power-of-two recognition accepts a negative input
 
 - **Status / priority:** Confirmed / P2; open.
@@ -504,6 +364,7 @@ they do not claim a fresh rerun or package release.
 
 | Issue                                                                                          | Resolved/closed | Outcome                                                                                                                                                                                                                                                              | Evidence                                                                                                                                                                                                       |
 | ---------------------------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SC-Issue-021 | 2026-11-20 | Implemented strict comparer persistence for all five owners; both target/package graphs, actual Mono/High-stripping IL2CPP and hosted Windows/Linux tests pass. SC-Benchmark-006 remains an explicit open release-reliability follow-up; no crash fix is claimed. | [Resolution](#sc-issue-021), [completed plan](done/2026-11-20-comparer-persistence-plan.md#phase-3-closeout--2026-11-20) |
 | <a id="sc-issue-010---sorted-list-restore-loses-its-ordering-invariant"></a>SC-Issue-010 | 2026-11-19 | **Closed by contract decision; no runtime fix.** Preserve copy-only trusted-state restoration, the items-only schema and default comparer. No scan, comparison, validation, re-sort or comparison-failure atomicity promise is added. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `31cd3eec80dff86b95f8cab621cc7ca281b4e7cc` on Windows x64, SDK 10.0.302/runtime 10.0.10, Release with published dependencies. Portable reproducer (console setup above): construct `a = new SwiftSortedList<int>(new[] { 1, 2, 3 }, Comparer<int>.Create((x, y) => y.CompareTo(x)))`, then `b = new SwiftSortedList<int>(a.State)`. Enumeration is `3,2,1`; `b.Contains(1)` is False. This remains the consequence of using a custom-ordered snapshot with default binary lookup. Callers must provide state compatible with the restored default comparer before ordering-dependent use, or explicitly copy and sort once with `new SwiftSortedList<int>(a.State.Items, a.Comparer)`. A different comparer can be installed immediately after restore before lookup/mutation; setting the existing comparer is a no-op, and assigning State resets a comparer configured beforehand. Dictionary/set restore instead reinserts with default equality and can irreversibly merge entries: choose a comparer-aware constructor before insertion when custom identity matters. Rejected automatic normalization and its measured costs are preserved in SC-Benchmark-004. **Verification:** Runtime source matches the reproduced revision after removing XML comments. Added 18 standard /17 Lean contract cases (14/13 sorted-state cases plus four equality-loss cases); all are controls for the approved behavior, not a runtime-fix red/green claim. Sorted-list suites pass 98/96 cases. `dotnet build SwiftCollections.slnx` and `dotnet test SwiftCollections.slnx --no-build`, with `-c Release`, `ReleaseLean`, and `Debug` and `-p:UseLocalLsfStack=false`, pass: core 1578/1543/1576 and companion 43 each, zero build warnings/errors. Existing core coverlet settings report lines 5368/5368, 5354/5354, 7150/7150 and branches 2406/2406, 2406/2406, 2414/2414 respectively; sorted-list methods 59/59 in each. Both `SwiftCollections.dll`/`SwiftCollections.xml` and `SwiftCollections.FixedMathSharp.dll`/`SwiftCollections.FixedMathSharp.xml` checked at `netstandard2.1` and `net10.0` in Release/ReleaseLean; matching package contents checked for SwiftCollections, SwiftCollections.Lean, SwiftCollections.FixedMathSharp and SwiftCollections.FixedMathSharp.Lean. Clean-generated DocFX passes with warnings as errors; rendered constructors, state/property values, comparer contracts, inherited State link and DTO remarks checked, plus CI reference/local-link smoke checks and desktop/phone guide preview. No baseline or introduced build/test/reference failures observed. Hosted CI, other OS/architectures and a new timing comparison were not run; the rejected prototype timings are historical evidence only. Reopen only for a valid-state continuation or ownership defect, or an explicit new requirement for unordered-state validation or comparer persistence. No release is claimed. | [Trusted-state and comparer contracts](../api/guides/serialization-and-diagnostics.md#serialization), [sorted-state tests](../../tests/SwiftCollections.Tests/Collection/SwiftSortedList.Tests.cs), [rejected experiment](benchmark-signal-hardening-backlog.md#sc-benchmark-004---sorted-state-order-validation) |
 | <a id="sc-issue-009---list-to-list-copy-grows-the-destination-only-once"></a>SC-Issue-009 | 2026-11-18 | List-to-list CopyTo now guards insufficient capacity and requests the entire source Count through EnsureCapacity. Large copies obtain sufficient storage in one growth; fitting buffers, including non-power-of-two, exact-fit, self-copy and empty-to-empty targets, are reused. Policy disposition: only insufficient capacity causes growth; the old empty-to-empty allocation of eight slots is removed. Count replacement, shallow ownership, retained unused slots, target enumerator invalidation and null-target NullReferenceException remain implemented contracts. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `63c6124572b703680e797770ed0d93e0eb88bea0`: copying 100 items into an empty target threw ArgumentException and left target Count 0/Capacity 8; fixed output is Count 100/Capacity 128 with items 0..99. New group: baseline 13 failures/11 controls, all 24 pass after correction; existing JSON/MemoryPack continuation also reproduced the defect. Full list suite passed 113 cases. Release/ReleaseLean built both assemblies at netstandard2.1/net10.0 and all four package IDs; tests passed at net10.0 (core 1560/1526; companion 43 each). Debug passed 1558/43; all core lines/branches and authored list methods remained covered in all three configurations. Emitted XML and rendered CopyTo contracts checked; DocFX passed with warnings as errors. Reopen for valid-copy failure, unexpected allocation with sufficient storage, or an intentional null/capacity policy change. No release is claimed. | [Copy regressions](../../tests/SwiftCollections.Tests/Collection/SwiftList.Tests.cs), [copy owner and contract](../../src/SwiftCollections/Collection/SwiftList.cs), [performance evidence and limits](benchmark-signal-hardening-backlog.md#sc-benchmark-003---list-to-list-copy-capacity) |
 | <a id="sc-issue-008---exactly-full-queue-state-restores-an-invalid-tail"></a>SC-Issue-008 | 2026-11-18 | State restore now installs the new capacity mask before assigning `tail = count & mask`, matching known-count construction, Resize and TrimExcessCapacity. Exactly full queues can dequeue/refill or drain/reuse without growth; FIFO order, ownership, capacity reconstruction and serialization schema are preserved. Enqueue/Dequeue hot paths are unchanged. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `7ce79b7376b586df5455e4aa9d04a513d7f95338`: restoring items 0..7, dequeuing 0, then enqueueing 99 threw IndexOutOfRangeException instead of retaining [1,2,3,4,5,6,7,99]. New regressions: baseline 14 failures/11 passing controls; fixed 25 cases (23 Lean), covering boundary counts, stale-mask overwrite, wrapped snapshots, views, growth controls and JSON/MemoryPack continuation. Release/ReleaseLean built both assemblies at netstandard2.1/net10.0 and all four package IDs; tests passed at net10.0 (core 1536/1502; companion 43 each). Debug passed 1534/43; all core lines/branches and authored queue methods remained covered in all three configurations. DocFX passed with warnings as errors. Existing `queue-workload --filter '*SwiftQueue_WrapAroundChurn*' --job Dry` smoke completed four cases and four successful child exits; this is not a throughput comparison. Reopen for any valid snapshot that fails FIFO continuation or restores out-of-range ring indices. No release is claimed. | [Restore regressions](../../tests/SwiftCollections.Tests/Collection/SwiftQueue.Tests.cs), [queue owner](../../src/SwiftCollections/Collection/SwiftQueue.cs) |
@@ -514,6 +375,160 @@ they do not claim a fresh rerun or package release.
 | <a id="sc-issue-003---hash-set-lookup-boxes-value-keys-in-unoptimized-builds"></a>SC-Issue-003 | 2026-10-26      | Removed value-key boxing from all three hash-set lookup APIs, including Debug; retained null/error contracts and added warmed allocation regressions.                                                                                                                | [Closeout](https://github.com/mrdav30/SwiftCollections/blob/2b4894f87980147934b1eb74603029e04fb84ec8/docs/feature-work/issue-tracker.md#sc-issue-003---hash-set-lookup-boxes-value-keys-in-unoptimized-builds) |
 | <a id="sc-issue-002---collision-probes-stop-before-reaching-stored-entries"></a>SC-Issue-002   | 2026-10-07      | Completed dictionary/set collision-probe periods for insertion, lookup and removal; deterministic wrapped-chain and trimmed-table regressions passed.                                                                                                                | [Closeout](https://github.com/mrdav30/SwiftCollections/blob/5e0c4e0830342508c3fb87c2fe43cf7c30167522/docs/feature-work/issue-tracker.md#sc-issue-002---collision-probes-stop-before-reaching-stored-entries)   |
 | <a id="sc-issue-001---pool-finalizer-coverage-depends-on-incidental-gc"></a>SC-Issue-001       | 2026-10-07      | Replaced incidental-GC coverage with isolated real-GC, mutation-checked pool-finalizer regressions; closed a test reliability gap without a production cleanup change.                                                                                               | [Closeout](https://github.com/mrdav30/SwiftCollections/blob/5e0c4e0830342508c3fb87c2fe43cf7c30167522/docs/feature-work/issue-tracker.md#sc-issue-001---pool-finalizer-coverage-depends-on-incidental-gc)       |
+
+### SC-Issue-021 - Persist collection comparers across serializers
+
+<a id="sc-issue-021"></a>
+
+- **Status / priority:** Resolved, implemented and validated 2026-11-20 / P2.
+  All five families pass actual standard/Lean High-stripping IL2CPP, Mono and
+  hosted Windows/Linux checks. SC-Benchmark-006 remains a separate open
+  release-reliability follow-up under the delegated closeout disposition.
+- **Opened:** 2026-11-19, following the SC-Issue-010 trusted-state contract
+  decision and the explicit request for comparer persistence.
+- **Scope / impact:** Preserve supported ordering and equality/hash rules before
+  collection population in normal direct/nested JSON and standard MemoryPack
+  serialization. Cover all collection families, both runtime frameworks
+  (`netstandard2.1`, `net10.0`) and standard/Lean package graphs; Lean retains
+  JSON without a MemoryPack dependency. Losing comparison metadata can change
+  lookup semantics or discard custom-distinct entries.
+- **Disposition:** Keep raw-state schemas and their trusted restoration path.
+  Freeze strict v1 comparison metadata, typed custom
+  registrations/factories and clear
+  unsupported/unknown-codec failures at persistence boundaries. Do not add
+  registry work to collection hot paths or reinstate the rejected ordering scan.
+  SC-Issue-010 remains a historical contract closure, not a persistence fix.
+  The user superseded the initial legacy-helper design during pre-commit review:
+  owner persistence supports only version one as an intentional breaking change,
+  with no legacy reader, migration helper or default fallback. Reopen that
+  disposition only for an explicit compatibility requirement and agreed evidence.
+- **Phase 0 evidence:** Thirteen legacy families / 52 exact payloads were captured;
+  the sorted-list legacy bytes now live directly in executable rejection tests.
+  The transport model passes modern and matched standard-2.1 graphs; actual
+  Unity 6000.3.9f1 Mono smoke suites pass standard 25/25 and Lean 24/24. Baseline
+  solution tests pass core 1578/1543 plus companion 43 each. All 6240 planned
+  warm baseline samples completed; these are calibration, not accepted future
+  overhead budgets. The plan preserves protocol, factory-recognition, fallback
+  and compatibility decisions and their limits.
+- **Initial Phase 1 evidence (before pre-commit review):** The actual sorted-list family preserves supported
+  rules through strict-v1 direct/nested JSON and standard MemoryPack, with typed
+  factories and configured lambda recapture. The initial explicit migration
+  helper is removed by the pre-commit decision above. Raw
+  state remains copy-only. From baseline
+  `bf69e2152dff02f5f9f3ad335afcddf7560b4e81`, the two intended unsupported-capture
+  regressions fail before the change and pass afterward. Release/ReleaseLean/Debug
+  solution builds pass without warnings; core tests 1702/1632/1700 and companion
+  43 each pass with full reachable line/branch/method coverage. Both assemblies
+  and XMLs at both TFMs match all four package outputs. Clean-generated DocFX
+  and local-path/fragment checks pass; actual Unity 6000.3.9f1 Mono smoke passes
+  26 standard / 25 Lean cases using the production standard-2.1 plugins.
+  Independent runtime reviews found no remaining correctness issue.
+  These counts describe the initial snapshot, including the removed helper;
+  the post-review validation below supersedes that snapshot.
+- **Performance disposition — 2026-11-20:** The user accepts the measured fixed
+  serialization cost and, after the bounded hot-path investigation, explicitly
+  accepts the remaining native-context timing uncertainty to close Phase 1.
+  [SC-Benchmark-005](benchmark-signal-hardening-backlog.md#sc-benchmark-005---comparer-persistence-hot-timing-acceptance)
+  closes as no actionable hot-path regression identified. Preserve adverse
+  timings and attribution limits; there is no equal-cycle or universal timing
+  equivalence claim. No algorithmic work or warm allocation was added in the
+  inspected hot paths, and no repeatable meaningful caller elapsed-time
+  regression attributable to the implementation was established. Reopen for an
+  attributable representative-caller regression, hot allocation or behavior
+  defect. Later families require their own evidence.
+- **Pre-commit review:** The user removed the migration helper and selected
+  v1-only owner records as an intentional breaking format. Legacy literals now
+  test strict rejection. Independent reviews found no remaining correctness
+  issue; new tests protect reference identity, factory-buffer isolation and
+  segmented configurations. Empty JSON configurations skip 10,928 bytes of
+  scratch work; the focused empty-owner decode median improves about 12%, with
+  unchanged allocation, without making a hot-path claim. Current
+  Release/ReleaseLean/Debug core tests pass 1704/1635/1702, companion 43 each,
+  with full reachable line/branch/method coverage and zero build warnings.
+  All target/package XML checks and clean reference checks pass; updated Unity
+  smoke remains 26/25. The plan preserves the current counts and measurement
+  limits. SC-Benchmark-005 was open at that review checkpoint and is now closed
+  by the separate performance disposition above.
+- **Hot-path isolation:** At `cbd9a734082d7a002699766937b79dc547a8cebb`,
+  optimized direct callers and a fixed-binary JIT-policy counterfactual
+  demonstrate timing sensitivity to the execution context. Standard token-pair
+  cycles change from -6.1% to +9.4% relative to baseline across alignment
+  policies; optimized Lean is about -0.1% in both. Longer Standard string churn
+  retains +3.4% cycles despite lower wall time. No algorithm defect or justified
+  runtime fix was found. All 798 corrected timing/control intervals pass
+  behavior, zero timed allocation and no-GC checks. Fresh Release/ReleaseLean
+  builds pass both TFMs without warnings; tests pass 1704/1635 core plus 43
+  companion each. The benchmark signal preserves inputs, exclusions, denied
+  hardware tracing and remaining attribution limits. The user accepts those
+  limits for Phase 1; hardware tracing is no longer a closure requirement.
+- **Phase 1 closeout:** All Phase 1 tasks are checked in the
+  [2026-11-20 closeout](done/2026-11-20-comparer-persistence-plan.md#phase-1-closeout--2026-11-20).
+  This documentation-only decision reuses the recorded validation of
+  `cbd9a734082d7a002699766937b79dc547a8cebb`; it adds no runtime changes or new
+  validation runs. Previous uncommitted benchmark work is preserved.
+- **Phase 2 evidence:** Dictionary, HashSet, BiDictionary and ObservableDictionary
+  preserve typed equality through shared registry and transport helpers. Fresh
+  table construction uses no new entropy; all three bidirectional roles survive
+  actual collision fallback and subsequent mutation. Observable replacement is
+  private and notification-free. Raw DTOs and ordinary hot loops are unchanged.
+  Four initial unsupported-save regressions fail before implementation and pass
+  after it. Release/Lean/Debug builds pass both TFMs without warnings; core tests
+  pass 1789/1687/1787 and companion 43 each. All reachable coverage is complete;
+  the two unreachable probe-exhaustion guards and raw counts are documented.
+  All four packages match their assembly/XML outputs, the complete authored core
+  XML inventory has no tag gaps, and clean DocFX/rendered link checks pass.
+  Unity Mono smoke passes 29/27. Fourteen comparerless families retain 42 exact
+  payloads across variants. The final boundary comparison completes 1728 checked
+  intervals; descriptor-array allocations were removed and large bidictionary
+  decode allocation falls through pre-sized construction. The
+  [Phase 2 record](done/2026-11-20-comparer-persistence-plan.md#phase-2-execution-record--2026-11-20)
+  preserves inputs, hashes, costs, exclusions and review results.
+- **Initial Phase 3 evidence:** Independent old/new readers, all 16 target/variant
+  combinations and 32 Windows/Linux exchanges pass; configured captures and
+  continuation traces agree across fresh processes. Final Unity Mono checks
+  pass both variants with reflection-disabled JSON and standard MemoryPack.
+  Full Release/Lean/Debug builds pass; tests are 1791/1688/1789 core plus 43
+  companion each, with all reachable coverage. All eight assembly/XML pairs
+  match packages; complete authored/compiled inventories and clean rendered
+  references pass. The hardening review removes BiDictionary's temporary reverse
+  array through shared specialized population, saving 524312 bytes at 65536
+  int/int entries. Local large binary medians improve about 2.3%/6.2% for
+  Dictionary/BiDictionary; tiny boundary timings remain mixed. Independent
+  code/render reviews find no remaining confirmed defect. Both IL2CPP builds
+  are blocked by missing MSVC/Windows SDK; no player/AOT success is claimed.
+  See the [Phase 3 record](done/2026-11-20-comparer-persistence-plan.md#phase-3-execution-record--2026-11-20)
+  for complete inputs, adverse variants, raw counts, exclusions and limits.
+- **Final closeout:** Installed MSVC x64/x86 and Windows SDK 10.0.26100 through
+  the existing Build Tools installation. Both actual Unity 6000.3.9f1 Windows64
+  IL2CPP players pass High stripping with JSON reflection disabled, including
+  default/nullable/enum/ordinal and custom rules, generated metadata, recapture
+  and continuation. Standard also passes closed registered MemoryPack paths.
+  Fresh Release/Lean/Debug local builds/tests pass 1791/1688/1789 core plus 43
+  companion each. The five approved commits through `cab616d` are pushed;
+  [hosted CI](https://github.com/mrdav30/SwiftCollections/actions/runs/44807840605)
+  passes actual tests in all four Windows/Ubuntu Release/Lean jobs. A stale Debug
+  source/package restore mismatch is corrected without a source or CI change.
+- **Reliability disposition:** The user delegated final judgment. Close feature
+  implementation acceptance while keeping SC-Benchmark-006 explicitly open for
+  release review. The calibrated full capture identifies BiDictionary JSON
+  after Dictionary binary IO; two current replays and thirty million BCL-only
+  reference-copy controls pass. No root cause or crash fix is claimed. Reopen
+  this issue for an attributable collection defect or failed supported contract.
+- **Measurement reliability:** One earlier disposable measurement process ended
+  with a native access violation. A recovered Windows minidump confirms its
+  invocation and fatal CLR exception handling with System.Text.Json callers,
+  but that dump's originating managed method is unresolved. Two additional
+  larger Phase 3 baseline JSON batches fail in the nested Utf8JsonReader path.
+  Replays and independent controls complete without establishing a fix, common
+  cause or ownership. [SC-Benchmark-006](benchmark-signal-hardening-backlog.md#sc-benchmark-006---unattributed-native-exit-during-persistence-measurement)
+  retains this separate unresolved limit. No speculative runtime fix is added.
+- **Next action:** Review the separate SC-Benchmark-006 risk before authorized
+  release promotion. Implementation acceptance is complete; no package release
+  or universal runtime/architecture/AOT guarantee is claimed.
+- **Plan / acceptance:** [Comparer persistence plan](done/2026-11-20-comparer-persistence-plan.md)
+  owns the inventory, decisions, phases, validation and performance gates.
+  The former plan-only fixture directory is removed; maintained tests consume
+  the required legacy sorted-list literals directly.
 
 ## Issue Template
 
