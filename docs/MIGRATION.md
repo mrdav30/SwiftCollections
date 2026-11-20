@@ -1,28 +1,38 @@
 # SwiftCollections Migration Guide
 
-## Sorted-list comparison metadata (unreleased)
+## Collection comparison metadata (unreleased)
 
-`SwiftSortedList<T>` now writes a version-one comparison envelope through normal
-JSON and standard MemoryPack serialization. Old state-only payloads are rejected
-by the new normal readers; old readers also reject the new envelope. Upgrade
+<a id="sorted-list-comparison-metadata-unreleased"></a>
+
+`SwiftSortedList<T>`, `SwiftDictionary<TKey, TValue>`, `SwiftHashSet<T>`,
+`SwiftBiDictionary<T1, T2>` and `SwiftObservableDictionary<TKey, TValue>` now
+write a version-one comparison envelope through normal JSON and standard
+MemoryPack serialization. Old state-only payloads are rejected by the new normal
+readers; old readers also reject the new envelope. Upgrade
 writers and readers together. The library supports only the new owner format;
 there is no legacy reader, fallback or migration helper.
 No package release is implied by this entry.
 
-Eligible runtime-default ordering and ordinal string comparers need no host
-registration. Custom comparers, including lambdas, require a stable typed codec
+Eligible runtime-default ordering, runtime equality, ordinal string and known
+Swift seeded/randomized equality rules need no host registration. Custom
+comparers, including lambdas, require a stable typed codec
 and reconstruction factory. Saving an unsupported rule now fails instead of
 silently losing it. Supply the registry through JSON options or MemoryPack's
 per-operation service provider, including for nested collections. Lean supports
 the same JSON contract and registry without MemoryPack.
 
 Previously saved state-only owner records cannot be passed to the new collection
-serializers. The raw `SwiftArrayState<T>` and explicit state constructor remain
-unchanged trusted-state APIs; they are not compatibility readers for old owner
-records. Other collections retain their existing formats until their
-comparer-aware adapters are introduced.
+serializers. The raw `SwiftArrayState<T>` and `SwiftDictionaryState<TKey, TValue>`
+schemas and explicit state constructors remain unchanged trusted-state APIs;
+they are not compatibility readers for old owner records. Comparerless owners
+keep their existing formats. Persist a bidictionary through its concrete
+contract: a Dictionary base contract rejects it rather than losing reverse
+comparison rules. New hash-owner reads reject duplicate equal keys/items/reverse
+values under restored rules; HashSet retains its state-path behavior of skipping
+null items.
 
-See [sorted-list persistence](api/guides/serialization-and-diagnostics.md#preserve-sorted-list-ordering-during-serialization)
+See [hash equality persistence](api/guides/serialization-and-diagnostics.md#preserve-hash-equality-during-serialization)
+and [sorted-list persistence](api/guides/serialization-and-diagnostics.md#preserve-sorted-list-ordering-during-serialization)
 for registration, closed JSON metadata, formatter bootstrap and failure contracts.
 
 ## Migrating from v7 to v8

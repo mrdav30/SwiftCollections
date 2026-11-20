@@ -75,9 +75,10 @@ diagnosis, decisions and reopening criteria stay with their owning issue.
 
 <a id="sc-issue-021"></a>
 
-- **Status / priority:** Phase 1 complete as of 2026-11-20 / P2;
-  version-one-only sorted-list persistence and performance disposition accepted.
-  Phase 2 is not started; the overall issue remains open.
+- **Status / priority:** Phases 1 and 2 implemented and verified as of
+  2026-11-20 / P2. Version-one owner persistence covers all five comparer-aware
+  families; the overall issue remains open for Phase 3 and the recorded
+  measurement-reliability limit.
 - **Opened:** 2026-11-19, following the SC-Issue-010 trusted-state contract
   decision and the explicit request for comparer persistence.
 - **Scope / impact:** Preserve supported ordering and equality/hash rules before
@@ -160,10 +161,33 @@ diagnosis, decisions and reopening criteria stay with their owning issue.
   This documentation-only decision reuses the recorded validation of
   `cbd9a734082d7a002699766937b79dc547a8cebb`; it adds no runtime changes or new
   validation runs. Previous uncommitted benchmark work is preserved.
-- **Next action:** Scope Phase 2 hash/inherited families as separate work.
-  IL2CPP, full interoperability, hosted CI and other OS/CPU profiles remain
-  later gates. The overall comparer-persistence issue stays open; no release is
-  claimed.
+- **Phase 2 evidence:** Dictionary, HashSet, BiDictionary and ObservableDictionary
+  preserve typed equality through shared registry and transport helpers. Fresh
+  table construction uses no new entropy; all three bidirectional roles survive
+  actual collision fallback and subsequent mutation. Observable replacement is
+  private and notification-free. Raw DTOs and ordinary hot loops are unchanged.
+  Four initial unsupported-save regressions fail before implementation and pass
+  after it. Release/Lean/Debug builds pass both TFMs without warnings; core tests
+  pass 1789/1687/1787 and companion 43 each. All reachable coverage is complete;
+  the two unreachable probe-exhaustion guards and raw counts are documented.
+  All four packages match their assembly/XML outputs, the complete authored core
+  XML inventory has no tag gaps, and clean DocFX/rendered link checks pass.
+  Unity Mono smoke passes 29/27. Fourteen comparerless families retain 42 exact
+  payloads across variants. The final boundary comparison completes 1728 checked
+  intervals; descriptor-array allocations were removed and large bidictionary
+  decode allocation falls through pre-sized construction. The
+  [Phase 2 record](comparer-persistence-plan.md#phase-2-execution-record--2026-11-20)
+  preserves inputs, hashes, costs, exclusions and review results.
+- **Measurement reliability:** One earlier disposable measurement process ended
+  with a native access violation. A recovered Windows minidump confirms its
+  invocation and fatal CLR exception handling with System.Text.Json callers,
+  but the originating managed method is unresolved. Identical-core replays,
+  a debugger replay and the final matrix complete without establishing a fix
+  or ownership. [SC-Benchmark-006](benchmark-signal-hardening-backlog.md#sc-benchmark-006---unattributed-native-exit-during-persistence-measurement)
+  retains this separate unresolved limit. No speculative runtime fix is added.
+- **Next action:** Complete Phase 3 full reader/cross-runtime interoperability,
+  supported IL2CPP/stripping, hosted/release readiness and the reliability review.
+  The overall issue stays open; no release or full-feature completion is claimed.
 - **Plan / acceptance:** [Comparer persistence plan](comparer-persistence-plan.md)
   owns the inventory, decisions, phases, validation and performance gates.
   The former plan-only fixture directory is removed; maintained tests consume

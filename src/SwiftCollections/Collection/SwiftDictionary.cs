@@ -12,8 +12,8 @@ using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using Chronicler;
 using Chronicler.Diagnostics;
-using Chronicler.Serialization;
 using MemoryPack;
+using SwiftCollections.Serialization;
 using SwiftCollections.Utility;
 
 namespace SwiftCollections;
@@ -33,8 +33,8 @@ namespace SwiftCollections;
 /// define their own determinism.
 /// </remarks>
 [Serializable]
-[JsonConverter(typeof(StateJsonConverterFactory))]
-[MemoryPackable]
+[JsonConverter(typeof(SwiftCollectionJsonConverterFactory))]
+[MemoryPackable(GenerateType.NoGenerate)]
 public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionaryState<TKey, TValue>>, IDictionary<TKey, TValue>, IDictionary
     where TKey : notnull
 {
@@ -202,8 +202,9 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// <exception cref="T:System.ArgumentNullException">state.Items is null, including a default
     /// state.</exception>
     /// <remarks>
-    /// Shallow-copies items and reconstructs default equality and storage. Duplicate equal keys keep the
-    /// first mapping; custom comparers are not restored. To preserve custom key equality, construct from
+    /// This raw-state constructor shallow-copies items and reconstructs default equality and storage. Duplicate
+    /// equal keys keep the first mapping; the raw DTO carries no comparer metadata. Versioned JSON and standard
+    /// MemoryPack owner persistence instead restore supported comparison rules. To select equality explicitly, construct from
     /// state.Items with the desired comparer instead. Changing the comparer after restore cannot recover
     /// entries already discarded under default equality.
     /// </remarks>
@@ -440,8 +441,9 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// <value>A state containing copied live items in increasing hash-slot order; reference-type elements remain
     /// shared.</value>
     /// <remarks>
-    /// Restore rebuilds storage and default comparers; capacity, hash slots, custom comparers and version are not
-    /// serialized. Equal duplicate keys keep the first inserted entry. To preserve custom equality, pass the
+    /// This raw DTO omits capacity, hash slots, custom comparers and version. Explicit raw-state restoration
+    /// rebuilds storage with default equality and keeps the first inserted entry for each equal key. Ordinary
+    /// versioned owner persistence separately records comparison metadata. To select custom equality, pass the
     /// snapshot's Items and the desired comparer to the enumerable constructor before any insertion; a later
     /// SetComparer call cannot recover discarded entries.
     /// </remarks>

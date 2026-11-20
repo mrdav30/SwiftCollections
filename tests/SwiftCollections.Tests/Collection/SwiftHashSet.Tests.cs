@@ -1112,13 +1112,10 @@ public class SwiftHashSetTests
 
         var result = JsonSerializer.Deserialize<SwiftHashSet<string>>(json);
 
-        // default comparer now
-        Assert.DoesNotContain("hello", result);
-        Assert.Equal(new SwiftHashSet<string>().Comparer.GetHashCode("Hello"), result.Comparer.GetHashCode("Hello"));
-
-        result.SetComparer(comparer);
-
+        Assert.Same(comparer, result.Comparer);
         Assert.Contains("hello", result);
+        Assert.Contains("world", result);
+        Assert.Equal(2, result.Count);
     }
 
 #if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
@@ -1136,12 +1133,9 @@ public class SwiftHashSetTests
 
         var result = MemoryPackSerializer.Deserialize<SwiftHashSet<string>>(bytes);
 
-        Assert.DoesNotContain("hello", result);
-        Assert.Equal(new SwiftHashSet<string>().Comparer.GetHashCode("Hello"), result.Comparer.GetHashCode("Hello"));
-
-        result.SetComparer(comparer);
-
+        Assert.Same(comparer, result.Comparer);
         Assert.Contains("hello", result);
+        Assert.Single(result);
     }
 #endif
 
@@ -1156,8 +1150,9 @@ public class SwiftHashSetTests
 
         set.Add(15);
 
-        byte[] json = JsonSerializer.SerializeToUtf8Bytes(set);
-        var result = JsonSerializer.Deserialize<SwiftHashSet<int>>(json);
+        byte[] json = JsonSerializer.SerializeToUtf8Bytes(set.State);
+        var state = JsonSerializer.Deserialize<SwiftArrayState<int>>(json);
+        var result = new SwiftHashSet<int>(state);
 
         Assert.Contains(15, result);
 

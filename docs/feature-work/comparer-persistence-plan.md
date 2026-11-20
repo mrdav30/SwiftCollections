@@ -1,8 +1,9 @@
 # Comparer Persistence Plan
 
-- **Status:** Phase 1 complete as of 2026-11-20; version-one-only sorted-list
-  persistence and performance disposition accepted. Phase 2 is not started;
-  SC-Issue-021 remains open for the remaining families and compatibility gates.
+- **Status:** Phases 1 and 2 implemented and verified as of 2026-11-20;
+  comparer-aware persistence covers sorted lists and all four hash/inherited
+  families. SC-Issue-021 remains open for Phase 3 compatibility/release gates
+  and the separately recorded measurement-reliability limit.
 - **Created:** 2026-11-19.
 - **Owner:** SwiftCollections; coordinate with Chronicler only where its shared
   serialization boundary needs an extension.
@@ -99,7 +100,8 @@ default selection and fallback comparer creation. Existing coverage includes
 Use a versioned persistence envelope containing the current raw item state
 and typed comparer descriptors. Do not change shared raw DTOs or raw-state
 constructors merely to carry serialization metadata. The Phase 0 protocol is
-implemented for the sorted-list family; remaining owner adapters follow later.
+implemented for sorted lists, dictionaries, hash sets, bidictionaries and
+observable dictionaries; comparerless owners retain their formats.
 
 The target experience is ordinary collection JSON/MemoryPack persistence that
 preserves comparers, including nested fields and collections. A standalone
@@ -264,7 +266,7 @@ known noncomparable defaults even for empty owners unless explicitly registered
 with an application codec. Do not scan items to infer support. Eligibility is
 not proof that user comparisons cannot throw or depend on mutable state.
 
-Public design surface, implemented and reviewed for ordering in Phase 1:
+Public design surface, implemented and reviewed for ordering and equality:
 
 - `SwiftComparerRegistryBuilder` registers exact ordering instances,
   stable codec identity, bounded encoder and typed reconstruction factory;
@@ -272,8 +274,9 @@ Public design surface, implemented and reviewed for ordering in Phase 1:
   A custom decode factory returns the comparer and consumed-byte count; the
   framework requires that count to equal the complete configuration length.
   Built-ins validate their fixed lengths directly. This needs no general
-  parsing framework or per-comparison callback. Equality registrations follow
-  with the Phase 2 owner adapters.
+  parsing framework or per-comparison callback. `RegisterEquality<T>` serves the
+  equality roles; ordering and equality have separate exact typed identities
+  even when one instance implements both interfaces.
 - `SwiftCollectionJsonConverterFactory(registry)` supports ordinary options
   registration; a parameterless attribute path uses built-ins only and fails
   unknown custom rules. Typed closed-converter creators are also required for
@@ -368,9 +371,9 @@ all-pairs scan to repair a comparer whose equal values have different hashes.
 Publish coherent count, mask, last-index, version and probe metadata only after
 success. Do not call normal Add/Insert, resize, SetComparer or randomization.
 The small fresh-table loops have no tombstones, notifications or fallback;
-ordinary hot methods stay unchanged. This is a design commitment, not a proven
-production implementation or a reason to introduce a delegate-driven table
-abstraction. Phase 1 must prove the invariant and measured cost.
+ordinary hot methods stay unchanged. Phase 2 verifies the fresh-table invariant
+and measures its cost; this is not a reason to introduce a delegate-driven
+table abstraction.
 
 BiDictionary builds both maps through that path. Its configured/effective
 reverse descriptors must match or form a recognized Swift fallback-equivalent
@@ -494,14 +497,14 @@ the supported IL2CPP consumer remains a separate acceptance gate.
 
 ### 2. Complete hash and inherited families
 
-- [ ] Dictionary and HashSet: exact typed equality/hash policy, custom-distinct
+- [x] Dictionary and HashSet: exact typed equality/hash policy, custom-distinct
   default-equal items, null handling, collisions, seeded/fallback variants.
-- [ ] BiDictionary: both roles independently and together, effective reverse
+- [x] BiDictionary: both roles independently and together, effective reverse
   comparer capture after collision fallback without losing configured reverse
   equality, uniqueness rejection before publication, reverse lookups.
-- [ ] ObservableDictionary: inherited state, ordinary nested serialization,
+- [x] ObservableDictionary: inherited state, ordinary nested serialization,
   subscribers/events and base/interface dispatch within existing contracts.
-- [ ] Verify PackedSet's fixed-equality continuation and every comparerless
+- [x] Verify PackedSet's fixed-equality continuation and every comparerless
   family as unchanged-format controls. Account for companion wrappers and all
   four package IDs; do not add a custom comparer API where none exists.
 
@@ -1164,3 +1167,164 @@ All Phase 1 tasks are complete. SC-Issue-021 remains open; Phase 2 hash/inherite
 families and Phase 3 full interoperability, supported IL2CPP, broader runtime
 and release gates remain unchecked. No Phase 2 implementation or release is
 included in this closeout. Reopening criteria are recorded with SC-Benchmark-005.
+
+## Phase 2 execution record — 2026-11-20
+
+Starting revision is clean `4fedfa1c3f3a1dc61e730dbda4ed1507046a7381`;
+implementation and tests remain unstaged/uncommitted. Published dependency mode,
+SDK 10.0.302/runtime 10.0.10, Windows x64 build 26300. No dependency, CI policy,
+raw DTO schema or ordinary lookup/insertion algorithm changes are included.
+
+### Implementation and reuse
+
+Dictionary, HashSet, BiDictionary and ObservableDictionary now use the same
+strict-v1 owner protocol as SortedList. `RegisterEquality<T>` shares the existing
+ordering codec/instance-binding lifecycle through an exact comparer-interface
+key. One registration can serve all equality roles without crossing into
+ordering registrations. Canonical aliases, configuration isolation, immutable
+factory-product recapture and callback-outside-lock contracts are preserved.
+Built-ins preserve signed Int32 seeds and all Int64 entropy bits; known object
+comparers also work contravariantly on reference-type owners.
+
+One internal JSON adapter serves the four hash families. JSON metadata helpers
+and binary header/descriptor helpers also serve SortedList; the ordering-only
+binary wrappers are deleted. A fixed tuple carries up to three descriptors,
+removing measured per-operation descriptor-array allocations of 48 bytes for
+single-role owners and 96 bytes for bidictionaries. Dictionary reconstruction
+is reused by the inherited owners. Only the two small fresh-table loops remain
+separate because their Entry layouts and null contracts differ; capacity sizing
+is shared. No generic probing delegate or new collection instance field is added.
+Authored binary entry points are required to cover generated direct/packable
+dispatch as well as provider dispatch in both target APIs.
+
+Hash restoration sizes once, resolves comparison before population, rejects
+equal duplicates and publishes privately constructed tables without sampling
+entropy. BiDictionary resolves roles 2/4/5 and admits identical reverse policies
+or recognized Swift fallback-equivalent pairs; it preserves configured reverse
+equality independently of effective hashing. Base Dictionary serialization of
+a BiDictionary is rejected before its payload prefix. Observable restoration
+raises no events and carries no subscribers; ref-existing success replaces the
+owner and failure preserves the previous reference. Callback side effects on
+shared application objects are not rolled back.
+
+**Null-state disposition:** HashSet keeps its state-path null-item skipping
+behavior in the new envelope. It rejects equal non-null duplicates. Enumerable
+construction and ordinary Add still reject null. Dictionary keys and reverse
+BiDictionary keys remain non-null. This implements the plan's state/enumerable
+distinction; the envelope is not a general item-canonicalization guarantee.
+
+### Behavior, compatibility and coverage
+
+Four initial regressions fail on the starting implementation because ordinary
+JSON/binary saves silently accept unregistered custom equality. They pass after
+the change. Tests cover custom-distinct/default-equal entries, exact typed
+registration, configured lambda recapture, wrong/missing/duplicate roles,
+unknown metadata on empty owners, malformed configuration, duplicate entries,
+legacy rejection, source preservation and exception/failure publication.
+Independent handwritten envelopes test decoder rules separately from writers.
+
+Collision-heavy fresh restoration preserves its recorded deterministic seed
+without fallback. Actual ordinary BiDictionary additions exercise reverse-map
+collision fallback before capture; round trips retain its configured seed and
+exact effective entropy, then verify forward/reverse lookup and mutation.
+Generated nested JSON, explicit closed converter creators, MemoryPack direct
+packable methods, arrays/lists, formatter bootstrap, nulls and ref-existing
+paths agree. Explicit host raw-state converter overrides remain a documented
+bypass; these adapters do not control arbitrary host converters.
+
+Fourteen comparerless families were compared against the frozen Phase 1 core:
+list, queue, stack, PackedSet, sparse set/map, slot/ticket maps, 2D/3D arrays,
+bool/short 2D specializations, observable list/array. Inputs use integers 3/1/2,
+sparse IDs 7/2, a freed slot/ticket, or one assigned dimensional cell. All 28
+Standard JSON/binary and 14 Lean JSON payloads are byte-identical. Existing
+PackedSet continuation/fallback and companion suites pass; no comparer API is
+added to those owners.
+
+Final package-mode Release, ReleaseLean and Debug solution builds pass without
+warnings/errors. Core tests pass 1789/1687/1787 respectively; companion tests
+pass 43 each. Coverage uses the existing assembly-specific runsettings. Raw core
+line/branch counts are 6073/6075 and 2884/2886 in Release, 5879/5881 and 2808/2810
+in Lean, 8018/8020 and 2892/2894 in Debug. The only misses are the two local
+probe-exhaustion throw lines and their branches; all reachable lines, branches
+and methods are covered. The arrays are sized above count and probing visits
+every slot within 2N attempts, so those guards require impossible local-table
+corruption to fire. The [complexity register](../complexity-exceptions.md#fresh-table-persistence-guards)
+records the reasoning without source exclusions. Companion coverage is complete
+(121/121 Release/Lean lines, 155/155 Debug; 62/62 branches each).
+
+Both runtime assemblies build at netstandard2.1 and net10.0 in both variants.
+All eight assembly/XML pairs match the four package outputs byte-for-byte.
+The complete authored core XML inventory checks 946 Standard / 931 Lean member
+IDs at each TFM with no missing applicable tags; the emitted XML files contain
+1179/1164 entries including selective internal comments. Generated/synthesized
+APIs are outside the authored-member count. The four new owners replace their
+generated packable methods with authored entry points; all five families have
+15 authored binary members excluded from Lean. Clean generated DocFX metadata
+and site pass with warnings as errors; all 104 rendered HTML pages pass local
+path/fragment checks. Rendered registry, converter creators and all four owner
+pages show the parameter, return, failure and inherited/raw-state contracts.
+
+Actual Unity 6000.3.9f1 Editor Mono smoke passes 29 Standard / 27 Lean cases with
+the netstandard2.1 plugin graphs, including new generated nested hash-owner
+JSON, custom equality recapture and Standard nested binary cases. Isolated
+smoke hosts are used; tracked SwiftCollections-Unity packages remain unchanged.
+Actual IL2CPP/stripping and full cross-runtime wire interoperability remain
+Phase 3 gates, not implied by these checks.
+
+### Boundary cost and remaining limits
+
+Freeze the Phase 1 core (`4fedfa1`, same runtime source as `cbd9a73`) and compile
+one optimized net10 caller per flavor against it. Copy the dependency graph and
+replace only the candidate core. Verify loaded hashes, caller identity,
+optimizer and MemoryPack flavor. Run serial ABBA processes on CPU2, normal
+priority, `DOTNET_TieredCompilation=0`, with no competing tests/builds/Unity.
+For each of four families use default integer equality, counts 0/1/8/128/4096/
+65536, keys/items 0..N-1, values `3*k+1`, and validate every lookup, reverse
+lookup, absent key and count outside timing. Measure JSON encode/decode and
+Standard binary encode/decode, three intervals each, with
+`clamp(65536/(N+1),2,1000)` repetitions. Full setup GC precedes 20 warm calls
+(two at N>=4096); record allocations, bytes, elapsed time, GC and checksums.
+Provenance IO occurs after timing. All eight final processes / 1728 intervals
+complete with correct results and matching graphs. Tiny intervals are descriptive,
+not a renewed nanosecond equivalence gate.
+
+Default-int single-role owners add 103 JSON / 50 binary bytes independent of
+count, matching the Phase 1 descriptor cost. JSON encode/decode add 96–104/80
+allocated bytes (payload alignment varies); binary adds 48/80. BiDictionary's
+three roles add 245/138 encoded bytes, 240–248/136 encode allocations, and 88/88
+decode allocations for an empty owner. At 65536 entries its fresh reverse-table
+construction saves 2,621,376 allocated bytes per decode in both transports
+against the valid default-int legacy baseline. These are boundary costs;
+ordinary lookup/mutation has no registry or transport work. Timings are mixed
+at larger counts and do not establish a universal throughput claim.
+
+Final core measurement hashes: Standard
+`E571396299470DB9A39817BC85A15FD06CEBE8E8E3C0D06A770F81BF04133286`, Lean
+`47C8227CAA468FDD0BFCD79B7F1F1B72557136002CB7C8AA64921F2A65C7210E`;
+baselines `319BD4D15FAD879D836F38AAAD8721820738909FDC7EE162914CD7BB20E95C1B`
+and `84F570D6986947319B3433CEEF79444FDF86AB2CAD7C47372481C22503814C4F`.
+An earlier descriptor-array snapshot had one native measurement-process exit;
+the failed run and diagnostic timings are excluded. It was not reproduced in
+bounded identical-core replays or the final matrix. Its cause remains
+unattributed in [SC-Benchmark-006](benchmark-signal-hardening-backlog.md#sc-benchmark-006---unattributed-native-exit-during-persistence-measurement);
+the allocation optimization is not a claimed native-crash fix.
+
+Scoped error-level C# formatting checks pass with explicit Release/net10.0 and
+published-dependency selection. The final import-order/unused-import cleanup
+changes no runtime logic; builds and both test projects pass again afterward.
+Reviewed core DLL hashes after that cleanup are Standard
+`BAE679CB7276D410900758CF4362119D8C9376685231BDAD0B3A1B1697445AFD` and Lean
+`0802D3F984DA94BCA55A8945E824FFCD062D8736E832E5E05172C97DDA8F8702`.
+Package/DLL/XML matches were checked again on those reviewed outputs; the
+measurement hashes above deliberately identify the earlier measured binaries.
+
+Independent reviews cover the shared transport/owner logic and registry from
+different authors; the confirmed callback-exception contract gap was fixed and
+regressed before final validation. Net runtime growth is 933 lines (672 nonblank,
+noncomment), ten new files and one removed file: four owner reconstruction
+partials, four required binary partials, one shared JSON adapter and the generic
+registration replacing its ordering-only predecessor. Every helper has current
+production callers; no maintained probe framework or speculative later-family
+abstraction is added.
+SC-Issue-021 stays open for Phase 3; SC-Benchmark-005 remains closed under its
+existing user disposition. No release or full-feature completion is claimed.

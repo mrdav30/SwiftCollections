@@ -19,11 +19,8 @@ public class ChroniclerStateJsonConverterTests
         { typeof(SwiftList<int>), typeof(SwiftArrayState<int>) },
         { typeof(SwiftStack<int>), typeof(SwiftArrayState<int>) },
         { typeof(SwiftQueue<int>), typeof(SwiftArrayState<int>) },
-        { typeof(SwiftHashSet<int>), typeof(SwiftArrayState<int>) },
         { typeof(SwiftPackedSet<int>), typeof(SwiftArrayState<int>) },
         { typeof(SwiftSparseSet), typeof(SwiftArrayState<int>) },
-        { typeof(SwiftDictionary<string, int>), typeof(SwiftDictionaryState<string, int>) },
-        { typeof(SwiftBiDictionary<string, int>), typeof(SwiftDictionaryState<string, int>) },
         { typeof(SwiftSparseMap<int>), typeof(SwiftSparseMapState<int>) },
         { typeof(SwiftSlotMap<int>), typeof(SwiftSlotMapState<int>) },
         { typeof(SwiftTicketMap<int>), typeof(SwiftTicketMapState<int>) },
@@ -32,7 +29,15 @@ public class ChroniclerStateJsonConverterTests
         { typeof(SwiftBoolArray2D), typeof(Array2DState<bool>) },
         { typeof(SwiftShortArray2D), typeof(Array2DState<short>) },
         { typeof(SwiftObservableArray<int>), typeof(SwiftArrayState<int>) },
-        { typeof(SwiftObservableList<int>), typeof(SwiftArrayState<int>) },
+        { typeof(SwiftObservableList<int>), typeof(SwiftArrayState<int>) }
+    };
+
+    public static TheoryData<Type, Type> ComparerStateBackedTypes => new()
+    {
+        { typeof(SwiftSortedList<int>), typeof(SwiftArrayState<int>) },
+        { typeof(SwiftHashSet<int>), typeof(SwiftArrayState<int>) },
+        { typeof(SwiftDictionary<string, int>), typeof(SwiftDictionaryState<string, int>) },
+        { typeof(SwiftBiDictionary<string, int>), typeof(SwiftDictionaryState<string, int>) },
         { typeof(SwiftObservableDictionary<string, int>), typeof(SwiftDictionaryState<string, int>) }
     };
 
@@ -55,15 +60,16 @@ public class ChroniclerStateJsonConverterTests
         Assert.True(new StateJsonConverterFactory().CanConvert(recordType));
     }
 
-    [Fact]
-    public void SortedList_UsesComparerPersistenceWithoutChangingItsRawStateContract()
+    [Theory]
+    [MemberData(nameof(ComparerStateBackedTypes))]
+    public void ComparerOwners_UseComparerPersistenceWithoutChangingTheirRawStateContract(Type recordType, Type stateType)
     {
-        var converterAttribute = typeof(SwiftSortedList<int>).GetCustomAttribute<JsonConverterAttribute>();
+        var converterAttribute = recordType.GetCustomAttribute<JsonConverterAttribute>();
 
         Assert.Equal(typeof(SwiftCollectionJsonConverterFactory), converterAttribute.ConverterType);
-        Assert.True(typeof(IStateBacked<SwiftArrayState<int>>).IsAssignableFrom(typeof(SwiftSortedList<int>)));
-        Assert.NotNull(typeof(SwiftSortedList<int>).GetConstructor(new[] { typeof(SwiftArrayState<int>) }));
-        Assert.True(new SwiftCollectionJsonConverterFactory().CanConvert(typeof(SwiftSortedList<int>)));
+        Assert.True(typeof(IStateBacked<>).MakeGenericType(stateType).IsAssignableFrom(recordType));
+        Assert.NotNull(recordType.GetConstructor(new[] { stateType }));
+        Assert.True(new SwiftCollectionJsonConverterFactory().CanConvert(recordType));
         Assert.False(new SwiftCollectionJsonConverterFactory().CanConvert(typeof(SwiftList<int>)));
     }
 
@@ -86,7 +92,7 @@ public class ChroniclerStateJsonConverterTests
     }
 
     [Fact]
-    public void JsonRoundTrip_SwiftDictionary_PreservesStateShapeAndItems()
+    public void JsonRoundTrip_SwiftDictionary_PreservesVersionedStateAndItems()
     {
         var original = new SwiftDictionary<string, int>
         {
@@ -97,7 +103,7 @@ public class ChroniclerStateJsonConverterTests
         string json = JsonSerializer.Serialize(original);
         SwiftDictionary<string, int> result = JsonSerializer.Deserialize<SwiftDictionary<string, int>>(json)!;
 
-        Assert.StartsWith("{\"State\":", json);
+        Assert.StartsWith("{\"FormatVersion\":1,\"Comparers\":[", json);
         Assert.Equal(2, result.Count);
         Assert.Equal(1, result["one"]);
         Assert.Equal(2, result["two"]);

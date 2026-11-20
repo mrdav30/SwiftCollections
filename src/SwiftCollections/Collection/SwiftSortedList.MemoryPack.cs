@@ -51,9 +51,8 @@ public partial class SwiftSortedList<T> : IMemoryPackable<SwiftSortedList<T>>
         SwiftComparerRegistry registry = SwiftComparerWire.GetRegistry(writer.Options.ServiceProvider);
         SwiftComparerDescriptor descriptor = registry.CaptureOrdering(value._comparer);
         SwiftArrayState<T> state = value.State;
-        writer.WriteObjectHeader(3);
-        writer.WriteUnmanaged((ushort)1);
-        SwiftComparerWire.WriteOrdering(ref writer, descriptor);
+        SwiftComparerWire.WriteEnvelopeHeader(ref writer, 1);
+        SwiftComparerWire.WriteDescriptor(ref writer, 1, descriptor);
         writer.WriteValue(state);
     }
 
@@ -69,12 +68,8 @@ public partial class SwiftSortedList<T> : IMemoryPackable<SwiftSortedList<T>>
     /// </remarks>
     public static void Deserialize(ref MemoryPackReader reader, scoped ref SwiftSortedList<T>? value)
     {
-        if (!reader.TryReadObjectHeader(out byte members)) { value = null; return; }
-        if (members != 3)
-            throw new MemoryPackSerializationException("Expected a versioned sorted-list comparison envelope; state-only legacy records are unsupported.");
-        reader.ReadUnmanaged(out ushort version);
-        if (version != 1) throw new MemoryPackSerializationException("Unsupported sorted-list format version.");
-        SwiftComparerDescriptor descriptor = SwiftComparerWire.ReadOrdering(ref reader);
+        if (!SwiftComparerWire.ReadEnvelopeHeader(ref reader, 1)) { value = null; return; }
+        SwiftComparerDescriptor descriptor = SwiftComparerWire.ReadDescriptor(ref reader, 1);
         SwiftComparerRegistry registry = SwiftComparerWire.GetRegistry(reader.Options.ServiceProvider);
         IComparer<T> comparer;
         try { comparer = registry.RestoreOrdering<T>(descriptor); }

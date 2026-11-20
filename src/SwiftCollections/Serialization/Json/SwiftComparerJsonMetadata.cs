@@ -14,6 +14,49 @@ internal static class SwiftComparerJsonMetadata
 {
     private const int MaximumBase64Length = ((SwiftComparerRegistry.MaxConfigurationLength + 2) / 3) * 4;
 
+    internal static void ReadStart(ref Utf8JsonReader reader)
+    {
+        if (reader.TokenType != JsonTokenType.StartObject)
+            throw new JsonException("Expected a versioned collection comparison envelope.");
+        ReadProperty(ref reader, "FormatVersion");
+        if (ReadVersion(ref reader) != 1) throw new JsonException("Unsupported collection envelope version.");
+        ReadProperty(ref reader, "Comparers");
+        if (reader.TokenType != JsonTokenType.StartArray) throw new JsonException("Expected comparison descriptors.");
+    }
+
+    internal static SwiftComparerDescriptor ReadDescriptor(ref Utf8JsonReader reader, byte expectedRole)
+    {
+        ReadToken(ref reader, JsonTokenType.StartObject);
+        ReadProperty(ref reader, "Role");
+        if (reader.TokenType != JsonTokenType.Number || !reader.TryGetByte(out byte role) || role != expectedRole)
+            throw new JsonException("Unexpected comparison role or descriptor order.");
+        ReadProperty(ref reader, "Id");
+        string id = ReadId(ref reader);
+        ReadProperty(ref reader, "Version");
+        ushort version = ReadVersion(ref reader);
+        ReadProperty(ref reader, "Config");
+        byte[] config = ReadConfiguration(ref reader);
+        ReadToken(ref reader, JsonTokenType.EndObject);
+        return new SwiftComparerDescriptor(id, version, config);
+    }
+
+    internal static void WriteStart(Utf8JsonWriter writer)
+    {
+        writer.WriteStartObject();
+        writer.WriteNumber("FormatVersion", 1);
+        writer.WriteStartArray("Comparers");
+    }
+
+    internal static void WriteDescriptor(Utf8JsonWriter writer, byte role, SwiftComparerDescriptor descriptor)
+    {
+        writer.WriteStartObject();
+        writer.WriteNumber("Role", role);
+        writer.WriteString("Id", descriptor.Id);
+        writer.WriteNumber("Version", descriptor.Version);
+        writer.WriteBase64String("Config", descriptor.Config);
+        writer.WriteEndObject();
+    }
+
     internal static void ReadProperty(ref Utf8JsonReader reader, string name)
     {
         if (!reader.Read() || reader.TokenType != JsonTokenType.PropertyName || !reader.ValueTextEquals(name) || !reader.Read())

@@ -336,11 +336,11 @@ public class SwiftBiDictionaryTests
 
         var result = JsonSerializer.Deserialize<SwiftBiDictionary<string, string>>(json);
 
-        Assert.False(result.ContainsKey("key"));
-
-        result.SetComparer(keyComparer, valueComparer);
-
+        Assert.Same(keyComparer, result.Comparer);
         Assert.True(result.ContainsKey("key"));
+        Assert.True(result.ContainsValue("value"));
+        Assert.True(result.TryGetKey("value", out string key));
+        Assert.Equal("Key", key);
     }
 
     [Fact]
@@ -355,8 +355,9 @@ public class SwiftBiDictionaryTests
 
         dictionary.Add(15, 115);
 
-        byte[] json = JsonSerializer.SerializeToUtf8Bytes(dictionary);
-        var result = JsonSerializer.Deserialize<SwiftBiDictionary<int, int>>(json);
+        byte[] json = JsonSerializer.SerializeToUtf8Bytes(dictionary.State);
+        var state = JsonSerializer.Deserialize<SwiftDictionaryState<int, int>>(json);
+        var result = new SwiftBiDictionary<int, int>(state);
 
         Assert.True(result.ContainsKey(15));
         Assert.True(result.ContainsValue(115));

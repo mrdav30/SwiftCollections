@@ -26,8 +26,9 @@ State-backed collection types expose explicit state structs such as
 State-backed owners implement `Chronicler.IStateBacked<TState>`. Most use
 `Chronicler.Serialization.StateJsonConverterFactory` for JSON: it writes a
 `State` property and invokes the owner's explicit state constructor when
-restoring it. `SwiftSortedList<T>` instead uses the versioned comparer-aware
-contract described below. State validation belongs to the owner; this is
+restoring it. SortedList, Dictionary, HashSet, BiDictionary and
+ObservableDictionary instead use the versioned comparer-aware contracts below.
+State validation belongs to the owner; this is
 distinct from populating an existing `IRecordable` runtime shell.
 
 Readonly state structs are not deeply immutable. Their constructors retain
@@ -148,8 +149,10 @@ serializer null representation, while non-null empty owners still need a rule.
 #### Closed JSON construction and generated metadata
 
 The normal factory creates generic converters through reflection. For a closed
-serialization contract, register `SwiftCollectionJsonConverters.ForSortedList<T>`
-instead. Options converters take precedence over the owner's converter
+serialization contract, use the matching `SwiftCollectionJsonConverters`
+creator: `ForSortedList<T>`, `ForDictionary<TKey, TValue>`, `ForHashSet<T>`,
+`ForBiDictionary<TKey, TValue>` or `ForObservableDictionary<TKey, TValue>`.
+Options converters take precedence over the owner's converter
 attribute, including when ordinary generated container metadata visits nested
 lists. Supply metadata for both the owner and its unchanged raw state, plus
 element and containing types:
@@ -171,10 +174,14 @@ internal partial class SortedSnapshotJsonContext : JsonSerializerContext { }
 
 This closes converter construction; the host must also preserve its concrete
 factories and metadata when trimming or compiling ahead of time. The factory
-supports exact closed `SwiftSortedList<T>` types. Explicitly serializing a derived
-instance as that base type records its base items and ordering only; it restores
-a base owner and omits derived fields. Full derived and interface-typed contracts
-need explicit host integration; do not assume they select the same converter.
+supports exact closed types from the five comparer-aware families. Hash owners
+also require `SwiftDictionaryState<TKey, TValue>` or `SwiftArrayState<T>` metadata
+and their key/value types. Explicitly serializing a derived sorted list as its
+base type records base items and ordering only; it restores a base owner and
+omits derived fields. A bidictionary through the Dictionary base contract is
+rejected because its reverse roles would be lost. Full derived and
+interface-typed contracts need explicit host integration; do not assume they
+select the same converter.
 
 #### MemoryPack options and bootstrap
 
@@ -198,7 +205,8 @@ A host with an existing service provider should compose a
 `SwiftComparerRegistry` service into it, preserving its other services. A missing
 service selects built-ins only; it does not recover unregistered custom rules.
 Keep compatible element formatters and options, including string encoding, on
-both sides. Explicit `RegisterFormatter()` avoids relying on reflective cold
+both sides. Each comparer-aware owner has a closed `RegisterFormatter()` entry
+point. Explicit registration avoids relying on reflective cold
 discovery. Modern and `netstandard2.1` MemoryPack binary APIs require matching
 dependency graphs; do not swap only one generated DLL between them. Validate the
 actual host's stripping and AOT profile. Lean retains the registry and JSON APIs
@@ -221,6 +229,73 @@ The unchanged raw `SwiftArrayState<T>` and explicit state constructor serve the
 trusted-state contract below. They do not make old serialized owner records
 compatible with the new format.
 
+### Preserve hash equality during serialization
+
+Normal JSON in standard/Lean and standard MemoryPack preserve the effective
+equality/hash policy of `SwiftDictionary<TKey, TValue>`, `SwiftHashSet<T>`,
+`SwiftBiDictionary<T1, T2>` and `SwiftObservableDictionary<TKey, TValue>`. They use
+the same version-one envelope, registry configuration, metadata bounds, null
+owner handling and strict legacy rejection described above.
+
+Built-ins include runtime `EqualityComparer<T>.Default`, the two ordinal string
+comparers, and known Swift string/object comparers with their signed Int32 seed
+or full signed Int64 collision entropy. Known Swift object comparers can also
+serve reference key/element types through contravariance. No new entropy is
+sampled while restoring a recorded policy. Runtime defaults, object values and
+ordinal-ignore-case Unicode behavior retain their own platform/runtime limits;
+preserving a descriptor does not promise portable runtime hash codes.
+
+```csharp
+using System;
+using System.Text.Json;
+using SwiftCollections;
+
+var source = new SwiftDictionary<string, int>(8, StringComparer.OrdinalIgnoreCase);
+source.Add("Player", 7);
+string json = JsonSerializer.Serialize(source);
+var restored = JsonSerializer.Deserialize<SwiftDictionary<string, int>>(json)!;
+bool found = restored.ContainsKey("player"); // true; equality is restored first.
+```
+
+Register custom equality/hash rules with
+`SwiftComparerRegistryBuilder.RegisterEquality<T>(id, version, comparer, encode, decode)`.
+It has the same exact-instance, bounded configuration, immutable factory-product
+and weak recapture contracts as `RegisterOrdering<T>`. One typed equality codec
+serves dictionary keys, set elements and reverse-value roles; ordering and
+equality registrations remain separate even if one object implements both.
+Use the same JSON option factory or MemoryPack registry service shown above.
+Culture-sensitive and unregistered custom equality rules require an explicit
+codec; empty owners do not bypass this requirement.
+
+| Owner | Required roles |
+| --- | --- |
+| Dictionary, ObservableDictionary | 2: effective forward-key equality/hash. |
+| HashSet | 3: effective element equality/hash. |
+| BiDictionary | 2: effective forward-key rule; 4: configured reverse-value rule; 5: effective reverse-map rule. |
+
+All rules resolve before item population. Hash owners build unpublished fresh
+tables using the recorded policies, without ordinary Add/SetComparer, collision
+fallback or restoration notifications. Duplicate equal dictionary keys, set
+elements or bidirectional reverse values fail instead of silently collapsing.
+HashSet continues skipping null state items; its enumerable constructor still
+rejects null items. Dictionary keys and bidictionary reverse values reject null.
+An equality codec must provide a valid equality/hash contract; restoration does
+not scan every pair to repair equal values with different hashes.
+
+A bidictionary's configured and effective reverse rules must describe the same
+policy or a recognized Swift collision-hardening transition. Contradictory
+custom rules fail. Persist through the concrete bidictionary contract so all
+three roles survive. Observable restoration creates a new owner with no event
+subscribers and emits no restoration events; later ordinary mutations retain
+their existing notification behavior.
+
+Snapshots are shallow, and the caller must synchronize owner/comparer mutation
+during capture. Fresh table capacity, hash slots and enumeration can differ from
+the source because raw state omits holes and insertion history. Future normal
+mutations retain ordinary resizing and collision-hardening behavior and can
+sample new entropy when a fallback occurs. Neither byte identity, cross-runtime
+enumeration nor identical future table traces follow from comparer persistence.
+
 ### Trusted state and comparers
 
 State is an explicit snapshot schema. Restore performs the concrete collection's
@@ -228,11 +303,11 @@ documented reconstruction and checks; it is not a general repair operation for
 arbitrary payloads. Keep the required ordering, uniqueness, ID and free-slot
 invariants when producing or editing state. Validate external data before using
 it as trusted state. Explicit state constructors keep these raw-state contracts.
-Sorted-list versioned JSON and MemoryPack additionally restore the recorded
-comparer; other owners retain their existing state-only restoration behavior.
+Versioned JSON and MemoryPack for the five comparer-aware families additionally
+restore recorded comparison rules; comparerless owners keep their formats.
 
-Comparers are not stored in raw collection state. Outside the sorted-list
-versioned format, keep the application's comparer choice alongside the snapshot
+Comparers are not stored in raw collection state. When using a raw DTO and
+explicit state constructor, keep the application's comparer choice alongside the snapshot
 when custom ordering or equality is required. State-only deserialization cannot
 infer that choice from the items. Configuring an existing instance first does
 not inject it: the state path selects defaults, and a serializer may create a
@@ -292,7 +367,7 @@ rollback is promised.
 
 #### Select hash equality before inserting
 
-Hash collections rebuild their lookup storage under default equality rather
+Raw hash-state constructors rebuild lookup storage under default equality rather
 than retaining serialized buckets. Their lookups are therefore consistent with
 that default, but the application's equality semantics can change. Distinct
 items under a custom comparer may collapse during default restore. Applying a

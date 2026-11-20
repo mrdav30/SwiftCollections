@@ -23,12 +23,16 @@ internal sealed class SwiftStringEqualityComparer : IEqualityComparer<string>, I
     /// </summary>
     private readonly long _entropy;
 
+    internal long Entropy => _entropy;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="SwiftStringEqualityComparer"/> class with a unique entropy value.
     /// </summary>
-    public SwiftStringEqualityComparer()
+    public SwiftStringEqualityComparer() : this(SwiftHashTools.GetEntropy()) { }
+
+    internal SwiftStringEqualityComparer(long entropy)
     {
-        _entropy = SwiftHashTools.GetEntropy();
+        _entropy = entropy;
     }
 
     /// <inheritdoc/>

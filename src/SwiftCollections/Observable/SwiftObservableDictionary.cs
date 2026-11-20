@@ -11,8 +11,8 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Text.Json.Serialization;
 using Chronicler;
-using Chronicler.Serialization;
 using MemoryPack;
+using SwiftCollections.Serialization;
 
 namespace SwiftCollections.Observable;
 
@@ -28,8 +28,8 @@ namespace SwiftCollections.Observable;
 /// buffers, inherited FastClear, sort, reverse, and other non-overridden mutators can bypass notifications.
 /// </remarks>
 [Serializable]
-[JsonConverter(typeof(StateJsonConverterFactory))]
-[MemoryPackable]
+[JsonConverter(typeof(SwiftCollectionJsonConverterFactory))]
+[MemoryPackable(GenerateType.NoGenerate)]
 public partial class SwiftObservableDictionary<TKey, TValue> : SwiftDictionary<TKey, TValue>, IStateBacked<SwiftDictionaryState<TKey, TValue>>, INotifyPropertyChanged, INotifyCollectionChanged
     where TKey : notnull
 {
@@ -62,8 +62,10 @@ public partial class SwiftObservableDictionary<TKey, TValue> : SwiftDictionary<T
     /// serialized.</param>
     /// <exception cref="T:System.ArgumentNullException">state.Items is null, including default state.</exception>
     /// <remarks>
-    /// Uses Swift default key equality and keeps the first mapping for each equal key. Custom comparers are not
-    /// serialized. To preserve custom equality, create an empty observable dictionary, call SetComparer, then add
+    /// This raw-state constructor uses Swift default equality and keeps the first mapping for each equal key.
+    /// The raw DTO carries no comparer metadata; versioned JSON and standard MemoryPack owner persistence instead
+    /// restore supported rules without restoration notifications. To select custom equality explicitly, create
+    /// an empty observable dictionary, call SetComparer, then add
     /// the state pairs. Applying the comparer after restore cannot recover discarded mappings.
     /// </remarks>
     [MemoryPackConstructor]

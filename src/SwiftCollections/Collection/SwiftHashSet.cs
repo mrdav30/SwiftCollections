@@ -12,8 +12,8 @@ using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using Chronicler;
 using Chronicler.Diagnostics;
-using Chronicler.Serialization;
 using MemoryPack;
+using SwiftCollections.Serialization;
 using SwiftCollections.Utility;
 
 namespace SwiftCollections;
@@ -30,8 +30,8 @@ namespace SwiftCollections;
 /// define their own determinism.
 /// </remarks>
 [Serializable]
-[JsonConverter(typeof(StateJsonConverterFactory))]
-[MemoryPackable]
+[JsonConverter(typeof(SwiftCollectionJsonConverterFactory))]
+[MemoryPackable(GenerateType.NoGenerate)]
 public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, ISet<T>, ICollection<T>, IEnumerable<T>, IEnumerable, IReadOnlyCollection<T>
     where T : notnull
 {
@@ -172,8 +172,9 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// state.</exception>
     /// <remarks>
     /// Copies non-null items into reconstructed storage using Swift default equality. Null items are skipped and
-    /// equal duplicates keep the first stored value. Custom comparers are not restored; unlike state restore,
-    /// enumerable construction rejects null elements. To preserve custom equality, pass state.Items and the
+    /// equal duplicates keep the first stored value. This raw-state constructor does not restore comparer metadata;
+    /// versioned JSON and standard MemoryPack owner persistence do. Unlike state restore, enumerable construction
+    /// rejects null elements. To select custom equality explicitly, pass state.Items and the
     /// desired comparer to the enumerable constructor before insertion. A later comparer change cannot recover
     /// items already discarded under default equality.
     /// </remarks>
@@ -255,8 +256,9 @@ public sealed partial class SwiftHashSet<T> : IStateBacked<SwiftArrayState<T>>, 
     /// <value>A state containing copied live items in increasing hash-slot order; reference-type elements remain
     /// shared.</value>
     /// <remarks>
-    /// Restore rebuilds storage and Swift default equality; capacity, hash slots, custom comparers and version
-    /// are not retained. Equal duplicates keep the first stored value, and null state items are skipped. The
+    /// This raw DTO omits capacity, hash slots, custom comparers and version. Explicit raw-state restoration
+    /// rebuilds storage with Swift default equality. Ordinary versioned owner persistence separately records
+    /// comparison metadata. Equal raw-state duplicates keep the first stored value, and null items are skipped. The
     /// enumerable constructor instead rejects null elements. To preserve custom equality, construct from Items
     /// with the desired comparer; applying it after restore cannot recover discarded items.
     /// </remarks>

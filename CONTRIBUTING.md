@@ -193,12 +193,17 @@ dotnet test SwiftCollections.slnx --configuration Release --no-build
 dotnet test SwiftCollections.slnx --configuration ReleaseLean --no-build
 ```
 
-Sorted-list persistence changes must cover normal direct and generated nested
-JSON, standard MemoryPack's formatter and generated packable paths, explicit
-legacy-input rejection, and unchanged raw-state reconstruction. Supply a registry
-through JSON options or MemoryPack's per-operation services; keep collection
-lookup and mutation free of persistence work. Use matching `netstandard2.1`
-plugin dependencies in the existing SwiftCollections-Unity smoke-test host.
+Comparer persistence changes must cover sorted, dictionary, hash-set,
+bidictionary and observable-dictionary normal direct/generated nested JSON,
+standard MemoryPack's formatter and generated packable paths, legacy-input
+rejection, and unchanged raw-state/comparerless formats. Exercise equality
+before insertion, duplicate rejection, configured/effective reverse roles,
+collision-heavy continuation, and failed ref-existing loads. Keep shared codec
+and wire validation in their existing helpers; keep owner-specific table
+invariants in the owner. Supply a registry through JSON options or MemoryPack's
+per-operation services; keep lookup and mutation free of persistence work.
+Use matching `netstandard2.1` plugin dependencies in the existing
+SwiftCollections-Unity smoke-test host.
 See the [serialization guide](docs/api/guides/serialization-and-diagnostics.md)
 for codecs, closed JSON metadata and explicit formatter bootstrap.
 

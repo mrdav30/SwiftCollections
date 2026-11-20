@@ -21,6 +21,15 @@ namespace SwiftCollections.Utility;
 /// </summary>
 public static class SwiftHashTools
 {
+    // Bulk persistence sizes once without invoking insertion or collision-hardening entropy.
+    internal static int GetPersistenceCapacity(int count, int minimum, int loadPercent)
+    {
+        long requested = (long)count * 100 / loadPercent;
+        if (requested >= 1L << 30)
+            throw new InvalidOperationException("Persisted hash state exceeds the supported capacity range.");
+        return Math.Max(minimum, NextPowerOfTwo((int)requested));
+    }
+
     internal const int DefaultDeterministicStringHashSeed = 0x51C4B5D;
     internal const int DefaultDeterministicObjectHashSeed = 0x1F6E4D75;
 

@@ -20,6 +20,8 @@ internal sealed class SwiftDeterministicStringEqualityComparer : IEqualityCompar
 {
     private readonly int _seed;
 
+    internal int Seed => _seed;
+
     public SwiftDeterministicStringEqualityComparer() : this(SwiftHashTools.DefaultDeterministicStringHashSeed) { }
 
     internal SwiftDeterministicStringEqualityComparer(int seed)

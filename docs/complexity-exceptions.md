@@ -52,13 +52,30 @@ in standard, Lean and Debug builds.
 
 | Module | Method | Complexity | Coverage | Rationale | Revisit if |
 | --- | --- | ---: | --- | --- | --- |
-| `SwiftCollections.Serialization` | `SwiftComparerRegistry.RestoreOrdering<T>` | 17 | 100% line / 100% branch | Resolve a typed rule, isolate factory input, enforce singleton identity/configuration and publish a weak binding under one lock. Callbacks stay outside that lock. | Additional roles share the same resolution rules or weak-binding semantics change. |
+| `SwiftCollections.Serialization` | `SwiftComparerRegistry.RestoreCustom<TComparer>` | 15 | 100% line / 100% branch | Ordering and equality share typed resolution, isolated factory input, singleton/configuration checks and weak binding publication. Callbacks stay outside the association lock. | Weak-binding semantics change or a real consumer needs another comparer contract. |
+| `SwiftCollections.Serialization` | `SwiftComparerRegistry.TryCaptureBuiltInEquality<T>` | 11 | 100% line / 100% branch | Recognize canonical public instances and exact Swift algorithms, including contravariant object comparers, without private inspection or application Equals calls. | Built-in algorithms or declared-type eligibility change. |
+| `SwiftCollections.Serialization` | `SwiftComparerRegistry.RestoreBuiltInEquality<T>` | 18 | 100% line / 100% branch | Validate exact type, version and configuration length before reconstructing the fixed set of equality/hash policies without fresh entropy. | Another built-in policy is supported or the frozen configuration schema changes. |
+| `SwiftCollections.Serialization` | `SwiftComparerRegistry.ValidateReverseEquality<T>` | 19 | 100% line / 100% branch | Admit identical reverse descriptors or recognized equality-preserving Swift hash fallback pairs; reject contradictory custom/default policies before population. | Reverse-map fallback or equality semantics change. |
 | `SwiftCollections.Serialization` | `SwiftComparerRegistry.ValidateId` | 11 | 100% line / 100% branch | Validate the fixed ASCII identifier alphabet and length before registration; preserve argument-specific failures. | The wire alphabet or identifier bounds change. |
 | `SwiftCollections.Serialization` | `SwiftComparerRegistry.DefaultOrdering<T>.IsEligible` | 12 | 100% line / 100% branch | Classify a declared default once, including nullable enums and comparable interfaces, without reflective generic activation. | Default eligibility or supported AOT profiles change. |
 | `SwiftCollections.Serialization` | `SwiftComparerJsonMetadata.ReadId` | 11 | 100% line / 100% branch | Bound escaped/segmented text before allocation, then validate ASCII before materializing the identifier. | The alphabet/bounds change or a shared bounded decoder reduces work. |
 | `SwiftCollections.Serialization` | `SwiftComparerJsonMetadata.ReadNonEmptyConfiguration` | 11 | 100% line / 100% branch | Bound and decode nonempty configuration, enforcing exact base64 length and canonical unused bits before invoking an application factory. The separate empty path avoids reserving maximum scratch storage. | Configuration limits or encoding change. |
 
 ## Review Guidance
+
+### Fresh-table persistence guards
+
+Dictionary and HashSet restoration each retain a defensive `2 * capacity`
+probe-exhaustion throw. These are the only uncovered lines/branches in the
+Phase 2 core coverage record. The local arrays do not escape, contain no
+tombstones, and are sized above item count before population. For power-of-two
+capacity N, cumulative-square probing visits every slot within 2N attempts
+(the second N positions shift the first N by N/2 modulo N, giving coverage by
+induction). A free slot therefore exists before exhaustion. Exercising these
+throws would require corrupting local implementation state, not a supported
+input. Keep the guards and report their raw uncovered counts; do not add
+coverage exclusions or tests that manufacture impossible local state. Revisit
+reachability if capacity rules, probing or table ownership changes.
 
 ### Ongoing Review
 

@@ -21,6 +21,8 @@ internal sealed class SwiftDeterministicObjectEqualityComparer : IEqualityCompar
 {
     private readonly int _seed;
 
+    internal int Seed => _seed;
+
     public SwiftDeterministicObjectEqualityComparer() : this(SwiftHashTools.DefaultDeterministicObjectHashSeed) { }
 
     internal SwiftDeterministicObjectEqualityComparer(int seed)

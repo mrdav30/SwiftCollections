@@ -119,10 +119,14 @@ Serialization guidance:
 
 - Types marked `[MemoryPackable]` are partial and depend on source generators in
   standard builds, except authored `GenerateType.NoGenerate` implementations.
-- `SwiftSortedList<T>` owns its strict comparer-aware JSON and MemoryPack
-  envelope. Keep registry resolution at persistence boundaries and raw state
-  copy-only; follow the serialization guide for custom codecs and the
-  version-one-only breaking format. Do not add legacy owner readers or fallback.
+- SortedList, Dictionary, HashSet, BiDictionary and ObservableDictionary own
+  strict comparer-aware JSON and MemoryPack envelopes. Reuse the shared registry
+  lifecycle and wire metadata helpers; keep registry resolution at persistence
+  boundaries and raw DTOs unchanged. Hash owners privately rebuild fresh tables
+  without ordinary insertion, notifications or fresh collision entropy. Preserve
+  all three BiDictionary roles and reject its projection through a Dictionary
+  serializer contract. Follow the serialization guide for codecs and the
+  version-one-only breaking format; do not add legacy readers or fallback.
 - State-backed collections should preserve state constructors and state structs.
 - `net10.0` builds use System.Text.Json converter implementations where
   supported.

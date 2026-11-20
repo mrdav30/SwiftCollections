@@ -31,10 +31,11 @@ or [coverage report](https://mrdav30.github.io/SwiftCollections/coverage/).
   ordering choices.
 - Keep serialization explicit through state-backed types and package variants.
 
-Sorted-list JSON and standard MemoryPack preserve supported comparison rules.
-Register custom factories and use version-one owner records; old state-only
-owner records are rejected. See
-[sorted-list persistence](serialization-and-diagnostics.md#preserve-sorted-list-ordering-during-serialization).
+Sorted-list, dictionary, hash-set, bidictionary and observable-dictionary JSON
+and standard MemoryPack preserve supported comparison rules. Register custom
+factories and use version-one owner records; old state-only owner records are
+rejected. See [comparer persistence](serialization-and-diagnostics.md#preserve-hash-equality-during-serialization)
+and [sorted ordering](serialization-and-diagnostics.md#preserve-sorted-list-ordering-during-serialization).
 
 ## Choose a guide
 

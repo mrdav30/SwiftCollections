@@ -8,6 +8,7 @@
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using MemoryPack;
 
@@ -22,30 +23,51 @@ internal static class SwiftComparerWire
             ?? throw new InvalidOperationException("The comparer service must be a SwiftComparerRegistry.");
     }
 
-    internal static void WriteOrdering<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer,
-        SwiftComparerDescriptor descriptor)
+    internal static void WriteEnvelopeHeader<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, int count)
 #if NET7_0_OR_GREATER
         where TBufferWriter : IBufferWriter<byte>
 #else
         where TBufferWriter : class, IBufferWriter<byte>
 #endif
     {
-        writer.WriteCollectionHeader(1);
+        writer.WriteObjectHeader(3);
+        writer.WriteUnmanaged((ushort)1);
+        writer.WriteCollectionHeader(count);
+    }
+
+    internal static bool ReadEnvelopeHeader(ref MemoryPackReader reader, int count)
+    {
+        if (!reader.TryReadObjectHeader(out byte members)) return false;
+        if (members != 3)
+            throw new MemoryPackSerializationException("Expected a versioned comparison envelope; state-only legacy records are unsupported.");
+        reader.ReadUnmanaged(out ushort version);
+        if (version != 1) throw new MemoryPackSerializationException("Unsupported comparison format version.");
+        if (!reader.TryReadCollectionHeader(out int descriptors) || descriptors != count)
+            throw new MemoryPackSerializationException("The comparison descriptor count does not match the collection roles.");
+        return true;
+    }
+
+    internal static void WriteDescriptor<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer,
+        byte role, SwiftComparerDescriptor descriptor)
+#if NET7_0_OR_GREATER
+        where TBufferWriter : IBufferWriter<byte>
+#else
+        where TBufferWriter : class, IBufferWriter<byte>
+#endif
+    {
         writer.WriteObjectHeader(4);
-        writer.WriteUnmanaged((byte)1);
+        writer.WriteUnmanaged(role);
         writer.WriteString(descriptor.Id);
         writer.WriteUnmanaged(descriptor.Version);
         writer.WriteArray(descriptor.Config);
     }
 
-    internal static SwiftComparerDescriptor ReadOrdering(ref MemoryPackReader reader)
+    internal static SwiftComparerDescriptor ReadDescriptor(ref MemoryPackReader reader, byte expectedRole)
     {
-        if (!reader.TryReadCollectionHeader(out int count) || count != 1)
-            throw new MemoryPackSerializationException("A sorted list requires exactly one ordering descriptor.");
         if (!reader.TryReadObjectHeader(out byte members) || members != 4)
             throw new MemoryPackSerializationException("Invalid ordering descriptor layout.");
         reader.ReadUnmanaged(out byte role);
-        if (role != 1) throw new MemoryPackSerializationException("A sorted list requires ordering role 1.");
+        if (role != expectedRole) throw new MemoryPackSerializationException("Unexpected comparison descriptor role.");
         string id = ReadId(ref reader);
         reader.ReadUnmanaged(out ushort version);
         if (version == 0) throw new MemoryPackSerializationException("Codec versions start at one.");
@@ -54,6 +76,15 @@ internal static class SwiftComparerWire
             throw new MemoryPackSerializationException("Invalid or oversized comparer configuration.");
         byte[] configuration = reader.ReadArray<byte>()!;
         return new SwiftComparerDescriptor(id, version, configuration);
+    }
+
+    internal static IEqualityComparer<T> RestoreEquality<T>(SwiftComparerRegistry registry, SwiftComparerDescriptor descriptor)
+    {
+        try { return registry.RestoreEquality<T>(descriptor); }
+        catch (InvalidOperationException exception)
+        {
+            throw new MemoryPackSerializationException("The equality rule could not be restored.", exception);
+        }
     }
 
     private static string ReadId(ref MemoryPackReader reader)

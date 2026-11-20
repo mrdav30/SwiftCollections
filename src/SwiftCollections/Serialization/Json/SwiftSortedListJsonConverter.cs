@@ -57,29 +57,14 @@ public sealed class SwiftSortedListJsonConverter<T> : JsonConverter<SwiftSortedL
     public override SwiftSortedList<T>? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType == JsonTokenType.Null) return null;
-        if (reader.TokenType != JsonTokenType.StartObject) throw new JsonException("Expected a sorted-list comparison envelope.");
-
-        SwiftComparerJsonMetadata.ReadProperty(ref reader, "FormatVersion");
-        if (SwiftComparerJsonMetadata.ReadVersion(ref reader) != 1) throw new JsonException("Unsupported sorted-list envelope version.");
-        SwiftComparerJsonMetadata.ReadProperty(ref reader, "Comparers");
-        if (reader.TokenType != JsonTokenType.StartArray) throw new JsonException("Expected one ordering descriptor.");
-        SwiftComparerJsonMetadata.ReadToken(ref reader, JsonTokenType.StartObject);
-        SwiftComparerJsonMetadata.ReadProperty(ref reader, "Role");
-        if (reader.TokenType != JsonTokenType.Number || !reader.TryGetByte(out byte role) || role != 1)
-            throw new JsonException("A sorted list requires ordering role 1.");
-        SwiftComparerJsonMetadata.ReadProperty(ref reader, "Id");
-        string id = SwiftComparerJsonMetadata.ReadId(ref reader);
-        SwiftComparerJsonMetadata.ReadProperty(ref reader, "Version");
-        ushort version = SwiftComparerJsonMetadata.ReadVersion(ref reader);
-        SwiftComparerJsonMetadata.ReadProperty(ref reader, "Config");
-        byte[] configuration = SwiftComparerJsonMetadata.ReadConfiguration(ref reader);
-        SwiftComparerJsonMetadata.ReadToken(ref reader, JsonTokenType.EndObject);
+        SwiftComparerJsonMetadata.ReadStart(ref reader);
+        SwiftComparerDescriptor descriptor = SwiftComparerJsonMetadata.ReadDescriptor(ref reader, 1);
         SwiftComparerJsonMetadata.ReadToken(ref reader, JsonTokenType.EndArray);
 
         IComparer<T> comparer;
         try
         {
-            comparer = _registry.RestoreOrdering<T>(new SwiftComparerDescriptor(id, version, configuration));
+            comparer = _registry.RestoreOrdering<T>(descriptor);
         }
         catch (InvalidOperationException exception)
         {
@@ -110,15 +95,8 @@ public sealed class SwiftSortedListJsonConverter<T> : JsonConverter<SwiftSortedL
         if (value == null) { writer.WriteNullValue(); return; }
         SwiftComparerDescriptor descriptor = _registry.CaptureOrdering(value.Comparer);
         SwiftArrayState<T> state = value.State;
-        writer.WriteStartObject();
-        writer.WriteNumber("FormatVersion", 1);
-        writer.WriteStartArray("Comparers");
-        writer.WriteStartObject();
-        writer.WriteNumber("Role", 1);
-        writer.WriteString("Id", descriptor.Id);
-        writer.WriteNumber("Version", descriptor.Version);
-        writer.WriteBase64String("Config", descriptor.Config);
-        writer.WriteEndObject();
+        SwiftComparerJsonMetadata.WriteStart(writer);
+        SwiftComparerJsonMetadata.WriteDescriptor(writer, 1, descriptor);
         writer.WriteEndArray();
         writer.WritePropertyName("State");
         JsonSerializer.Serialize(writer, state, options);

@@ -10,8 +10,8 @@ using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using Chronicler;
 using Chronicler.Diagnostics;
-using Chronicler.Serialization;
 using MemoryPack;
+using SwiftCollections.Serialization;
 using SwiftCollections.Utility;
 
 namespace SwiftCollections;
@@ -34,8 +34,8 @@ namespace SwiftCollections;
 /// members consistently.
 /// </remarks>
 [Serializable]
-[JsonConverter(typeof(StateJsonConverterFactory))]
-[MemoryPackable]
+[JsonConverter(typeof(SwiftCollectionJsonConverterFactory))]
+[MemoryPackable(GenerateType.NoGenerate)]
 public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IStateBacked<SwiftDictionaryState<T1, T2>>
     where T1 : notnull
     where T2 : notnull
@@ -125,7 +125,9 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     /// <remarks>
     /// Shallow-copies items and reconstructs Swift default equality for both directions. Pairs are inserted in
     /// state-array order; a pair whose key or reverse value already exists is skipped. Custom comparers are not
-    /// restored. To preserve them, create an empty dictionary with both desired comparers, then add each state
+    /// restored by this raw-state constructor; versioned JSON and standard MemoryPack owner persistence instead
+    /// restore all three supported comparison roles. To select rules explicitly, create an empty dictionary with
+    /// both desired comparers, then add each state
     /// pair. Changing comparers after restore cannot recover skipped pairs.
     /// </remarks>
     [MemoryPackConstructor]
@@ -224,8 +226,10 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     /// <value>A state containing copied live items in increasing hash-slot order; reference-type elements remain
     /// shared.</value>
     /// <remarks>
-    /// Restore rebuilds storage and Swift default equality in both directions; capacity, hash slots, custom
-    /// comparers and version are not serialized. Pairs with an already inserted equal key or reverse value are
+    /// This raw DTO omits capacity, hash slots, custom comparers and version. Explicit raw-state restoration
+    /// rebuilds both directions with Swift default equality; versioned owner persistence separately records
+    /// forward, configured reverse and effective reverse comparison metadata. Raw-state pairs with an already
+    /// inserted equal key or reverse value are
     /// skipped. To preserve custom equality, create an empty dictionary with both desired comparers before
     /// adding the snapshot pairs; applying comparers after restore cannot recover skipped pairs.
     /// </remarks>

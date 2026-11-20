@@ -1543,12 +1543,9 @@ public class SwiftDictionaryTests
 
         var result = JsonSerializer.Deserialize<SwiftDictionary<string, int>>(json);
 
-        Assert.DoesNotContain("hello", result);
-        Assert.Equal(new SwiftDictionary<string, int>().Comparer.GetHashCode("Hello"), result.Comparer.GetHashCode("Hello"));
-
-        result.SetComparer(comparer);
-
+        Assert.Same(comparer, result.Comparer);
         Assert.Contains("hello", result);
+        Assert.Equal(1, result["hello"]);
     }
 
     [Fact]
@@ -1562,8 +1559,9 @@ public class SwiftDictionaryTests
 
         dictionary.Add(15, "Target");
 
-        byte[] json = JsonSerializer.SerializeToUtf8Bytes(dictionary);
-        var result = JsonSerializer.Deserialize<SwiftDictionary<int, string>>(json);
+        byte[] json = JsonSerializer.SerializeToUtf8Bytes(dictionary.State);
+        var state = JsonSerializer.Deserialize<SwiftDictionaryState<int, string>>(json);
+        var result = new SwiftDictionary<int, string>(state);
 
         Assert.True(result.ContainsKey(15));
 

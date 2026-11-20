@@ -14,7 +14,7 @@ feature-work plan and link it from the signal.
 ## Intake Rules
 
 - Signal IDs use `SC-Benchmark-NNN`. The next available ID is
-  `SC-Benchmark-006`.
+  `SC-Benchmark-007`.
 - Assign an ID at intake and never reuse it, including after closure or
   promotion. Check this file's history before changing the counter.
 - Open a signal from an actual benchmark, allocation guard, profiler capture, or
@@ -80,7 +80,50 @@ making a new performance claim.
 
 ## Active Signals
 
-None currently.
+### SC-Benchmark-006 - Unattributed native exit during persistence measurement
+
+- **Discovered / status:** 2026-11-20; unreproduced in bounded replays. Open
+  measurement-reliability follow-up, not a confirmed collection defect or a
+  reopened SC-Benchmark-005 timing gate.
+- **Source / environment:** Phase 2 working tree over
+  `4fedfa1` before replacing the shared JSON descriptor arrays with a fixed
+  tuple. Standard net10.0 core SHA256
+  `EDB71A257E5097496762F1BF9225A6DE8405C1069AA4A2F3445738419EA1DCEC`;
+  caller `A567E0C95959E24C40F731EEB2B85C2B3BB66077F71811F621E92095D6685A1F`.
+  Published Chronicler 1.0.0 / MemoryPack 1.21.4, SDK 10.0.302, runtime
+  10.0.10, Windows x64 build 26300, i7-9700K, CPU2, normal priority,
+  `DOTNET_TieredCompilation=0`.
+- **Portable reproducer / observed result:** Use the four-family default-int
+  boundary protocol in the
+  [Phase 2 record](comparer-persistence-plan.md#phase-2-execution-record--2026-11-20).
+  Build one optimized caller against the Phase 1 core, copy its graph and
+  replace only the core DLL; launch `dotnet <caller.dll> <fresh-output.json>`.
+  One current-core process in the initial ABBA attempt printed
+  `Fatal error. 0xC0000005` and produced no completed matrix. Expected: normal
+  exit and 288 checked rows. Rows/provenance are written only at completion,
+  so this does not localize failure to serialization, validation or final IO.
+- **Bounded controls:** The exact same pre-optimization current core completed
+  four other 288-row processes, including a CDB replay with first-chance AV
+  logging configured. Three baseline processes also completed. The final
+  implementation subsequently completed all eight Standard/Lean comparison
+  processes / 1728 rows. Exclude the failed run and all diagnostic replay
+  timings from final comparisons. Passing replays do not prove a native fix.
+- **Recovered crash evidence:** Windows retained a minidump for PID11984; its
+  command line identifies the exact failed current-core invocation. CDB shows
+  fatal CLR exception handling through `ProcessCLRException` /
+  `EEPolicy::HandleFatalError`. The original exception record reports a read
+  from address 0x48 in unresolved code, with System.Text.Json frames below
+  exception dispatch. This does not identify the originating managed method or
+  establish whether it was an owner operation, validation or final JSON output.
+- **Attribution / next action:** No concrete driver/owner memory misuse was
+  found in independent review. The synchronous managed-array driver uses no
+  manual readers, unsafe pointers or borrowed buffers. Do not attribute this
+  to the tuple allocation improvement, call it a known baseline failure, or
+  add speculative runtime changes. Resolve the original managed frame from
+  the dump if possible; on recurrence collect first-chance context and
+  operation/progress before assigning ownership or promoting a confirmed
+  implementation defect. Retain this unresolved reliability limit for
+  Phase 3/release review.
 
 ## Closed Signals
 
