@@ -16,9 +16,10 @@ cyclomatic complexity review threshold.
   exception whenever fresh coverage falls below that requirement.
 
 Complexity exceptions are acceptable when the method is a hot hash-table probe
-path, an allocation-sensitive sparse collection routine, or fixed-shape spatial
-partitioning code where decomposition would add indirection without reducing
-real maintenance risk. These exceptions should be revisited when coverage drops,
+path, an allocation-sensitive sparse collection routine, fixed-shape spatial
+partitioning code, or a bounded serialization boundary where decomposition
+would obscure validation and ownership without reducing real maintenance risk.
+These exceptions should be revisited when coverage drops,
 behavior changes, or a shared zero-allocation helper can reduce duplicated logic
 without slowing the hot path.
 
@@ -41,6 +42,21 @@ without slowing the hot path.
 | `SwiftCollections.Query` | `FixedBoundVolumeOctreePartitioner.CreateChildBounds(FixedBoundVolume, int)`                                |         12 | 100% line / 100% branch | Fixed-point octant bounds construction mirrors the numerics path while preserving deterministic arithmetic and avoiding temporaries.                                                                                                             | Generated or shared octant code becomes available without allocations.                                                       |
 | `SwiftCollections.Query` | `FixedBoundVolumeOctreePartitioner.TryGetContainingChildIndex(FixedBoundVolume, FixedBoundVolume, out int)` |         12 | 100% line / 100% branch | Fixed-point axis classification is deterministic, explicit, and branchy by shape; extraction would not reduce the underlying decision count.                                                                                                     | Fixed and numerics partitioners gain a shared zero-allocation classifier.                                                    |
 | `SwiftCollections`       | `SwiftHashSet<T>.TrimExcess()`                                                                              |         12 | 100% line / 100% branch | Rehashes live entries into a smaller power-of-two table while retaining quadratic-probe placement and adaptive resize state.                                                                                                                     | Resize and trim can share a zero-overhead rehash helper.                                                                     |
+
+### Comparer persistence boundaries
+
+The comparer-persistence methods below retain their trust-boundary decisions
+together. Complexity counts include short-circuit conditions, loops, catches
+and conditional expressions; all reachable lines and branches remain covered
+in standard, Lean and Debug builds.
+
+| Module | Method | Complexity | Coverage | Rationale | Revisit if |
+| --- | --- | ---: | --- | --- | --- |
+| `SwiftCollections.Serialization` | `SwiftComparerRegistry.RestoreOrdering<T>` | 17 | 100% line / 100% branch | Resolve a typed rule, isolate factory input, enforce singleton identity/configuration and publish a weak binding under one lock. Callbacks stay outside that lock. | Additional roles share the same resolution rules or weak-binding semantics change. |
+| `SwiftCollections.Serialization` | `SwiftComparerRegistry.ValidateId` | 11 | 100% line / 100% branch | Validate the fixed ASCII identifier alphabet and length before registration; preserve argument-specific failures. | The wire alphabet or identifier bounds change. |
+| `SwiftCollections.Serialization` | `SwiftComparerRegistry.DefaultOrdering<T>.IsEligible` | 12 | 100% line / 100% branch | Classify a declared default once, including nullable enums and comparable interfaces, without reflective generic activation. | Default eligibility or supported AOT profiles change. |
+| `SwiftCollections.Serialization` | `SwiftComparerJsonMetadata.ReadId` | 11 | 100% line / 100% branch | Bound escaped/segmented text before allocation, then validate ASCII before materializing the identifier. | The alphabet/bounds change or a shared bounded decoder reduces work. |
+| `SwiftCollections.Serialization` | `SwiftComparerJsonMetadata.ReadNonEmptyConfiguration` | 11 | 100% line / 100% branch | Bound and decode nonempty configuration, enforcing exact base64 length and canonical unused bits before invoking an application factory. The separate empty path avoids reserving maximum scratch storage. | Configuration limits or encoding change. |
 
 ## Review Guidance
 

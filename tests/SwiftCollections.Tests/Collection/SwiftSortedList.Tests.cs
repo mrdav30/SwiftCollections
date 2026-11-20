@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using SwiftCollections.Serialization;
 using Xunit;
 
 #if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
@@ -1083,29 +1084,32 @@ public class SwiftSortedListTests
     }
 
     [Fact]
-    public void StateRestore_JsonCustomComparerMustBeReappliedBeforeContinuedUse()
+    public void JsonRestore_RegisteredComparerSupportsContinuedUse()
     {
         var source = new SwiftSortedList<int>(new[] { 1, 2, 3 }, DescendingIntComparer.Instance);
 
-        var restored = JsonSerializer.Deserialize<SwiftSortedList<int>>(JsonSerializer.Serialize(source));
+        var options = new JsonSerializerOptions();
+        options.Converters.Add(new SwiftCollectionJsonConverterFactory(CreateDescendingPersistenceRegistry()));
+        var restored = JsonSerializer.Deserialize<SwiftSortedList<int>>(JsonSerializer.Serialize(source, options), options);
 
-        AssertCustomOrderCanContinue(restored);
+        AssertPersistedCustomOrderCanContinue(restored);
         Assert.Equal(new[] { 3, 2, 1 }, source.AsReadOnlySpan().ToArray());
     }
 
 #if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
     [Fact]
-    public void StateRestore_MemoryPackCreateAndOverwriteRequireComparerAfterRestoration()
+    public void MemoryPackRestore_RegisteredComparerSupportsCreateAndOverwrite()
     {
         var source = new SwiftSortedList<int>(new[] { 1, 2, 3 }, DescendingIntComparer.Instance);
-        byte[] bytes = MemoryPackSerializer.Serialize(source);
-        var restored = MemoryPackSerializer.Deserialize<SwiftSortedList<int>>(bytes);
+        var options = new MemoryPackSerializerOptions { ServiceProvider = CreateDescendingPersistenceRegistry() };
+        byte[] bytes = MemoryPackSerializer.Serialize(source, options);
+        var restored = MemoryPackSerializer.Deserialize<SwiftSortedList<int>>(bytes, options);
         var overwritten = new SwiftSortedList<int>(64, DescendingIntComparer.Instance) { 99 };
 
-        MemoryPackSerializer.Deserialize(bytes, ref overwritten);
+        MemoryPackSerializer.Deserialize(bytes, ref overwritten, options);
 
-        AssertCustomOrderCanContinue(restored);
-        AssertCustomOrderCanContinue(overwritten);
+        AssertPersistedCustomOrderCanContinue(restored);
+        AssertPersistedCustomOrderCanContinue(overwritten);
         Assert.Equal(new[] { 3, 2, 1 }, source.AsReadOnlySpan().ToArray());
     }
 #endif
@@ -1117,7 +1121,13 @@ public class SwiftSortedListTests
 
         restored.SetComparer(DescendingIntComparer.Instance);
 
+        AssertPersistedCustomOrderCanContinue(restored);
+    }
+
+    private static void AssertPersistedCustomOrderCanContinue(SwiftSortedList<int> restored)
+    {
         Assert.Same(DescendingIntComparer.Instance, restored.Comparer);
+        Assert.Equal(new[] { 3, 2, 1 }, restored.AsReadOnlySpan().ToArray());
         bool containsOne = restored.Contains(1);
         Assert.True(containsOne);
         Assert.Equal(2, restored.IndexOf(1));
@@ -1125,6 +1135,13 @@ public class SwiftSortedListTests
         Assert.Equal(new[] { 4, 3, 2, 1 }, restored.AsReadOnlySpan().ToArray());
         Assert.True(restored.Remove(2));
         Assert.Equal(new[] { 4, 3, 1 }, restored.AsReadOnlySpan().ToArray());
+    }
+
+    private static SwiftComparerRegistry CreateDescendingPersistenceRegistry()
+    {
+        return new SwiftComparerRegistryBuilder().RegisterOrdering<int>("test.int32.descending", 1,
+            DescendingIntComparer.Instance, static _ => ReadOnlyMemory<byte>.Empty,
+            static _ => (DescendingIntComparer.Instance, 0)).Build();
     }
 
     private static void AssertDefaultOrderCanContinue(SwiftSortedList<int> restored, int[] expected)
@@ -1338,8 +1355,7 @@ public class SwiftSortedListTests
     [Fact]
     public void SortedList_CustomComparer_RoundTrip()
     {
-        var comparer = Comparer<string>.Create(
-            (a, b) => string.Compare(a, b, StringComparison.OrdinalIgnoreCase));
+        var comparer = StringComparer.OrdinalIgnoreCase;
 
         var list = new SwiftSortedList<string>(comparer)
         {
@@ -1351,9 +1367,10 @@ public class SwiftSortedListTests
 
         var result = JsonSerializer.Deserialize<SwiftSortedList<string>>(json);
 
-        result.SetComparer(comparer);
-
         Assert.Equal("alpha", result[0]);
+        Assert.Same(comparer, result.Comparer);
+        bool containsUppercaseAlpha = result.Contains("ALPHA");
+        Assert.True(containsUppercaseAlpha);
     }
 
     #endregion

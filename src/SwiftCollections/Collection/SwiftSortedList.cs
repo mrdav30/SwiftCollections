@@ -13,8 +13,8 @@ using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using Chronicler;
 using Chronicler.Diagnostics;
-using Chronicler.Serialization;
 using MemoryPack;
+using SwiftCollections.Serialization;
 using SwiftCollections.Utility;
 
 namespace SwiftCollections;
@@ -28,10 +28,12 @@ namespace SwiftCollections;
 /// mutation version; enumerators check that version in MoveNext and Reset. Direct backing-array writes bypass
 /// version checks. Ordering and lookup require a consistent, deterministic comparer. Equal elements have no
 /// stable tie order. Enumeration follows comparer order.
+/// Normal JSON and standard-build MemoryPack persist supported comparison rules through
+/// <see cref="SwiftComparerRegistry"/>; unregistered custom rules fail on capture. Raw state contains only items.
 /// </remarks>
 [Serializable]
-[JsonConverter(typeof(StateJsonConverterFactory))]
-[MemoryPackable]
+[JsonConverter(typeof(SwiftCollectionJsonConverterFactory))]
+[MemoryPackable(GenerateType.NoGenerate)]
 public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftCloneable<T>, IEnumerable<T>, IEnumerable, ICollection<T>, ICollection, IReadOnlyList<T>
 {
     #region Constants
@@ -303,8 +305,8 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
     /// </summary>
     /// <value>A new state containing a newly allocated array in comparer order.</value>
     /// <remarks>
-    /// Element references remain shared. Capacity and version are not serialized. The comparer is not serialized;
-    /// restoring copies the exact payload order and selects Comparer&lt;T&gt;.Default without comparing or sorting.
+    /// Element references remain shared. This raw state omits capacity, version and comparer;
+    /// its state constructor copies the exact payload order and selects Comparer&lt;T&gt;.Default without comparing or sorting.
     /// Items must be ordered under the active comparer before ordering-dependent operations. To establish custom
     /// ordering explicitly, construct from State.Items and the desired comparer; this copies and sorts once.
     /// </remarks>
@@ -346,6 +348,13 @@ public partial class SwiftSortedList<T> : IStateBacked<SwiftArrayState<T>>, ISwi
             _version = 0;
             _comparer = Comparer<T>.Default;
         }
+    }
+
+    internal static SwiftSortedList<T> RestoreTrusted(SwiftArrayState<T> state, IComparer<T> comparer)
+    {
+        ChronicleGuard.ThrowIfNull(comparer, nameof(comparer));
+        // Reuse the raw copy/centering path, then install the rule before publishing the owner.
+        return new SwiftSortedList<T>(state) { _comparer = comparer };
     }
 
     #endregion

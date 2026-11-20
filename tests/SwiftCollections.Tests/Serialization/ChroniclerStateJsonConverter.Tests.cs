@@ -7,6 +7,7 @@ using Chronicler;
 using Chronicler.Serialization;
 using SwiftCollections.Dimensions;
 using SwiftCollections.Observable;
+using SwiftCollections.Serialization;
 using Xunit;
 
 namespace SwiftCollections.Tests;
@@ -21,7 +22,6 @@ public class ChroniclerStateJsonConverterTests
         { typeof(SwiftHashSet<int>), typeof(SwiftArrayState<int>) },
         { typeof(SwiftPackedSet<int>), typeof(SwiftArrayState<int>) },
         { typeof(SwiftSparseSet), typeof(SwiftArrayState<int>) },
-        { typeof(SwiftSortedList<int>), typeof(SwiftArrayState<int>) },
         { typeof(SwiftDictionary<string, int>), typeof(SwiftDictionaryState<string, int>) },
         { typeof(SwiftBiDictionary<string, int>), typeof(SwiftDictionaryState<string, int>) },
         { typeof(SwiftSparseMap<int>), typeof(SwiftSparseMapState<int>) },
@@ -53,6 +53,18 @@ public class ChroniclerStateJsonConverterTests
         Assert.Single(stateBackedInterfaces);
         Assert.NotNull(recordType.GetConstructor(new[] { stateType }));
         Assert.True(new StateJsonConverterFactory().CanConvert(recordType));
+    }
+
+    [Fact]
+    public void SortedList_UsesComparerPersistenceWithoutChangingItsRawStateContract()
+    {
+        var converterAttribute = typeof(SwiftSortedList<int>).GetCustomAttribute<JsonConverterAttribute>();
+
+        Assert.Equal(typeof(SwiftCollectionJsonConverterFactory), converterAttribute.ConverterType);
+        Assert.True(typeof(IStateBacked<SwiftArrayState<int>>).IsAssignableFrom(typeof(SwiftSortedList<int>)));
+        Assert.NotNull(typeof(SwiftSortedList<int>).GetConstructor(new[] { typeof(SwiftArrayState<int>) }));
+        Assert.True(new SwiftCollectionJsonConverterFactory().CanConvert(typeof(SwiftSortedList<int>)));
+        Assert.False(new SwiftCollectionJsonConverterFactory().CanConvert(typeof(SwiftList<int>)));
     }
 
     [Fact]

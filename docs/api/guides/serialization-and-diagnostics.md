@@ -23,11 +23,12 @@ State-backed collection types expose explicit state structs such as
 `SwiftDictionaryState<TKey, TValue>`, `SwiftTicketMapState<T>`, and
 `SwiftSparseMapState<T>`.
 
-These types implement `Chronicler.IStateBacked<TState>` and use
-`Chronicler.Serialization.StateJsonConverterFactory` for JSON. The converter
-writes a `State` property and invokes the collection's explicit state
-constructor when restoring it. State validation belongs to that collection; this
-is distinct from populating an existing `IRecordable` runtime shell.
+State-backed owners implement `Chronicler.IStateBacked<TState>`. Most use
+`Chronicler.Serialization.StateJsonConverterFactory` for JSON: it writes a
+`State` property and invokes the owner's explicit state constructor when
+restoring it. `SwiftSortedList<T>` instead uses the versioned comparer-aware
+contract described below. State validation belongs to the owner; this is
+distinct from populating an existing `IRecordable` runtime shell.
 
 Readonly state structs are not deeply immutable. Their constructors retain
 supplied arrays; some normalize null arrays to empty arrays, while default
@@ -54,9 +55,9 @@ their negative-to-zero clamping behavior;
 change the passive `Array2DState<T>` and `Array3DState<T>` constructors, which
 retain supplied data without validation or copying.
 
-The factory discovers the declared state contract with reflection and compiles a
-constructor delegate. A state value is an explicit schema, not an arbitrary
-object-graph discovery mechanism. See the
+Chronicler's state factory discovers the declared state contract with reflection
+and compiles a constructor delegate. A state value is an explicit schema, not an
+arbitrary object-graph discovery mechanism. See the
 [migration guide](https://github.com/mrdav30/SwiftCollections/blob/main/docs/MIGRATION.md)
 when upgrading existing consumers.
 
@@ -75,23 +76,169 @@ SwiftList<int> restored = JsonSerializer.Deserialize<SwiftList<int>>(json)!;
 // restored.Count is 1 and restored[0] is 42.
 ```
 
+### Preserve sorted-list ordering during serialization
+
+Normal JSON and standard-build MemoryPack serialization of `SwiftSortedList<T>`
+records both its comparison rule and raw items in a version-one envelope.
+Reading resolves the comparer before reading items, then copies trusted item
+order into a new owner without comparisons or sorting. Equal items have no
+stable tie-order guarantee. The raw `SwiftArrayState<T>` schema and explicit
+state constructor remain unchanged.
+
+Built-ins work without registration: eligible `Comparer<T>.Default` rules and
+the string `StringComparer.Ordinal` and `StringComparer.OrdinalIgnoreCase`
+instances. Culture-dependent default string ordering, polymorphic `object`
+default ordering and known noncomparable defaults require an explicit codec,
+including for empty lists. Application-defined comparison behavior remains the
+application's responsibility; peers must use compatible comparison and Unicode
+semantics.
+
+For a custom rule, register its exact source instance and a codec: a stable
+identifier, configuration encoder and reconstruction factory. This example
+captures descending order as one configuration byte and recreates a capturing
+lambda from that immutable value:
+
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Text.Json;
+using SwiftCollections;
+using SwiftCollections.Serialization;
+
+static IComparer<int> CreateOrdering(bool reverse)
+    => Comparer<int>.Create((left, right) => reverse
+        ? right.CompareTo(left) : left.CompareTo(right));
+
+IComparer<int> descending = CreateOrdering(true);
+SwiftComparerRegistry registry = new SwiftComparerRegistryBuilder()
+    .RegisterOrdering<int>("game.int-order", 1, descending,
+        _ => new byte[] { 1 },
+        config =>
+        {
+            if (config.Length != 1 || config.Span[0] > 1)
+                throw new ArgumentException("Invalid ordering configuration.");
+            return (CreateOrdering(config.Span[0] == 1), config.Length);
+        })
+    .Build();
+
+var source = new SwiftSortedList<int>(new[] { 1, 2, 3 }, descending);
+var jsonOptions = new JsonSerializerOptions();
+jsonOptions.Converters.Add(new SwiftCollectionJsonConverterFactory(registry));
+string json = JsonSerializer.Serialize(source, jsonOptions);
+var restored = JsonSerializer.Deserialize<SwiftSortedList<int>>(json, jsonOptions)!;
+// restored contains 3, 2, 1; Contains and later mutations use descending order.
+```
+
+The registry copies captured configuration and requires the factory to consume
+every byte. A factory-produced comparer receives a weak, registry-local binding
+so it can be saved again with that configuration. Keep its behavior immutable;
+changing captured state would make the saved description stale. A different
+registry needs explicit registration or reconstruction. Another lambda does not
+become registered merely because it shares the same runtime wrapper type.
+
+JSON writes ordered, case-sensitive `FormatVersion`, `Comparers`, then `State`
+properties. The one sorted-list descriptor has ordered `Role`, `Id`, `Version`,
+then base64 `Config` properties, with ordering role 1. Identifiers contain 1–128
+lowercase ASCII letters, digits, dots, underscores, hyphens or slashes; `lsf.` is
+reserved for built-ins. Configurations contain at most 4,096 decoded bytes.
+Malformed, unknown or unsupported metadata fails before an owner is published;
+normal readers reject state-only legacy payloads. Null owners retain the normal
+serializer null representation, while non-null empty owners still need a rule.
+
+#### Closed JSON construction and generated metadata
+
+The normal factory creates generic converters through reflection. For a closed
+serialization contract, register `SwiftCollectionJsonConverters.ForSortedList<T>`
+instead. Options converters take precedence over the owner's converter
+attribute, including when ordinary generated container metadata visits nested
+lists. Supply metadata for both the owner and its unchanged raw state, plus
+element and containing types:
+
+```csharp
+using System.Text.Json.Serialization;
+
+var options = new JsonSerializerOptions();
+options.Converters.Add(SwiftCollectionJsonConverters.ForSortedList<int>(registry));
+var context = new SortedSnapshotJsonContext(options);
+string json = JsonSerializer.Serialize(source, context.SortedIntegers);
+var restored = JsonSerializer.Deserialize(json, context.SortedIntegers)!;
+
+[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Metadata)]
+[JsonSerializable(typeof(SwiftSortedList<int>), TypeInfoPropertyName = "SortedIntegers")]
+[JsonSerializable(typeof(SwiftArrayState<int>))]
+internal partial class SortedSnapshotJsonContext : JsonSerializerContext { }
+```
+
+This closes converter construction; the host must also preserve its concrete
+factories and metadata when trimming or compiling ahead of time. The factory
+supports exact closed `SwiftSortedList<T>` types. Explicitly serializing a derived
+instance as that base type records its base items and ordering only; it restores
+a base owner and omits derived fields. Full derived and interface-typed contracts
+need explicit host integration; do not assume they select the same converter.
+
+#### MemoryPack options and bootstrap
+
+In standard builds, supply the same registry through MemoryPack's per-operation
+service provider and register the concrete formatter during host bootstrap:
+
+```csharp
+using MemoryPack;
+
+SwiftSortedList<int>.RegisterFormatter();
+var memoryPackOptions = MemoryPackSerializerOptions.Default with
+{
+    ServiceProvider = registry
+};
+byte[] bytes = MemoryPackSerializer.Serialize(source, memoryPackOptions);
+var restored = MemoryPackSerializer.Deserialize<SwiftSortedList<int>>(
+    bytes, memoryPackOptions)!;
+```
+
+A host with an existing service provider should compose a
+`SwiftComparerRegistry` service into it, preserving its other services. A missing
+service selects built-ins only; it does not recover unregistered custom rules.
+Keep compatible element formatters and options, including string encoding, on
+both sides. Explicit `RegisterFormatter()` avoids relying on reflective cold
+discovery. Modern and `netstandard2.1` MemoryPack binary APIs require matching
+dependency graphs; do not swap only one generated DLL between them. Validate the
+actual host's stripping and AOT profile. Lean retains the registry and JSON APIs
+without these MemoryPack entry points or dependencies.
+
+Unsupported capture throws `NotSupportedException`. Invalid comparison metadata
+is reported as `JsonException` or `MemoryPackSerializationException` when reading
+the corresponding format. A failed binary overwrite leaves the existing owner
+reference unchanged. Factory or element callback side effects are not rolled
+back, and a later serialization failure can leave partial writer output.
+
+#### Version-one records only
+
+Sorted-list owner persistence supports only the version-one envelope. Old
+state-only JSON and MemoryPack owner records are rejected; there is no legacy
+reader, fallback or migration helper. This is an intentional breaking format
+change, so upgrade writers and readers together and use version-one records.
+
+The unchanged raw `SwiftArrayState<T>` and explicit state constructor serve the
+trusted-state contract below. They do not make old serialized owner records
+compatible with the new format.
+
 ### Trusted state and comparers
 
 State is an explicit snapshot schema. Restore performs the concrete collection's
 documented reconstruction and checks; it is not a general repair operation for
 arbitrary payloads. Keep the required ordering, uniqueness, ID and free-slot
 invariants when producing or editing state. Validate external data before using
-it as trusted state. The same contracts apply to explicit state constructors,
-JSON restoration and standard-build MemoryPack restoration.
+it as trusted state. Explicit state constructors keep these raw-state contracts.
+Sorted-list versioned JSON and MemoryPack additionally restore the recorded
+comparer; other owners retain their existing state-only restoration behavior.
 
-Comparers are not stored in collection state. Keep the application's comparer
-choice alongside the snapshot when custom ordering or equality is required.
-The constructor selected by automatic deserialization cannot infer that choice
-from the items. Configuring an existing instance before deserialization is not
-a way to inject it: the state path selects defaults, and a serializer may create
-a replacement instance. Do not use runtime hash codes as a persisted identity.
+Comparers are not stored in raw collection state. Outside the sorted-list
+versioned format, keep the application's comparer choice alongside the snapshot
+when custom ordering or equality is required. State-only deserialization cannot
+infer that choice from the items. Configuring an existing instance first does
+not inject it: the state path selects defaults, and a serializer may create a
+replacement instance. Do not use runtime hash codes as a persisted identity.
 
-| Collection family | Restoration contract |
+| Collection family | Raw-state restoration contract |
 | ----------------- | -------------------- |
 | `SwiftList<T>`, `SwiftObservableList<T>`, `SwiftObservableArray<T>` | Copy item order; there is no stored comparer. Observable restoration does not restore event subscribers. |
 | `SwiftQueue<T>`, `SwiftStack<T>` | Copy FIFO order or bottom-to-top storage order respectively; there is no stored comparer. |

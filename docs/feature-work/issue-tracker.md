@@ -75,7 +75,8 @@ diagnosis, decisions and reopening criteria stay with their owning issue.
 
 <a id="sc-issue-021"></a>
 
-- **Status / priority:** Phase 0 complete / P2; Phase 1 implementation not started.
+- **Status / priority:** Phase 1 pre-commit hardening review / P2;
+  version-one-only persistence selected; hot-path performance acceptance remains open.
 - **Opened:** 2026-11-19, following the SC-Issue-010 trusted-state contract
   decision and the explicit request for comparer persistence.
 - **Scope / impact:** Preserve supported ordering and equality/hash rules before
@@ -85,26 +86,66 @@ diagnosis, decisions and reopening criteria stay with their owning issue.
   JSON without a MemoryPack dependency. Losing comparison metadata can change
   lookup semantics or discard custom-distinct entries.
 - **Disposition:** Keep raw-state schemas and their trusted restoration path.
-  Freeze strict v1 comparison metadata, explicit legacy migration, typed custom
+  Freeze strict v1 comparison metadata, typed custom
   registrations/factories and clear
   unsupported/unknown-codec failures at persistence boundaries. Do not add
   registry work to collection hot paths or reinstate the rejected ordering scan.
   SC-Issue-010 remains a historical contract closure, not a persistence fix.
-- **Phase 0 evidence:** Thirteen legacy families / 52 exact payloads are tracked.
+  The user superseded the initial legacy-helper design during pre-commit review:
+  owner persistence supports only version one as an intentional breaking change,
+  with no legacy reader, migration helper or default fallback. Reopen that
+  disposition only for an explicit compatibility requirement and agreed evidence.
+- **Phase 0 evidence:** Thirteen legacy families / 52 exact payloads were captured;
+  the sorted-list legacy bytes now live directly in executable rejection tests.
   The transport model passes modern and matched standard-2.1 graphs; actual
   Unity 6000.3.9f1 Mono smoke suites pass standard 25/25 and Lean 24/24. Baseline
   solution tests pass core 1578/1543 plus companion 43 each. All 6240 planned
   warm baseline samples completed; these are calibration, not accepted future
   overhead budgets. The plan preserves protocol, factory-recognition, fallback
   and compatibility decisions and their limits.
-- **Next action:** Implement and independently review the real SortedList
-  family through normal direct/nested serializers, explicit legacy migration
-  and compatible target graphs before expanding. No scan/re-sort is added to
-  trusted restore. IL2CPP, production reconstruction, new-code coverage and
-  first-slice performance acceptance remain later gates.
+- **Initial Phase 1 evidence (before pre-commit review):** The actual sorted-list family preserves supported
+  rules through strict-v1 direct/nested JSON and standard MemoryPack, with typed
+  factories and configured lambda recapture. The initial explicit migration
+  helper is removed by the pre-commit decision above. Raw
+  state remains copy-only. From baseline
+  `bf69e2152dff02f5f9f3ad335afcddf7560b4e81`, the two intended unsupported-capture
+  regressions fail before the change and pass afterward. Release/ReleaseLean/Debug
+  solution builds pass without warnings; core tests 1702/1632/1700 and companion
+  43 each pass with full reachable line/branch/method coverage. Both assemblies
+  and XMLs at both TFMs match all four package outputs. Clean-generated DocFX
+  and local-path/fragment checks pass; actual Unity 6000.3.9f1 Mono smoke passes
+  26 standard / 25 Lean cases using the production standard-2.1 plugins.
+  Independent runtime reviews found no remaining correctness issue.
+  These counts describe the initial snapshot, including the removed helper;
+  post-review validation and the reduced public inventory are pending current
+  coordinator checks.
+- **Performance disposition:** User accepts the measured fixed serialization
+  cost, conditional on passing hot-path checks. Source/JIT inspection and zero
+  allocation controls rule out added algorithmic work in inspected hot methods,
+  but adverse and load-order-sensitive timings prevent an equivalence claim.
+  [SC-Benchmark-005](benchmark-signal-hardening-backlog.md#sc-benchmark-005---comparer-persistence-hot-timing-acceptance)
+  owns the unresolved measurement and next isolation step; this gate remains
+  in Phase 1 rather than being waived or deferred to expand the feature.
+- **Pre-commit review:** The user removed the migration helper and selected
+  v1-only owner records as an intentional breaking format. Legacy literals now
+  test strict rejection. Independent reviews found no remaining correctness
+  issue; new tests protect reference identity, factory-buffer isolation and
+  segmented configurations. Empty JSON configurations skip 10,928 bytes of
+  scratch work; the focused empty-owner decode median improves about 12%, with
+  unchanged allocation, without making a hot-path claim. Current
+  Release/ReleaseLean/Debug core tests pass 1704/1635/1702, companion 43 each,
+  with full reachable line/branch/method coverage and zero build warnings.
+  All target/package XML checks and clean reference checks pass; updated Unity
+  smoke remains 26/25. The plan preserves the current counts and measurement
+  limits. SC-Benchmark-005 remains open.
+- **Next action:** Complete hardening validation of the version-one-only public
+  surface, then resolve hot-path acceptance before Phase 2 hash/inherited
+  families. IL2CPP, broader interoperability, hosted CI and other OS/CPU
+  profiles remain later gates. No release is claimed.
 - **Plan / acceptance:** [Comparer persistence plan](comparer-persistence-plan.md)
-  owns the inventory, decisions, phases, validation and performance gates. No
-  production implementation, performance acceptance or release is claimed here.
+  owns the inventory, decisions, phases, validation and performance gates.
+  The former plan-only fixture directory is removed; maintained tests consume
+  the required legacy sorted-list literals directly.
 
 ### SC-Issue-011 - Power-of-two recognition accepts a negative input
 

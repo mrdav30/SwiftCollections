@@ -1,6 +1,6 @@
 # Comparer Persistence Plan
 
-- **Status:** Phase 0 complete; Phase 1 production implementation has not started.
+- **Status:** Phase 1 pre-commit hardening review; version-one-only owner persistence; hot-path performance acceptance remains open.
 - **Created:** 2026-11-19.
 - **Owner:** SwiftCollections; coordinate with Chronicler only where its shared
   serialization boundary needs an extension.
@@ -21,9 +21,9 @@ comparison, insertion, removal or iteration. Resolve comparison metadata at
 serialization boundaries. Keep the existing trusted raw-state path and its
 copying costs intact.
 
-Phase 0 freezes the intended contract and records compatibility inputs,
-baselines and transport experiments. It does not implement the feature in the
-shipped collections. Later-phase acceptance checks remain pending.
+Phase 0 froze the intended contract and recorded compatibility inputs, baselines
+and transport experiments. Phase 1 implements the sorted-list family. Hash and
+inherited families and the remaining compatibility gates stay in later phases.
 
 ## Source baseline and scope
 
@@ -96,16 +96,17 @@ default selection and fallback comparer creation. Existing coverage includes
 
 Use a versioned persistence envelope containing the current raw item state
 and typed comparer descriptors. Do not change shared raw DTOs or raw-state
-constructors merely to carry serialization metadata. The Phase 0 protocol and
-entry points below are design commitments for Phase 1, not available APIs.
+constructors merely to carry serialization metadata. The Phase 0 protocol is
+implemented for the sorted-list family; remaining owner adapters follow later.
 
 The target experience is ordinary collection JSON/MemoryPack persistence that
 preserves comparers, including nested fields and collections. A standalone
 opt-in wrapper is useful for compatibility/prototyping, but is not sufficient
 to close this feature while ordinary serialization silently loses comparers.
-New ordinary persistence uses the strict envelope. Explicit legacy migration is
-separate. Preserve comparerless formats; this is an intentional serialization
-format change requiring a breaking-format release and migration guidance.
+New ordinary persistence uses only the strict envelope. Reject old state-only
+owner records; do not add legacy readers, fallback or migration helpers.
+Preserve comparerless formats. This is an intentional serialization format
+change requiring a breaking-format release and upgrade guidance.
 
 The guaranteed paths are concrete Swift collection roots and nested members,
 including supported source-generated metadata. Version 1 rejects a BiDictionary
@@ -261,15 +262,16 @@ known noncomparable defaults even for empty owners unless explicitly registered
 with an application codec. Do not scan items to infer support. Eligibility is
 not proof that user comparisons cannot throw or depend on mutable state.
 
-Public design surface, to implement and review in Phase 1:
+Public design surface, implemented and reviewed for ordering in Phase 1:
 
-- `SwiftComparerRegistryBuilder` registers exact ordering/equality instances,
+- `SwiftComparerRegistryBuilder` registers exact ordering instances,
   stable codec identity, bounded encoder and typed reconstruction factory;
   `Build()` returns `SwiftComparerRegistry` with immutable definitions.
   A custom decode factory returns the comparer and consumed-byte count; the
   framework requires that count to equal the complete configuration length.
   Built-ins validate their fixed lengths directly. This needs no general
-  parsing framework or per-comparison callback.
+  parsing framework or per-comparison callback. Equality registrations follow
+  with the Phase 2 owner adapters.
 - `SwiftCollectionJsonConverterFactory(registry)` supports ordinary options
   registration; a parameterless attribute path uses built-ins only and fails
   unknown custom rules. Typed closed-converter creators are also required for
@@ -285,13 +287,9 @@ Public design surface, to implement and review in Phase 1:
 - Preserve concrete typed `RegisterFormatter()` bootstrap entry points for
   supported closed types. This avoids relying on reflective cold discovery;
   merely running a successful cold decode does not establish AOT readiness.
-- Explicit legacy migration entry points decode the old outer state without
-  constructing the legacy collection, then require caller-supplied comparer
-  roles. Do not first lose entries through a default-restored owner. Exact
-  migration method names are chosen with Phase 1's reader implementation.
-  Migration rejects duplicate equality under the supplied rules; it has no
-  implicit first-wins merge. An explicitly selected default is still a supplied
-  rule, not evidence of the original source comparer.
+- No legacy owner entry points are exposed. Normal readers accept only the
+  versioned contract; the raw-state APIs retain their separate trusted-state
+  purpose and do not provide serializer fallback.
 
 SwiftCollections owns these collection adapters; no new Chronicler hook or
 package is required by the successful transport approach. JSON option converters
@@ -410,26 +408,24 @@ recover that missing information.
 | Writer/input | Reader | Disposition / evidence |
 | --- | --- | --- |
 | Legacy owner, no descriptors | Legacy reader | Existing behavior, including comparer loss; 52 frozen direct/nested payloads checked. |
-| Legacy non-null owner | New strict reader | Reject; selected contract, production reader implementation pending. |
-| Legacy owner | Explicit migration | Require supplied rules and reject equality collisions; implementation pending. |
+| Legacy non-null owner | New strict reader | Reject; implemented for SortedList. No legacy reader or migration helper is provided. |
 | Selected v1 framing | Legacy direct/nested reader | Reject; observed for JSON and MemoryPack with actual old readers. |
-| V1 writer | New strict reader | Required supported-rule round trip; production implementation pending. |
-| V1 input | Legacy-only migration entry point | Reject wrong format/version; implementation pending. |
+| V1 writer | New strict reader | Supported-rule round trip implemented for SortedList; remaining families pending. |
 | Comparerless owner or raw DTO | Existing matching reader | Format unchanged; no new metadata contract. |
 | Null owner | Matching nullable reader | Null remains null; no comparison rule exists to restore. |
 
-Selected migration: new comparer-aware writers emit protocol version 1;
-strict reads require descriptors. Provide an explicitly selected legacy path
-with caller-supplied comparison rules, or an explicitly acknowledged default
-policy. Do not guess from array order. Existing raw state APIs remain available.
-The normal new reader has no implicit legacy acceptance. This intentional
-breaking-format default needs release/migration notes before promotion. Old
+Selected breaking change: new comparer-aware writers emit protocol version 1;
+strict reads require descriptors. Do not offer legacy owner readers, migration
+helpers or an implicit/default-comparer fallback. Do not guess rules from array
+order. Existing raw-state APIs remain available for their trusted-state contract,
+not as old owner-record readers. Upgrade writers and readers together. This
+breaking-format default needs release/upgrade notes before promotion. Old
 readers must reject new formats rather than silently ignore comparison metadata;
 Phase 0 verified actual legacy direct/nested JSON and binary reader rejection
 of the selected framing. This does not establish the complete new writer/reader.
 
-Keep old JSON text and MemoryPack bytes as small tracked compatibility fixtures
-with producing revision/configuration and expected outcomes. Test direct and
+Keep old JSON text and MemoryPack bytes as small literals in maintained
+rejection tests, with producing revision/configuration and expected outcomes. Test direct and
 nested collections, state DTOs, empty owners and ref-existing loads. Append-only
 MemoryPack behavior or switching to a version-tolerant layout needs measured
 fixtures; neither establishes new-writer/old-reader compatibility by assumption.
@@ -469,7 +465,7 @@ the supported IL2CPP consumer remains a separate acceptance gate.
 - [x] Capture current ordinary JSON/MemoryPack behavior and old fixtures before
   changing schemas. Include the SC-Issue-010 descending example and the custom
   equality cases where default restore collapses entries.
-- [x] Settle the decision log below, the built-in identifier table, strict/legacy
+- [x] Settle the decision log below, the built-in identifier table, strict versioned
   read rules, public entry points and ordinary nested serialization integration.
 - [x] Establish baselines for raw state, ordinary serialization, reconstruction
   and hot collection operations with existing package dependencies.
@@ -478,17 +474,17 @@ the supported IL2CPP consumer remains a separate acceptance gate.
 
 ### 1. Prove one complete caller-facing family
 
-- [ ] Implement SortedList first: built-in default plus a registered, configured
+- [x] Implement SortedList first: built-in default plus a registered, configured
   deterministic custom ordering, including a type with no default comparison.
-- [ ] Cover ordinary direct and nested JSON in standard/Lean and MemoryPack in
+- [x] Cover ordinary direct and nested JSON in standard/Lean and MemoryPack in
   standard, on both TFMs' compatible dependency graphs. Confirm comparer
   resolution precedes use and custom data never takes a default-comparer pass.
-- [ ] Verify MemoryPack top-level, generated direct methods, nested members,
+- [x] Verify MemoryPack top-level, generated direct methods, nested members,
   packable arrays/lists and supported base/interface paths all use the same
   envelope or reject unsupported dispatch explicitly. Do not accept only a
   global formatter registration control while generated paths bypass it.
-- [ ] Demonstrate valid lookup/add/remove continuation, unknown-codec failure,
-  legacy rejection/migration, private construction and unchanged source storage.
+- [x] Demonstrate valid lookup/add/remove continuation, unknown-codec failure,
+  legacy rejection, private construction and unchanged source storage.
   Persisted sorted restore must invoke no ordering comparison or re-sort.
 - [ ] Measure boundary cost and raw/hot-path controls. Obtain independent
   `ponytail-review` before expanding the pattern; resolve introduced overhead.
@@ -594,27 +590,33 @@ are historical context, not this feature's baseline or an accepted budget.
 | Ordinary serialization versus opt-in | Frozen: normal direct/nested JSON and standard MemoryPack use strict v1 metadata or fail. This requires a breaking-format release; opt-in-only wrappers cannot close the feature. Reopen for a demonstrated unsupported dispatch/compatibility requirement before promotion. |
 | Descriptor ownership | Frozen: SwiftCollections owns roles, codecs and adapters. Existing JSON options and MemoryPack service-provider hooks suffice for the model; no Chronicler change or new package is selected. Reopen only for a missing real consumer boundary. |
 | Custom activation | Frozen: explicit typed registrations, consumed-byte-checked codecs, stable semantic versions and registry-local weak produced-instance associations. Factory products have immutable snapshot semantics. No CLR type activation or automatic delegate capture; reopen for a concrete unsupported caller need. |
-| Legacy input | Frozen: strict normal v1, named explicit migration with supplied rules and duplicate rejection. No inference or implicit fallback. Reopen only with an agreed new compatibility requirement and old/new fixtures. |
+| Legacy input | Supersedes the Phase 0 migration-helper decision: the user selected version-one-only persistence and an intentional breaking change during pre-commit review. No legacy owner reader, helper or fallback. Reopen only for an explicit compatibility requirement with a supported format and acceptance evidence. |
 | Hash fallback and culture | Frozen: exact full Swift seed/entropy config; fresh-table reconstruction without entropy; preserve future ordinary mutation policy and exclude canonical bucket traces. Reject known culture-sensitive built-ins; explicit custom codec owns compatibility limits. Reopen only on concrete algorithm/profile incompatibility or agreed broader determinism guarantees. |
 | Binary format and Unity | Frozen v1 three-member framing and authored packable/provider convergence. Disposable model passes both ABI graphs and actual Unity 6000.3.9f1 Mono standard/Lean. Production integration and IL2CPP remain later gates; reopen the mechanism if either disproves feasibility. |
 | Related defects | SC-Issue-013 base mutation/comparer replacement and SC-Issue-014 malformed PackedSet state stay separately scoped. If they block valid feature inputs, resolve their owning issue or record the concrete dependency before claiming this feature complete. |
 
 ## Phase 0 execution record — 2026-11-19
 
-Phase 0 completes investigation and freezes the direction above. No shipped
+Phase 0 completed investigation and froze the initial direction; the legacy
+helper decision was later superseded in the decision log above. No shipped
 runtime source, public API, schema, dependency pin, CI policy or maintained
 behavior test was changed. Only this plan, the tracker and compatibility fixture
-data change. Phase 1's actual collection implementation remains pending.
+data changed at that checkpoint. The production implementation follows in the Phase 1 record.
 
 ### Legacy compatibility inputs
 
-The tracked [fixture directory](../../tests/SwiftCollections.Tests/Serialization/Fixtures/ComparerPersistence)
-contains `legacy-v0.json`, its schema/reproducer README, and a separate
-`v1-framing.json` protocol specimen. Thirteen legacy families contain 52 exact
-payloads: direct/nested JSON and MemoryPack. Capture asserted every direct and
-nested load before freezing values, sizes, digests and source/observed contracts.
-The nested label is the literal `fixed-envelope`; metadata was corrected during
-review without regenerating or changing payload bytes.
+The investigation captured 52 exact payloads across thirteen legacy families:
+direct/nested JSON and MemoryPack. Capture asserted every direct and nested load
+before recording values, sizes, digests and source/observed contracts. Its
+manifest and protocol specimen were investigation material, not a maintained
+fixture format. Phase 1 removes that packaging from the test tree and retains
+the sorted-list legacy bytes directly in
+[executable legacy-rejection tests](../../tests/SwiftCollections.Tests/Serialization/SortedListComparerPersistence.Tests.cs).
+Those literals were captured at `a5371dc1caa9e1b81b631ac9ce88d5f03933ebc2`,
+Release with published dependencies; its legacy runtime is unchanged at the
+Phase 1 starting revision. Later families
+must carry their own executable compatibility cases when implemented. The
+nested capture label was the literal `fixed-envelope`.
 
 Confirmed legacy observations: descending `[13,0,-7]` and noncomparable token
 payloads retain item order but lose their comparer; dictionary/set identity
@@ -838,4 +840,262 @@ At count 4,096, representative full sample ranges and allocations:
 | `sorted.default.contains` | 0.050–0.078 | 0–0 | 0 |
 | `dictionary.int.add-remove` | 0.023–0.047 | 0–0 | 0 |
 | `dictionary.seeded-string.contains` | 0.037–0.054 | 0–0 | 0 |
+
+## Phase 1 execution record — 2026-11-19
+
+Implementation starts from clean SwiftCollections
+`bf69e2152dff02f5f9f3ad335afcddf7560b4e81`. No upstream API, dependency pin, CI policy or release version is
+changed. Existing released Chronicler 1.0.0 and MemoryPack 1.21.4 provide the
+required hooks; package-mode validation below does not claim hosted CI or a
+coordinated-source-stack run.
+
+### Implemented boundary and compatibility
+
+`SwiftSortedList<T>` now owns ordinary strict-v1 JSON and standard MemoryPack
+serialization. The production registry supports built-in ordering and exact
+instance registrations with bounded, consumed-byte-checked configuration
+factories. The first real consumer implements ordering only; equality codecs
+and hash-owner adapters are not speculative scaffolding in this slice.
+
+Both transports resolve comparison metadata before reading raw items and publish
+an owner only after copying trusted order. Tests verify no comparisons or sort
+during restoration, noncomparable elements, configured capturing lambdas,
+load/save/load recapture, independent registries, aliases, conflicting factory
+products, invalid metadata and failed ref-existing publication. Generated JSON
+containers include explicit raw-state metadata. Standard binary tests cover
+normal formatter dispatch, authored packable entry points, generated containing
+members and packable arrays/lists.
+
+An explicitly selected `SwiftSortedList<T>` base contract projects a derived
+instance's base items and comparison role into a new base owner; it does not
+promise derived fields. Exact derived/interface contracts require host
+integration. General BCL interface projections, custom host converters and
+Chronicler raw-state contracts do not acquire a new owner-persistence guarantee.
+
+Normal readers reject legacy input. The initial implementation included an
+explicit migration helper, which the user removed during pre-commit review in
+favor of version-one-only persistence. No legacy reader or fallback replaces it.
+The raw state DTO, state constructor, collection fields and ordinary
+lookup/mutation algorithms retain their contracts. Unsupported custom capture
+fails even for empty owners.
+
+The former `Serialization/Fixtures/ComparerPersistence` directory is removed.
+The exact legacy descending JSON and binary literals are consumed by maintained
+[behavior tests](../../tests/SwiftCollections.Tests/Serialization/SortedListComparerPersistence.Tests.cs);
+there is no plan-manifest fixture format or documentation dependency on temporary
+captures. Other families need executable compatibility cases when implemented.
+
+### Initial verification before pre-commit review
+
+The results in this subsection describe the initial implementation, including
+the subsequently removed migration helper. They remain historical evidence,
+not validation of the changed public surface. Post-review validation is recorded
+separately below.
+
+Initial tests against the unchanged committed runtime fail twice as intended:
+unregistered JSON and MemoryPack custom-comparer capture both succeed and lose
+the rule instead of throwing. Those regressions pass with the implementation.
+No baseline build or existing-test failure was found. Intermediate new-test API
+and exact-exception/encoding assumptions were corrected; no final failure,
+warning suppression, coverage exclusion or weakened runtime assertion remains.
+
+Published-package mode (`-p:UseLocalLsfStack=false`): build the solution, then run
+each test project with `--no-build`, `--collect:"XPlat Code Coverage"` and its
+existing `coverlet.runsettings`.
+
+| Configuration | Core tests | Companion tests | Core lines / branches / methods | Companion lines / branches / methods |
+| --- | ---: | ---: | --- | --- |
+| Release | 1702 | 43 | 5718/5718; 2686/2686; 1195/1195 | 121/121; 62/62; 35/35 |
+| ReleaseLean | 1632 | 43 | 5623/5623; 2628/2628; 1178/1178 | 121/121; 62/62; 35/35 |
+| Debug | 1700 | 43 | 7585/7585; 2694/2694; 1195/1195 | 155/155; 62/62; 35/35 |
+
+All solution builds have zero warnings/errors and compile core plus companion
+at `netstandard2.1` and `net10.0`. Checked all eight DLL/XML pairs and matching
+payloads in `SwiftCollections`, `SwiftCollections.Lean`,
+`SwiftCollections.FixedMathSharp` and `SwiftCollections.FixedMathSharp.Lean`.
+Lean depends on the compatibility shim, not the MemoryPack runtime package.
+
+With previous generated metadata/site directories moved aside,
+`dotnet tool run docfx docs/api/docfx.json --warningsAsErrors` passes. The updated
+family inventory reconciles 67 authored public/protected IDs in each standard
+target and 63 in each Lean target, including 24/20 from new files. All applicable
+summary/param/typeparam/returns/value tags and cref links pass. The builder's
+implicit constructor is synthesized; the partial class shares its main type
+documentation; private formatter overrides are excluded. The three authored
+binary entry points replace generated interface implementations. Both companion
+XML files remain covered in the eight-pair check.
+
+Rendered registry, builder, JSON converter/factory/closed creator, the initial
+migration helper and sorted-list pages showed correct parameters, returns, values,
+exceptions and links, including inherited `CloneTo(output)`. The guide passes
+desktop and 390-pixel layout inspection. All 105 generated HTML pages pass the
+existing CI reference/local-path checks and an additional local-fragment check.
+The five cohesive parser/registry complexity exceptions retain full reachable
+line and branch coverage and are recorded in the evergreen complexity register.
+
+Actual SwiftCollections-Unity smoke runs use clean sibling revision
+`6252fd5cbdade58e0019217449dcec62b5e72967`, its existing CI staging template,
+Unity 6000.3.9f1 Editor Mono and separate copied package graphs with freshly
+built standard-2.1 plugins. Standard passes **26/26** EditMode cases; Lean
+passes **25/25**. Each includes the existing 21 cases plus actual production
+custom JSON, generated nested JSON, strict/raw controls and legacy migration;
+standard also checks generated nested/packable binary, recapture and failed
+overwrite. The controls assert the loaded target framework. Checked-in Unity
+packages/adapters remain clean; no native Unity serialization-format change is
+claimed. Run with the existing prepare script and `-batchmode -nographics
+-runTests -testPlatform EditMode -assemblyNames
+SwiftCollections.Unity.Tests.EditMode -runSynchronously`, inspect the result XML,
+and omit `-quit`.
+
+### Boundary measurements and disposition
+
+Windows x64, SDK 10.0.302 / runtime 10.0.10, invariant culture, published
+dependencies. The baseline is an isolated `git archive` of the starting HEAD;
+candidate runs load this implementation. Identified actual core/dependency
+hashes, validated ordered contents and continuation before timing, and required
+every process to complete its expected rows. Do not compare legacy custom
+serialization that loses its comparer as equivalent work.
+
+The first four standard processes completed 4920 samples but exposed tiered-JIT
+warmup drift. Retain them as inconclusive timing evidence, not selected medians.
+The controlled comparison disables tiering, uses A/B/B/A process order and five
+alternating-order samples at counts 0, 1, 8, 128, 4096 and 65536: **4920 standard
++ 3480 Lean samples**, all complete. Boundary iterations are
+`clamp(262144/(count+1),4,20000)`, hot intervals 100000 pairs. Full GC precedes
+each interval; setup and correctness checks are outside it. First-call setup
+observations share generic initialization and are not independent cold budgets.
+
+Default integer metadata adds **103 encoded JSON bytes / 50 binary bytes per
+owner**, independent of item count. Allocations add **104/80 bytes** for JSON
+encode/decode and **48/80 bytes** for binary encode/decode. At counts 0–128,
+observed median additions are roughly **0.3–1.1 microseconds** for JSON and
+**40–80 nanoseconds** for binary operations. The user explicitly accepted this
+fixed boundary cost, conditional on passing hot-path checks. This disposition
+does not approve per-item work or a lookup/mutation regression.
+
+Measured custom empty binary decoding initially allocated roughly 752–769 bytes
+per call. Attribution to each produced comparer's minimum-capacity metadata map
+led to one weak table per registry/declared type with a small descriptor holder.
+The same workload now uses roughly 369 bytes, including the created comparer,
+configuration ownership and weak-table maintenance. Built-in capture bypasses
+registry maps/cache locks. There are no extra owner fields or comparer wrappers.
+
+Independent first-slice and handoff reviews found no remaining correctness
+issue. Runtime growth is 11 new files / 951 lines (619 nonblank, noncomment
+lines), plus the seven-line trusted reconstruction hook and adapter attributes
+in the existing owner. Each new helper has the real sorted-list consumer;
+there is no unused equality-family infrastructure or maintained probe framework.
+
+Hot controls use byte-identical caller binaries within each flavor, CPU2
+affinity, normal priority, zero-allocation assertions and checked continuation.
+Four-process A/B/B/A runs complete 80 intervals per flavor; paired same-process
+AB/BA loading completes 320 intervals per flavor. The first Lean hot/paired
+controls are excluded: the disposable probe's default candidate-file discovery
+selected a copied Standard DLL ahead of its correct Lean HintPath. Explicit
+probe inputs and loaded-hash checks corrected that setup error; corrected Lean
+controls complete with baseline hash `7DBAEC5BFDA34A76B8BD7AD085F02EEBA296655E1AA75ECDC418616DC9D27B1A`
+and no MemoryPack runtime dependency. This does not invalidate the earlier full
+Lean serializer measurements, builds, tests or Unity checks.
+
+The accepted controls still do not establish unchanged timing. Standard paired
+token mutation is +4.9%/+7.9%; Contains changes from -0.4% to +15.6% with load
+order. Corrected Lean token mutation changes -3.2%/+3.3% and Contains
+-7.9%/+4.7% with load order. All accepted intervals allocate zero bytes and pass
+content/result checks. FullOpts JIT comparison finds equal integer
+Search/Insert/RemoveAt and reference Insert/RemoveAt instruction streams;
+reference Search is seven bytes shorter through generic-dictionary displacement
+and branch encoding changes. That does not establish equal cycle cost.
+
+Four final identical-core counterfactual processes (baseline/baseline and
+candidate/candidate, both load orders) complete another 640 paired intervals.
+The same code measures up to +6.7%/-6.1% between contexts; for example, baseline
+Contains is 75.44 -> 80.22 ns in one load order and 78.02 -> 74.05 ns in the
+other. This confirms that the measurement arrangement can create timing
+differences without a feature change. It does not cancel the adverse candidate
+results or prove equivalence.
+
+**Disposition: Phase 1 performance acceptance remains open.** Preserve adverse
+and inconclusive results; do not infer neutrality from range overlap or add
+speculative padding/alignment changes. The next causal experiment and durable
+inputs are tracked in
+[SC-Benchmark-005](benchmark-signal-hardening-backlog.md#sc-benchmark-005---comparer-persistence-hot-timing-acceptance).
+The user's fixed-boundary-cost approval does not waive this condition, and the
+final Phase 1 checkbox stays open.
+
+### Pre-commit review disposition — 2026-11-19
+
+The user selected an intentional breaking format and removed
+`SwiftSortedListLegacyMigration`. Its JSON and binary entry points, maintained
+migration tests and public guidance are removed together. Legacy payload literals
+remain only as strict-reader rejection controls. No alternate legacy reader,
+default fallback or automatic migration is introduced. Raw-state contracts remain
+unchanged. This supersedes the initial Phase 0/helper design; reopen only for an
+explicit new compatibility requirement and agreed acceptance evidence.
+
+Independent registry and transport reviews found no remaining correctness
+defect. Added behavior tests prove that exact-instance registration never calls
+application object equality/hashing and that mutating factory-visible bytes
+cannot change recapture metadata. Two segmented-JSON cases protect empty and
+nonempty configuration handling. Former migration cases are replaced by strict
+legacy rejection, including unchanged binary ref-existing ownership.
+
+The review also removes common-case stack work in JSON configuration decoding.
+`ReadConfiguration` checks the raw string/sequence length before calling the
+separate bounded nonempty decoder. FullOpts JIT inspection confirms that the
+old path probed and cleared 10,928 scratch bytes before noticing an empty value;
+the new empty path reserves only a small frame and does not reach that buffer.
+Invalid tokens, bounds and canonical base64 rules retain their original checks.
+
+The focused comparison uses byte-identical callers, .NET 10.0.10 Windows x64,
+CPU2 affinity, tiering disabled, A/B/B/A process order and seven balanced samples
+per case. Both baseline and candidate already exclude the migration helper;
+only the empty-configuration optimization differs. Input is normal serialized
+default integer owners at Count 0 and 128, plus a registered one-byte descending
+rule at Count 128. Warm 20000 decodes per case; measure 100000 decodes per empty
+interval and 10000 otherwise, with full GC before each interval and Count/lookup
+validation outside it. All four processes complete their 21 intervals.
+
+| JSON decode case | Before median / full range, ns | After median / full range, ns | Allocated bytes per decode |
+| --- | --- | --- | --- |
+| Default, Count 0 | 1483.8 / 1447.9–1521.7 | 1306.3 / 1292.6–1450.9 | 792 before/after |
+| Default, Count 128 | 11277.2 / 11029.3–11404.8 | 11009.7 / 10818.3–11756.6 | 3016 before/after |
+| Custom nonempty, Count 128 | 11933.0 / 11780.1–12957.9 | 11898.3 / 11830.0–15055.5 | 3240.6 before/after, including weak-table maintenance |
+
+The empty-owner median improves about 12%; the larger/default and custom
+controls overlap and support no broader throughput claim. Recorded core hashes
+are `54DB022F4151819677A33C71A4861716B263841B04D1CFC2916725F3073189CF`
+before and `03B0B6F7A23AC3D6D5E741C08DA761DCDB63679816F1FAC5FB284BAEA66E2031`
+after. This is a serializer-boundary result, not a resolution of SC-Benchmark-005.
+
+Current validation uses the existing published-package-mode solution builds,
+test projects and assembly-specific coverlet settings:
+
+| Configuration | Core / companion tests passed | Core lines / branches / methods | Companion lines / branches / methods |
+| --- | --- | --- | --- |
+| Release | 1704 / 43 | 5688/5688; 2668/2668; 1194/1194 | 121/121; 62/62; 35/35 |
+| ReleaseLean | 1635 / 43 | 5606/5606; 2620/2620; 1178/1178 | 121/121; 62/62; 35/35 |
+| Debug | 1702 / 43 | 7551/7551; 2676/2676; 1194/1194 | 155/155; 62/62; 35/35 |
+
+All final builds pass without warnings/errors and compile both assemblies at
+both target frameworks. All eight DLL/XML pairs match the four package outputs.
+The current changed-family inventory is 64 authored public/protected IDs per
+standard target (21 from new files) and 61 per Lean target (18 from new files),
+with no missing applicable XML tags. The removed helper has no emitted XML or
+generated reference page. Clean-generated DocFX passes with warnings as errors;
+all 104 HTML pages pass local-path/fragment checks. Rendered guide and API pages
+show the v1-only breaking contract at desktop and narrow widths.
+
+Updated actual Unity 6000.3.9f1 Editor Mono smoke runs pass 26/26 standard and
+25/25 Lean cases using rebuilt standard-2.1 plugins. The former migration smoke
+now requires legacy owner rejection; standard verifies that failed binary reads
+preserve the original owner. Existing tracked Unity packages remain clean.
+
+The user's staged Phase 1 snapshot is preserved byte-for-byte; this review's
+edits remain unstaged and uncommitted. No CI/dependency change, new coverage
+exclusion or final introduced build/test failure remains. SC-Benchmark-005 stays
+open; this review does not settle its timing question.
+
+Phase 2, full cross-runtime/reader interoperability, hosted CI, other OS/CPU
+architectures, trimming and actual IL2CPP remain unclaimed. SC-Issue-021 stays
+open until all owners and later gates are complete.
 

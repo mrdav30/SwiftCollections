@@ -26,6 +26,9 @@ spatial indexing, deterministic runtimes, and allocation-sensitive tooling.
 - Fixed-point query companions powered by
   [FixedMathSharp](https://github.com/mrdav30/FixedMathSharp).
 - Explicit state-backed serialization, with Standard and Lean package variants.
+- [Sorted-list comparer persistence](https://mrdav30.github.io/SwiftCollections/guides/serialization-and-diagnostics.html#preserve-sorted-list-ordering-during-serialization)
+  through built-in rules or explicitly registered custom factories, using a
+  versioned format that rejects old state-only owner records.
 - [Explicit retained-reference cleanup](https://mrdav30.github.io/SwiftCollections/guides/collections.html#clearing-and-retained-references)
   at ownership boundaries, while preserving reusable capacity.
 - Benchmarks and full reachable coverage enforced as part of the repository

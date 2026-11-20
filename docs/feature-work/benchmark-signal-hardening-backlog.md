@@ -14,7 +14,7 @@ feature-work plan and link it from the signal.
 ## Intake Rules
 
 - Signal IDs use `SC-Benchmark-NNN`. The next available ID is
-  `SC-Benchmark-005`.
+  `SC-Benchmark-006`.
 - Assign an ID at intake and never reuse it, including after closure or
   promotion. Check this file's history before changing the counter.
 - Open a signal from an actual benchmark, allocation guard, profiler capture, or
@@ -80,7 +80,81 @@ making a new performance claim.
 
 ## Active Signals
 
-None.
+### SC-Benchmark-005 - Comparer-persistence hot timing acceptance
+
+- **Discovered / status:** 2026-11-19; unresolved measurement signal. Keeps
+  [SC-Issue-021 Phase 1](comparer-persistence-plan.md#phase-1-execution-record--2026-11-19)
+  performance acceptance open. This is not a confirmed collection algorithm
+  defect and is not approval to expand into the next feature phase.
+- **Source / environment:** Clean baseline
+  `bf69e2152dff02f5f9f3ad335afcddf7560b4e81` versus its uncommitted Phase 1
+  sorted-list persistence implementation; published dependencies,
+  Release/ReleaseLean net10.0, SDK 10.0.302 / runtime 10.0.10, Windows x64,
+  Intel Core i7-9700K. Disable tiering with `DOTNET_TieredCompilation=0`, use
+  normal process priority and pin logical CPU2. No competing builds, tests,
+  Unity editor or profiler runs during timings.
+- **Portable workload:** Build a caller once per package flavor against the
+  baseline, then use the exact same caller and dependency graph with only the
+  candidate core DLL substituted. Verify actual loaded hashes against the
+  intended source output before interpreting results. Measure an Add/Remove
+  pair for an empty default-int list (temporary 1), an ordinal string list of
+  128 preallocated `k00000000` through `k00000127` values (temporary
+  `z-temporary`), and 4096 noncomparable reference tokens with integer keys
+  0–4095 and a capturing descending comparer (temporary key 4097). Construct
+  through the real enumerable constructor, then reserve Count+1 capacity.
+  A control performs Contains(32768)+Contains(-1) on integers 0–65535.
+  Assert unchanged full contents/order/count after every interval and successful
+  operation results. No setup, growth or correctness assertion is timed.
+- **Controls / completeness:** Each flavor's four-process A/B/B/A comparison
+  uses five balanced samples, 100000 warmup pairs and 2000000 measured pairs per
+  interval: 80 intervals. Additional same-process controls load baseline and
+  candidate into isolated assembly contexts, invoke the unchanged caller's
+  operation delegates, alternate A/B interval order and reverse load order in
+  fresh processes. Twenty samples x four cases x two variants = 160 intervals
+  per process, with 100000 warmup and 1000000 measured pairs. All completed
+  accepted intervals allocate zero bytes and validate behavior. An earlier
+  disposable Lean hot-control build resolved a Standard DLL from copied files
+  before its correct HintPath; exclude those runs. Fresh explicit-input probe
+  builds and loaded-hash checks correct that setup error. The full serializer
+  measurements and shipped build/Unity checks used the correct graphs.
+- **Standard observations:** With identical caller binaries, separate-process
+  median ratios span 0.956–1.090 across these cases. Paired token mutation is
+  101.45 -> 106.37 ns in A-first loading (+4.9%) and 101.69 -> 109.68 ns in
+  B-first loading (+7.9%). The Contains control changes from 79.94 -> 79.60 ns
+  to 74.54 -> 86.18 ns (+15.6%) with load order; all paired ratios in that
+  adverse process exceed 1.07. Retain these adverse executions rather than
+  averaging them into a neutral claim.
+- **Corrected Lean observations:** Paired token mutation is 146.52 -> 141.85 ns
+  (-3.2%) in A-first loading and 143.08 -> 147.84 ns (+3.3%) in B-first loading.
+  Contains is 83.73 -> 77.14 ns (-7.9%) and 80.43 -> 84.22 ns (+4.7%). Hashes
+  match the intended Lean outputs and no MemoryPack runtime is loaded. These
+  valid replacements demonstrate sensitivity without establishing equivalence.
+- **Identical-core calibration:** Four additional processes load baseline twice
+  or candidate twice, with both load orders: 640 complete/zero-allocation paired
+  intervals. Same-core medians vary by +6.7%/-6.1% between contexts. Baseline
+  Contains alone changes 75.44 -> 80.22 ns (+6.3%) and 78.02 -> 74.05 ns (-5.1%)
+  with load order. This establishes context-position sensitivity in the
+  experiment, not a feature-equivalence result; do not subtract these values
+  from adverse candidate observations to declare a pass.
+- **Attribution / limits:** Source adds no owner fields, registry access, lock,
+  wrapper or branch in ordinary lookup/mutation. Separate FullOpts JIT capture
+  (``DOTNET_JitDisasm='SwiftCollections.SwiftSortedList`1:*'`` and
+  `DOTNET_JitStdOutFile=<file>`) shows equal integer Search/Insert/RemoveAt and
+  reference Insert/RemoveAt instruction streams after normalizing ASLR
+  addresses. Shared-reference Search becomes 193 -> 186 bytes through a shorter
+  generic-dictionary displacement (0x90 -> 0x70) and branch. These observations
+  rule out added algorithmic instructions in those methods; they do not prove
+  identical cycle cost or establish the timing cause. Range overlap alone is
+  insufficient to close the signal.
+- **Disposition / next action:** Keep hot-path acceptance open and preserve the
+  existing implementation for review. No source padding, forced alignment or
+  speculative algorithm change is justified. Before asserting equivalence,
+  use a representative whole-caller benchmark plus branch/cache evidence to
+  distinguish a feature effect from the demonstrated context-position bias.
+  Record the resulting cause or explicit user disposition here. The accepted
+  fixed serialization cost does not waive this hot-path gate. Reopen a closed
+  result for a reproducible relevant workload regression or changed runtime,
+  package graph or comparison implementation.
 
 ## Closed Signals
 

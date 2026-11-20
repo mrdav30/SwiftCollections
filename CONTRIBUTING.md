@@ -183,6 +183,15 @@ dotnet test SwiftCollections.slnx --configuration Release --no-build
 dotnet test SwiftCollections.slnx --configuration ReleaseLean --no-build
 ```
 
+Sorted-list persistence changes must cover normal direct and generated nested
+JSON, standard MemoryPack's formatter and generated packable paths, explicit
+legacy-input rejection, and unchanged raw-state reconstruction. Supply a registry
+through JSON options or MemoryPack's per-operation services; keep collection
+lookup and mutation free of persistence work. Use matching `netstandard2.1`
+plugin dependencies in the existing SwiftCollections-Unity smoke-test host.
+See the [serialization guide](docs/api/guides/serialization-and-diagnostics.md)
+for codecs, closed JSON metadata and explicit formatter bootstrap.
+
 Build the API site after a Release build, using the pinned tool manifest at the
 repository root (`dotnet-tools.json`):
 

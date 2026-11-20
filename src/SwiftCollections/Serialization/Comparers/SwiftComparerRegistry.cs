@@ -1,0 +1,213 @@
+//=======================================================================
+// SwiftComparerRegistry.cs
+//=======================================================================
+// MIT License, Copyright (c) 2024-present David Oravsky (mrdav30)
+// See LICENSE file in the project root for full license information.
+//=======================================================================
+
+using System;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using Chronicler.Diagnostics;
+
+namespace SwiftCollections.Serialization;
+
+/// <summary>Resolves explicitly registered ordering rules at collection persistence boundaries.</summary>
+/// <remarks>
+/// Definitions are immutable and may be shared across serializer operations. Factory-created immutable
+/// snapshots receive weak, registry-local recapture bindings. Callers must synchronize source collection and
+/// comparer settings during capture. This registry does not prove application comparer determinism, retain
+/// mutable configuration buffers, or participate in ordinary collection comparisons.
+/// </remarks>
+public sealed class SwiftComparerRegistry : IServiceProvider
+{
+    internal const int MaxIdLength = 128;
+    internal const int MaxConfigurationLength = 4096;
+    internal const ushort BuiltInVersion = 1;
+    private const string DefaultOrderingId = "lsf.runtime-ordering-default";
+    private const string OrdinalId = "lsf.string-ordinal";
+    private const string OrdinalIgnoreCaseId = "lsf.string-ordinal-ignore-case";
+
+    private readonly SwiftDictionary<(Type Type, string Id, ushort Version), object> _codecs;
+    private readonly SwiftDictionary<Type, SwiftDictionary<object, object>> _sources = new();
+    private readonly SwiftDictionary<Type, object> _produced = new();
+    private readonly object _producedLock = new();
+
+    /// <summary>Gets the registry containing supported built-in rules and no application registrations.</summary>
+    /// <value>The shared immutable built-ins-only registry.</value>
+    public static SwiftComparerRegistry Empty { get; } = new SwiftComparerRegistryBuilder().Build();
+
+    internal SwiftComparerRegistry(SwiftDictionary<(Type Type, string Id, ushort Version), object> codecs,
+        SwiftDictionary<Type, SwiftDictionary<object, object>> sources)
+    {
+        _codecs = new SwiftDictionary<(Type Type, string Id, ushort Version), object>(codecs);
+        foreach (KeyValuePair<Type, SwiftDictionary<object, object>> pair in sources)
+            _sources.Add(pair.Key, new SwiftDictionary<object, object>(pair.Value, pair.Value.Comparer));
+    }
+
+    /// <summary>Provides this registry to a serializer service-provider lookup.</summary>
+    /// <param name="serviceType">The requested service type; must be non-null.</param>
+    /// <returns>This instance for SwiftComparerRegistry; null for other services. Existing host services must
+    /// be composed by the host rather than replaced.</returns>
+    /// <exception cref="ArgumentNullException">serviceType is null.</exception>
+    public object? GetService(Type serviceType)
+    {
+        ChronicleGuard.ThrowIfNull(serviceType, nameof(serviceType));
+        return serviceType == typeof(SwiftComparerRegistry) ? this : null;
+    }
+
+    internal SwiftComparerDescriptor CaptureOrdering<T>(IComparer<T> comparer)
+    {
+        ChronicleGuard.ThrowIfNull(comparer, nameof(comparer));
+        if (TryCaptureBuiltInOrdering(comparer, out SwiftComparerDescriptor builtIn))
+            return builtIn;
+        if (TryGetSource(comparer, out SwiftOrderingRegistration<T> registration))
+        {
+            ReadOnlyMemory<byte> config = registration.Encode(comparer);
+            if (config.Length > MaxConfigurationLength)
+                throw new NotSupportedException("The ordering codec configuration exceeds 4,096 bytes.");
+            return new SwiftComparerDescriptor(registration.Id, registration.Version, config.ToArray());
+        }
+
+        lock (_producedLock)
+        {
+            if (_produced.TryGetValue(typeof(T), out object? table)
+                && ((ConditionalWeakTable<IComparer<T>, OrderingBinding>)table).TryGetValue(comparer,
+                    out OrderingBinding? binding))
+                return binding.Descriptor;
+        }
+        throw new NotSupportedException(
+            "This ordering comparer has no supported persistence rule. Register its exact instance and codec.");
+    }
+
+    internal IComparer<T> RestoreOrdering<T>(SwiftComparerDescriptor descriptor)
+    {
+        try
+        {
+            if (descriptor.Id.StartsWith("lsf.", StringComparison.Ordinal))
+                return RestoreBuiltInOrdering<T>(descriptor);
+            if (!_codecs.TryGetValue((typeof(T), descriptor.Id, descriptor.Version), out object? codec))
+                throw new InvalidOperationException("The typed ordering codec identifier/version is not registered.");
+            var registration = (SwiftOrderingRegistration<T>)codec;
+            byte[] config = descriptor.Config.Length == 0 ? Array.Empty<byte>() : (byte[])descriptor.Config.Clone();
+            (IComparer<T> comparer, int consumed) = registration.Decode(config);
+            if (comparer == null || consumed != config.Length)
+                throw new InvalidOperationException("The ordering factory must return a comparer and consume all configuration bytes.");
+            if (TryCaptureBuiltInOrdering(comparer, out _))
+                throw new InvalidOperationException("An application factory cannot alias a supported built-in comparer.");
+
+            if (TryGetSource(comparer, out SwiftOrderingRegistration<T> source))
+            {
+                ReadOnlyMemory<byte> sourceConfig = source.Encode(comparer);
+                if (source.Id != descriptor.Id || source.Version != descriptor.Version
+                    || !sourceConfig.Span.SequenceEqual(descriptor.Config))
+                    throw new InvalidOperationException("The factory returned a singleton with a conflicting ordering binding.");
+                return comparer;
+            }
+
+            // Wire readers own descriptor storage; only the factory receives a separate copy.
+            lock (_producedLock)
+            {
+                if (!_produced.TryGetValue(typeof(T), out object? table))
+                {
+                    table = new ConditionalWeakTable<IComparer<T>, OrderingBinding>();
+                    _produced.Add(typeof(T), table);
+                }
+                var bindings = (ConditionalWeakTable<IComparer<T>, OrderingBinding>)table;
+                if (bindings.TryGetValue(comparer, out OrderingBinding? binding))
+                {
+                    SwiftComparerDescriptor existing = binding.Descriptor;
+                    if (existing.Id != descriptor.Id || existing.Version != descriptor.Version
+                        || !existing.Config.AsSpan().SequenceEqual(descriptor.Config))
+                        throw new InvalidOperationException("The factory returned a comparer with a conflicting ordering binding.");
+                }
+                else
+                    bindings.Add(comparer, new OrderingBinding(descriptor));
+            }
+            return comparer;
+        }
+        catch (Exception exception)
+        {
+            throw new InvalidOperationException("The ordering comparer could not be restored.", exception);
+        }
+    }
+
+    internal static void ValidateId(string id)
+    {
+        ChronicleGuard.ThrowIfNull(id, nameof(id));
+        ChronicleGuard.ThrowIfArgument(id.Length == 0 || id.Length > MaxIdLength, nameof(id),
+            "A comparer identifier must contain 1–128 lowercase ASCII characters.");
+        foreach (char character in id)
+            if (!(character >= 'a' && character <= 'z') && !(character >= '0' && character <= '9')
+                && character != '.' && character != '_' && character != '-' && character != '/')
+                throw new ArgumentException("The comparer identifier contains an unsupported character.", nameof(id));
+    }
+
+    internal static bool TryCaptureBuiltInOrdering<T>(IComparer<T> comparer, out SwiftComparerDescriptor descriptor)
+    {
+        string? id = null;
+        if (DefaultOrdering<T>.Eligible && ReferenceEquals(comparer, Comparer<T>.Default))
+            id = DefaultOrderingId;
+        else if (typeof(T) == typeof(string))
+        {
+            if (ReferenceEquals(comparer, StringComparer.Ordinal)) id = OrdinalId;
+            else if (ReferenceEquals(comparer, StringComparer.OrdinalIgnoreCase)) id = OrdinalIgnoreCaseId;
+        }
+        descriptor = new SwiftComparerDescriptor(id!, BuiltInVersion, Array.Empty<byte>());
+        return id != null;
+    }
+
+    private bool TryGetSource<T>(IComparer<T> comparer, out SwiftOrderingRegistration<T> registration)
+    {
+        if (_sources.TryGetValue(typeof(T), out SwiftDictionary<object, object>? instances)
+            && instances.TryGetValue(comparer, out object? value))
+        {
+            registration = (SwiftOrderingRegistration<T>)value;
+            return true;
+        }
+        registration = null!;
+        return false;
+    }
+
+    private static IComparer<T> RestoreBuiltInOrdering<T>(SwiftComparerDescriptor descriptor)
+    {
+        if (descriptor.Version != BuiltInVersion || descriptor.Config.Length != 0)
+            throw new InvalidOperationException("The built-in ordering codec version/configuration is unsupported.");
+        if (descriptor.Id == DefaultOrderingId && DefaultOrdering<T>.Eligible)
+            return Comparer<T>.Default;
+        if (typeof(T) == typeof(string))
+        {
+            if (descriptor.Id == OrdinalId) return (IComparer<T>)(object)StringComparer.Ordinal;
+            if (descriptor.Id == OrdinalIgnoreCaseId) return (IComparer<T>)(object)StringComparer.OrdinalIgnoreCase;
+        }
+        throw new InvalidOperationException("The built-in ordering rule is unsupported for this declared element type.");
+    }
+
+    private sealed class OrderingBinding
+    {
+        internal readonly SwiftComparerDescriptor Descriptor;
+
+        internal OrderingBinding(SwiftComparerDescriptor descriptor) => Descriptor = descriptor;
+    }
+
+    private static class DefaultOrdering<T>
+    {
+        internal static readonly bool Eligible = IsEligible();
+
+        private static bool IsEligible()
+        {
+            Type type = typeof(T);
+            if (type == typeof(string) || type == typeof(object)) return false;
+            Type? underlying = Nullable.GetUnderlyingType(type);
+            if (underlying == null)
+                return type.IsEnum || typeof(IComparable<T>).IsAssignableFrom(type)
+                    || typeof(IComparable).IsAssignableFrom(type);
+            if (underlying.IsEnum || typeof(IComparable).IsAssignableFrom(underlying)) return true;
+            foreach (Type contract in underlying.GetInterfaces())
+                if (contract.IsGenericType && contract.GetGenericTypeDefinition() == typeof(IComparable<>)
+                    && contract.GetGenericArguments()[0] == underlying)
+                    return true;
+            return false;
+        }
+    }
+}
