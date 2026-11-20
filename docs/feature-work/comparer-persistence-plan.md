@@ -1,6 +1,8 @@
 # Comparer Persistence Plan
 
-- **Status:** Phase 1 pre-commit hardening review; version-one-only owner persistence; hot-path performance acceptance remains open.
+- **Status:** Phase 1 complete as of 2026-11-20; version-one-only sorted-list
+  persistence and performance disposition accepted. Phase 2 is not started;
+  SC-Issue-021 remains open for the remaining families and compatibility gates.
 - **Created:** 2026-11-19.
 - **Owner:** SwiftCollections; coordinate with Chronicler only where its shared
   serialization boundary needs an extension.
@@ -486,8 +488,9 @@ the supported IL2CPP consumer remains a separate acceptance gate.
 - [x] Demonstrate valid lookup/add/remove continuation, unknown-codec failure,
   legacy rejection, private construction and unchanged source storage.
   Persisted sorted restore must invoke no ordering comparison or re-sort.
-- [ ] Measure boundary cost and raw/hot-path controls. Obtain independent
-  `ponytail-review` before expanding the pattern; resolve introduced overhead.
+- [x] Measure boundary cost and raw/hot-path controls. Obtain independent
+  `ponytail-review` before expanding the pattern; resolve or obtain explicit user
+  disposition of measured overhead. See the 2026-11-20 closeout below.
 
 ### 2. Complete hash and inherited families
 
@@ -571,7 +574,9 @@ equivalent work and cannot be the performance baseline.
 
 Requirements: no added per-item descriptor lookup, no default-then-custom
 reconstruction, no additional raw-state comparisons/sorting, no new collection
-hot-path allocations, and no measurable hot-path regression. Record one-time
+hot-path allocations, and no repeatable, meaningful hot-path regression
+attributable to the implementation under agreed runtime settings and equivalent
+caller inputs without explicit user disposition. Record one-time
 descriptor costs and bounded metadata growth; establish numeric boundary budgets
 from the first slice rather than inventing a zero-overhead claim. Any measured
 tradeoff requires user disposition before expansion or completion. Validate
@@ -586,6 +591,7 @@ are historical context, not this feature's baseline or an accepted budget.
 
 | Decision | Disposition / reopening criteria |
 | --- | --- |
+| Phase 1 performance | Accepted by the user on 2026-11-20: fixed boundary costs and remaining native-context timing uncertainty; SC-Benchmark-005 closes with no actionable hot-path regression identified. Preserve adverse measurements; no equal-cycle or universal-equivalence claim. Reopen for an attributable, repeatable meaningful caller regression, hot allocation or behavioral defect. Later families require their own evidence. |
 | Preserve raw DTOs and trusted-state APIs | Frozen Phase 0: keep schema/behavior, with boundary-only owner reconstruction hooks. Reopen only if the first production slice proves a concrete conflict and migration is agreed. |
 | Ordinary serialization versus opt-in | Frozen: normal direct/nested JSON and standard MemoryPack use strict v1 metadata or fail. This requires a breaking-format release; opt-in-only wrappers cannot close the feature. Reopen for a demonstrated unsupported dispatch/compatibility requirement before promotion. |
 | Descriptor ownership | Frozen: SwiftCollections owns roles, codecs and adapters. Existing JSON options and MemoryPack service-provider hooks suffice for the model; no Chronicler change or new package is selected. Reopen only for a missing real consumer boundary. |
@@ -1014,13 +1020,14 @@ other. This confirms that the measurement arrangement can create timing
 differences without a feature change. It does not cancel the adverse candidate
 results or prove equivalence.
 
-**Disposition: Phase 1 performance acceptance remains open.** Preserve adverse
+**Disposition at the 2026-11-19 checkpoint: Phase 1 performance acceptance
+remained open.** Superseded by the 2026-11-20 closeout below. Preserve adverse
 and inconclusive results; do not infer neutrality from range overlap or add
 speculative padding/alignment changes. The next causal experiment and durable
 inputs are tracked in
 [SC-Benchmark-005](benchmark-signal-hardening-backlog.md#sc-benchmark-005---comparer-persistence-hot-timing-acceptance).
-The user's fixed-boundary-cost approval does not waive this condition, and the
-final Phase 1 checkbox stays open.
+At that checkpoint the user's fixed-boundary-cost approval did not cover this
+condition, and the final Phase 1 checkbox remained open.
 
 ### Pre-commit review disposition — 2026-11-19
 
@@ -1092,10 +1099,68 @@ preserve the original owner. Existing tracked Unity packages remain clean.
 
 The user's staged Phase 1 snapshot is preserved byte-for-byte; this review's
 edits remain unstaged and uncommitted. No CI/dependency change, new coverage
-exclusion or final introduced build/test failure remains. SC-Benchmark-005 stays
-open; this review does not settle its timing question.
+exclusion or final introduced build/test failure remains. At this review
+checkpoint SC-Benchmark-005 remained open; the later user disposition is
+recorded in the closeout below.
 
 Phase 2, full cross-runtime/reader interoperability, hosted CI, other OS/CPU
 architectures, trimming and actual IL2CPP remain unclaimed. SC-Issue-021 stays
 open until all owners and later gates are complete.
 
+### Hot-path isolation follow-up — 2026-11-19
+
+At committed `cbd9a734082d7a002699766937b79dc547a8cebb`,
+[SC-Benchmark-005](benchmark-signal-hardening-backlog.md#isolation-pass--2026-11-19)
+records the corrected optimized direct-caller experiment, input shapes, exact
+core hashes, all results and exclusions. All 504 main intervals, 112 longer
+churn intervals, 56 JIT-policy controls and 126 optimized same-core observer
+intervals complete with correct behavior and zero timed allocations/GCs.
+
+The Standard token-pair comparison changes from -6.1% to +9.4% thread-accounted
+cycles when only the runtime alignment policy changes; separate disassembly
+confirms native placement changes. Optimized Lean is about -0.1% under either
+policy. Startup allocations independently affect fixed-binary Contains timing,
+but the actual baseline/current DLL-size difference is not an established cause.
+Longer Standard ordinal-string churn retains +3.4% cycles despite -1.3% wall
+time. This establishes execution-context sensitivity without attributing the
+responsible hardware events or proving equivalence.
+
+Fresh package-mode Release and ReleaseLean solution builds pass both frameworks
+with zero warnings/errors; tests pass 1704/1635 core and 43 companion per variant.
+No runtime, API, maintained test, CI or dependency change is justified by the
+investigation. Hardware tracing is unavailable under the current profiling
+policy. At this checkpoint the final Phase 1 checkbox and SC-Benchmark-005
+remained open for profiling or explicit user performance disposition. The
+2026-11-20 decision below supersedes that next action.
+
+### Phase 1 closeout — 2026-11-20
+
+The user explicitly accepts the bounded investigation's remaining hot-timing
+uncertainty and authorizes closing Phase 1. Together with the earlier acceptance
+of fixed persistence-boundary costs, this completes the final Phase 1 checkbox.
+[SC-Benchmark-005](benchmark-signal-hardening-backlog.md#sc-benchmark-005---comparer-persistence-hot-timing-acceptance)
+is closed as **no actionable hot-path regression identified**, with no runtime
+fix and no claim of equal cycles or universal timing equivalence.
+
+The disposition retains all adverse observations, including the Standard
+token-pair sign reversal with JIT policy and +3.4% string-churn cycles despite
+lower wall time. No repeatable meaningful caller elapsed-time regression
+attributable to the feature, new warm allocation or added algorithmic work in
+the inspected hot methods was established. Hardware tracing is no longer a
+Phase 1 closure requirement; its unavailable evidence remains an explicit limit.
+Prioritize reproducible costs in implemented persistence or representative
+callers rather than tuning around an isolated native layout.
+
+This documentation-only closeout relies on the recorded 2026-11-19 validation
+of implementation `cbd9a734082d7a002699766937b79dc547a8cebb`: Release and
+ReleaseLean core/companion builds at both TFMs with zero warnings/errors;
+1704/1635 core and 43 companion tests per variant; the earlier post-review
+Debug, full reachable coverage, all package/XML/reference checks and actual
+Unity Mono smoke 26/25. The 798 corrected hot/control intervals passed their
+behavior, zero-allocation and no-GC checks. These are dated prior results, not
+new test runs for this closeout.
+
+All Phase 1 tasks are complete. SC-Issue-021 remains open; Phase 2 hash/inherited
+families and Phase 3 full interoperability, supported IL2CPP, broader runtime
+and release gates remain unchecked. No Phase 2 implementation or release is
+included in this closeout. Reopening criteria are recorded with SC-Benchmark-005.

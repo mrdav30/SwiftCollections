@@ -167,6 +167,16 @@ npx --yes prettier@3.9.5 --check .
 
 ## Local validation
 
+For assembly timing comparisons, compile the caller once per package flavor with
+optimization explicitly enabled, including custom configurations such as
+`ReleaseLean`. Check the actual loaded assembly hashes and dependency flavor.
+Collect provenance after timing: reading a DLL into a byte array before owner
+construction can change the measured storage placement. Warm the workload after
+any setup GC, keep diagnostic captures separate from timings, and verify every
+expected result and interval. A timing reversal after changing caller or JIT
+placement is evidence of sensitivity, not proof of equal performance. Keep
+reproducible inputs, results and limits in the owning benchmark signal.
+
 Restore and build both package variants:
 
 ```bash

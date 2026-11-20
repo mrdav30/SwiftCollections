@@ -80,12 +80,19 @@ making a new performance claim.
 
 ## Active Signals
 
+None currently.
+
+## Closed Signals
+
 ### SC-Benchmark-005 - Comparer-persistence hot timing acceptance
 
-- **Discovered / status:** 2026-11-19; unresolved measurement signal. Keeps
+- **Discovered / closed:** 2026-11-19 / 2026-11-20; no actionable hot-path
+  regression identified. The user explicitly accepted the remaining timing
+  uncertainty and closed
   [SC-Issue-021 Phase 1](comparer-persistence-plan.md#phase-1-execution-record--2026-11-19)
-  performance acceptance open. This is not a confirmed collection algorithm
-  defect and is not approval to expand into the next feature phase.
+  performance acceptance after the bounded investigation below. This is a
+  documented no-change decision, not a collection algorithm fix or a claim of
+  universal timing equivalence. Phase 2 implementation is separate work.
 - **Source / environment:** Clean baseline
   `bf69e2152dff02f5f9f3ad335afcddf7560b4e81` versus its uncommitted Phase 1
   sorted-list persistence implementation; published dependencies,
@@ -146,17 +153,189 @@ making a new performance claim.
   rule out added algorithmic instructions in those methods; they do not prove
   identical cycle cost or establish the timing cause. Range overlap alone is
   insufficient to close the signal.
-- **Disposition / next action:** Keep hot-path acceptance open and preserve the
-  existing implementation for review. No source padding, forced alignment or
-  speculative algorithm change is justified. Before asserting equivalence,
-  use a representative whole-caller benchmark plus branch/cache evidence to
-  distinguish a feature effect from the demonstrated context-position bias.
-  Record the resulting cause or explicit user disposition here. The accepted
-  fixed serialization cost does not waive this hot-path gate. Reopen a closed
-  result for a reproducible relevant workload regression or changed runtime,
-  package graph or comparison implementation.
+#### Isolation pass — 2026-11-19
 
-## Closed Signals
+**Result:** Reproduced the timing sensitivity with direct callers. A controlled
+JIT-policy change reverses the Standard token-pair comparison while caller,
+library, inputs and storage shape stay fixed. No collection algorithm defect or
+justified runtime correction was found. The precise hardware mechanism and
+hot-path acceptance remained unresolved at the 2026-11-19 checkpoint; neither a
+speedup nor equivalence is claimed. The 2026-11-20 disposition below closes the
+gate without requiring hardware attribution.
+
+**Frozen inputs.** Baseline remains `bf69e2152dff02f5f9f3ad335afcddf7560b4e81`;
+current is committed `cbd9a734082d7a002699766937b79dc547a8cebb`. Published
+dependencies are Chronicler.Core/Core.Lean and Diagnostics 1.0.0, plus
+MemoryPack.Core 1.21.4 only for Standard. Host, runtime, CPU2 affinity, normal
+priority and disabled tiering are unchanged from the original record. Core
+net10.0 DLL SHA256 and byte lengths:
+
+| Configuration | Baseline                                                                    | Current                                                                     |
+| ------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Release       | `CF36150682C069F579ED75B9F74CF081E3889735118F91D6245AD9C4145AFC9D` / 192000 | `319BD4D15FAD879D836F38AAAD8721820738909FDC7EE162914CD7BB20E95C1B` / 208384 |
+| ReleaseLean   | `7DBAEC5BFDA34A76B8BD7AD085F02EEBA296655E1AA75ECDC418616DC9D27B1A` / 170496 | `84F570D6986947319B3433CEEF79444FDF86AB2CAD7C47372481C22503814C4F` / 184832 |
+
+**Measurement corrections.** The historical probe did `File.ReadAllBytes` to
+hash each DLL before constructing owners, then forced GC after warmup. That
+observer allocation changes the startup heap; rewarming after GC was missing. It
+also invoked an `Action` per operation. Earlier Lean callers, including the
+first direct-caller draft, lacked explicit compiler optimization for the custom
+configuration. Retain their results as unoptimized-caller diagnostics, not
+optimized Lean acceptance. This is separate from the previously excluded wrong
+DLL graph. The maintained benchmark project already enables optimization.
+
+The corrected disposable caller uses direct concrete typed loops, explicit
+`Optimize=true`, explicit compile/reference inputs, no assembly-load contexts or
+per-operation `Action` wrapper, and provenance IO only after all timing. It
+performs one setup GC, then warmup, and no scheduled GC between intervals. Read-only
+owners keep natural Count/Capacity 65536/Offset 0 for integers and 4096/4096/0 for
+strings/tokens; mutation owners reserve Count+1 before warmup. The first draft
+unnecessarily doubled read-only capacity and is excluded from the corrected
+storage-shape comparison. The token mutation shape is unchanged between drafts:
+4096 items, Capacity 8192, Offset 2048.
+
+**Portable experiment.** Build one net10.0 optimized caller per flavor against
+the exact baseline DLL, using matching published dependencies. Copy its whole
+graph twice and replace only the candidate core; verify hashes before launch and
+actual loaded hashes after measurement. Use the pair cases above and these
+additional workloads:
+
+- Search every key through the existing benchmark's seed123 shuffled range:
+  65536 integers, 4096 ordinal strings, or 4096 descending reference tokens. Sum
+  returned ranks; require `N*(N-1)/2` per batch and separately verify every rank
+  and full ordered contents.
+- Churn four of 128 ordinal strings or 128 of 4096 descending tokens. Remove
+  each selected original, insert a preallocated replacement above the original
+  key range, then remove replacements and restore originals in reverse order.
+  Each batch restores all logical contents and performs four mutations per key.
+  No sorting, allocation, growth or setup is timed.
+
+Use a no-inline whole-loop method, such as
+`for (int i=0;i<repeats;i++) { owner.Add(temporary); score += owner.Remove(temporary) ? 1 : 0; }`.
+Require successful results and unchanged complete contents outside timing. Run
+each case in a fresh process, baseline/current/current/baseline order, seven
+intervals each, with `DOTNET_TieredCompilation=0`. Pair repetitions are 8M for
+empty integers and 2M otherwise; full-search repetitions are 32 integer batches
+or 512 string/token batches. Warmups are 100000 pairs, four integer search
+batches or 16 string/token search batches. Per-interval validation makes these
+warm-cache workloads. Reject timed allocations, any GC, wrong CPU, changed
+owner/lookup-array addresses or capacity, and failed checksums/statuses.
+
+All **72 processes / 504 intervals** complete with those checks. Each flavor has
+one identical caller hash across its two cores; Lean loads no MemoryPack
+runtime. Churn initially ran only about 23–46ms per interval. Lengthening it
+eightfold, without rebuilding callers, gives another **16 processes / 112
+intervals**, all passing the same checks. Longer churn uses 262144 string or
+2048 token batches, with 1024/8 warmup batches respectively. Those longer
+results supersede the short churn estimates below. Values are percentage changes
+in the mean of the two process medians, current versus baseline:
+
+| Direct caller                 | Standard wall ns | Standard thread cycles | Lean wall ns | Lean thread cycles |
+| ----------------------------- | ---------------: | ---------------------: | -----------: | -----------------: |
+| Empty integer Add/Remove      |            +3.8% |                  -0.6% |        +1.0% |              -0.3% |
+| Integer Contains hit+miss     |            -5.6% |                  +0.8% |        +0.4% |               0.0% |
+| Ordinal string Add/Remove     |            +1.7% |                   0.0% |        +2.1% |              -0.9% |
+| Descending token Add/Remove   |            -7.9% |                  -6.1% |        -2.1% |              -0.1% |
+| Full shuffled integer Search  |            -1.1% |                  -0.3% |        -1.0% |               0.0% |
+| Full shuffled ordinal Search  |            +0.6% |                  -0.2% |        +2.8% |              +0.4% |
+| Full shuffled token Search    |            -2.9% |                  +0.5% |        +0.3% |              -0.1% |
+| Longer ordinal string churn   |            -1.3% |              **+3.4%** |        -7.2% |             -12.0% |
+| Longer descending token churn |            -1.5% |                  -1.1% |        -4.0% |              -0.1% |
+
+Thread-accounted user+kernel cycles use
+[QueryThreadCycleTime](https://learn.microsoft.com/en-us/windows/win32/api/realtimeapiset/nf-realtimeapiset-querythreadcycletime);
+they are not retired instructions, branch/cache counters, or a direct frequency
+measurement. Wall time and cycles can move differently. In particular, the
+Standard string-churn cycle increase persists in both longer candidate processes
+(baseline 275.29/275.69 versus current 286.71/282.87 cycles per mutation) even
+though wall time improves. Do not erase it with aggregate or overlapping
+wall-time results.
+
+**JIT-policy counterfactual.** With the exact corrected caller/core graphs, set
+only `DOTNET_JitAlignLoops=0` and repeat token-pair ABBA for each flavor: **8
+processes / 56 intervals**, all checks pass. Standard changes from 397.51 ->
+373.10 cycles/pair (-6.1%) under default policy to 366.94 -> 401.26 (+9.4%) with
+alignment disabled; wall time changes from 140.15 -> 129.07ns (-7.9%) to 126.57
+-> 140.55ns (+11.1%). Lean changes from 397.45 -> 397.20 cycles to 398.02 ->
+397.82 (about -0.1% in either policy). The optimized Standard first draft had
+instead measured 372.01 -> 400.15 cycles (+7.6%); those adverse executions
+remain evidence of context sensitivity.
+
+Separate FullOpts captures set `DOTNET_JitDisasm='*RunTokenPair* *Search*'`,
+`DOTNET_JitDisasmWithCodeBytes=1`, `DOTNET_JitDisasmWithAlignmentBoundaries=1`
+and `DOTNET_JitStdOutFile=<file>`, once under each policy and graph. Within each
+graph, normalized instructions and method-relative offsets are unchanged:
+caller 143 bytes, Standard Search 193 baseline/186 current, Lean Search 186 both.
+The Standard generic-dictionary displacement is now 0x88 -> 0x68, again
+shortening the initial branch. Boundary annotations move by 16 modulo 32 for the
+Standard baseline caller, Standard current Search, and both Lean Search
+captures. This verifies different native placement in those diagnostic
+executions. Other methods can move too; separate diagnostic/timing launches do
+not establish a particular responsible branch, cache conflict or Intel
+JCC-erratum mechanism. No runtime alignment option is proposed for consumers.
+
+**Observer counterfactual.** Hold one current core and optimized caller fixed,
+then vary only a touched startup byte array, retained through construction of
+the natural-capacity integer Contains owner and released afterward. Use zero,
+baseline DLL length and current DLL length, then reverse size order; seven
+2M-pair intervals per process. Standard repeats with and without 100000-pair
+post-GC rewarming (12 processes/84 intervals); optimized Lean uses rewarming
+(6/42). All rows pass behavior/zero-allocation/no-GC/CPU/address checks.
+Standard zero allocation usually costs about 327 cycles/pair (one rewarm
+process 346), either DLL-sized allocation about 300–305. Lean is about 326
+versus 298–301. Thus setup allocation affects this fixed-binary experiment, but
+the two actual DLL sizes behave similarly: **their size difference is not
+established as the original regression cause**. Virtual addresses do not prove
+physical cache sets.
+
+**Verification and limits.** Fresh package-mode solution builds and tests run
+serially with
+`dotnet build SwiftCollections.slnx -c <Release|ReleaseLean> -p:UseLocalLsfStack=false`,
+then
+`dotnet test SwiftCollections.slnx -c <configuration> --no-build -p:UseLocalLsfStack=false`.
+Both builds have zero warnings/errors, compile core and companion at
+netstandard2.1 and net10.0, and produce all four package variants. Standard
+tests pass 1704 core/43 companion; Lean passes 1635/43. No runtime or maintained
+test changes were needed. Independent reviewers checked the driver, matrix
+provenance and interpretation. `wpr -start CPU -filemode -instancename SC005`
+fails with 0xc5585011, "Failed to enable the policy to profile system
+performance"; status confirms no recording. No profiling policy was changed.
+There is no branch/cache trace, settled default-tiered-PGO, other CPU/OS or
+Unity timing claim.
+
+`git diff --check` passes. Whole-file Prettier checks fail for all four changed
+documentation files at both committed HEAD and the working tree; broad historical
+reflow is outside this change. No introduced build or test failure remains.
+
+**Closure disposition — 2026-11-20:** The user explicitly accepts the remaining
+native-context timing uncertainty and closes the Phase 1 performance gate.
+The fixed persistence-boundary cost was already accepted; this additional
+disposition covers the retained adverse hot-control observations, including
+the Standard token-pair reversal and +3.4% string-churn cycles despite -1.3%
+wall time. No stable, meaningful caller elapsed-time regression attributable
+to the implementation was established. No added algorithmic work in inspected
+lookup/mutation methods, warm allocation or behavioral failure was found.
+The complete evidence and exclusions remain above; this decision does not
+establish equal cycles, a hardware cause or a universal speedup.
+
+Stop hardware-counter escalation and broad microbenchmark reruns for this
+signal. No source padding, forced alignment, comparer replacement or Search
+restructuring is justified. Further optimization should target reproducible
+cost in the implemented persistence boundary or representative callers.
+See the [Phase 1 closeout](comparer-persistence-plan.md#phase-1-closeout--2026-11-20).
+
+**Reopening criteria:** Reopen for a repeatable, meaningful regression in a
+representative caller under recorded runtime settings, equivalent inputs and
+verified package graphs, attributable to this implementation; or a newly
+demonstrated hot allocation, behavioral defect or added algorithmic work.
+A changed runtime/package/comparison implementation warrants fresh validation,
+but a different isolated timing or native layout alone does not invalidate this
+decision.
+
+If callers or libraries are rebuilt, first reproduce the adverse signal in a
+fresh same-caller ABBA comparison before profiling. Recreating the logical
+workload alone does not preserve the native placement of these disposable
+binaries.
 
 ### SC-Benchmark-004 - Sorted-state order validation
 

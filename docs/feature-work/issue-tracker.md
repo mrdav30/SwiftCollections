@@ -75,8 +75,9 @@ diagnosis, decisions and reopening criteria stay with their owning issue.
 
 <a id="sc-issue-021"></a>
 
-- **Status / priority:** Phase 1 pre-commit hardening review / P2;
-  version-one-only persistence selected; hot-path performance acceptance remains open.
+- **Status / priority:** Phase 1 complete as of 2026-11-20 / P2;
+  version-one-only sorted-list persistence and performance disposition accepted.
+  Phase 2 is not started; the overall issue remains open.
 - **Opened:** 2026-11-19, following the SC-Issue-010 trusted-state contract
   decision and the explicit request for comparer persistence.
 - **Scope / impact:** Preserve supported ordering and equality/hash rules before
@@ -117,15 +118,18 @@ diagnosis, decisions and reopening criteria stay with their owning issue.
   26 standard / 25 Lean cases using the production standard-2.1 plugins.
   Independent runtime reviews found no remaining correctness issue.
   These counts describe the initial snapshot, including the removed helper;
-  post-review validation and the reduced public inventory are pending current
-  coordinator checks.
-- **Performance disposition:** User accepts the measured fixed serialization
-  cost, conditional on passing hot-path checks. Source/JIT inspection and zero
-  allocation controls rule out added algorithmic work in inspected hot methods,
-  but adverse and load-order-sensitive timings prevent an equivalence claim.
+  the post-review validation below supersedes that snapshot.
+- **Performance disposition — 2026-11-20:** The user accepts the measured fixed
+  serialization cost and, after the bounded hot-path investigation, explicitly
+  accepts the remaining native-context timing uncertainty to close Phase 1.
   [SC-Benchmark-005](benchmark-signal-hardening-backlog.md#sc-benchmark-005---comparer-persistence-hot-timing-acceptance)
-  owns the unresolved measurement and next isolation step; this gate remains
-  in Phase 1 rather than being waived or deferred to expand the feature.
+  closes as no actionable hot-path regression identified. Preserve adverse
+  timings and attribution limits; there is no equal-cycle or universal timing
+  equivalence claim. No algorithmic work or warm allocation was added in the
+  inspected hot paths, and no repeatable meaningful caller elapsed-time
+  regression attributable to the implementation was established. Reopen for an
+  attributable representative-caller regression, hot allocation or behavior
+  defect. Later families require their own evidence.
 - **Pre-commit review:** The user removed the migration helper and selected
   v1-only owner records as an intentional breaking format. Legacy literals now
   test strict rejection. Independent reviews found no remaining correctness
@@ -137,11 +141,29 @@ diagnosis, decisions and reopening criteria stay with their owning issue.
   with full reachable line/branch/method coverage and zero build warnings.
   All target/package XML checks and clean reference checks pass; updated Unity
   smoke remains 26/25. The plan preserves the current counts and measurement
-  limits. SC-Benchmark-005 remains open.
-- **Next action:** Complete hardening validation of the version-one-only public
-  surface, then resolve hot-path acceptance before Phase 2 hash/inherited
-  families. IL2CPP, broader interoperability, hosted CI and other OS/CPU
-  profiles remain later gates. No release is claimed.
+  limits. SC-Benchmark-005 was open at that review checkpoint and is now closed
+  by the separate performance disposition above.
+- **Hot-path isolation:** At `cbd9a734082d7a002699766937b79dc547a8cebb`,
+  optimized direct callers and a fixed-binary JIT-policy counterfactual
+  demonstrate timing sensitivity to the execution context. Standard token-pair
+  cycles change from -6.1% to +9.4% relative to baseline across alignment
+  policies; optimized Lean is about -0.1% in both. Longer Standard string churn
+  retains +3.4% cycles despite lower wall time. No algorithm defect or justified
+  runtime fix was found. All 798 corrected timing/control intervals pass
+  behavior, zero timed allocation and no-GC checks. Fresh Release/ReleaseLean
+  builds pass both TFMs without warnings; tests pass 1704/1635 core plus 43
+  companion each. The benchmark signal preserves inputs, exclusions, denied
+  hardware tracing and remaining attribution limits. The user accepts those
+  limits for Phase 1; hardware tracing is no longer a closure requirement.
+- **Phase 1 closeout:** All Phase 1 tasks are checked in the
+  [2026-11-20 closeout](comparer-persistence-plan.md#phase-1-closeout--2026-11-20).
+  This documentation-only decision reuses the recorded validation of
+  `cbd9a734082d7a002699766937b79dc547a8cebb`; it adds no runtime changes or new
+  validation runs. Previous uncommitted benchmark work is preserved.
+- **Next action:** Scope Phase 2 hash/inherited families as separate work.
+  IL2CPP, full interoperability, hosted CI and other OS/CPU profiles remain
+  later gates. The overall comparer-persistence issue stays open; no release is
+  claimed.
 - **Plan / acceptance:** [Comparer persistence plan](comparer-persistence-plan.md)
   owns the inventory, decisions, phases, validation and performance gates.
   The former plan-only fixture directory is removed; maintained tests consume
