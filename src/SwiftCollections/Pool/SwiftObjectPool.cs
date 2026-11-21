@@ -79,13 +79,14 @@ public sealed class SwiftObjectPool<T> : IDisposable, ISwiftObjectPool<T> where 
     #region Properties
 
     /// <summary>
-    /// Gets the total number of objects created by the pool, including both active and inactive objects.
+    /// Gets the number of objects tracked by the pool, including active and inactive objects.
     /// </summary>
-    /// <value>The pool's creation-minus-overflow counter; Clear resets it to zero even with active
-    /// rentals.</value>
+    /// <value>The total created, minus completed overflow returns and inactive objects removed by Clear.
+    /// Dispose leaves this counter unchanged.</value>
     /// <remarks>
-    /// This is not an atomic concurrent counter. Foreign returns and Clear with outstanding rentals can make the
-    /// active/inactive arithmetic inconsistent.
+    /// With valid returns and successful rent/release callbacks, an undisposed pool tracks active rentals plus
+    /// cached objects. Access requires external synchronization for consistent counts; foreign or duplicate
+    /// returns can invalidate the arithmetic.
     /// </remarks>
     public int CountAll { get; private set; }
 
@@ -94,8 +95,9 @@ public sealed class SwiftObjectPool<T> : IDisposable, ISwiftObjectPool<T> where 
     /// </summary>
     /// <value>CountAll minus CountInactive at the time of reading; not an atomic snapshot.</value>
     /// <remarks>
-    /// Can become negative after Clear followed by returning an outstanding rental. Treat counts as diagnostics,
-    /// not ownership validation.
+    /// A live-rental count requires an undisposed pool, valid returns, successful rent/release callbacks and
+    /// externally synchronized access. After disposal, cached storage is empty but CountAll is retained, so this
+    /// value no longer represents live rentals. Treat counts as diagnostics, not ownership validation.
     /// </remarks>
     public int CountActive => CountAll - CountInactive;
 
@@ -212,17 +214,19 @@ public sealed class SwiftObjectPool<T> : IDisposable, ISwiftObjectPool<T> where 
     /// </summary>
     /// <remarks>
     /// Removes cached inactive objects and invokes the destroy callback for them; active rentals are not
-    /// reclaimed. Resets CountAll to zero even if rentals are outstanding. A callback exception can leave partial
-    /// cleanup. Does nothing after disposal.
+    /// reclaimed and remain counted. Each removed object is deducted from CountAll before its destroy callback
+    /// runs. If that callback throws, the object remains removed and deducted; remaining cached objects and
+    /// active rentals remain counted, and earlier removals are not rolled back. Does nothing after disposal.
     /// </remarks>
     public void Clear()
     {
         if (_disposed) return;
 
         while (_pool.TryPop(out var obj))
+        {
+            CountAll--;
             _actionOnDestroy?.Invoke(obj);
-
-        CountAll = 0;
+        }
     }
 
     #endregion

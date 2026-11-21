@@ -36,10 +36,22 @@ Stop using a rented object after returning it, and return each lease only once.
 The lease's disposal runs even if the body throws. Do not dispose a shared pool
 while other owners still use it. Pooling does not make the rented collection
 safe for concurrent mutation.
-Complete rentals before clearing or disposing their pool. Concurrent backing
+
+`SwiftObjectPool<T>.Clear()` and collection-pool `Clear()` remove only cached
+inactive objects. Outstanding rentals remain valid and counted by the same
+backing pool. Each object removed by object-pool clearing is deducted from
+`CountAll` before its destroy callback; if that callback throws, earlier removals
+remain completed and the remaining cached objects and rentals stay counted.
+
+Complete rentals before `Flush` or disposal, and before clearing a
+`SwiftArrayPool<T>`: array-pool clearing discards its length buckets, so later
+returns do not necessarily reach their original backing pool. Concurrent backing
 storage does not make counters, callbacks, capacity checks or lifecycle changes
-atomic. Lease disposal attempts a return at most once; if the release callback
-throws, a later disposal does not retry it.
+atomic; synchronize those operations externally. Lease disposal attempts a return
+at most once; if the release callback throws, a later disposal does not retry it.
+Object-pool counters are diagnostics, not ownership validation. After disposal,
+`CountAll` is retained while cached storage is emptied, so `CountActive` no longer
+represents live rentals.
 
 Pools use their normal clearing policies. If a reference-containing collection
 has retained values after `FastClear()`, explicitly call `Clear(true)` before

@@ -99,8 +99,8 @@ public sealed class SwiftPackedSetPool<T> : SwiftCollectionPool<SwiftPackedSet<T
     /// </summary>
     /// <remarks>
     /// Drops cached inactive collections without reclaiming checked-out rentals or instantiating an unused
-    /// backing pool. The wrapper remains reusable unless disposed. Complete outstanding rentals before Clear if
-    /// diagnostic counts must remain consistent.
+    /// backing pool. Outstanding rentals remain valid and counted by the same backing pool. The wrapper remains
+    /// reusable unless disposed; synchronize lifecycle changes and return each rental exactly once.
     /// </remarks>
     public override void Clear()
     {

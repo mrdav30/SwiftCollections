@@ -57,7 +57,7 @@ public interface ISwiftObjectPool<T> where T : class
     void Release(T element);
 
     /// <summary>
-    /// Removes all items from the collection.
+    /// Removes cached inactive objects.
     /// </summary>
     /// <remarks>
     /// Releases cached inactive objects according to the concrete implementation. Checked-out objects remain

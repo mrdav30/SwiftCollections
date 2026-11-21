@@ -72,26 +72,6 @@ diagnosis, decisions and reopening criteria stay with their owning issue.
 
 ## Active Issues
 
-### SC-Issue-016 - Pool Clear loses outstanding-rental counts
-
-- **Status / priority:** Confirmed / P2; open.
-- **Discovered:** 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`.
-- **Affected owners / impact:** SwiftObjectPool.Clear resets CountAll while active rentals remain; returning them makes CountActive negative.
-- **Evidence environment:** Windows x64, SDK 10.0.302, runtime 10.0.10, Release with published dependencies (`UseLocalLsfStack=false`).
-
-**Reproducer** (use the console setup above):
-
-```csharp
-using var p = new SwiftCollections.Pool.SwiftObjectPool<object>(() => new object());
-var item = p.Rent(); p.Clear(); p.Release(item);
-Console.WriteLine($"{p.CountAll}; {p.CountInactive}; {p.CountActive}");
-```
-
-Observed: `0; 1; -1`. Expected: non-negative counts accounting for the outstanding
-rental when Clear removes only inactive objects.
-
-- **Next action:** Decide counter semantics and verify Clear/overflow/return with outstanding rentals. Concurrent counter accuracy requires its own synchronization decision.
-
 ### SC-Issue-017 - Disposed collection wrappers still rent through Get
 
 - **Status / priority:** Confirmed / P2; open.
@@ -225,6 +205,7 @@ they do not claim a fresh rerun or package release.
 
 | Issue                                                                                          | Resolved/closed | Outcome                                                                                                                                                                                                                                                              | Evidence                                                                                                                                                                                                       |
 | ---------------------------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SC-Issue-016 | 2026-11-21 | **Verified fix:** object-pool Clear deducts only popped inactive objects before destruction, retaining outstanding rentals and correct partial-failure accounting. Shared wrapper contracts agree. Standard/Lean/Debug tests and strict 100% reported line/branch/executable-method coverage pass; the unchanged slot-map analyzer warning is recorded separately. | [Resolution, verification and contract dispositions](#sc-issue-016---pool-clear-loses-outstanding-rental-counts), [regressions](../../tests/SwiftCollections.Tests/Pool/SwiftObjectPool.Tests.cs) |
 | SC-Issue-015 | 2026-11-21 | **Verified fix; storage tradeoff accepted:** slot-linked free ownership keeps reinsertion O(1), preserves remaining reuse order and eliminates stale metadata growth. The user accepted the measured extra storage for small value types; state schemas remain unchanged. Standard/Lean/Debug tests and strict 100% reported line/branch/executable-method coverage pass. Trusted-state validation policy remains separately deferred. | [Resolution, measurements and reopening criteria](#sc-issue-015---slot-reinsertion-leaves-an-allocated-slot-on-the-free-stack), [regressions](../../tests/SwiftCollections.Tests/Collection/SwiftSlotMap.Tests.cs) |
 | <a id="sc-issue-014---packed-set-duplicate-state-breaks-membership-invariants"></a>SC-Issue-014 | 2026-11-21 | **Verified fix; rejection policy:** packed-set restoration rejects equal duplicate items with `ArgumentException` and null arrays/items with `ArgumentNullException`. It preserves dense order rather than compacting or discarding entries; this enforces the existing unique/non-null input contract. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `10b5f5c685cf9e58bca6086894a547326a514f47`, Windows x64, SDK 10.0.302/runtime 10.0.10, Release/published dependencies (`UseLocalLsfStack=false`). Portable reproducer: `var s = new SwiftPackedSet<int>(new SwiftArrayState<int>(new[] { 1, 1 })); s.Remove(1); Console.WriteLine($"{s.Count}; {s.Contains(1)}");` previously printed `1; False`; construction now throws before publishing an owner. **Root cause:** restoration ignored failed lookup insertion while counting every copied dense item. It now checks the existing insertion result, builds replacement storage locally and publishes storage/count/version only after success. Indexing the copied dense snapshot also prevents element hash callbacks that replace input-array entries from making lookup disagree with dense storage. Failed replacement preserves owned fields and live enumerators; references remain shallow and element callback side effects are not rolled back. Raw DTOs remain passive; schemas and normal Add/Contains/Remove paths are unchanged. The 15-case regression group produced 10 behavioral failures and five passing controls before correction; all 15 Standard/13 Lean cases now pass. Coverage includes duplicates/equal references, zero/default/null input, failure preservation, throwing hash callbacks, input-array mutation, valid order/ownership/continuation, JSON and direct/ref-existing MemoryPack. Release/ReleaseLean/Debug solution builds pass with zero warnings/errors; core tests 1849/1743/1847 and companion 43 each pass without skips. The existing strict gate passes with **100% reported lines/branches/executable methods**: core lines 6078/6078, 5884/5884, 8024/8024; branches 2880/2880, 2804/2804, 2888/2888; methods 1261/1261, 1220/1220, 1261/1261. Companion lines 121/121, 121/121, 155/155; branches 62/62 and methods 35/35 in each configuration. Both assemblies build for `netstandard2.1` and `net10.0` in Standard/Lean; all four packages' eight DLL/XML pairs match build output and XML contracts parse. Clean DocFX reports zero warnings/errors; rendered constructor exceptions, state/property lifetime contracts and guide pass inspection, along with CI site smoke checks (104 pages, 1320 local href targets). Hash-checked final Standard/Lean probes each allocate 371712 bytes for 128 restores of 32 integers (2904 bytes/restore), matching the measured pre-fix Standard baseline; 10000 warm remove/add/contains cycles allocate zero bytes before and after. No latency claim. No introduced build/test/reference failure; hosted CI and Unity were not rerun. Reopen for a supported restore violating membership, count, order or storage ownership, or an explicit requirement to normalize duplicates instead of rejecting them. | [Regressions](../../tests/SwiftCollections.Tests/Collection/SwiftPackedSet.Tests.cs), [restore contracts and implementation](../../src/SwiftCollections/Collection/SwiftPackedSet.cs), [serialization guide](../api/guides/serialization-and-diagnostics.md#trusted-state-and-comparers) |
 | <a id="sc-issue-013---base-indexer-writes-bypass-bidirectional-bookkeeping"></a>SC-Issue-013 | 2026-11-21 | **Verified fix:** the dictionary indexer is virtual and BiDictionary/ObservableDictionary override the shared slot, so base, generic and non-generic assignments honor reverse-map and notification contracts. BiDictionary validates null values before mutation, retains the stored forward key in reverse mappings after equivalent-key updates, and leaves reverse insertion with its existing insertion override rather than attempting it twice. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `e4f784ce623aa7e6777f11aef9fac394af6812aa`, Windows x64, SDK 10.0.302/runtime 10.0.10, Release/published dependencies. Portable reproducer: add `(1,10)` to `SwiftBiDictionary<int,int>`, assign `((SwiftDictionary<int,int>)d)[1]=20`, then print `d[1]`, `ContainsValue(10)` and `ContainsValue(20)`. Previously `20; True; False`; corrected `20; False; True`. Related concrete null assignments changed forward/reverse state before throwing; equivalent-key updates stored the alias rather than the stored key. Final 16-case group has 14 behavioral failures and two passing validation controls before correction, all passing afterward. It covers replacement/insertion, duplicate/null/type rejection, both comparers, canonical key ownership, enumeration, notification payload/order/no-op and Add/Remove/Clear continuation. Release/ReleaseLean/Debug solution builds pass with zero warnings/errors; core tests 1834/1730/1832 and companion 43 each pass without skips. Strict coverage is 100% of reported lines/branches/executable methods: core lines 6076/6076, 5882/5882, 8022/8022; branches 2880/2880, 2804/2804, 2888/2888. Both target frameworks and all four packages are checked; all eight DLL/XML pairs match. Metadata verifies the virtual base slot and both overrides. A .NET caller compiled against the old assembly works with only the fixed core substituted. Hash-checked Standard/Lean integer indexer/interface-update probes allocate zero bytes over 10000 warm iterations; no latency claim. Clean DocFX, rendered contracts and reference/link checks pass. **Comparer-replacement disposition:** preserve the precondition that replacement equality keeps stored keys/values distinct; no merge/deduplication or general exception-atomicity policy is added. Reopen that decision for an explicit reject/merge policy with failure-state tests. Arbitrary application-comparer exceptions can still leave partial changes, as documented. No introduced build/test/reference failure; hosted CI and Unity were not rerun. Reopen for a supported assignment path that bypasses either mapping or notification contract. | [Bidirectional regressions](../../tests/SwiftCollections.Tests/Collection/SwiftBiDictionary.Tests.cs), [observable regressions](../../tests/SwiftCollections.Tests/Observable/SwiftObservableDictionary.Tests.cs), [indexer contracts](../../src/SwiftCollections/Collection/SwiftBiDictionary.cs), [trusted-state decision](#sc-issue-010---sorted-list-restore-loses-its-ordering-invariant) |
@@ -359,6 +340,100 @@ sequence. Do not rely on a particular corruption trace for malformed state.
 Reopen the validation-policy decision when explicitly choosing whether public
 restore and unchecked forms reject duplicate/overlapping free slots or remain
 trusted operations; require checked/unchecked and failure-state regressions.
+
+### SC-Issue-016 - Pool Clear loses outstanding-rental counts
+
+- **Status / priority:** Resolved 2026-11-21 / P2; verified fix.
+- **Discovered:** 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`;
+  reproduced before this fix at `6394427636afa5d35824f92575565c6345b53f17`.
+- **Affected owners / impact:** `SwiftObjectPool<T>.Clear` reset CountAll even
+  when rentals remained outstanding. Returning them made CountActive negative.
+  Collection wrappers delegate to the same object-pool owner.
+- **Evidence environment:** Windows x64, SDK 10.0.302, runtime 10.0.10,
+  published dependencies (`UseLocalLsfStack=false`,
+  `DisableTransitiveProjectReferences=false`).
+
+**Portable reproducer** (use the console setup above):
+
+```csharp
+using var p = new SwiftCollections.Pool.SwiftObjectPool<object>(() => new object());
+var item = p.Rent(); p.Clear(); p.Release(item);
+Console.WriteLine($"{p.CountAll}; {p.CountInactive}; {p.CountActive}");
+```
+
+Before: `0; 1; -1`. After: `1; 1; 0`; the outstanding rental remains counted and
+can return to the same usable pool.
+
+**Root cause and resolution:** Clear removed only inactive objects but reset the
+entire creation counter. It now decrements CountAll immediately after each
+successful pop, before invoking the destroy callback, and has no final reset.
+If destruction throws, the popped object remains removed and deducted, remaining
+cached objects and active rentals remain counted, and a later Clear can continue.
+Rent/Release, storage, ownership checks, allocation behavior and concurrency
+policy are unchanged. No runtime helper, lock, field or type was added. The
+shared interface summary, eight collection-wrapper Clear comments, counter XML
+and [pool guide](../api/guides/pools-and-observables.md#scope-a-rental) agree with
+this behavior. See [implementation](../../src/SwiftCollections/Pool/SwiftObjectPool.cs)
+and [regressions](../../tests/SwiftCollections.Tests/Pool/SwiftObjectPool.Tests.cs).
+
+**Verification:** The final eleven-case group produced nine behavioral failures
+and two passing empty/fully-inactive controls before correction. All eleven now
+pass in Standard, Lean and Debug; the focused pool suite passes 65 tests. The
+regressions cover exact active/inactive counts and object identity, repeated
+clear, new rent, overflow with/without destroy callbacks, counts observed inside
+destroy callbacks, partial failure and continuation, lease idempotence and a
+real collection-wrapper path. Independent source/test reviews pass.
+
+| Final configuration | Core tests | Companion tests | Core lines / branches / executable methods | Companion lines / branches / executable methods |
+| --- | ---: | ---: | --- | --- |
+| Release | 1874 | 43 | 6107/6107; 2894/2894; 1264/1264 | 121/121; 62/62; 35/35 |
+| ReleaseLean | 1767 | 43 | 5913/5913; 2818/2818; 1223/1223 | 121/121; 62/62; 35/35 |
+| Debug | 1872 | 43 | 8062/8062; 2902/2902; 1264/1264 | 155/155; 62/62; 35/35 |
+
+All solution builds succeed with zero errors and no skipped tests. The unchanged
+strict coverage gate passes with 100% reported lines, branches and executable
+methods, using fresh assembly-specific reports and the existing Coverlet
+settings. Both runtime assemblies build for `netstandard2.1` and `net10.0` in
+Standard/Lean; all four packages' eight DLL/XML pairs match build output. XML
+contracts are checked in each core output. Clean DocFX reports zero
+warnings/errors; rendered object-pool values/Clear, interface/eight-wrapper
+Clear and guide contracts pass inspection, as do CI site smoke/link checks
+(104 HTML pages, 1320 local href targets).
+
+**Baseline versus introduced results:** Release's final build reports zero
+warnings. Lean and Debug each report the pre-existing xUnit2013 warning at
+`SwiftSlotMap.Tests.cs:138`; an isolated rebuild of committed source at the
+reproducer revision confirms the same warning. The slot-map test is unchanged
+by this fix. No introduced build, test, coverage or reference failure remains.
+Hosted CI and Unity were not rerun.
+
+**Allocation checks:** Hash-checked before/final Standard probes and final Lean
+use 1000 warmups and 10000 measured cycles. Rent/Release of one reused object
+allocates 320000 bytes before and after (ConcurrentStack push nodes). A second
+workload retains one outstanding rental while repeatedly renting a fresh object,
+releasing it and clearing the inactive cache; allocation remains 560000 bytes.
+Its final all/inactive/active counts change from `0/0/0` to `1/0/1`. These checks
+show unchanged allocation for the tested workloads; they are not a zero-allocation
+or latency claim. There is no existing pool benchmark selection, and no maintained
+benchmark harness was added for this fix.
+
+**Related contract dispositions:** Preserve externally synchronized lifecycle and
+counter access; concurrent storage does not make counters, callbacks or max-size
+checks atomic. Do not add synchronization or foreign/double-return tracking in
+this fix. Preserve existing terminal diagnostics: Dispose empties cached storage
+without adjusting CountAll, so post-disposal CountActive is arithmetic, not a
+live-rental guarantee. Rent/release callback failures retain their existing
+nontransactional behavior; the per-pop failure guarantee above is specific to
+Clear. Collection Clear retains the same backing pool; array-pool Clear discards
+length buckets, so finish array rentals before clearing and finish all rentals
+before Flush/disposal. SC-Issue-017's disposed-wrapper Get defect remains separate.
+Reopen these policy decisions for an explicit requirement for atomic concurrent
+accounting, terminal live counts, transactional callbacks or cross-clear array
+rental ownership, with corresponding lifecycle and failure-state tests.
+
+- **Disposition / reopening:** Close the confirmed Clear defect. Reopen for a
+  supported, synchronized Clear/return sequence that loses outstanding counts,
+  breaks reuse or misaccounts a popped object when destruction throws.
 
 ### SC-Issue-021 - Persist collection comparers across serializers
 
