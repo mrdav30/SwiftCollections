@@ -118,24 +118,26 @@ public partial class SwiftObservableDictionary<TKey, TValue> : SwiftDictionary<T
     #region Methods
 
     /// <summary>
-    /// Adds an element with the provided key and value to the dictionary. Raises a collection change
-    /// notification.
+    /// Attempts to add a mapping, notifying subscribers only when insertion succeeds.
     /// </summary>
-    /// <param name="key">The key to locate or insert; null is rejected for insertion and treated as absent by
-    /// base lookup.</param>
+    /// <param name="key">The key to insert, compared using the current key comparer. Null is rejected.</param>
     /// <param name="value">The value to store; reference values are retained without cloning.</param>
-    /// <returns>true if a mapping was inserted; false for an existing key. Notifications currently occur in
-    /// either case.</returns>
+    /// <returns>true if a mapping was inserted; false if an equal key already exists, without notifications.</returns>
+    /// <exception cref="T:System.ArgumentNullException">key is null.</exception>
     /// <remarks>
-    /// Mutates through the base implementation, then emits CollectionChanged(Add), followed by
-    /// PropertyChanged(Entries[]). The current implementation emits Add even when a duplicate key is rejected and
-    /// the Boolean result is false.
+    /// Successful insertion changes storage before CollectionChanged(Add), followed by PropertyChanged(Entries[]).
+    /// A subscriber exception does not roll back insertion and can prevent later notifications. Duplicate
+    /// rejection preserves the existing mapping and Count, but the base load-threshold check can resize storage
+    /// before lookup or key validation, invalidating enumerators even when insertion is rejected.
     /// </remarks>
     public override bool Add(TKey key, TValue value)
     {
         bool result = base.Add(key, value);
-        OnCollectionChanged(NotifyCollectionChangedAction.Add, key, value);
-        OnPropertyChanged("Entries[]"); // Notify that the dictionary contents have changed
+        if (result)
+        {
+            OnCollectionChanged(NotifyCollectionChangedAction.Add, key, value);
+            OnPropertyChanged("Entries[]");
+        }
         return result;
     }
 

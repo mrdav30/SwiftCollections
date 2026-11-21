@@ -15,6 +15,261 @@ namespace SwiftCollections.Observable.Tests;
 public class SwiftObservableDictionaryTests
 {
     [Theory]
+    [InlineData("concrete")]
+    [InlineData("base")]
+    [InlineData("pair")]
+    [InlineData("generic")]
+    [InlineData("collection")]
+    [InlineData("non-generic")]
+    public void AddNotification_DuplicateThroughEveryContractPreservesContentsAndIteration(string contract)
+    {
+        var dictionary = new SwiftObservableDictionary<string, int> { { "Existing", 100 }, { "Kept", 200 } };
+        KeyValuePair<string, int>[] original = dictionary.ToArray();
+        int capacity = dictionary.Capacity;
+        var enumerator = dictionary.GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+        var visited = new List<KeyValuePair<string, int>> { enumerator.Current };
+        var notifications = new List<string>();
+        dictionary.CollectionChanged += (_, args) => notifications.Add($"Collection:{args.Action}");
+        dictionary.PropertyChanged += (_, args) => notifications.Add($"Property:{args.PropertyName}");
+
+        bool? added = AddThroughContract(dictionary, contract, "Existing", 999);
+
+        Assert.Equal(contract is "concrete" or "base" ? false : (bool?)null, added);
+        Assert.Empty(notifications);
+        Assert.Equal(original.Length, dictionary.Count);
+        Assert.Equal(capacity, dictionary.Capacity);
+        Assert.Equal(original, dictionary.ToArray());
+        while (enumerator.MoveNext())
+            visited.Add(enumerator.Current);
+        Assert.Equal(original, visited);
+    }
+
+    [Theory]
+    [InlineData("concrete")]
+    [InlineData("base")]
+    [InlineData("pair")]
+    [InlineData("generic")]
+    [InlineData("collection")]
+    [InlineData("non-generic")]
+    public void AddNotification_SuccessThroughEveryContractRaisesOneOrderedPairAfterMutation(string contract)
+    {
+        var dictionary = new SwiftObservableDictionary<string, int>();
+        var notifications = new List<string>();
+        dictionary.CollectionChanged += (sender, args) =>
+        {
+            Assert.Same(dictionary, sender);
+            Assert.Equal(NotifyCollectionChangedAction.Add, args.Action);
+            Assert.Null(args.OldItems);
+            var item = Assert.IsType<KeyValuePair<string, int>>(Assert.Single(args.NewItems.Cast<object>()));
+            Assert.Equal(new KeyValuePair<string, int>("Added", 300), item);
+            Assert.Single(dictionary);
+            Assert.Equal(300, dictionary["Added"]);
+            notifications.Add("Collection:Add");
+        };
+        dictionary.PropertyChanged += (sender, args) =>
+        {
+            Assert.Same(dictionary, sender);
+            Assert.Equal("Entries[]", args.PropertyName);
+            Assert.Equal(300, dictionary["Added"]);
+            notifications.Add($"Property:{args.PropertyName}");
+        };
+
+        bool? added = AddThroughContract(dictionary, contract, "Added", 300);
+
+        Assert.Equal(contract is "concrete" or "base" ? true : (bool?)null, added);
+        Assert.Equal(new[] { "Collection:Add", "Property:Entries[]" }, notifications);
+        Assert.Single(dictionary);
+        Assert.Equal(300, dictionary["Added"]);
+    }
+
+    [Fact]
+    public void AddNotification_EqualKeysRetainOriginalMappingWithoutNotifications()
+    {
+        var dictionary = new SwiftObservableDictionary<string, int>();
+        dictionary.SetComparer(StringComparer.OrdinalIgnoreCase);
+        string original = new("Key".ToCharArray());
+        string equivalent = new("KEY".ToCharArray());
+        dictionary.Add(original, 100);
+        int collectionEvents = 0, propertyEvents = 0;
+        dictionary.CollectionChanged += (_, _) => collectionEvents++;
+        dictionary.PropertyChanged += (_, _) => propertyEvents++;
+
+        Assert.False(dictionary.Add(equivalent, 999));
+
+        Assert.Equal(0, collectionEvents);
+        Assert.Equal(0, propertyEvents);
+        KeyValuePair<string, int> retained = Assert.Single(dictionary);
+        Assert.Same(original, retained.Key);
+        Assert.Equal(100, retained.Value);
+        Assert.Equal(100, dictionary[equivalent]);
+    }
+
+    [Fact]
+    public void AddNotification_DuplicateDoesNotInvokeThrowingSubscribers()
+    {
+        var dictionary = new SwiftObservableDictionary<string, int> { { "Existing", 100 } };
+        dictionary.CollectionChanged += (_, _) => throw new ArithmeticException("Unexpected collection notification.");
+        dictionary.PropertyChanged += (_, _) => throw new InvalidOperationException("Unexpected property notification.");
+
+        Assert.False(dictionary.Add("Existing", 200));
+
+        Assert.Single(dictionary);
+        Assert.Equal(100, dictionary["Existing"]);
+    }
+
+    [Fact]
+    public void AddNotification_InvalidInputsDoNotMutateOrNotify()
+    {
+        var dictionary = new SwiftObservableDictionary<string, int> { { "Existing", 100 } };
+        int collectionEvents = 0, propertyEvents = 0;
+        dictionary.CollectionChanged += (_, _) => collectionEvents++;
+        dictionary.PropertyChanged += (_, _) => propertyEvents++;
+
+        Assert.Throws<ArgumentNullException>(() => dictionary.Add(null, 200));
+        Assert.Throws<ArgumentNullException>(() => ((IDictionary<string, int>)dictionary).Add(null, 200));
+        Assert.Throws<ArgumentNullException>(() => ((ICollection<KeyValuePair<string, int>>)dictionary).Add(new(null, 200)));
+        Assert.Throws<ArgumentNullException>(() => ((IDictionary)dictionary).Add(null, 200));
+        Assert.Throws<ArgumentException>(() => ((IDictionary)dictionary).Add(1, 200));
+        Assert.Throws<ArgumentException>(() => ((IDictionary)dictionary).Add("Added", "Wrong type"));
+        Assert.Throws<ArgumentNullException>(() => ((IDictionary)dictionary).Add("Added", null));
+
+        Assert.Equal(0, collectionEvents);
+        Assert.Equal(0, propertyEvents);
+        Assert.Equal(new KeyValuePair<string, int>("Existing", 100), Assert.Single(dictionary));
+    }
+
+    [Fact]
+    public void AddNotification_HashFailureDoesNotMutateOrNotify()
+    {
+        var failure = new ArithmeticException("Hash failed.");
+        var dictionary = new SwiftObservableDictionary<string, int>();
+        dictionary.SetComparer(EqualityComparer<string>.Create(
+            static (left, right) => StringComparer.Ordinal.Equals(left, right),
+            key => key == "Bad" ? throw failure : StringComparer.Ordinal.GetHashCode(key)));
+        dictionary.Add("Existing", 100);
+        int collectionEvents = 0, propertyEvents = 0;
+        dictionary.CollectionChanged += (_, _) => collectionEvents++;
+        dictionary.PropertyChanged += (_, _) => propertyEvents++;
+
+        Assert.Same(failure, Assert.Throws<ArithmeticException>(() => dictionary.Add("Bad", 200)));
+
+        Assert.Equal(0, collectionEvents);
+        Assert.Equal(0, propertyEvents);
+        Assert.Equal(new KeyValuePair<string, int>("Existing", 100), Assert.Single(dictionary));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AddNotification_SubscriberFailureDoesNotRollBackSuccessfulInsertion(bool throwFromProperty)
+    {
+        var dictionary = new SwiftObservableDictionary<string, int>();
+        var notifications = new List<string>();
+        var failure = new ArithmeticException("Subscriber failed.");
+        dictionary.CollectionChanged += (_, _) =>
+        {
+            Assert.Equal(300, dictionary["Added"]);
+            notifications.Add("Collection:Add");
+            if (!throwFromProperty)
+                throw failure;
+        };
+        dictionary.PropertyChanged += (_, _) =>
+        {
+            notifications.Add("Property:Entries[]");
+            throw failure;
+        };
+
+        Assert.Same(failure, Assert.Throws<ArithmeticException>(() => dictionary.Add("Added", 300)));
+
+        Assert.Single(dictionary);
+        Assert.Equal(300, dictionary["Added"]);
+        Assert.Equal(throwFromProperty ? new[] { "Collection:Add", "Property:Entries[]" } : new[] { "Collection:Add" }, notifications);
+    }
+
+    [Fact]
+    public void AddNotification_DuplicateAtLoadThresholdMayResizeWithoutNotifying()
+    {
+        var dictionary = new SwiftObservableDictionary<int, int>();
+        for (int i = 0; i < 6; i++)
+            dictionary.Add(i, i * 10);
+        int capacity = dictionary.Capacity;
+        Assert.Equal(SwiftDictionary<int, int>.DefaultCapacity, capacity);
+        var enumerator = dictionary.GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+        int collectionEvents = 0, propertyEvents = 0;
+        dictionary.CollectionChanged += (_, _) => collectionEvents++;
+        dictionary.PropertyChanged += (_, _) => propertyEvents++;
+
+        Assert.False(dictionary.Add(0, 999));
+
+        Assert.Equal(0, collectionEvents);
+        Assert.Equal(0, propertyEvents);
+        Assert.Equal(6, dictionary.Count);
+        Assert.True(dictionary.Capacity > capacity);
+        Assert.Throws<InvalidOperationException>(() => enumerator.MoveNext());
+        for (int i = 0; i < 6; i++)
+            Assert.Equal(i * 10, dictionary[i]);
+    }
+
+    [Theory]
+    [InlineData(false)]
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
+    [InlineData(true)]
+#endif
+    public void AddNotification_RoundTripPreservesDuplicateRejectionAndSuccessfulContinuation(bool binary)
+    {
+        var source = new SwiftObservableDictionary<string, int> { { "Existing", 100 } };
+        SwiftObservableDictionary<string, int> restored;
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
+        if (binary)
+            restored = MemoryPackSerializer.Deserialize<SwiftObservableDictionary<string, int>>(MemoryPackSerializer.Serialize(source));
+        else
+#endif
+            restored = JsonSerializer.Deserialize<SwiftObservableDictionary<string, int>>(JsonSerializer.Serialize(source));
+        var notifications = new List<string>();
+        restored.CollectionChanged += (_, args) => notifications.Add($"Collection:{args.Action}");
+        restored.PropertyChanged += (_, args) => notifications.Add($"Property:{args.PropertyName}");
+
+        Assert.False(restored.Add("Existing", 999));
+
+        Assert.Empty(notifications);
+        Assert.True(restored.Add("Added", 300));
+        Assert.Equal(new[] { "Collection:Add", "Property:Entries[]" }, notifications);
+        Assert.Equal(100, restored["Existing"]);
+        Assert.Equal(300, restored["Added"]);
+        Assert.Equal(2, restored.Count);
+        Assert.Single(source);
+    }
+
+    private static bool? AddThroughContract(SwiftObservableDictionary<string, int> dictionary,
+        string contract, string key, int value)
+    {
+        switch (contract)
+        {
+            case "concrete":
+                return dictionary.Add(key, value);
+            case "base":
+                return ((SwiftDictionary<string, int>)dictionary).Add(key, value);
+            case "pair":
+                dictionary.Add(new KeyValuePair<string, int>(key, value));
+                break;
+            case "generic":
+                ((IDictionary<string, int>)dictionary).Add(key, value);
+                break;
+            case "collection":
+                ((ICollection<KeyValuePair<string, int>>)dictionary).Add(new(key, value));
+                break;
+            case "non-generic":
+                ((IDictionary)dictionary).Add(key, value);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(contract));
+        }
+        return null;
+    }
+
+    [Theory]
     [InlineData("base")]
     [InlineData("generic")]
     [InlineData("non-generic")]
@@ -260,7 +515,7 @@ public class SwiftObservableDictionaryTests
     }
 
     [Fact]
-    public void CollectionChanged_NotRaisedOnDuplicateAdd()
+    public void Indexer_UnchangedValue_DoesNotRaiseCollectionChanged()
     {
         var dictionary = new SwiftObservableDictionary<string, int>
         {

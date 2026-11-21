@@ -10,7 +10,7 @@ feature-work plans.
 
 ## Tracker Rules
 
-- Issue IDs use `SC-Issue-NNN`. The next available ID is `SC-Issue-022`.
+- Issue IDs use `SC-Issue-NNN`. The next available ID is `SC-Issue-023`.
 - Assign an ID at intake and preserve it through closure; never delete or reuse
   IDs. Check Git history before advancing or repairing the counter. Unknown
   historical IDs stay reserved rather than acquiring an inferred cause.
@@ -71,41 +71,6 @@ must be distinguished from the original failure. Reproducer inputs, output,
 diagnosis, decisions and reopening criteria stay with their owning issue.
 
 ## Active Issues
-
-### SC-Issue-018 - Duplicate dictionary Add emits a false change notification
-
-- **Status / priority:** Confirmed / P2; open.
-- **Discovered:** 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`.
-- **Affected owners / impact:** SwiftObservableDictionary.Add emits Add/Entries[] notifications even when duplicate insertion returns false.
-- **Evidence environment:** Windows x64, SDK 10.0.302, runtime 10.0.10, Release with published dependencies (`UseLocalLsfStack=false`).
-
-**Reproducer** (use the console setup above):
-
-```csharp
-var d = new SwiftCollections.Observable.SwiftObservableDictionary<int, int>();
-int events = 0;
-d.CollectionChanged += (_, _) => events++;
-d.Add(1, 10);
-bool added = d.Add(1, 20);
-Console.WriteLine($"{added}; {events}; {d[1]}");
-```
-
-Observed: `False; 2; 10`. Expected: one Add event for one successful insertion.
-Duplicate rejection should not report an addition that never happened.
-
-- **Next action:** Emit notifications only after a successful insertion and verify all Add dispatch paths.
-
-**Related API decision — notification coverage:** Dictionary indexer assignments
-now dispatch through the observable override under
-[SC-Issue-013](#sc-issue-013---base-indexer-writes-bypass-bidirectional-bookkeeping),
-including base and dictionary-interface calls. The observable list indexer
-remains hidden; direct storage writes and inherited non-overridden mutations
-can still bypass notifications. Disposition: document the concrete notification
-surface, as described in the
-[observable guide](../api/guides/pools-and-observables.md#observable-collections).
-Reopen if an API promises complete notifications; first verify base/interface
-dispatch and subscriber-exception behavior. This limitation is separate from
-the confirmed false Add notification above.
 
 ### SC-Issue-019 - BVH duplicate and null-key policy differs from peer indexes
 
@@ -175,6 +140,62 @@ overflows here. The bounded probe uses depth two.
 
 - **Next action:** Use a consistent overflow-aware midpoint and verify containment/progress. The fixed-point counterpart uses its backend's safe center. Until fixed, keep endpoint sums and differences finite.
 
+### SC-Issue-022 - Object dictionary adapters misclassify callback invalid casts
+
+- **Status / priority:** Confirmed / P2; open, separate from SC-Issue-018.
+- **Discovered / revision:** 2026-11-21 at
+  `5d9e3c1932e59749694e5ec2f46c8d46f6db371c`; reproduced before and after the
+  notification fix in Standard/Lean, including matching-dependency netstandard
+  replays on .NET 10.
+- **Affected members:** `SwiftDictionary<TKey, TValue>.Add(object, object)` and
+  the non-generic IDictionary indexer setter. Their InvalidCastException catches
+  include virtual mutation, not just argument conversion, so derived notification
+  code can be misclassified as a bad key/value argument.
+- **Environment:** Windows x64, SDK 10.0.302, runtime 10.0.10, Release with
+  published dependencies (`UseLocalLsfStack=false`).
+- **Caller impact:** A valid insertion/replacement commits, then the caller sees
+  an argument-type error rather than the subscriber failure. The message falsely
+  describes a correctly typed value as incompatible and discards the original
+  exception instead of retaining it as InnerException. Retrying under an
+  assumption that validation rejected the mutation is unsafe.
+
+**Portable reproducer** (use the console setup above):
+
+```csharp
+foreach (bool replace in new[] { false, true })
+{
+    var d = new SwiftCollections.Observable.SwiftObservableDictionary<int, int>();
+    if (replace) d.Add(1, 10);
+    var original = new InvalidCastException("subscriber");
+    d.CollectionChanged += (_, _) => throw original;
+    try
+    {
+        if (replace) ((System.Collections.IDictionary)d)[1] = 20;
+        else ((System.Collections.IDictionary)d).Add(1, 10);
+    }
+    catch (Exception error)
+    {
+        Console.WriteLine($"{replace}; {error.GetType().Name}; " +
+            $"{ReferenceEquals(original, error)}; {d.Count}; {d[1]}");
+        Console.WriteLine(error.Message);
+    }
+}
+```
+
+Expected: the original InvalidCastException propagates after the documented
+committed mutation. Observed: `False; ArgumentException; False; 1; 10` and
+`True; ArgumentException; False; 1; 20`. Messages say `Value 10 does not match
+expected System.Int32` and likewise for value 20. The original is not retained as
+InnerException. A direct typed Add control propagates the same original
+InvalidCastException instance and also leaves the mapping committed.
+
+- **Root cause / next action:** Restrict conversion catches to the casts, then
+  invoke virtual Add/indexer mutation outside them. Add regressions for both
+  object adapters, derived subscribers and comparer failures, while preserving
+  existing null/wrong-type validation and nontransactional mutation contracts.
+  Do not change rollback or notification coverage policy as part of that fix.
+  [Source](../../src/SwiftCollections/Collection/SwiftDictionary.cs).
+
 ## Resolved Issues
 
 Dates reflect recorded resolution/closure, which can precede the commit date.
@@ -183,6 +204,7 @@ they do not claim a fresh rerun or package release.
 
 | Issue                                                                                          | Resolved/closed | Outcome                                                                                                                                                                                                                                                              | Evidence                                                                                                                                                                                                       |
 | ---------------------------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SC-Issue-018 | 2026-11-21 | **Verified fix:** observable Add emits CollectionChanged/Add and PropertyChanged/Entries[] only after successful insertion across all six dispatch forms. Duplicate mappings remain intact; existing resize and subscriber-failure semantics are preserved. Standard/Lean/Debug pass strict 100% reported coverage on verified package/runtime inputs. | [Resolution and verification](#sc-issue-018---duplicate-dictionary-add-emits-a-false-change-notification), [regressions](../../tests/SwiftCollections.Tests/Observable/SwiftObservableDictionary.Tests.cs) |
 | SC-Issue-017 | 2026-11-21 | **Verified fix and consolidation:** one embedded lifecycle owner guards all rental/backing-access routes across six inherited collection pools and the sparse-map pool. Flush stays reusable; Dispose is terminal. Duplicate lifecycle code is removed while named Release parameters remain compatible. Standard/Lean/Debug pass strict 100% reported coverage; constructor/disposal allocation improves in the tested workloads. | [Resolution, compatibility and lifecycle decisions](#sc-issue-017---disposed-collection-wrappers-still-rent-through-get), [regressions](../../tests/SwiftCollections.Tests/Pool/SwiftPoolLifecycle.Tests.cs) |
 | SC-Issue-016 | 2026-11-21 | **Verified fix:** object-pool Clear deducts only popped inactive objects before destruction, retaining outstanding rentals and correct partial-failure accounting. Shared wrapper contracts agree. Standard/Lean/Debug tests and strict 100% reported line/branch/executable-method coverage pass; the unchanged slot-map analyzer warning is recorded separately. | [Resolution, verification and contract dispositions](#sc-issue-016---pool-clear-loses-outstanding-rental-counts), [regressions](../../tests/SwiftCollections.Tests/Pool/SwiftObjectPool.Tests.cs) |
 | SC-Issue-015 | 2026-11-21 | **Verified fix; storage tradeoff accepted:** slot-linked free ownership keeps reinsertion O(1), preserves remaining reuse order and eliminates stale metadata growth. The user accepted the measured extra storage for small value types; state schemas remain unchanged. Standard/Lean/Debug tests and strict 100% reported line/branch/executable-method coverage pass. Trusted-state validation policy remains separately deferred. | [Resolution, measurements and reopening criteria](#sc-issue-015---slot-reinsertion-leaves-an-allocated-slot-on-the-free-stack), [regressions](../../tests/SwiftCollections.Tests/Collection/SwiftSlotMap.Tests.cs) |
@@ -535,6 +557,121 @@ and callbacks own their contracts. Shared singleton identities are not recreated
   rental/backing-access route that revives a disposed owner, unused cleanup that
   initializes storage, lost finalizer cleanup, or a named-argument/binary
   compatibility regression in the preserved built-in API surface.
+
+### SC-Issue-018 - Duplicate dictionary Add emits a false change notification
+
+- **Status / priority:** Resolved 2026-11-21 / P2; verified fix.
+- **Discovered:** 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`;
+  reproduced before this fix at `5d9e3c1932e59749694e5ec2f46c8d46f6db371c`.
+- **Evidence environment:** Windows x64, SDK 10.0.302, runtime 10.0.10,
+  published dependencies (`UseLocalLsfStack=false`,
+  `DisableTransitiveProjectReferences=false`).
+
+**Portable reproducer** (use the console setup above):
+
+```csharp
+var d = new SwiftCollections.Observable.SwiftObservableDictionary<int, int>();
+int events = 0;
+d.CollectionChanged += (_, _) => events++;
+d.Add(1, 10);
+bool added = d.Add(1, 20);
+Console.WriteLine($"{added}; {events}; {d[1]}");
+```
+
+Before: `False; 2; 10`. After: `False; 1; 10`; only the successful insertion
+produces a collection event, and the duplicate produces neither notification.
+
+**Root cause and resolution:** The observable Add override emitted both events
+unconditionally after base Add returned false. It now emits only inside the
+successful-result branch, retaining exactly one base Add call and no preliminary
+lookup. All six dispatch forms reach that override: concrete/base Boolean Add,
+public pair Add, generic IDictionary, ICollection of pairs and non-generic
+IDictionary. Successful insertion still commits before CollectionChanged(Add),
+then PropertyChanged(Entries[]); subscriber failure can interrupt notification
+without rollback. Equal-key rejection preserves the stored key/value and Count,
+but base load-threshold checking may resize before lookup/validation and invalidate
+enumerators. The fix deliberately preserves that behavior. No helper, field,
+public API or persistence format was added or changed. Raw-state and versioned
+JSON/MemoryPack reconstruction retain their notification-free restore paths.
+See [implementation and contracts](../../src/SwiftCollections/Observable/SwiftObservableDictionary.cs),
+[regressions](../../tests/SwiftCollections.Tests/Observable/SwiftObservableDictionary.Tests.cs)
+and the [observable guide](../api/guides/pools-and-observables.md#observable-collections).
+
+**Verification:** The 21-case Standard regression group produced eleven
+behavioral failures and ten passing controls before correction. All 21 Standard /
+20 Lean cases now pass; the focused dictionary suite passes 43 tests. Cases cover
+all six dispatch forms, exact sender/payload/order and callback-visible storage,
+case-insensitive equal keys and canonical key retention, throwing subscribers
+that must not run on rejection, invalid keys/types and hash failures, subscriber
+failure after real insertion, spare-capacity enumeration, threshold resize/
+invalidation, and JSON/MemoryPack continuation. Independent source/test reviews
+pass. The old misleading duplicate-Add test was renamed: it actually tested an
+unchanged indexer assignment.
+
+| Final configuration | Core tests | Companion tests | Core lines / branches / executable methods | Companion lines / branches / executable methods |
+| --- | ---: | ---: | --- | --- |
+| Release | 1952 | 43 | 6022/6022; 2860/2860; 1258/1258 | 121/121; 62/62; 35/35 |
+| ReleaseLean | 1844 | 43 | 5828/5828; 2784/2784; 1217/1217 | 121/121; 62/62; 35/35 |
+| Debug | 1950 | 43 | 7952/7952; 2868/2868; 1258/1258 | 155/155; 62/62; 35/35 |
+
+All solution builds succeed with zero errors and no skipped tests. The unchanged
+strict gate passes with 100% reported lines, branches and executable methods,
+using both projects' existing Coverlet settings. Final acceptance reruns use the
+exact DLL/PDB/XML payloads extracted from fresh nupkg/snupkg files for Standard
+and Lean, and the built Debug inputs. Before/after hashes verify that coverage
+restores those inputs unchanged. Initial auto-pack artifacts and earlier test
+copies differed from later build outputs; they were not used for final package
+acceptance. Explicit `dotnet pack --no-build --no-restore` produced four fresh
+packages, and both test projects were rerun without rebuilding against those
+payloads. This resolves the input-identity gap without changing CI or runtime code.
+
+Coverage is collected on net10.0 per the test projects. Both runtime assemblies
+also build for netstandard2.1 in Standard/Lean. All four packages' eight DLL/XML
+pairs match the final build outputs; core Add parameters/returns/exceptions/
+remarks are checked in all four core XML files. Additional netstandard2.1 core
+replays run on .NET 10 with matching framework-specific dependency DLLs; a first
+manual attempt mixing net10 MemoryPack with netstandard types was rejected as
+an invalid dependency combination and corrected before acceptance. These replays
+are not Unity execution or a claim about every consumer runtime.
+
+Clean DocFX reports zero warnings/errors. Rendered Add parameters, returns,
+exceptions, ordering/invalidation text and guide pass inspection; CI site smoke/
+link checks pass (104 HTML pages, 1318 local href targets). Release/Lean final
+build logs have zero warnings; Debug retains the pre-existing xUnit2013 warning
+in unchanged `SwiftSlotMap.Tests.cs:138`, confirmed previously under SC-Issue-016.
+No introduced build/test/coverage/reference failure remains. Hosted CI and Unity
+were not rerun.
+
+**Allocation checks:** Hash-checked before/final probes use blocking GC,
+`DOTNET_TieredCompilation=0`, 1000 warmups and 10000 measured additions. Integer
+keys/values and spare capacity isolate notification cost. Rejected additions
+without subscribers drop from 960000 to zero allocated bytes; with collection
+and property subscribers they drop from 1200000 to zero and from 20000 callback
+invocations to none. Successful additions retain 960000/1200000 bytes and
+0/20000 callbacks respectively. The success workload restores 16384 unique pairs,
+clears while retaining capacity, warms 1000 inserts then clears again before
+measurement, avoiding growth during 10000 measured inserts. Final Standard/Lean
+net10 and matching-dependency netstandard replays agree. No universal allocation
+or latency claim is made. No maintained benchmark harness was added.
+
+- **Disposition / reopening:** Close the false-notification defect. Reopen for a
+  supported Add route that emits on rejection, loses successful notification
+  order/payload or bypasses the observable override. Preserve base resize and
+  subscriber-failure semantics. The separately reproduced object-adapter
+  exception misclassification remains open as
+  [SC-Issue-022](#sc-issue-022---object-dictionary-adapters-misclassify-callback-invalid-casts).
+
+**Related API decision — notification coverage:** Dictionary indexer assignments
+now dispatch through the observable override under
+[SC-Issue-013](#sc-issue-013---base-indexer-writes-bypass-bidirectional-bookkeeping),
+including base and dictionary-interface calls. The observable list indexer
+remains hidden; direct storage writes and inherited non-overridden mutations
+can still bypass notifications. Disposition: document the concrete notification
+surface, as described in the
+[observable guide](../api/guides/pools-and-observables.md#observable-collections).
+Reopen if an API promises complete notifications; first verify base/interface
+dispatch and subscriber-exception behavior. This limitation is separate from
+the confirmed false Add notification above.
 
 ### SC-Issue-021 - Persist collection comparers across serializers
 
