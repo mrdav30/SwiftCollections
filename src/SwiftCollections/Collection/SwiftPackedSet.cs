@@ -90,11 +90,14 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// </summary>
     /// <param name="state">The state whose non-null Items array is copied and indexed. Items must be non-null and
     /// unique under Swift default equality.</param>
-    /// <exception cref="T:System.ArgumentNullException">state.Items is null, including a default
-    /// state.</exception>
+    /// <exception cref="T:System.ArgumentNullException">state.Items is null, including a default state, or an
+    /// item is null.</exception>
+    /// <exception cref="T:System.ArgumentException">State contains equal duplicate items under Swift default
+    /// equality.</exception>
     /// <remarks>
-    /// Shallow-copies trusted items and reconstructs storage using Swift default equality. There is no custom
-    /// comparer API. Duplicate items are not validated against the dense count; supply unique non-null items.
+    /// Copies the input array and preserves dense order; referenced elements remain shared. Storage is rebuilt
+    /// using Swift default equality, with no custom comparer API. Invalid state is rejected rather than
+    /// deduplicated.
     /// </remarks>
     [MemoryPackConstructor]
     public SwiftPackedSet(SwiftArrayState<T> state)
@@ -147,8 +150,9 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// </summary>
     /// <value>The live dense backing array; only indices below Count are live.</value>
     /// <remarks>
-    /// Borrowed mutable storage, including unused slots. Mutations can reorder elements; capacity changes detach
-    /// old arrays. Writing values directly can corrupt the lookup invariant and bypass version checks.
+    /// Borrowed mutable storage, including unused slots. Mutations can reorder elements; capacity changes and
+    /// successful restoration detach old arrays. Writing values directly can corrupt the lookup invariant and
+    /// bypass version checks.
     /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
@@ -168,9 +172,11 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
     /// <value>A state containing copied live items in dense storage order; reference-type elements remain
     /// shared.</value>
     /// <remarks>
-    /// Restore rebuilds storage using Swift default equality; this type has no custom comparer API. Capacity,
-    /// hash slots and version are not serialized. Packed state requires distinct non-null values; duplicate state
-    /// entries are copied into dense storage without deduplication.
+    /// Restoration requires distinct non-null items under Swift default equality; this type has no comparer
+    /// override. It copies and indexes independent array storage before replacing the owner's storage, count
+    /// or version. Failure preserves those fields; element references remain shared and callback side effects
+    /// are not rolled back. Valid state preserves dense order. Capacity, hash slots and version are not
+    /// serialized. The setter is internal.
     /// </remarks>
     [JsonInclude]
     [MemoryPackInclude]
@@ -194,17 +200,19 @@ public sealed partial class SwiftPackedSet<T> : IStateBacked<SwiftArrayState<T>>
                 ? DefaultCapacity
                 : SwiftHashTools.NextPowerOfTwo(n);
 
-            _dense = new T[newCapacity];
-            _lookup = new SwiftDictionary<T, int>(newCapacity);
+            var dense = new T[newCapacity];
+            var lookup = new SwiftDictionary<T, int>(newCapacity);
 
             if (n > 0)
             {
-                Array.Copy(values, _dense, n);
+                Array.Copy(values, dense, n);
 
                 for (int i = 0; i < n; i++)
-                    _lookup.Add(values[i], i);
+                    ChronicleGuard.ThrowIfArgument(!lookup.Add(dense[i], i), nameof(value.Items), "Packed state contains duplicate equal items.");
             }
 
+            _dense = dense;
+            _lookup = lookup;
             _count = n;
             _version++;
         }

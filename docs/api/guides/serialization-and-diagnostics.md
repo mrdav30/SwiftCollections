@@ -321,7 +321,7 @@ replacement instance. Do not use runtime hash codes as a persisted identity.
 | `SwiftDictionary<TKey, TValue>`, `SwiftObservableDictionary<TKey, TValue>` | Reinsert pairs using Swift default key equality. The first mapping for an equal key survives. |
 | `SwiftHashSet<T>` | Reinsert non-null items using Swift default equality. The first equal item survives; null state items are skipped. |
 | `SwiftBiDictionary<T1, T2>` | Reinsert with Swift default equality in both directions. A pair is skipped if its key or reverse value already exists. |
-| `SwiftPackedSet<T>` | Copy dense items and rebuild the lookup with Swift default equality. Supply distinct non-null items; duplicate state is not repaired. There is no custom comparer API. |
+| `SwiftPackedSet<T>` | Copy items in dense order and rebuild the lookup with Swift default equality. Null arrays/items throw `ArgumentNullException`; equal duplicates throw `ArgumentException`. Copying and indexing finish before owner storage changes. There is no custom comparer API. |
 | `SwiftSparseSet`, `SwiftSparseMap<T>` | Rebuild sparse membership from dense IDs, rejecting duplicates and invalid IDs; map key/value lengths must agree. Equality is integer identity. |
 | `SwiftSlotMap<T>`, `SwiftTicketMap<T>` | Copy slot/free-index metadata and normalize the high-water mark. Free indices must be unique and disjoint from live entries; these two invariants are not validated. Ticket state also retains generation history. There is no stored comparer. |
 

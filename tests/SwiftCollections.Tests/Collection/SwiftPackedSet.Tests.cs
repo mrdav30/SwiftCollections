@@ -13,6 +13,195 @@ namespace SwiftCollections.Tests;
 
 public class SwiftPackedSetTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void StateRestore_RejectsDuplicateItems(bool separated)
+    {
+        int[] items = separated ? new[] { 1, 2, 1 } : new[] { 1, 1 };
+        int[] original = (int[])items.Clone();
+
+        Assert.Throws<ArgumentException>(() => new SwiftPackedSet<int>(new SwiftArrayState<int>(items)));
+
+        Assert.Equal(original, items);
+    }
+
+    [Fact]
+    public void StateRestore_RejectsEqualReferenceItemsUsingDefaultEquality()
+    {
+        string first = new('x', 1);
+        string second = new('x', 1);
+        Assert.NotSame(first, second);
+
+        Assert.Throws<ArgumentException>(() => new SwiftPackedSet<string>(
+            new SwiftArrayState<string>(new[] { first, second })));
+    }
+
+    [Fact]
+    public void StateRestore_DefaultStateRejectsMissingItems()
+    {
+        Assert.Throws<ArgumentNullException>(() => new SwiftPackedSet<int>(default(SwiftArrayState<int>)));
+    }
+
+    [Theory]
+    [InlineData(0, typeof(ArgumentException))]
+    [InlineData(1, typeof(ArgumentNullException))]
+    [InlineData(2, typeof(ArgumentNullException))]
+    public void StateRestore_InvalidReplacementPreservesExistingStorageAndIteration(int invalidKind, Type exceptionType)
+    {
+        var set = new SwiftPackedSet<string> { "Old", "Kept" };
+        string[] storage = set.Dense;
+        int capacity = set.Capacity;
+        var enumerator = set.GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal("Old", enumerator.Current);
+        SwiftArrayState<string> invalid = invalidKind switch
+        {
+            0 => new(new[] { "New", "New" }),
+            1 => new(new[] { "New", (string)null }),
+            _ => default
+        };
+
+        Assert.Throws(exceptionType, () => set.State = invalid);
+
+        Assert.Same(storage, set.Dense);
+        Assert.Equal(capacity, set.Capacity);
+        Assert.Equal(new[] { "Old", "Kept" }, set.ToArray());
+        Assert.Contains("Old", set);
+        Assert.Contains("Kept", set);
+        Assert.DoesNotContain("New", set);
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal("Kept", enumerator.Current);
+        Assert.False(enumerator.MoveNext());
+        Assert.True(set.Remove("Old"));
+        Assert.True(set.Add("New"));
+        Assert.Equal(new[] { "Kept", "New" }, set.ToArray());
+    }
+
+    [Fact]
+    public void StateRestore_HashFailurePreservesExistingStorageAndIteration()
+    {
+        var first = new RestoreItem(1);
+        var second = new RestoreItem(2);
+        var set = new SwiftPackedSet<RestoreItem> { first, second };
+        RestoreItem[] storage = set.Dense;
+        var enumerator = set.GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+        var throwing = new RestoreItem(4) { OnHash = () => throw new ArithmeticException("Hash failed.") };
+        var replacement = new SwiftArrayState<RestoreItem>(new[] { new RestoreItem(3), throwing });
+
+        Assert.Throws<ArithmeticException>(() => set.State = replacement);
+
+        Assert.Same(storage, set.Dense);
+        Assert.Equal(new[] { first, second }, set.ToArray());
+        Assert.Contains(first, set);
+        Assert.Contains(second, set);
+        Assert.True(enumerator.MoveNext());
+        Assert.Same(second, enumerator.Current);
+        Assert.False(enumerator.MoveNext());
+        Assert.True(set.Remove(first));
+        Assert.Single(set);
+        Assert.Same(second, set.Dense[0]);
+    }
+
+    [Fact]
+    public void StateRestore_IndexesCopiedSnapshotWhenHashCallbackReplacesInputItems()
+    {
+        var second = new RestoreItem(2);
+        var outside = new RestoreItem(3);
+        RestoreItem[] items = null;
+        var first = new RestoreItem(1) { OnHash = () => items[1] = outside };
+        items = new[] { first, second };
+
+        var set = new SwiftPackedSet<RestoreItem>(new SwiftArrayState<RestoreItem>(items));
+
+        Assert.Same(outside, items[1]);
+        Assert.Equal(new[] { first, second }, set.ToArray());
+        Assert.Contains(first, set);
+        Assert.Contains(second, set);
+        Assert.DoesNotContain(outside, set);
+    }
+
+    [Fact]
+    public void StateRestore_ValidReplacementPreservesOrderAndOwnershipAndSupportsContinuation()
+    {
+        var set = new SwiftPackedSet<int> { 1, 2 };
+        int[] oldStorage = set.Dense;
+        var oldEnumerator = set.GetEnumerator();
+        Assert.True(oldEnumerator.MoveNext());
+        int[] items = { 9, 0, 7 };
+
+        set.State = new SwiftArrayState<int>(items);
+
+        Assert.NotSame(oldStorage, set.Dense);
+        Assert.NotSame(items, set.Dense);
+        Assert.Equal(new[] { 1, 2 }, oldStorage.Take(2));
+        Assert.Equal(items, set.ToArray());
+        Assert.Throws<InvalidOperationException>(() => oldEnumerator.MoveNext());
+        items[0] = -9;
+        Assert.Contains(9, set);
+        Assert.DoesNotContain(-9, set);
+        Assert.DoesNotContain(1, set);
+        Assert.True(set.Remove(0));
+        Assert.Equal(new[] { 9, 7 }, set.ToArray());
+        Assert.True(set.Add(0));
+        Assert.False(set.Add(7));
+        Assert.Equal(new[] { 9, 7, 0 }, set.State.Items);
+    }
+
+    [Theory]
+    [InlineData(false, typeof(ArgumentException))]
+    [InlineData(true, typeof(ArgumentNullException))]
+    public void StateRestore_JsonRejectsInvalidOwnerItems(bool containsNull, Type exceptionType)
+    {
+        string[] items = containsNull ? new[] { "First", null } : new[] { "First", "First" };
+        string json = JsonSerializer.Serialize(new { State = new SwiftArrayState<string>(items) });
+
+        Assert.Throws(exceptionType, () => JsonSerializer.Deserialize<SwiftPackedSet<string>>(json));
+    }
+
+    [Fact]
+    public void StateRestore_RawJsonStateRemainsPassiveButOwnerRejectsDuplicates()
+    {
+        SwiftArrayState<int> state = JsonSerializer.Deserialize<SwiftArrayState<int>>("{\"Items\":[1,1]}");
+
+        Assert.Equal(new[] { 1, 1 }, state.Items);
+        Assert.Throws<ArgumentException>(() => new SwiftPackedSet<int>(state));
+    }
+
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
+    [Theory]
+    [InlineData(false, typeof(ArgumentException))]
+    [InlineData(true, typeof(ArgumentNullException))]
+    public void StateRestore_MemoryPackRejectsInvalidItemsWithoutReplacingExistingOwner(bool containsNull, Type exceptionType)
+    {
+        var malformed = new SwiftPackedSet<string> { "First", "Second" };
+        // Serialize malformed items without relying on the state constructor accepting them.
+        malformed.Dense[1] = containsNull ? null : "First";
+        byte[] bytes = MemoryPackSerializer.Serialize(malformed);
+        var set = new SwiftPackedSet<string> { "Old", "Kept" };
+        var original = set;
+        string[] storage = set.Dense;
+        var enumerator = set.GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+
+        Assert.Throws(exceptionType, () => MemoryPackSerializer.Deserialize<SwiftPackedSet<string>>(bytes));
+        Assert.Throws(exceptionType, () => MemoryPackSerializer.Deserialize(bytes, ref set));
+
+        Assert.Same(original, set);
+        Assert.Same(storage, set.Dense);
+        Assert.Equal(new[] { "Old", "Kept" }, set.ToArray());
+        Assert.Contains("Old", set);
+        Assert.Contains("Kept", set);
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal("Kept", enumerator.Current);
+        Assert.False(enumerator.MoveNext());
+        Assert.True(set.Remove("Old"));
+        Assert.True(set.Add("New"));
+        Assert.Equal(new[] { "Kept", "New" }, set.ToArray());
+    }
+#endif
+
     [Fact]
     public void HandlesReferenceTypes()
     {
@@ -642,4 +831,19 @@ public class SwiftPackedSetTests
     }
 
     #endregion
+    private sealed class RestoreItem : IEquatable<RestoreItem>
+    {
+        private readonly int _id;
+        internal Action OnHash { get; init; }
+
+        internal RestoreItem(int id) => _id = id;
+        public bool Equals(RestoreItem other) => other != null && _id == other._id;
+        public override bool Equals(object obj) => obj is RestoreItem other && Equals(other);
+        public override int GetHashCode()
+        {
+            OnHash?.Invoke();
+            return _id;
+        }
+    }
+
 }
