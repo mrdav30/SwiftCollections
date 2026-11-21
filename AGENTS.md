@@ -169,6 +169,9 @@ Keep hot-path collection code direct and auditable:
   loops.
 - Prefer contiguous storage and simple loops when they preserve semantics.
 - Preserve swap-back, tombstone, probing, freelist, and generation invariants.
+- Derived dictionaries must override the virtual indexer when assignment owns
+  extra invariants or notifications; base and dictionary-interface assignments
+  must reach the same mutation contract.
 - Do not split high-complexity probe or mutation methods merely to lower a
   metric if the split adds indirection or obscures invariants.
 - When complexity remains intentionally high, update

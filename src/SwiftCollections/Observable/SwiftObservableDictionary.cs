@@ -24,8 +24,9 @@ namespace SwiftCollections.Observable;
 /// <remarks>
 /// Notifications are synchronous on the calling thread after mutation; subscriber exceptions propagate without
 /// rollback and can prevent subsequent notifications. No synchronization or reentrancy guard is provided. Only
-/// the explicitly overridden/hidden mutation members raise notifications. Base-typed indexer writes, direct
-/// buffers, inherited FastClear, sort, reverse, and other non-overridden mutators can bypass notifications.
+/// the observable mutation overrides raise notifications, including indexer assignments through base and
+/// dictionary interfaces. Direct backing-storage writes and mutations without observable overrides can bypass
+/// notifications.
 /// </remarks>
 [Serializable]
 [JsonConverter(typeof(SwiftCollectionJsonConverterFactory))]
@@ -86,12 +87,12 @@ public partial class SwiftObservableDictionary<TKey, TValue> : SwiftDictionary<T
     /// <exception cref="T:System.Collections.Generic.KeyNotFoundException">The getter index/key is absent or
     /// outside the permitted range.</exception>
     /// <remarks>
-    /// A successful change raises CollectionChanged/ElementChanged first, then PropertyChanged. Events run after
-    /// mutation and exceptions do not roll it back. Hidden indexers are bypassed by base-typed calls.
+    /// A successful change raises CollectionChanged first, then PropertyChanged. Events run after mutation and
+    /// exceptions do not roll it back. Base and dictionary-interface assignments use this override.
     /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
-    public new TValue this[TKey key]
+    public override TValue this[TKey key]
     {
         get => base[key];
         set

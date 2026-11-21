@@ -1,3 +1,5 @@
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
@@ -12,6 +14,93 @@ namespace SwiftCollections.Observable.Tests;
 
 public class SwiftObservableDictionaryTests
 {
+    [Theory]
+    [InlineData("base")]
+    [InlineData("generic")]
+    [InlineData("non-generic")]
+    public void Indexer_ThroughDictionaryContracts_PreservesNotifications(string contract)
+    {
+        var dictionary = new SwiftObservableDictionary<string, int> { { "Existing", 100 } };
+        var collectionEvents = new List<NotifyCollectionChangedEventArgs>();
+        var notifications = new List<string>();
+        dictionary.CollectionChanged += (_, args) =>
+        {
+            collectionEvents.Add(args);
+            notifications.Add($"Collection:{args.Action}");
+            var item = Assert.IsType<KeyValuePair<string, int>>(args.NewItems[0]);
+            Assert.Equal(item.Value, dictionary[item.Key]);
+        };
+        dictionary.PropertyChanged += (_, args) => notifications.Add($"Property:{args.PropertyName}");
+
+        SetThroughDictionaryContract(dictionary, contract, "Existing", 200);
+
+        NotifyCollectionChangedEventArgs replaced = Assert.Single(collectionEvents);
+        Assert.Equal(NotifyCollectionChangedAction.Replace, replaced.Action);
+        Assert.Equal(new KeyValuePair<string, int>("Existing", 100), Assert.Single(replaced.OldItems.Cast<KeyValuePair<string, int>>()));
+        Assert.Equal(new KeyValuePair<string, int>("Existing", 200), Assert.Single(replaced.NewItems.Cast<KeyValuePair<string, int>>()));
+        Assert.Equal(new[] { "Collection:Replace", "Property:Entries[]" }, notifications);
+        Assert.Single(dictionary);
+        Assert.Equal(200, dictionary["Existing"]);
+        collectionEvents.Clear();
+        notifications.Clear();
+
+        SetThroughDictionaryContract(dictionary, contract, "Existing", 200);
+
+        Assert.Empty(collectionEvents);
+        Assert.Empty(notifications);
+        Assert.Single(dictionary);
+
+        SetThroughDictionaryContract(dictionary, contract, "Added", 300);
+
+        NotifyCollectionChangedEventArgs added = Assert.Single(collectionEvents);
+        Assert.Equal(NotifyCollectionChangedAction.Add, added.Action);
+        Assert.Null(added.OldItems);
+        Assert.Equal(new KeyValuePair<string, int>("Added", 300), Assert.Single(added.NewItems.Cast<KeyValuePair<string, int>>()));
+        Assert.Equal(new[] { "Collection:Add", "Property:Entries[]" }, notifications);
+        Assert.Equal(2, dictionary.Count);
+        Assert.Equal(200, dictionary["Existing"]);
+        Assert.Equal(300, dictionary["Added"]);
+    }
+
+    [Fact]
+    public void Indexer_InvalidDictionaryContractWrites_DoNotNotifyOrMutate()
+    {
+        var dictionary = new SwiftObservableDictionary<string, int> { { "Existing", 100 } };
+        IDictionary nongeneric = dictionary;
+        bool collectionChanged = false, propertyChanged = false;
+        dictionary.CollectionChanged += (_, _) => collectionChanged = true;
+        dictionary.PropertyChanged += (_, _) => propertyChanged = true;
+
+        Assert.Throws<ArgumentException>(() => nongeneric[1] = 200);
+        Assert.Throws<ArgumentException>(() => nongeneric["Existing"] = "Wrong value type");
+        Assert.Throws<ArgumentNullException>(() => nongeneric["Existing"] = null);
+        Assert.Throws<ArgumentNullException>(() => ((SwiftDictionary<string, int>)dictionary)[null] = 200);
+
+        Assert.False(collectionChanged);
+        Assert.False(propertyChanged);
+        Assert.Single(dictionary);
+        Assert.Equal(100, dictionary["Existing"]);
+    }
+
+    private static void SetThroughDictionaryContract(SwiftObservableDictionary<string, int> dictionary,
+        string contract, string key, int value)
+    {
+        switch (contract)
+        {
+            case "base":
+                ((SwiftDictionary<string, int>)dictionary)[key] = value;
+                break;
+            case "generic":
+                ((IDictionary<string, int>)dictionary)[key] = value;
+                break;
+            case "non-generic":
+                ((IDictionary)dictionary)[key] = value;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(contract));
+        }
+    }
+
     [Fact]
     public void Add_RaisesCollectionChangedEvent()
     {

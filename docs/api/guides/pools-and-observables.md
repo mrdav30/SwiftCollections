@@ -64,5 +64,8 @@ view is released, and avoid changing authoritative simulation decisions from
 notifications whose call order the host has not defined.
 Notifications run synchronously after mutation. A handler exception propagates
 without rolling the mutation back and can prevent later notifications. Only the
-observable overrides and hidden indexers emit events; base-typed indexer writes,
-direct storage writes and inherited non-overridden mutators can bypass them.
+observable mutation members emit events. Dictionary indexer assignments use the
+observable override through base, generic dictionary and non-generic dictionary
+references. The observable list indexer remains hidden; base-typed list indexer
+writes, direct storage writes and inherited non-overridden mutators can bypass
+notifications.

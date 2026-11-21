@@ -268,11 +268,12 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// <exception cref="T:System.ArgumentNullException">A null key is inserted by the setter.</exception>
     /// <remarks>
     /// Getting a value with a key that does not exist will throw an exception. Setting a value for a key that
-    /// does not exist will add a new entry with the specified key and value.
+    /// does not exist will add a new entry with the specified key and value. Derived indexer assignment rules
+    /// apply through the base type and dictionary interfaces.
     /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
-    public TValue this[TKey key]
+    public virtual TValue this[TKey key]
     {
         get
         {
@@ -300,8 +301,8 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// </summary>
     /// <param name="obj">The key object; null is rejected and incompatible types are treated as absent by
     /// lookup/removal.</param>
-    /// <value>The indexed element. Uses the concrete public indexer after converting supplied values to its
-    /// generic types.</value>
+    /// <value>The stored value, or null on get for an absent or incompatible key. Assignment converts supplied
+    /// values to their generic types and dispatches to the concrete indexer override.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     object? IDictionary.this[object obj]

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -12,6 +13,161 @@ namespace SwiftCollections.Tests;
 
 public class SwiftBiDictionaryTests
 {
+    [Fact]
+    public void IndexerDispatch_EquivalentKeyUpdateRetainsStoredKeyInReverseMapping()
+    {
+        string originalKey = new("One".ToCharArray());
+        var dictionary = new SwiftBiDictionary<string, string>(StringComparer.OrdinalIgnoreCase, StringComparer.Ordinal)
+        {
+            { originalKey, "First" }
+        };
+
+        dictionary["oNe"] = "Third";
+
+        Assert.Same(originalKey, dictionary.GetKey("Third"));
+        ((SwiftDictionary<string, string>)dictionary).SetComparer(StringComparer.Ordinal);
+        Assert.Equal("Third", dictionary[dictionary.GetKey("Third")]);
+        Assert.False(dictionary.ContainsValue("First"));
+        Assert.Single(dictionary);
+    }
+
+    [Theory]
+    [InlineData("base")]
+    [InlineData("generic")]
+    [InlineData("non-generic")]
+    public void IndexerDispatch_MaintainsBothDirectionsAndRejectsDuplicateValues(string dispatch)
+    {
+        var dictionary = new SwiftBiDictionary<int, int> { { 1, 10 } };
+
+        var beforeUpdate = dictionary.GetEnumerator();
+        Assert.True(beforeUpdate.MoveNext());
+        SetViaDispatch(dictionary, dispatch, 1, 20);
+        Assert.Throws<InvalidOperationException>(() => beforeUpdate.MoveNext());
+        Assert.Single(dictionary);
+        Assert.Equal(20, dictionary[1]);
+        Assert.False(dictionary.ContainsValue(10));
+        Assert.Equal(1, dictionary.GetKey(20));
+
+        SetViaDispatch(dictionary, dispatch, 2, 30);
+        Assert.Equal(2, dictionary.Count);
+        Assert.Equal(30, dictionary[2]);
+        Assert.Equal(2, dictionary.GetKey(30));
+
+        var enumerator = dictionary.GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+        SetViaDispatch(dictionary, dispatch, 1, 20);
+        Assert.Throws<ArgumentException>(() => SetViaDispatch(dictionary, dispatch, 1, 30));
+        Assert.Throws<ArgumentException>(() => SetViaDispatch(dictionary, dispatch, 3, 20));
+        Assert.True(enumerator.MoveNext());
+        Assert.False(enumerator.MoveNext());
+
+        Assert.Equal(2, dictionary.Count);
+        Assert.Equal(20, dictionary[1]);
+        Assert.Equal(30, dictionary[2]);
+        Assert.False(dictionary.ContainsKey(3));
+        Assert.False(dictionary.ContainsValue(10));
+        Assert.Equal(1, dictionary.GetKey(20));
+        Assert.Equal(2, dictionary.GetKey(30));
+
+        var pairs = (ICollection<KeyValuePair<int, int>>)dictionary;
+        Assert.True(pairs.Remove(new KeyValuePair<int, int>(1, 20)));
+        Assert.False(dictionary.ContainsValue(20));
+        pairs.Add(new KeyValuePair<int, int>(3, 40));
+        Assert.Equal(3, dictionary.GetKey(40));
+        ((IDictionary)dictionary).Clear();
+        Assert.Empty(dictionary);
+        Assert.False(dictionary.ContainsValue(30));
+        Assert.False(dictionary.ContainsValue(40));
+    }
+
+    [Theory]
+    [InlineData("base")]
+    [InlineData("generic")]
+    [InlineData("non-generic")]
+    public void IndexerDispatch_UsesForwardAndReverseComparers(string dispatch)
+    {
+        var dictionary = new SwiftBiDictionary<string, string>(StringComparer.OrdinalIgnoreCase, StringComparer.OrdinalIgnoreCase)
+        {
+            { "One", "First" },
+            { "Two", "Second" }
+        };
+
+        SetViaDispatch(dictionary, dispatch, "oNe", "Third");
+        Assert.Equal("Third", dictionary["ONE"]);
+        Assert.False(dictionary.ContainsValue("FIRST"));
+        Assert.True(StringComparer.OrdinalIgnoreCase.Equals("One", dictionary.GetKey("THIRD")));
+
+        var enumerator = dictionary.GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+        SetViaDispatch(dictionary, dispatch, "ONE", "THIRD");
+        Assert.Equal("Third", dictionary["one"]);
+        Assert.Throws<ArgumentException>(() => SetViaDispatch(dictionary, dispatch, "one", "SECOND"));
+        Assert.Throws<ArgumentException>(() => SetViaDispatch(dictionary, dispatch, "Three", "third"));
+        Assert.True(enumerator.MoveNext());
+        Assert.False(enumerator.MoveNext());
+
+        Assert.Equal(2, dictionary.Count);
+        Assert.Equal("Third", dictionary["one"]);
+        Assert.Equal("Second", dictionary["two"]);
+        Assert.False(dictionary.ContainsKey("Three"));
+        Assert.False(dictionary.ContainsValue("First"));
+        Assert.True(StringComparer.OrdinalIgnoreCase.Equals("One", dictionary.GetKey("third")));
+        Assert.True(StringComparer.OrdinalIgnoreCase.Equals("Two", dictionary.GetKey("second")));
+    }
+
+    [Theory]
+    [InlineData("concrete")]
+    [InlineData("base")]
+    [InlineData("generic")]
+    [InlineData("non-generic")]
+    public void IndexerDispatch_RejectsNullKeysAndValuesBeforeMutation(string dispatch)
+    {
+        var dictionary = new SwiftBiDictionary<string, string>
+        {
+            { "One", "First" },
+            { "Two", "Second" }
+        };
+
+        Assert.Throws<ArgumentNullException>(() => SetViaDispatch(dictionary, dispatch, null, "Third"));
+        Assert.Throws<ArgumentNullException>(() => SetViaDispatch(dictionary, dispatch, "One", null));
+        Assert.Equal("First", dictionary["One"]);
+        Assert.Equal("One", dictionary.GetKey("First"));
+        Assert.Throws<ArgumentNullException>(() => SetViaDispatch(dictionary, dispatch, "Three", null));
+        Assert.Equal(2, dictionary.Count);
+        Assert.False(dictionary.ContainsKey("Three"));
+        Assert.Equal("First", dictionary["One"]);
+        Assert.Equal("Second", dictionary["Two"]);
+        Assert.Equal("One", dictionary.GetKey("First"));
+        Assert.Equal("Two", dictionary.GetKey("Second"));
+    }
+
+    [Fact]
+    public void IndexerDispatch_NonGenericTypeErrorsLeaveBothDirectionsUnchanged()
+    {
+        var dictionary = new SwiftBiDictionary<string, string> { { "One", "First" } };
+        var adapter = (IDictionary)dictionary;
+
+        Assert.Throws<ArgumentException>(() => adapter[1] = "Second");
+        Assert.Throws<ArgumentException>(() => adapter["One"] = 2);
+        Assert.Single(dictionary);
+        Assert.Equal("First", dictionary["One"]);
+        Assert.Equal("One", dictionary.GetKey("First"));
+        Assert.False(dictionary.ContainsValue("Second"));
+    }
+
+    private static void SetViaDispatch<TKey, TValue>(SwiftBiDictionary<TKey, TValue> dictionary,
+        string dispatch, TKey key, TValue value) where TKey : notnull where TValue : notnull
+    {
+        switch (dispatch)
+        {
+            case "concrete": dictionary[key] = value; break;
+            case "base": ((SwiftDictionary<TKey, TValue>)dictionary)[key] = value; break;
+            case "generic": ((IDictionary<TKey, TValue>)dictionary)[key] = value; break;
+            case "non-generic": ((IDictionary)dictionary)[key] = value; break;
+            default: throw new ArgumentOutOfRangeException(nameof(dispatch));
+        }
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

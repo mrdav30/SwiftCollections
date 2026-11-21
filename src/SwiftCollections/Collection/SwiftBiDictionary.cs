@@ -30,8 +30,8 @@ namespace SwiftCollections;
 /// comparer changes can reorder entries. Recognized string/object comparers may switch to randomized
 /// collision-hardening after long probes; cross-process iteration order is not guaranteed. Custom comparers
 /// define their own determinism. The reverse-map lock does not make the entire bidirectional dictionary
-/// thread-safe. Mutations through base-typed APIs can bypass reverse-map maintenance; use the bidirectional
-/// members consistently.
+/// thread-safe. Base and dictionary-interface mutations dispatch to the bidirectional indexer, Add, Remove and
+/// Clear overrides.
 /// </remarks>
 [Serializable]
 [JsonConverter(typeof(SwiftCollectionJsonConverterFactory))]
@@ -159,27 +159,30 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
     /// Gets or sets the value associated with the specified key. Ensures that each value is unique within the
     /// collection.
     /// </summary>
-    /// <param name="key">The key to locate or store. Null is rejected.</param>
-    /// <returns>The value associated with the specified key.</returns>
+    /// <param name="key">The key to locate or store; null is treated as absent on get and rejected on
+    /// assignment.</param>
     /// <value>The stored value for key; assignment replaces an existing value or inserts an absent key.</value>
     /// <exception cref="T:System.Collections.Generic.KeyNotFoundException">No matching key exists on
     /// get.</exception>
-    /// <exception cref="T:System.ArgumentNullException">key or a required reverse value is null.</exception>
+    /// <exception cref="T:System.ArgumentNullException">A null key or reverse value is assigned.</exception>
     /// <exception cref="T:System.ArgumentException">The assigned value already belongs to another
     /// key.</exception>
     /// <remarks>
-    /// Setting a value that already exists in the collection will result in an exception, as each value must be
-    /// unique. If the key does not exist, a new key-value pair is added. If the key exists and the value is
-    /// unchanged, no operation is performed.
+    /// Null keys/values and values already assigned to another key are rejected before mutation. If the key
+    /// does not exist, a new pair is added. A value equal under the reverse comparer is a no-op. Replacing a
+    /// value retains the stored forward key in the reverse mapping. These rules also apply through base and
+    /// dictionary interfaces. Exceptions from application comparers can leave partial changes; no general
+    /// rollback is provided.
     /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
-    public new T2 this[T1 key]
+    public override T2 this[T1 key]
     {
         get => base[key];
         set
         {
             ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
+            ChronicleGuard.ThrowIfNullGeneric(value, nameof(value));
 
             lock (ReverseSyncRoot)
             {
@@ -200,7 +203,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
                     _entries[index].Value = value;
 
                     // Insert new reverse mapping
-                    _reverseMap.Add(value, key);
+                    _reverseMap.Add(value, _entries[index].Key);
 
                     _version++;
                 }
@@ -211,10 +214,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
 
                     CheckLoadThreshold();
 
-                    bool added = InsertIfNotExist(key, value);
-
-                    if (added)
-                        _reverseMap.Add(value, key);
+                    InsertIfNotExist(key, value);
                 }
             }
         }
@@ -311,12 +311,7 @@ public partial class SwiftBiDictionary<T1, T2> : SwiftDictionary<T1, T2>, IState
             if (_reverseMap.ContainsKey(value))
                 return false;
 
-            bool added = base.Add(key, value);
-
-            if (added)
-                _reverseMap.Add(value, key);
-
-            return added;
+            return base.Add(key, value);
         }
     }
 
