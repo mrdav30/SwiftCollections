@@ -178,6 +178,19 @@ Keep hot-path collection code direct and auditable:
   `docs/complexity-exceptions.md` with coverage and rationale. That register
   records complexity exceptions only; it cannot waive coverage requirements.
 
+## Pool Lifecycle Rules
+
+- `SwiftCollectionPool<TCollection, TItem>` and `SwiftSparseMapPool<T>` share
+  `SwiftPoolLifecycle<T>`; keep it in a mutable, non-readonly field. Copies or
+  defensive copies would separate disposal and backing-pool replacement.
+- Keep factory/reset delegates static and cached. A backing pool must not retain
+  its wrapper through a callback; existing finalizer tests retain backing pools.
+- Guard backing-pool access before lazy initialization. `Flush` is reusable,
+  `Dispose` is terminal, and unused cleanup must not initialize a backing pool.
+- Preserve generic-base null rejection, typed null-return no-ops, and disposal
+  checks before null handling. Retain thin `Release` overrides where parameter
+  names are part of the existing named-argument API.
+
 ## Spatial Query Rules
 
 The query structures are runtime indexes, not passive data bags:

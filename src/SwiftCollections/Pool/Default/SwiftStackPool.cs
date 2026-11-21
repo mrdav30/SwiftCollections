@@ -5,9 +5,7 @@
 // See LICENSE file in the project root for full license information.
 //=======================================================================
 
-using System;
 using System.Threading;
-using Chronicler.Diagnostics;
 using SwiftCollections.Lazy;
 
 namespace SwiftCollections.Pool;
@@ -22,7 +20,7 @@ namespace SwiftCollections.Pool;
 /// are not detected and can break ownership/counts. Callback exceptions propagate; operations are not
 /// transactional. Use external synchronization for lifecycle changes and host callbacks.
 /// </remarks>
-public sealed class SwiftStackPool<T> : SwiftCollectionPool<SwiftStack<T>, T>, IDisposable
+public sealed class SwiftStackPool<T> : SwiftCollectionPool<SwiftStack<T>, T>
 {
     #region Singleton Instance
 
@@ -45,32 +43,10 @@ public sealed class SwiftStackPool<T> : SwiftCollectionPool<SwiftStack<T>, T>, I
 
     #endregion
 
-    #region Fields
-
     /// <summary>
-    /// Tracks whether the pool has been disposed.
+    /// Creates a lazy pool for stack instances.
     /// </summary>
-    private volatile bool _disposed;
-
-    #endregion
-
-    #region Methods
-
-    /// <summary>
-    /// Rents a stack instance from the pool. If the pool is empty, a new stack is created.
-    /// </summary>
-    /// <returns>A cached or newly created object for exclusive caller use; return it once to this pool.</returns>
-    /// <exception cref="T:System.ObjectDisposedException">This pool has been disposed.</exception>
-    /// <remarks>
-    /// Renting can invoke the factory and get callback. Collection wrappers ordinarily clear contents when
-    /// released, preserving capacity.
-    /// </remarks>
-    public override SwiftStack<T> Rent()
-    {
-        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftStackPool<T>));
-
-        return base.Rent();
-    }
+    public SwiftStackPool() { }
 
     /// <summary>
     /// Releases a stack instance back to the pool for reuse.
@@ -84,63 +60,5 @@ public sealed class SwiftStackPool<T> : SwiftCollectionPool<SwiftStack<T>, T>, I
     /// callback. Collection wrappers clear logical contents and preserve capacity; this does not promise full
     /// retained-reference cleanup of unused storage.
     /// </remarks>
-    public override void Release(SwiftStack<T> stack)
-    {
-        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftStackPool<T>));
-
-        if (stack == null) return;
-
-        base.Release(stack);
-    }
-
-    /// <summary>
-    /// Clears all pooled stacks from the pool.
-    /// </summary>
-    /// <remarks>
-    /// Drops cached inactive collections without reclaiming checked-out rentals or instantiating an unused
-    /// backing pool. Outstanding rentals remain valid and counted by the same backing pool. The wrapper remains
-    /// reusable unless disposed; synchronize lifecycle changes and return each rental exactly once.
-    /// </remarks>
-    public override void Clear()
-    {
-        if (_disposed) return;
-
-        base.Clear();
-    }
-
-    #endregion
-
-    #region IDisposable Implementation
-
-    /// <summary>
-    /// Releases all resources used by the SwiftStackPool.
-    /// </summary>
-    /// <remarks>
-    /// Repeated calls do nothing. Clears initialized cached collections and disposes backing pools. Finish
-    /// rentals/leases before disposal; returning to an old disposed pool throws. Shared singleton instances are
-    /// not recreated.
-    /// </remarks>
-    public void Dispose()
-    {
-        if (_disposed)
-            return;
-
-        Clear();
-        base.Flush();
-
-        _disposed = true;
-
-        GC.SuppressFinalize(this);
-    }
-
-    /// <summary>
-    /// Releases the resources used by the SwiftStackPool instance.
-    /// </summary>
-    /// <remarks>
-    /// This finalizer ensures that unmanaged resources are released if Dispose was not called explicitly. It is
-    /// recommended to call Dispose to release resources deterministically.
-    /// </remarks>
-    ~SwiftStackPool() => Dispose();
-
-    #endregion
+    public override void Release(SwiftStack<T> stack) => ReleaseTyped(stack);
 }

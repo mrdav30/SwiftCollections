@@ -7,7 +7,6 @@
 
 using System;
 using System.Threading;
-using Chronicler.Diagnostics;
 using SwiftCollections.Lazy;
 
 namespace SwiftCollections.Pool;
@@ -45,146 +44,79 @@ public sealed class SwiftSparseMapPool<T> : IDisposable
 
     #endregion
 
-    #region Fields
+    private static readonly Func<SwiftObjectPool<SwiftSparseMap<T>>> _createPool = static () =>
+        new(static () => new SwiftSparseMap<T>(), actionOnRelease: static map => map.Clear());
 
-    private readonly SwiftLazyDisposable<SwiftObjectPool<SwiftSparseMap<T>>> _lazyCollectionPool =
-        new(() =>
-        {
-            return new SwiftObjectPool<SwiftSparseMap<T>>(
-                createFunc: () => new SwiftSparseMap<T>(),
-                actionOnRelease: map => map.Clear()
-            );
-        });
+    private SwiftPoolLifecycle<SwiftSparseMap<T>> _lifecycle;
 
     /// <summary>
-    /// Tracks whether the pool has been disposed.
+    /// Creates a lazy pool for sparse map instances.
     /// </summary>
-    private volatile bool _disposed;
-
-    #endregion
-
-    #region Properties
-
-    /// <summary>
-    /// Gets the underlying object pool used to manage sparse map instances.
-    /// </summary>
-    /// <value>The lazily created backing object pool; accessing this property can allocate it.</value>
-    /// <remarks>
-    /// The returned pool is owned by this wrapper. Retaining it across Flush or Dispose can leave a disposed
-    /// backing pool. Direct access bypasses wrapper lifecycle checks.
-    /// </remarks>
-    public SwiftObjectPool<SwiftSparseMap<T>> CollectionPool => _lazyCollectionPool.Value;
-
-    #endregion
-
-    #region Methods
-
-    /// <summary>
-    /// Rents a sparse map instance from the pool. If the pool is empty, a new sparse map is created.
-    /// </summary>
-    /// <returns>A cached or newly created object for exclusive caller use; return it once to this pool.</returns>
-    /// <exception cref="T:System.ObjectDisposedException">This pool has been disposed.</exception>
-    /// <remarks>
-    /// Renting can invoke the factory and get callback. Collection wrappers ordinarily clear contents when
-    /// released, preserving capacity.
-    /// </remarks>
-    public SwiftSparseMap<T> Rent()
+    public SwiftSparseMapPool()
     {
-        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftSparseMapPool<T>));
-
-        return CollectionPool.Rent();
+        _lifecycle = new SwiftPoolLifecycle<SwiftSparseMap<T>>(_createPool);
     }
 
     /// <summary>
-    /// Rents a sparse map from the pool and wraps it in a <see cref="T:SwiftCollections.Pool.SwiftPooledObject`1"
-    /// /> for automatic release.
+    /// Gets this owner's lazily created backing object pool.
     /// </summary>
-    /// <param name="value">Receives the rented object; use it only until the returned lease is disposed.</param>
-    /// <returns>An owning lease whose disposal returns the out object at most once.</returns>
-    /// <exception cref="T:System.ObjectDisposedException">This pool has been disposed.</exception>
+    /// <value>The current backing pool; first access initializes it.</value>
+    /// <exception cref="ObjectDisposedException">This owner has been disposed.</exception>
     /// <remarks>
-    /// Renting can invoke the factory and get callback. Collection wrappers ordinarily clear contents when
-    /// released, preserving capacity.
+    /// Finish rentals before disposal. A retained backing pool is disposed with this owner. Direct access bypasses
+    /// wrapper null handling; do not dispose the backing pool directly.
     /// </remarks>
-    public SwiftPooledObject<SwiftSparseMap<T>> Get(out SwiftSparseMap<T> value)
-    {
-        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftSparseMapPool<T>));
-
-        return CollectionPool.Rent(out value);
-    }
+    public SwiftObjectPool<SwiftSparseMap<T>> CollectionPool => _lifecycle.GetPool(this);
 
     /// <summary>
-    /// Releases a sparse map instance back to the pool for reuse.
+    /// Rents a sparse map for exclusive caller use.
     /// </summary>
-    /// <param name="map">The object to return exactly once; do not use it afterward. Null is ignored by this
-    /// wrapper.</param>
-    /// <exception cref="T:System.ObjectDisposedException">The pool is disposed; wrapper null handling occurs
-    /// after this check.</exception>
-    /// <remarks>
-    /// Ownership returns to the pool. The release callback runs before caching; overflow invokes the destroy
-    /// callback. Collection wrappers clear logical contents and preserve capacity; this does not promise full
-    /// retained-reference cleanup of unused storage.
-    /// </remarks>
-    public void Release(SwiftSparseMap<T> map)
-    {
-        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftSparseMapPool<T>));
-
-        if (map == null) return;
-
-        CollectionPool.Release(map);
-    }
+    /// <returns>A cached or newly constructed map; return it once to this owner.</returns>
+    /// <exception cref="ObjectDisposedException">This owner has been disposed.</exception>
+    public SwiftSparseMap<T> Rent() => CollectionPool.Rent();
 
     /// <summary>
-    /// Clears all pooled sparse maps from the pool.
+    /// Rents a sparse map with an owning lease that returns it when disposed.
     /// </summary>
-    /// <remarks>
-    /// Drops cached inactive collections without reclaiming checked-out rentals or instantiating an unused
-    /// backing pool. Outstanding rentals remain valid and counted by the same backing pool. The wrapper remains
-    /// reusable unless disposed; synchronize lifecycle changes and return each rental exactly once.
-    /// </remarks>
-    public void Clear()
-    {
-        if (_disposed || !_lazyCollectionPool.IsValueCreated)
-            return;
-
-        _lazyCollectionPool.Value.Clear();
-    }
-
-    #endregion
-
-    #region IDisposable Implementation
+    /// <param name="value">Receives the map, valid until the lease is disposed.</param>
+    /// <returns>A lease that attempts to return the map at most once.</returns>
+    /// <exception cref="ObjectDisposedException">This owner has been disposed.</exception>
+    public SwiftPooledObject<SwiftSparseMap<T>> Get(out SwiftSparseMap<T> value) => CollectionPool.Rent(out value);
 
     /// <summary>
-    /// Releases all resources used by the SwiftSparseMapPool.
+    /// Clears and returns a sparse map to its backing pool.
+    /// </summary>
+    /// <param name="map">The map to return exactly once; null is ignored while the owner is usable.</param>
+    /// <exception cref="ObjectDisposedException">This owner has been disposed; checked before null handling.</exception>
+    /// <remarks>
+    /// Logical clearing preserves capacity and does not promise full retained-reference cleanup. Foreign and
+    /// duplicate returns are not validated. Reset failures propagate without transactional rollback.
+    /// </remarks>
+    public void Release(SwiftSparseMap<T> map) => _lifecycle.Release(map, this, ignoreNullReturns: true);
+
+    /// <summary>
+    /// Removes cached inactive maps without initializing an unused backing pool.
     /// </summary>
     /// <remarks>
-    /// Repeated calls do nothing. Clears initialized cached collections and disposes backing pools. Finish
-    /// rentals/leases before disposal; returning to an old disposed pool throws. Shared singleton instances are
-    /// not recreated.
+    /// Outstanding rentals remain valid and counted by the same backing pool. Does nothing after disposal.
+    /// </remarks>
+    public void Clear() => _lifecycle.Clear();
+
+    /// <summary>
+    /// Clears initialized cached maps and permanently closes this owner.
+    /// </summary>
+    /// <remarks>
+    /// Repeated calls do nothing and an unused backing pool is not initialized. Finish rentals first; returning
+    /// an old rental or accessing the backing pool after disposal throws. Shared owners are not recreated.
     /// </remarks>
     public void Dispose()
     {
-        if (_disposed)
-            return;
-
-        Clear();
-
-        if (_lazyCollectionPool.IsValueCreated)
-            _lazyCollectionPool.Value.Dispose();
-
-        _disposed = true;
-
+        _lifecycle.Dispose();
         GC.SuppressFinalize(this);
     }
 
     /// <summary>
-    /// Releases the resources used by the SwiftSparseMapPool instance.
+    /// Closes an abandoned owner and disposes its initialized backing pool.
     /// </summary>
-    /// <remarks>
-    /// This finalizer ensures that unmanaged resources are released if Dispose was not called explicitly. It is
-    /// recommended to call Dispose to release resources deterministically.
-    /// </remarks>
     ~SwiftSparseMapPool() => Dispose();
-
-    #endregion
 }

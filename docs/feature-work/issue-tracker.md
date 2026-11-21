@@ -72,28 +72,6 @@ diagnosis, decisions and reopening criteria stay with their owning issue.
 
 ## Active Issues
 
-### SC-Issue-017 - Disposed collection wrappers still rent through Get
-
-- **Status / priority:** Confirmed / P2; open.
-- **Discovered:** 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`.
-- **Affected owners / impact:** SwiftCollectionPool.Get bypasses derived disposal gates after Flush replaces the backing lazy pool; ordinary Rent correctly throws.
-- **Evidence environment:** Windows x64, SDK 10.0.302, runtime 10.0.10, Release with published dependencies (`UseLocalLsfStack=false`).
-
-**Reproducer** (use the console setup above):
-
-```csharp
-var p = new SwiftCollections.Pool.SwiftListPool<int>();
-p.Dispose();
-using var lease = p.Get(out var list); // succeeds
-Console.WriteLine(list.Count);        // 0
-// p.Rent() throws ObjectDisposedException.
-```
-
-Expected: the lease path follows the same disposal gate as Rent. Dispose/Flush
-replaces the lazy backing pool, and inherited Get bypasses the wrapper flag.
-
-- **Next action:** Enforce consistent lifecycle checks in the existing owner and cover all wrappers. SwiftSparseMapPool has its own guarded Get and is unaffected.
-
 ### SC-Issue-018 - Duplicate dictionary Add emits a false change notification
 
 - **Status / priority:** Confirmed / P2; open.
@@ -205,6 +183,7 @@ they do not claim a fresh rerun or package release.
 
 | Issue                                                                                          | Resolved/closed | Outcome                                                                                                                                                                                                                                                              | Evidence                                                                                                                                                                                                       |
 | ---------------------------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SC-Issue-017 | 2026-11-21 | **Verified fix and consolidation:** one embedded lifecycle owner guards all rental/backing-access routes across six inherited collection pools and the sparse-map pool. Flush stays reusable; Dispose is terminal. Duplicate lifecycle code is removed while named Release parameters remain compatible. Standard/Lean/Debug pass strict 100% reported coverage; constructor/disposal allocation improves in the tested workloads. | [Resolution, compatibility and lifecycle decisions](#sc-issue-017---disposed-collection-wrappers-still-rent-through-get), [regressions](../../tests/SwiftCollections.Tests/Pool/SwiftPoolLifecycle.Tests.cs) |
 | SC-Issue-016 | 2026-11-21 | **Verified fix:** object-pool Clear deducts only popped inactive objects before destruction, retaining outstanding rentals and correct partial-failure accounting. Shared wrapper contracts agree. Standard/Lean/Debug tests and strict 100% reported line/branch/executable-method coverage pass; the unchanged slot-map analyzer warning is recorded separately. | [Resolution, verification and contract dispositions](#sc-issue-016---pool-clear-loses-outstanding-rental-counts), [regressions](../../tests/SwiftCollections.Tests/Pool/SwiftObjectPool.Tests.cs) |
 | SC-Issue-015 | 2026-11-21 | **Verified fix; storage tradeoff accepted:** slot-linked free ownership keeps reinsertion O(1), preserves remaining reuse order and eliminates stale metadata growth. The user accepted the measured extra storage for small value types; state schemas remain unchanged. Standard/Lean/Debug tests and strict 100% reported line/branch/executable-method coverage pass. Trusted-state validation policy remains separately deferred. | [Resolution, measurements and reopening criteria](#sc-issue-015---slot-reinsertion-leaves-an-allocated-slot-on-the-free-stack), [regressions](../../tests/SwiftCollections.Tests/Collection/SwiftSlotMap.Tests.cs) |
 | <a id="sc-issue-014---packed-set-duplicate-state-breaks-membership-invariants"></a>SC-Issue-014 | 2026-11-21 | **Verified fix; rejection policy:** packed-set restoration rejects equal duplicate items with `ArgumentException` and null arrays/items with `ArgumentNullException`. It preserves dense order rather than compacting or discarding entries; this enforces the existing unique/non-null input contract. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `10b5f5c685cf9e58bca6086894a547326a514f47`, Windows x64, SDK 10.0.302/runtime 10.0.10, Release/published dependencies (`UseLocalLsfStack=false`). Portable reproducer: `var s = new SwiftPackedSet<int>(new SwiftArrayState<int>(new[] { 1, 1 })); s.Remove(1); Console.WriteLine($"{s.Count}; {s.Contains(1)}");` previously printed `1; False`; construction now throws before publishing an owner. **Root cause:** restoration ignored failed lookup insertion while counting every copied dense item. It now checks the existing insertion result, builds replacement storage locally and publishes storage/count/version only after success. Indexing the copied dense snapshot also prevents element hash callbacks that replace input-array entries from making lookup disagree with dense storage. Failed replacement preserves owned fields and live enumerators; references remain shallow and element callback side effects are not rolled back. Raw DTOs remain passive; schemas and normal Add/Contains/Remove paths are unchanged. The 15-case regression group produced 10 behavioral failures and five passing controls before correction; all 15 Standard/13 Lean cases now pass. Coverage includes duplicates/equal references, zero/default/null input, failure preservation, throwing hash callbacks, input-array mutation, valid order/ownership/continuation, JSON and direct/ref-existing MemoryPack. Release/ReleaseLean/Debug solution builds pass with zero warnings/errors; core tests 1849/1743/1847 and companion 43 each pass without skips. The existing strict gate passes with **100% reported lines/branches/executable methods**: core lines 6078/6078, 5884/5884, 8024/8024; branches 2880/2880, 2804/2804, 2888/2888; methods 1261/1261, 1220/1220, 1261/1261. Companion lines 121/121, 121/121, 155/155; branches 62/62 and methods 35/35 in each configuration. Both assemblies build for `netstandard2.1` and `net10.0` in Standard/Lean; all four packages' eight DLL/XML pairs match build output and XML contracts parse. Clean DocFX reports zero warnings/errors; rendered constructor exceptions, state/property lifetime contracts and guide pass inspection, along with CI site smoke checks (104 pages, 1320 local href targets). Hash-checked final Standard/Lean probes each allocate 371712 bytes for 128 restores of 32 integers (2904 bytes/restore), matching the measured pre-fix Standard baseline; 10000 warm remove/add/contains cycles allocate zero bytes before and after. No latency claim. No introduced build/test/reference failure; hosted CI and Unity were not rerun. Reopen for a supported restore violating membership, count, order or storage ownership, or an explicit requirement to normalize duplicates instead of rejecting them. | [Regressions](../../tests/SwiftCollections.Tests/Collection/SwiftPackedSet.Tests.cs), [restore contracts and implementation](../../src/SwiftCollections/Collection/SwiftPackedSet.cs), [serialization guide](../api/guides/serialization-and-diagnostics.md#trusted-state-and-comparers) |
@@ -434,6 +413,128 @@ rental ownership, with corresponding lifecycle and failure-state tests.
 - **Disposition / reopening:** Close the confirmed Clear defect. Reopen for a
   supported, synchronized Clear/return sequence that loses outstanding counts,
   breaks reuse or misaccounts a popped object when destruction throws.
+
+### SC-Issue-017 - Disposed collection wrappers still rent through Get
+
+- **Status / priority:** Resolved 2026-11-21 / P2; verified fix and lifecycle consolidation.
+- **Discovered:** 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`;
+  reproduced before this fix at `5c3a7f612eb140b23dbe74e64bbf409426123f7c`.
+- **Evidence environment:** Windows x64, SDK 10.0.302, runtime 10.0.10,
+  published dependencies (`UseLocalLsfStack=false`,
+  `DisableTransitiveProjectReferences=false`).
+
+**Portable reproducer** (use the console setup above):
+
+```csharp
+var p = new SwiftCollections.Pool.SwiftListPool<int>();
+p.Dispose();
+using var lease = p.Get(out var list);
+Console.WriteLine(list.Count);
+```
+
+Before: succeeds and prints `0`, although Rent throws. After: Get throws
+`ObjectDisposedException` before initializing or accessing a backing pool.
+CollectionPool access after disposal also throws, closing a second revival path.
+
+**Root cause and resolution:** Disposal flags lived in six derived wrappers,
+while inherited Get and the backing-pool getter bypassed them. The existing
+collection base and the standalone sparse-map pool now embed one mutable
+`SwiftPoolLifecycle<T>` struct. Its nullable volatile lazy reference is the
+single lifecycle state: null is terminal. Each operation captures it once;
+disposal clears initialized cached objects, disposes the backing pool, then
+publishes null. Clear and Flush do nothing after disposal and never initialize
+unused backing storage. Flush remains reusable while the owner is alive.
+Static cached factories/reset callbacks do not capture wrappers or add helper
+objects. The existing real-GC tests verify finalization with retained backing
+pool references. SparseMap still does not implement ICollection and does not gain
+a Flush API; it shares lifecycle behavior without a new public base type.
+
+Removed duplicated flags, Rent/Clear/Dispose/finalizers and the list's redundant
+direct Clear before the release callback. Thin Release overrides remain to
+preserve original named parameters and typed null-ignore behavior; the generic
+base retains null rejection. Disposal is checked first. The generic base now
+implements IDisposable and owns inherited cleanup. Existing type arity,
+constraints, protected construction and virtual rental/release/cleanup slots
+remain. ObjectDisposedException names identify the actual owner, preserving
+Queue/PackedSet expectations and correcting List's old `SwiftList` name to
+`SwiftListPool`. Authored pool source drops from 1229 to 712 lines including
+comments (net -517); one internal helper file and no public type were added.
+
+See [shared lifecycle](../../src/SwiftCollections/Pool/SwiftPoolLifecycle.cs),
+[collection base](../../src/SwiftCollections/Pool/Default/SwiftCollectionPool.cs),
+[sparse-map owner](../../src/SwiftCollections/Pool/Default/SwiftSparseMapPool.cs),
+[regressions](../../tests/SwiftCollections.Tests/Pool/SwiftPoolLifecycle.Tests.cs)
+and [lifetime guidance](../api/guides/pools-and-observables.md#scope-a-rental).
+
+**Verification:** The initial 55-case group produced 25 behavioral failures and
+30 passing controls on unfixed code. All final 58 cases pass in Standard, Lean
+and Debug. They cover fresh/initialized disposal, all seven families, Get and
+backing access, base-reference dispatch, null handling, borrowed values across
+Clear, nonallocating unused cleanup, reusable Flush and prevention of revival,
+and custom generic subclasses with single-reset and diagnostic-name checks.
+The old reflection-dependent list test was replaced by public-behavior checks;
+the focused pool suite passes 122 tests. Independent source/test reviews pass.
+
+| Final configuration | Core tests | Companion tests | Core lines / branches / executable methods | Companion lines / branches / executable methods |
+| --- | ---: | ---: | --- | --- |
+| Release | 1931 | 43 | 6021/6021; 2858/2858; 1258/1258 | 121/121; 62/62; 35/35 |
+| ReleaseLean | 1824 | 43 | 5827/5827; 2782/2782; 1217/1217 | 121/121; 62/62; 35/35 |
+| Debug | 1929 | 43 | 7949/7949; 2866/2866; 1258/1258 | 155/155; 62/62; 35/35 |
+
+The unchanged strict gate passes with 100% reported lines, branches and
+executable methods using fresh assembly-specific Coverlet reports. An earlier
+Debug gate caught an unreachable sequence point following a throwing guard;
+cold name formatting was separated from the guard without exclusions or gate
+changes. All builds succeed with zero errors and no skipped tests. Final Release
+reports zero warnings; Lean/Debug retain only the pre-existing xUnit2013 warning
+in unchanged `SwiftSlotMap.Tests.cs:138`, already confirmed against committed
+source under SC-Issue-016. No introduced failure remains.
+
+Both runtime assemblies build for `netstandard2.1` and `net10.0` in Standard/Lean;
+all four packages' eight DLL/XML pairs match build output. Emitted XML verifies
+the base constructor, lifecycle contracts, exceptions, property values and all
+six original Release parameter names. Clean DocFX reports zero warnings/errors;
+rendered base/sparse contracts, typed Release parameters and inherited lifecycle
+links pass inspection. CI site smoke/link checks pass (104 HTML pages, 1318 local
+href targets). Contributor guidance records mutable state, static callbacks and
+lifetime rules. CI policy is unchanged. Hosted CI and Unity were not rerun.
+
+**Compatibility and allocation evidence:** A console caller compiled against
+the unfixed Standard assembly runs unchanged with only the fixed core DLL
+substituted. It exercises all six typed constructors/Rent/Get/Release/Clear/Flush/
+Dispose paths, named Release arguments and a custom generic subclass's protected
+construction, null rejection and Flush. It additionally detects the new inherited
+IDisposable contract and verifies terminal behavior. Hash checks confirm both
+the unchanged caller and loaded replacement DLL. Final Lean runs the same source
+against its own dependencies; it is not a claim about an old Lean binary.
+
+Allocation controls use blocking GC, `DOTNET_TieredCompilation=0`, eight
+constructor/disposal warmups, 128 measured owners, and 1000 warmups plus 10000
+rent/return cycles. List and sparse-map owner construction drops from 112 to
+104 bytes each. Initialized list disposal drops from 80 to zero allocated bytes;
+sparse-map disposal remains zero. Warm list and sparse-map rent/return each
+remain 320000 bytes per 10000 cycles (existing ConcurrentStack push allocation).
+Final Standard and Lean agree. An earlier tiered first-slice probe showed 24
+extra aggregate bytes; it was not used for acceptance, and controlled before/
+after workloads match. No latency, universal allocation parity or zero-allocation
+rental claim is made; no maintained pool benchmark harness was added.
+
+**API/lifecycle dispositions:** Keep existing collection constraints and sparse-map
+API shape, with shared internal state rather than a new public hierarchy. Typed
+returns ignore null; generic-base returns reject it. Keep Flush reusable and
+Dispose terminal, with no-op cleanup after disposal and guards before lazy
+access. Custom subclasses with their own disposal must chain `base.Dispose()`;
+adding IDisposable to the base does not retrofit an old custom disposal body.
+The frozen caller does not establish terminal behavior for such an old binary.
+Reopen that integration decision for a specific external cleanup compatibility
+requirement. Array-pool bucket clearing remains separate. Lifecycle operations
+and counters still require external synchronization; arbitrary custom overrides
+and callbacks own their contracts. Shared singleton identities are not recreated.
+
+- **Disposition / reopening:** Close the confirmed defect. Reopen for a supported
+  rental/backing-access route that revives a disposed owner, unused cleanup that
+  initializes storage, lost finalizer cleanup, or a named-argument/binary
+  compatibility regression in the preserved built-in API surface.
 
 ### SC-Issue-021 - Persist collection comparers across serializers
 

@@ -5,9 +5,7 @@
 // See LICENSE file in the project root for full license information.
 //=======================================================================
 
-using System;
 using System.Threading;
-using Chronicler.Diagnostics;
 using SwiftCollections.Lazy;
 
 namespace SwiftCollections.Pool;
@@ -22,7 +20,7 @@ namespace SwiftCollections.Pool;
 /// are not detected and can break ownership/counts. Callback exceptions propagate; operations are not
 /// transactional. Use external synchronization for lifecycle changes and host callbacks.
 /// </remarks>
-public sealed class SwiftQueuePool<T> : SwiftCollectionPool<SwiftQueue<T>, T>, IDisposable
+public sealed class SwiftQueuePool<T> : SwiftCollectionPool<SwiftQueue<T>, T>
 {
     #region Singleton Instance
 
@@ -45,32 +43,10 @@ public sealed class SwiftQueuePool<T> : SwiftCollectionPool<SwiftQueue<T>, T>, I
 
     #endregion
 
-    #region Fields
-
     /// <summary>
-    /// Tracks whether the pool has been disposed.
+    /// Creates a lazy pool for queue instances.
     /// </summary>
-    private volatile bool _disposed;
-
-    #endregion
-
-    #region Methods
-
-    /// <summary>
-    /// Rents a queue instance from the pool. If the pool is empty, a new queue is created.
-    /// </summary>
-    /// <returns>A cached or newly created object for exclusive caller use; return it once to this pool.</returns>
-    /// <exception cref="T:System.ObjectDisposedException">This pool has been disposed.</exception>
-    /// <remarks>
-    /// Renting can invoke the factory and get callback. Collection wrappers ordinarily clear contents when
-    /// released, preserving capacity.
-    /// </remarks>
-    public override SwiftQueue<T> Rent()
-    {
-        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftQueuePool<T>));
-
-        return base.Rent();
-    }
+    public SwiftQueuePool() { }
 
     /// <summary>
     /// Releases a queue instance back to the pool for reuse.
@@ -84,64 +60,5 @@ public sealed class SwiftQueuePool<T> : SwiftCollectionPool<SwiftQueue<T>, T>, I
     /// callback. Collection wrappers clear logical contents and preserve capacity; this does not promise full
     /// retained-reference cleanup of unused storage.
     /// </remarks>
-    public override void Release(SwiftQueue<T> queue)
-    {
-        ChronicleGuard.ThrowIfDisposed(_disposed, nameof(SwiftQueuePool<T>));
-
-        if (queue == null) return;
-
-        // SwiftCollectionPool clears pool before releasing
-        base.Release(queue);
-    }
-
-    /// <summary>
-    /// Clears all pooled queues from the pool.
-    /// </summary>
-    /// <remarks>
-    /// Drops cached inactive collections without reclaiming checked-out rentals or instantiating an unused
-    /// backing pool. Outstanding rentals remain valid and counted by the same backing pool. The wrapper remains
-    /// reusable unless disposed; synchronize lifecycle changes and return each rental exactly once.
-    /// </remarks>
-    public override void Clear()
-    {
-        if (_disposed) return;
-        base.Clear();
-    }
-
-    #endregion
-
-    #region IDisposable Implementation
-
-    /// <summary>
-    /// Releases all resources used by the SwiftQueuePool. It is important to call Dispose() to release pooled
-    /// objects, preventing potential memory leaks.
-    /// </summary>
-    /// <remarks>
-    /// Repeated calls do nothing. Clears initialized cached collections and disposes backing pools. Finish
-    /// rentals/leases before disposal; returning to an old disposed pool throws. Shared singleton instances are
-    /// not recreated.
-    /// </remarks>
-    public void Dispose()
-    {
-        if (_disposed) return;
-
-        Clear();
-        base.Flush();
-
-        _disposed = true;
-
-        // Suppress finalization to prevent unnecessary GC overhead
-        GC.SuppressFinalize(this);
-    }
-
-    /// <summary>
-    /// Releases the resources used by the SwiftQueuePool instance.
-    /// </summary>
-    /// <remarks>
-    /// This finalizer ensures that unmanaged resources are released if Dispose was not called explicitly. It is
-    /// recommended to call Dispose to release resources deterministically.
-    /// </remarks>
-    ~SwiftQueuePool() => Dispose();
-
-    #endregion
+    public override void Release(SwiftQueue<T> queue) => ReleaseTyped(queue);
 }

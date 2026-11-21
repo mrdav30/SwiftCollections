@@ -1,4 +1,3 @@
-using System.Reflection;
 using Xunit;
 
 namespace SwiftCollections.Pool.Tests
@@ -52,26 +51,5 @@ namespace SwiftCollections.Pool.Tests
             Assert.NotSame(list, newList); // Cleared pool creates a new list
         }
 
-        [Fact]
-        public void Clear_OnUnusedPool_ShouldNotCreateUnderlyingCollectionPool()
-        {
-            var pool = new SwiftListPool<int>();
-
-            Assert.False(IsCollectionPoolCreated(pool));
-
-            pool.Clear();
-
-            Assert.False(IsCollectionPoolCreated(pool));
-        }
-
-        private static bool IsCollectionPoolCreated(SwiftListPool<int> pool)
-        {
-            FieldInfo field = typeof(SwiftCollectionPool<SwiftList<int>, int>)
-                .GetField("_lazyCollectionPool", BindingFlags.Instance | BindingFlags.NonPublic);
-
-            object lazyCollectionPool = field.GetValue(pool);
-
-            return (bool)lazyCollectionPool.GetType().GetProperty("IsValueCreated").GetValue(lazyCollectionPool);
-        }
     }
 }

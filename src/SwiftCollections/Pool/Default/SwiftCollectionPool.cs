@@ -7,140 +7,111 @@
 
 using System;
 using System.Collections.Generic;
-using SwiftCollections.Lazy;
 
 namespace SwiftCollections.Pool;
 
 /// <summary>
-/// A generic pool for managing collections such as <see cref="T:System.Collections.Generic.List`1" />, <see
-/// cref="T:System.Collections.Generic.HashSet`1" />, <see cref="T:System.Collections.Generic.Dictionary`2" />,
-/// and other types implementing <see cref="T:System.Collections.Generic.ICollection`1" />. Provides efficient
-/// reuse of collection instances to reduce memory allocations.
+/// Pools collections using their default constructors and collection clearing contracts.
 /// </summary>
-/// <typeparam name="TCollection">The type of the collection being pooled. Must implement <see
-/// cref="T:System.Collections.Generic.ICollection`1" /> and have a parameterless constructor.</typeparam>
-/// <typeparam name="TItem">The type of items contained in the collection.</typeparam>
+/// <typeparam name="TCollection">The collection type, with a public parameterless constructor.</typeparam>
+/// <typeparam name="TItem">The type of items stored by the collection.</typeparam>
 /// <remarks>
-/// Rented objects have exclusive caller ownership until returned exactly once. Foreign objects and double returns
-/// are not detected and can break ownership/counts. Callback exceptions propagate; operations are not
-/// transactional. Use external synchronization for lifecycle changes and host callbacks.
+/// Rentals have exclusive caller ownership until returned exactly once. Lifecycle operations require external
+/// synchronization. Flush replaces an initialized backing pool for reuse; Dispose permanently closes this owner.
 /// </remarks>
-public abstract class SwiftCollectionPool<TCollection, TItem> where TCollection : class, ICollection<TItem>, new()
+public abstract class SwiftCollectionPool<TCollection, TItem> : IDisposable
+    where TCollection : class, ICollection<TItem>, new()
 {
-    #region Singleton Instances
+    private static readonly Func<SwiftObjectPool<TCollection>> _createPool = static () =>
+        new(static () => new TCollection(), actionOnRelease: static collection => collection.Clear());
+
+    private SwiftPoolLifecycle<TCollection> _lifecycle;
 
     /// <summary>
-    /// Internal object pool for managing the lifecycle of pooled collections.
-    /// Uses <see cref="Lazy{T}"/> to ensure lazy initialization.
+    /// Creates a lazy pool that rejects null returns.
     /// </summary>
-    private SwiftLazyDisposable<SwiftObjectPool<TCollection>> _lazyCollectionPool =
-        new(() =>
-        {
-            return new SwiftObjectPool<TCollection>(
-                    createFunc: () => new TCollection(),
-                    actionOnRelease: collection => collection.Clear()
-                );
-        });
-
-    /// <summary>
-    /// Gets the shared instance of the pool.
-    /// </summary>
-    /// <value>The lazily created backing object pool; accessing this property can allocate it.</value>
-    /// <remarks>
-    /// The returned pool is owned by this wrapper. Retaining it across Flush or Dispose can leave a disposed
-    /// backing pool. Direct access bypasses wrapper lifecycle checks.
-    /// </remarks>
-    public SwiftObjectPool<TCollection> CollectionPool => _lazyCollectionPool.Value;
-
-    #endregion
-
-    #region Methods
-
-    /// <summary>
-    /// Rents a collection from the pool. If the pool is empty, a new collection is created.
-    /// </summary>
-    /// <returns>A cached or newly created object for exclusive caller use; return it once to this pool.</returns>
-    /// <remarks>
-    /// Renting can invoke the factory and get callback. Collection wrappers ordinarily clear contents when
-    /// released, preserving capacity.
-    /// </remarks>
-    public virtual TCollection Rent()
+    protected SwiftCollectionPool()
     {
-        return CollectionPool.Rent();
+        _lifecycle = new SwiftPoolLifecycle<TCollection>(_createPool);
     }
 
     /// <summary>
-    /// Rents a collection from the pool and wraps it in a <see cref="T:SwiftCollections.Pool.SwiftPooledObject`1"
-    /// /> for automatic release.
+    /// Gets this owner's lazily created backing object pool.
     /// </summary>
-    /// <param name="value">Receives the rented object; use it only until the returned lease is disposed.</param>
-    /// <returns>An owning lease whose disposal returns the out object at most once.</returns>
+    /// <value>The current backing pool; first access initializes it.</value>
+    /// <exception cref="ObjectDisposedException">This owner has been disposed.</exception>
     /// <remarks>
-    /// Creates a lease from the backing pool without checking any derived wrapper disposed flag. After a wrapper
-    /// Flush/Dispose has reset the lazy backing pool, this inherited path can still create a rental; keep all
-    /// leases within the wrapper lifetime. Factory/callback exceptions propagate.
+    /// A retained backing pool is disposed by Flush or Dispose. Outstanding rentals must finish before either
+    /// operation. Direct access bypasses wrapper-specific return handling; do not dispose the backing pool directly.
     /// </remarks>
-    public virtual SwiftPooledObject<TCollection> Get(out TCollection value)
+    public SwiftObjectPool<TCollection> CollectionPool => _lifecycle.GetPool(this);
+
+    /// <summary>
+    /// Rents a collection for exclusive caller use.
+    /// </summary>
+    /// <returns>A cached or newly constructed collection; return it once to this owner.</returns>
+    /// <exception cref="ObjectDisposedException">This owner has been disposed.</exception>
+    /// <remarks>Factory and backing-pool callback exceptions propagate without rollback.</remarks>
+    public virtual TCollection Rent() => CollectionPool.Rent();
+
+    /// <summary>
+    /// Rents a collection with an owning lease that returns it when disposed.
+    /// </summary>
+    /// <param name="value">Receives the rented collection, valid until the lease is disposed.</param>
+    /// <returns>A lease that attempts to return the collection at most once.</returns>
+    /// <exception cref="ObjectDisposedException">This owner has been disposed.</exception>
+    /// <remarks>Factory and backing-pool callback exceptions propagate without rollback.</remarks>
+    public virtual SwiftPooledObject<TCollection> Get(out TCollection value) => CollectionPool.Rent(out value);
+
+    /// <summary>
+    /// Clears and returns a collection to its backing pool.
+    /// </summary>
+    /// <param name="toRelease">The collection to return exactly once. This generic base rejects null; typed
+    /// wrappers ignore null while usable.</param>
+    /// <exception cref="ObjectDisposedException">This owner has been disposed; checked before null handling.</exception>
+    /// <exception cref="ArgumentNullException">toRelease is null and this owner rejects null returns.</exception>
+    /// <remarks>
+    /// Logical clearing preserves capacity and does not promise full retained-reference cleanup. Foreign and
+    /// duplicate returns are not validated. Reset failures propagate without transactional rollback.
+    /// </remarks>
+    public virtual void Release(TCollection toRelease) =>
+        _lifecycle.Release(toRelease, this, ignoreNullReturns: false);
+
+    internal void ReleaseTyped(TCollection? value) =>
+        _lifecycle.Release(value, this, ignoreNullReturns: true);
+
+    /// <summary>
+    /// Removes cached inactive collections without initializing an unused backing pool.
+    /// </summary>
+    /// <remarks>
+    /// Outstanding rentals remain valid and counted by the same backing pool. Does nothing after disposal.
+    /// </remarks>
+    public virtual void Clear() => _lifecycle.Clear();
+
+    /// <summary>
+    /// Disposes an initialized backing pool and replaces it with a fresh lazy pool for reuse.
+    /// </summary>
+    /// <remarks>
+    /// Does not initialize an unused pool and does nothing after disposal. Finish outstanding rentals first:
+    /// retained backing-pool references and old leases still target the disposed pool. Does not close this owner.
+    /// </remarks>
+    public virtual void Flush() => _lifecycle.Flush(_createPool);
+
+    /// <summary>
+    /// Clears initialized cached collections and permanently closes this owner.
+    /// </summary>
+    /// <remarks>
+    /// Repeated calls do nothing and an unused backing pool is not initialized. Finish rentals first; returning
+    /// an old rental or accessing the backing pool after disposal throws. Shared owners are not recreated.
+    /// </remarks>
+    public void Dispose()
     {
-        return CollectionPool.Rent(out value);
+        _lifecycle.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>
-    /// Releases a collection back to the pool for reuse.
+    /// Closes an abandoned owner and disposes its initialized backing pool.
     /// </summary>
-    /// <param name="toRelease">The object to return exactly once; do not use it afterward. Must be
-    /// non-null.</param>
-    /// <remarks>
-    /// Ownership returns to the pool. The release callback runs before caching; overflow invokes the destroy
-    /// callback. Collection wrappers clear logical contents and preserve capacity; this does not promise full
-    /// retained-reference cleanup of unused storage.
-    /// </remarks>
-    public virtual void Release(TCollection toRelease)
-    {
-        CollectionPool.Release(toRelease);
-    }
-
-    /// <summary>
-    /// Clears all collections from the pool.
-    /// </summary>
-    /// <remarks>
-    /// Drops cached inactive collections without reclaiming checked-out rentals or instantiating an unused
-    /// backing pool. Outstanding rentals remain valid and counted by the same backing pool. The wrapper remains
-    /// reusable unless disposed; synchronize lifecycle changes and return each rental exactly once.
-    /// </remarks>
-    public virtual void Clear()
-    {
-        if (_lazyCollectionPool.IsValueCreated)
-            _lazyCollectionPool.Value.Clear();
-    }
-
-    #endregion
-
-    #region IDisposable Implementation
-
-    /// <summary>
-    /// Releases all resources used by the SwiftCollectionPool.
-    /// </summary>
-    /// <remarks>
-    /// If initialized, disposes the backing pool and installs a new lazy pool. Cached backing-pool references and
-    /// old leases still target the disposed pool; finish rentals first. If uninitialized, changes nothing.
-    /// </remarks>
-    public virtual void Flush()
-    {
-        if (_lazyCollectionPool.IsValueCreated)
-        {
-            _lazyCollectionPool.Value.Dispose();
-
-            _lazyCollectionPool = new SwiftLazyDisposable<SwiftObjectPool<TCollection>>(() =>
-            {
-                return new SwiftObjectPool<TCollection>(
-                        createFunc: () => new TCollection(),
-                        actionOnRelease: collection => collection.Clear()
-                    );
-            });
-        }
-
-    }
-
-    #endregion
+    ~SwiftCollectionPool() => Dispose();
 }

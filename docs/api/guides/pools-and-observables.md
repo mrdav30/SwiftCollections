@@ -53,6 +53,22 @@ Object-pool counters are diagnostics, not ownership validation. After disposal,
 `CountAll` is retained while cached storage is emptied, so `CountActive` no longer
 represents live rentals.
 
+Collection-pool disposal permanently closes that owner, including access through
+`Get` and `CollectionPool`. The six typed collection wrappers and the sparse-map
+wrapper follow the same lifetime rules. `Clear` is reusable and does nothing
+after disposal. The collection-base family's `Flush` replaces an initialized
+backing pool for reuse; it does not initialize an unused pool or revive a disposed
+owner. Finish leases before flushing, since they still target the old backing
+pool. Disposing a `Shared` singleton affects every consumer; it is not recreated.
+
+Typed wrappers ignore null returns while usable and reject them after disposal.
+Custom subclasses of `SwiftCollectionPool<TCollection, TItem>` retain the generic
+base's null-return rejection. Collection clearing occurs once in the backing
+pool's release callback and preserves reusable capacity.
+Custom subclasses that provide their own disposal must also call `base.Dispose()`
+to close the shared owner. An existing custom disposal implementation does not
+automatically gain that cleanup merely because the base now implements `IDisposable`.
+
 Pools use their normal clearing policies. If a reference-containing collection
 has retained values after `FastClear()`, explicitly call `Clear(true)` before
 returning it when your ownership contract requires full reference release. See
