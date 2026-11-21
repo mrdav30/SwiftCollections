@@ -15,6 +15,213 @@ namespace SwiftCollections.Tests;
 public class SwiftSlotMapTests
 {
     [Fact]
+    public void Reinsertion_NextAddPreservesReinsertedSlotAndCount()
+    {
+        var map = new SwiftSlotMap<int>();
+        int original = map.Add(1);
+        map.RemoveAt(original);
+
+        map.InsertAt(original, 2);
+        int next = map.Add(3);
+
+        Assert.Equal(0, original);
+        Assert.Equal(1, next);
+        Assert.Equal(2, map.Count);
+        Assert.Equal(2, map.PeakCount);
+        Assert.Equal(2, map[original]);
+        Assert.Equal(3, map[next]);
+        Assert.Equal(new[] { 2, 3 }, map);
+        Assert.Empty(map.State.FreeIndices);
+    }
+
+    [Theory]
+    [InlineData(0, 4, 2)]
+    [InlineData(2, 4, 0)]
+    [InlineData(4, 2, 0)]
+    public void Reinsertion_RemovesOnlyRequestedFreeSlotAndPreservesReuseOrder(int restored, int firstFree, int secondFree)
+    {
+        var map = new SwiftSlotMap<int>();
+        for (int i = 0; i < 6; i++)
+            map.Add(i);
+        map.RemoveAt(0);
+        map.RemoveAt(2);
+        map.RemoveAt(4);
+        var enumerator = map.GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+
+        map.InsertAt(restored, 100);
+        map.InsertAt(restored, 200);
+
+        Assert.Equal(4, map.Count);
+        Assert.Equal(new[] { secondFree, firstFree }, map.State.FreeIndices);
+        Assert.Throws<InvalidOperationException>(() => enumerator.MoveNext());
+        Assert.Equal(firstFree, map.Add(300));
+        Assert.Equal(secondFree, map.Add(400));
+        Assert.Equal(6, map.Add(500));
+        Assert.Equal(200, map[restored]);
+        Assert.Equal(1, map[1]);
+        Assert.Equal(3, map[3]);
+        Assert.Equal(5, map[5]);
+        Assert.Equal(7, map.Count);
+        Assert.Empty(map.State.FreeIndices);
+    }
+
+    [Fact]
+    public void Reinsertion_RepeatedRemovalDoesNotLeaveDuplicateFreeOwnership()
+    {
+        var map = new SwiftSlotMap<int> { 10, 20, 30 };
+        map.RemoveAt(0);
+        map.RemoveAt(1);
+        map.InsertAt(0, 40);
+        map.RemoveAt(0);
+        map.InsertAt(0, 50);
+
+        Assert.Equal(new[] { 1 }, map.State.FreeIndices);
+        Assert.Equal(1, map.Add(60));
+        Assert.Equal(3, map.Add(70));
+        Assert.Equal(new[] { 50, 60, 30, 70 }, map);
+        Assert.Equal(4, map.Count);
+    }
+
+    [Fact]
+    public void Reinsertion_UntrackedGapDoesNotConsumeAnotherFreeSlot()
+    {
+        var map = new SwiftSlotMap<string> { "removed" };
+        map.RemoveAt(0);
+
+        map.InsertAt(5, "far");
+        map.InsertAt(2, null);
+
+        Assert.Equal(new[] { 0 }, map.State.FreeIndices);
+        Assert.Equal(0, map.Add("reused"));
+        Assert.Equal(6, map.Add("next"));
+        Assert.Null(map[2]);
+        Assert.Equal("far", map[5]);
+        Assert.False(map.IsAllocated(1));
+        Assert.Equal(4, map.Count);
+    }
+
+    [Fact]
+    public void Reinsertion_AfterTrimRemovesRebuiltFreeSlot()
+    {
+        var map = new SwiftSlotMap<int>(64);
+        for (int i = 0; i < 8; i++)
+            map.Add(i);
+        map.RemoveAt(0);
+        map.RemoveAt(2);
+        map.RemoveAt(6);
+        map.RemoveAt(7);
+        map.InsertAt(2, 200);
+
+        map.TrimExcessCapacity();
+        Assert.Equal(6, map.PeakCount);
+        Assert.Equal(new[] { 0 }, map.State.FreeIndices);
+        map.InsertAt(0, 100);
+
+        Assert.Empty(map.State.FreeIndices);
+        Assert.Equal(6, map.Add(600));
+        Assert.Equal(7, map.Count);
+        Assert.Equal(new[] { 100, 1, 200, 3, 4, 5, 600 }, map);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Reinsertion_ClearOnEmptyMapPreservesFreeOrder(bool clearRetainedReferences)
+    {
+        var map = new SwiftSlotMap<string> { "first", "second" };
+        map.RemoveAt(0);
+        map.RemoveAt(1);
+
+        map.Clear(clearRetainedReferences);
+
+        Assert.Equal(0, map.Count);
+        Assert.Equal(2, map.PeakCount);
+        Assert.Equal(new[] { 0, 1 }, map.State.FreeIndices);
+        Assert.All(map.State.Items, Assert.Null);
+        Assert.Equal(1, map.Add("reused first"));
+        Assert.Equal(0, map.Add("reused second"));
+        Assert.Equal(2, map.Add("new"));
+        Assert.Equal(3, map.Count);
+        Assert.Equal(new[] { "reused second", "reused first", "new" }, map);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Reinsertion_GrowthPreservesActiveFreeLinks(bool growByInsertion)
+    {
+        var map = new SwiftSlotMap<int>();
+        for (int i = 0; i < 6; i++)
+            map.Add(i);
+        map.RemoveAt(0);
+        map.RemoveAt(2);
+        map.RemoveAt(4);
+
+        if (growByInsertion)
+            map.InsertAt(20, 20);
+        else
+            map.EnsureCapacity(64);
+        map.InsertAt(2, 200);
+
+        Assert.Equal(new[] { 0, 4 }, map.State.FreeIndices);
+        Assert.Equal(4, map.Add(300));
+        Assert.Equal(0, map.Add(400));
+        Assert.Equal(growByInsertion ? 21 : 6, map.Add(500));
+        Assert.Equal(200, map[2]);
+        Assert.Equal(1, map[1]);
+        Assert.Equal(3, map[3]);
+        Assert.Equal(5, map[5]);
+        Assert.Equal(growByInsertion ? 8 : 7, map.Count);
+        if (growByInsertion)
+        {
+            Assert.Equal(20, map[20]);
+            Assert.False(map.IsAllocated(19));
+        }
+        Assert.Empty(map.State.FreeIndices);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
+    [InlineData(2)]
+#endif
+    public void Reinsertion_RoundTripPreservesFreeOrderAndContinuation(int format)
+    {
+        var original = new SwiftSlotMap<int>();
+        for (int i = 0; i < 6; i++)
+            original.Add(i);
+        original.RemoveAt(0);
+        original.RemoveAt(2);
+        original.RemoveAt(4);
+        original.InsertAt(2, 200);
+
+        SwiftSlotMap<int> restored = format switch
+        {
+            0 => new SwiftSlotMap<int>(original.State),
+            1 => JsonSerializer.Deserialize<SwiftSlotMap<int>>(JsonSerializer.Serialize(original)),
+#if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
+            _ => MemoryPackSerializer.Deserialize<SwiftSlotMap<int>>(MemoryPackSerializer.Serialize(original))
+#else
+            _ => throw new InvalidOperationException()
+#endif
+        };
+
+        Assert.Equal(new[] { 0, 4 }, restored.State.FreeIndices);
+        Assert.Equal(4, restored.Count);
+        Assert.Equal(6, restored.PeakCount);
+        restored.InsertAt(0, 100);
+        Assert.Equal(new[] { 4 }, restored.State.FreeIndices);
+        Assert.Equal(4, restored.Add(400));
+        Assert.Equal(6, restored.Add(600));
+        Assert.Equal(new[] { 100, 1, 200, 3, 400, 5, 600 }, restored);
+        Assert.Equal(7, restored.Count);
+        Assert.Equal(new[] { 0, 4 }, original.State.FreeIndices);
+        Assert.Equal(4, original.Count);
+    }
+
+    [Fact]
     public void Add_ShouldAddItemAndReturnIndex()
     {
         // Arrange

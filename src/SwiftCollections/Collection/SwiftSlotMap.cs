@@ -49,7 +49,9 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
 
     private int _peakCount;
 
-    private SwiftIntStack _freeIndices;
+    private int _freeHead;
+
+    private int _freeCount;
 
     [NonSerialized]
     private uint _version;
@@ -65,7 +67,10 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
     private struct Entry
     {
         public T Value;
-        public bool IsUsed;
+        // Free links use index + 1 (zero means none); -1 marks an allocated slot.
+        public int NextFree;
+        public int PreviousFree;
+        public readonly bool IsUsed => NextFree < 0;
     }
 
     #endregion
@@ -87,12 +92,11 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
     {
         capacity = capacity <= DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(capacity);
         _innerArray = new Entry[capacity];
-        _freeIndices = new SwiftIntStack(capacity);
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="T:SwiftCollections.SwiftSlotMap`1" /> class with the
-    /// specified <see cref="T:SwiftCollections.SwiftArrayState`1" />.
+    /// specified <see cref="T:SwiftCollections.SwiftSlotMapState`1" />.
     /// </summary>
     /// <param name="state">The state to restore by shallow-copying arrays. Null arrays are treated as empty; free
     /// indices must be in range, unique and disjoint from allocated slots. Uniqueness/disjointness are not
@@ -110,7 +114,6 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
         State = state;
 
         ChronicleGuard.ThrowIfNull(_innerArray, nameof(state.Items));
-        ChronicleGuard.ThrowIfNull(_freeIndices, nameof(state.FreeIndices));
     }
 
     #endregion
@@ -221,8 +224,14 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
                 }
             }
 
-            int[] free = new int[_freeIndices.Count];
-            Array.Copy(_freeIndices.Array, free, _freeIndices.Count);
+            int[] free = new int[_freeCount];
+            int nextFree = _freeHead;
+            for (int i = free.Length - 1; i >= 0; i--)
+            {
+                int index = nextFree - 1;
+                free[i] = index;
+                nextFree = _innerArray[index].NextFree;
+            }
 
             return new SwiftSlotMapState<T>(
                 items,
@@ -241,7 +250,8 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
             int capacity = sourceLength < DefaultCapacity ? DefaultCapacity : SwiftHashTools.NextPowerOfTwo(sourceLength);
 
             _innerArray = new Entry[capacity];
-            _freeIndices = new SwiftIntStack(capacity);
+            _freeHead = 0;
+            _freeCount = 0;
 
             _count = 0;
             int maxReferencedIndex = RestoreAllocatedEntries(items, allocated, sourceLength);
@@ -262,7 +272,7 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
             if (items.Length > i)
                 _innerArray[i].Value = items[i];
 
-            _innerArray[i].IsUsed = true;
+            _innerArray[i].NextFree = -1;
             _count++;
             maxReferencedIndex = i;
         }
@@ -276,7 +286,7 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
         {
             ChronicleGuard.ThrowIfTrue((uint)index >= (uint)capacity, message: "Free index is out of range.");
 
-            _freeIndices.Push(index);
+            PushFreeIndex(index);
             if (index > maxReferencedIndex)
                 maxReferencedIndex = index;
         }
@@ -307,16 +317,20 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
     public int Add(T item)
     {
         int index;
-        if ((uint)_freeIndices.Count == 0)
+        if (_freeHead == 0)
         {
             index = _peakCount++;
             if ((uint)index >= (uint)_innerArray.Length)
                 Resize(_innerArray.Length * 2);
         }
-        else index = _freeIndices.Pop();
+        else
+        {
+            index = _freeHead - 1;
+            RemoveFreeIndex(index);
+        }
 
         _innerArray[index].Value = item;
-        _innerArray[index].IsUsed = true;
+        _innerArray[index].NextFree = -1;
         _count++;
         _version++;
         return index;
@@ -337,9 +351,9 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
     /// grows when necessary. Keep index + 1 representable and within available array memory.</param>
     /// <exception cref="T:System.ArgumentOutOfRangeException">index is negative.</exception>
     /// <remarks>
-    /// Overwrites an allocated slot or allocates an unallocated slot, growing storage if needed. Does not remove
-    /// that index from the free stack. Re-inserting a previously freed slot can make a later Add overwrite it;
-    /// avoid that sequence until the tracked defect is fixed.
+    /// Overwrites an allocated slot or allocates an unallocated slot, growing storage if needed. Reallocating a
+    /// freed slot removes it from free ownership in constant time and preserves the reuse order of other slots.
+    /// Gaps skipped by insertion beyond the high-water boundary are not added to free ownership until trim.
     /// </remarks>
     public void InsertAt(int index, T item)
     {
@@ -348,12 +362,13 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
             Resize(SwiftHashTools.NextPowerOfTwo(index + 1));
         if (!_innerArray[index].IsUsed)
         {
+            RemoveFreeIndex(index);
             _count++;
             if ((uint)index >= (uint)_peakCount)
                 _peakCount = index + 1;
         }
         _innerArray[index].Value = item;
-        _innerArray[index].IsUsed = true;
+        _innerArray[index].NextFree = -1;
         _version++;
     }
 
@@ -412,7 +427,7 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
     {
         _innerArray[index] = default;
         _count--;
-        _freeIndices.Push(index);
+        PushFreeIndex(index);
         _version++;
     }
 
@@ -428,7 +443,8 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
         if ((uint)_count == 0) return;
         for (int i = 0; i < _peakCount; i++)
             _innerArray[i] = default;
-        _freeIndices.Reset();
+        _freeHead = 0;
+        _freeCount = 0;
         _count = 0;
         _peakCount = 0;
         _version++;
@@ -448,7 +464,8 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
         if (clearRetainedReferences && RuntimeHelpers.IsReferenceOrContainsReferences<T>())
         {
             int start = _count == 0 ? 0 : _peakCount;
-            Array.Clear(_innerArray, start, _innerArray.Length - start);
+            for (int i = start; i < _innerArray.Length; i++)
+                _innerArray[i].Value = default!;
         }
         Clear();
     }
@@ -472,8 +489,6 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
         capacity = SwiftHashTools.NextPowerOfTwo(capacity);
         if (capacity > _innerArray.Length)
             Resize(capacity);
-        else
-            _freeIndices.EnsureCapacity(capacity);
     }
 
     private void Resize(int newSize)
@@ -485,7 +500,6 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
         if (copyLength > 0)
             Array.Copy(_innerArray, 0, newArray, 0, copyLength);
         _innerArray = newArray;
-        _freeIndices.EnsureCapacity(newCapacity);
 
         _version++;
     }
@@ -521,12 +535,47 @@ public sealed partial class SwiftSlotMap<T> : IStateBacked<SwiftSlotMapState<T>>
 
     private void RebuildFreeIndices()
     {
-        _freeIndices = new SwiftIntStack(_innerArray.Length);
+        _freeHead = 0;
+        _freeCount = 0;
 
         for (int i = 0; i < _peakCount; i++)
         {
             if (!_innerArray[i].IsUsed)
-                _freeIndices.Push(i);
+                PushFreeIndex(i);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void PushFreeIndex(int index)
+    {
+        ref Entry entry = ref _innerArray[index];
+        entry.NextFree = _freeHead;
+        entry.PreviousFree = 0;
+        if (_freeHead != 0)
+            _innerArray[_freeHead - 1].PreviousFree = index + 1;
+        _freeHead = index + 1;
+        _freeCount++;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void RemoveFreeIndex(int index)
+    {
+        ref Entry entry = ref _innerArray[index];
+        int previous = entry.PreviousFree;
+        int next = entry.NextFree;
+        // Unallocated gaps have no predecessor and are not the free head.
+        if (previous != 0 || _freeHead == index + 1)
+        {
+            if (previous != 0)
+                _innerArray[previous - 1].NextFree = next;
+            else
+                _freeHead = next;
+
+            if (next != 0)
+                _innerArray[next - 1].PreviousFree = previous;
+            entry.NextFree = 0;
+            entry.PreviousFree = 0;
+            _freeCount--;
         }
     }
 

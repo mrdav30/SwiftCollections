@@ -91,8 +91,9 @@ bool found = registrations.TryGetValue(firstSlot, out string value);
 
 This fits a tightly owned registry whose removal path also clears its callers'
 stored IDs. `InsertAt` can explicitly choose or replace a slot, but adds no
-generation validation. Use a sparse map when attaching values to existing
-external IDs is the main job.
+generation validation. Reinserting a freed slot removes it from free ownership
+in constant time and preserves the reuse order of other freed slots. Use a sparse
+map when attaching values to existing external IDs is the main job.
 
 ### A ticket for one allocation
 
