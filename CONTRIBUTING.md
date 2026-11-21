@@ -197,6 +197,25 @@ dotnet test SwiftCollections.slnx --configuration Release --no-build
 dotnet test SwiftCollections.slnx --configuration ReleaseLean --no-build
 ```
 
+Require 100% reported line, branch and executable-method coverage for both
+runtime assemblies. Use a fresh results directory for each run and each test
+project's runsettings, then run the same assertion used by CI:
+
+```powershell
+dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c Release --no-build --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.Tests/coverlet.runsettings --results-directory artifacts/coverage/Release/core
+dotnet test tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMathSharp.Tests.csproj -c Release --no-build --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.FixedMathSharp.Tests/coverlet.runsettings --results-directory artifacts/coverage/Release/fixedmathsharp
+./.assets/scripts/assert-full-coverage.ps1 -CoverageDirectory artifacts/coverage/Release
+```
+
+Repeat for `ReleaseLean`, replacing `Release` in the configuration and result
+paths. Build each configuration before collecting coverage. The gate requires
+both assembly reports, meaningful coverage data and no uncovered lines, branches
+or executable methods. Every Windows/Linux standard/Lean build/test job runs it;
+the existing post-main Pages workflow also enforces it before publication.
+Unreachable runtime branches must be verified and removed, not accepted through
+the complexity register or coverage exclusions. That register is reserved for
+justified methods above the complexity threshold.
+
 Comparer persistence changes must cover sorted, dictionary, hash-set,
 bidictionary and observable-dictionary normal direct/generated nested JSON,
 standard MemoryPack's formatter and generated packable paths, legacy-input

@@ -142,15 +142,7 @@ jobs:
 
       - name: Enforce full coverage
         shell: pwsh
-        run: |
-          $summary = Get-Content -Raw artifacts/coverage-report/Summary.json | ConvertFrom-Json
-          $coverage = $summary.summary
-          $uncoveredLines = $coverage.coverablelines - $coverage.coveredlines
-          $uncoveredBranches = $coverage.totalbranches - $coverage.coveredbranches
-          $uncoveredMethods = $coverage.totalmethods - $coverage.coveredmethods
-          if ($uncoveredLines -ne 0 -or $uncoveredBranches -ne 0 -or $uncoveredMethods -ne 0) {
-            throw "Coverage gate failed: $uncoveredLines uncovered line(s), $uncoveredBranches uncovered branch(es), $uncoveredMethods uncovered method(s)"
-          }
+        run: ./.assets/scripts/assert-full-coverage.ps1 -CoverageDirectory artifacts/coverage
 
       - name: Assemble Pages site
         run: |

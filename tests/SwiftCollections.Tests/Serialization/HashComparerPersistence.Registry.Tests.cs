@@ -111,11 +111,14 @@ public partial class HashComparerPersistenceTests
         Assert.Equal("null", Encoding.UTF8.GetString(buffer.WrittenSpan));
     }
 
-    [Fact]
-    public void PersistenceCapacityRejectsOversizedCountsBeforeAllocatingTables()
+    [Theory]
+    [InlineData(82, 880468296)]
+    [InlineData(85, 912680551)]
+    public void PersistenceCapacityRejectsOversizedCountsBeforeAllocatingTables(int loadPercent, int firstRejectedCount)
     {
-        Assert.Throws<InvalidOperationException>(() => SwiftHashTools.GetPersistenceCapacity(int.MaxValue, 8, 82));
-        Assert.Throws<InvalidOperationException>(() => SwiftHashTools.GetPersistenceCapacity(int.MaxValue, 8, 85));
+        Assert.Equal(1 << 30, SwiftHashTools.GetPersistenceCapacity(firstRejectedCount - 1, 8, loadPercent));
+        Assert.Throws<InvalidOperationException>(() => SwiftHashTools.GetPersistenceCapacity(firstRejectedCount, 8, loadPercent));
+        Assert.Throws<InvalidOperationException>(() => SwiftHashTools.GetPersistenceCapacity(int.MaxValue, 8, loadPercent));
     }
 
     [Fact]

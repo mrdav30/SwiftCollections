@@ -1252,8 +1252,9 @@ in Lean, 8018/8020 and 2892/2894 in Debug. The only misses are the two local
 probe-exhaustion throw lines and their branches; all reachable lines, branches
 and methods are covered. The arrays are sized above count and probing visits
 every slot within 2N attempts, so those guards require impossible local-table
-corruption to fire. The [complexity register](../../complexity-exceptions.md#fresh-table-persistence-guards)
-records the reasoning without source exclusions. Companion coverage is complete
+corruption to fire. Retaining these gaps was subsequently corrected in the
+[full coverage correction](#full-coverage-correction--2026-11-21); it was not a
+waiver of the coverage gate. Companion coverage is complete
 (121/121 Release/Lean lines, 155/155 Debug; 62/62 branches each).
 
 Both runtime assemblies build at netstandard2.1 and net10.0 in both variants.
@@ -1475,8 +1476,8 @@ pass. Full reachable coverage is preserved without new exclusions:
 
 The only raw gaps are the two proven unreachable fresh-table exhaustion throws,
 now Dictionary.Persistence line 68 and HashSet.Persistence line 38. The
-[complexity register](../../complexity-exceptions.md#fresh-table-persistence-guards)
-preserves the capacity/probe proof and reopening condition.
+[full coverage correction](#full-coverage-correction--2026-11-21)
+supersedes their retention and preserves the complete capacity/probe proof.
 
 All four package IDs contain byte-equal built DLL/XML pairs for both TFMs:
 `SwiftCollections.dll/.xml` and `SwiftCollections.FixedMathSharp.dll/.xml`,
@@ -1644,3 +1645,98 @@ reliability disposition. Preserve SC-Issue-010's trusted-state history and
 SC-Benchmark-005's accepted timing decision. No NuGet package or documentation
 site publication was performed. The completed plan is archived by repository
 convention; evergreen instructions stay in the contributor and serialization guides.
+
+## Full coverage correction — 2026-11-21
+
+The earlier Phase 2/3 decision to retain two uncovered probe-exhaustion guards
+did not meet the repository's 100% coverage requirement. That decision is
+superseded. Remove the two impossible throws and their limits from fresh
+Dictionary and HashSet restoration. Preserve capacity rejection, null and
+duplicate handling, comparer resolution, table population and publication.
+The complexity register contains only justified methods above its complexity
+threshold; it provides no coverage waiver. No coverage exclusion, fabricated
+local-table corruption or runtime workaround is added.
+
+### Probe and arithmetic proof
+
+Both callers use a minimum capacity of eight and load percentages 82 or 85.
+Input count `c` is a non-negative array/span length. For `c < 8`, minimum
+capacity already exceeds count. For `c >= 8`, `floor(100*c/p) >= c+1` for
+either load percentage `p`. Upward power-of-two rounding preserves a spare
+slot. HashSet null filtering can only reduce occupancy. At most one entry is
+inserted per input; duplicates reject rather than consume another slot.
+
+The sizing multiplication uses Int64 and cannot overflow for an Int32 count.
+Requested sizes at or above `2^30` reject before allocation. Smaller requests
+can round **up to** `N = 2^30`; that is the largest possible table, not `2^29`.
+The first rejected counts are 880468296 for 82% and 912680551 for 85%; each
+preceding count returns `2^30` without allocating a table in the boundary test.
+
+Let `P(k) = sum(j*j, j=1..k)`, with the initial probe at `P(0)=0` plus the
+masked starting hash. For power-of-two `N >= 2`,
+`P(k+N)-P(k) = N/2 (mod N)`. By induction, the first `N` probes cover every
+residue modulo `N/2`; the next `N` toggle the high bit, covering every slot
+modulo `N`. Thus the first `2N` probes visit every slot.
+
+The last probe in that bound repeats the first:
+`P(2N-1) = N*(2N-1)*(4N-1)/3 = 0 (mod N)`. The odd product is divisible by
+three, so all slots are already covered by `P(2N-2)`. A free slot therefore
+appears with `step <= 2N-1 <= Int32.MaxValue`, even at `N=2^30`.
+`step++` cannot overflow before success. The square and index addition remain
+explicitly unchecked; Int32 truncation followed by `& (N-1)` equals mathematical
+modulo `N`, since `N` divides `2^32`.
+
+The fresh entry arrays remain local until population completes. Comparer
+callbacks receive elements, not those arrays; changing input values cannot
+change the captured length or insert more than one entry per iteration.
+The same argument covers reversed BiDictionary restoration and inherited
+ObservableDictionary restoration. Unsafe corruption of local implementation
+state is not a supported input or a reason to retain unreachable branches.
+Revisit this proof if sizing, probing, arithmetic or publication ownership changes.
+
+Independent review and disposable checks cover exhaustive probe recurrence
+for `N=2^0..2^18`, masked arithmetic samples through `2^30`, and sizing
+boundaries. No giant tables are allocated. Maintained tests exercise actual
+JSON/MemoryPack restoration at count/capacity pairs 7/8, 13/16, 26/32 and
+52/64, with wrapped forward/reverse collisions, complete mappings, removal,
+addition and recapture. Capacity tests check the exact accepted/rejected limits.
+These preserve existing valid behavior; removing dead branches has no failing
+behavioral regression to manufacture.
+
+### Coverage and CI acceptance
+
+Package-mode solution builds pass Release, ReleaseLean and Debug with zero
+warnings/errors. Core tests pass 1818/1714/1816 respectively; companion tests
+pass 43 each, with no skips. Initial new-test compilation/analyzer issues were
+corrected before these final checks, without adding an API.
+
+| Configuration | Core lines | Core branches | Core executable methods | Companion lines / branches / executable methods |
+| --- | ---: | ---: | ---: | ---: |
+| Release | 6080/6080 | 2884/2884 | 1261/1261 | 121/121; 62/62; 35/35 |
+| ReleaseLean | 5886/5886 | 2808/2808 | 1220/1220 | 121/121; 62/62; 35/35 |
+| Debug | 8026/8026 | 2892/2892 | 1261/1261 | 155/155; 62/62; 35/35 |
+
+Both runtime assemblies build at netstandard2.1 and net10.0 in standard/Lean;
+all four package IDs contain the matching eight DLL/XML pairs. Public and
+serialization formats are unchanged.
+
+The old strict gate existed only in the successful-main-push Pages workflow,
+so green ordinary build/test jobs did not establish full coverage. Both that
+workflow and every existing Windows/Linux Release/ReleaseLean build/test lane
+now call [one fail-closed assertion](../../../.assets/scripts/assert-full-coverage.ps1).
+It inspects all fresh Coverlet reports, requires both exact runtime assembly
+names and positive line/branch/executable-method data, and rejects any gap.
+Executable methods have source sequence points; methods without sequence
+points are not executable-method coverage entries. Native test failures stop
+the Windows/Linux test step before another test call can mask its exit code.
+Pages triggers/deployment, dependency selection, source pins and the four-lane
+matrix remain intact.
+
+The exact script passes all three configurations and rejects the historical
+6084/6086-line, 2886/2888-branch report. Disposable controls also accept a full
+two-assembly report and reject line-only, branch-only and method-only gaps,
+missing counts, zero counts, missing methods/assemblies, unrelated assembly
+reports, empty results, malformed XML and a missing results directory. These
+are script/CI checks, not maintained tests of test infrastructure. No hosted
+workflow or branch-protection change is claimed. Prior staged SC-Issue-012
+changes remain in the index; this correction is left unstaged for review.

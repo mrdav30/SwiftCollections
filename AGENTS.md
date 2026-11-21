@@ -172,7 +172,8 @@ Keep hot-path collection code direct and auditable:
 - Do not split high-complexity probe or mutation methods merely to lower a
   metric if the split adds indirection or obscures invariants.
 - When complexity remains intentionally high, update
-  `docs/complexity-exceptions.md` with coverage and rationale.
+  `docs/complexity-exceptions.md` with coverage and rationale. That register
+  records complexity exceptions only; it cannot waive coverage requirements.
 
 ## Spatial Query Rules
 
@@ -247,10 +248,14 @@ Full coverage is an explicit repo priority.
   `tests/SwiftCollections.FixedMathSharp.Tests`.
 - New public APIs should have focused behavior, edge-case, serialization/state,
   and invalid-input tests where applicable.
-- Coverage should stay flat or improve. Prefer closing touched areas to full
-  coverage when practical.
+- Require 100% reported line, branch and executable-method coverage for both
+  runtime assemblies in standard and Lean builds. Prove and remove unreachable
+  branches rather than retaining uncovered guards or adding coverage exclusions.
 - Use each test project's `coverlet.runsettings` so core and companion coverage
   are collected independently; generated MemoryPack files stay excluded.
+- Run `.assets/scripts/assert-full-coverage.ps1` against fresh results containing
+  both test projects. The same check runs in every build/test CI lane and before
+  Pages publication; a green test run alone does not establish full coverage.
 
 ## Validation Commands
 
@@ -309,7 +314,8 @@ assembly identities; CI sets it to false in package mode. See
 
 ## CI And Release Notes
 
-- `build-and-test.yml` runs `Release` and `ReleaseLean` on Ubuntu and Windows.
+- `build-and-test.yml` runs `Release` and `ReleaseLean` on Ubuntu and Windows,
+  collecting and enforcing full coverage for both runtime assemblies in each lane.
 - `coverage.yml` publishes one GitHub Pages site after a successful `main` push:
   DocFX at the root, both runtime assemblies under `/api`, and the runtime
   coverage report under `/coverage`.

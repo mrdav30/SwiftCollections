@@ -6,6 +6,8 @@ cyclomatic complexity review threshold.
 ## Policy
 
 - Review threshold: cyclomatic complexity greater than 10.
+- Register only methods above that threshold. Entries justify complexity, never
+  uncovered code or an exception to the coverage gate.
 - Risk threshold: CRAP score greater than 30 requires immediate test hardening
   or refactoring.
 - Coverage evidence is generated output and is not checked in. Recreate it with
@@ -47,7 +49,7 @@ without slowing the hot path.
 
 The comparer-persistence methods below retain their trust-boundary decisions
 together. Complexity counts include short-circuit conditions, loops, catches
-and conditional expressions; all reachable lines and branches remain covered
+and conditional expressions; all reported lines and branches remain covered
 in standard, Lean and Debug builds.
 
 | Module | Method | Complexity | Coverage | Rationale | Revisit if |
@@ -62,20 +64,6 @@ in standard, Lean and Debug builds.
 | `SwiftCollections.Serialization` | `SwiftComparerJsonMetadata.ReadNonEmptyConfiguration` | 11 | 100% line / 100% branch | Bound and decode nonempty configuration, enforcing exact base64 length and canonical unused bits before invoking an application factory. The separate empty path avoids reserving maximum scratch storage. | Configuration limits or encoding change. |
 
 ## Review Guidance
-
-### Fresh-table persistence guards
-
-Dictionary and HashSet restoration each retain a defensive `2 * capacity`
-probe-exhaustion throw. These are the only uncovered lines/branches in the
-core coverage record. The local arrays do not escape, contain no
-tombstones, and are sized above item count before population. For power-of-two
-capacity N, cumulative-square probing visits every slot within 2N attempts
-(the second N positions shift the first N by N/2 modulo N, giving coverage by
-induction). A free slot therefore exists before exhaustion. Exercising these
-throws would require corrupting local implementation state, not a supported
-input. Keep the guards and report their raw uncovered counts; do not add
-coverage exclusions or tests that manufacture impossible local state. Revisit
-reachability if capacity rules, probing or table ownership changes.
 
 ### Ongoing Review
 

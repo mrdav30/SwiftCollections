@@ -59,13 +59,11 @@ public partial class SwiftDictionary<TKey, TValue> where TKey : notnull
             ChronicleGuard.ThrowIfNullGeneric(item.Key, "state");
             int hash = comparer.GetHashCode(item.Key) & 0x7FFFFFFF;
             int index = hash & mask, step = 1;
-            uint limit = (uint)capacity * 2;
+            // A fresh table has a spare slot, and cumulative-square probing visits every slot.
             while (entries[index].IsUsed)
             {
                 if (entries[index].HashCode == hash && comparer.Equals(entries[index].Key, item.Key))
                     throw new InvalidOperationException("Persisted dictionary contains duplicate equal keys.");
-                if ((uint)step >= limit)
-                    throw new InvalidOperationException("Persisted dictionary cannot place an entry in its bounded probe sequence.");
                 index = unchecked(index + step * step) & mask;
                 step++;
             }

@@ -29,13 +29,11 @@ public sealed partial class SwiftHashSet<T> where T : notnull
             if (item is null) continue;
             int hash = comparer.GetHashCode(item) & 0x7FFFFFFF;
             int index = hash & mask, step = 1;
-            uint limit = (uint)capacity * 2;
+            // A fresh table has a spare slot, and cumulative-square probing visits every slot.
             while (entries[index].IsUsed)
             {
                 if (entries[index].HashCode == hash && comparer.Equals(entries[index].Value, item))
                     throw new InvalidOperationException("Persisted hash set contains duplicate equal elements.");
-                if ((uint)step >= limit)
-                    throw new InvalidOperationException("Persisted hash set cannot place an entry in its bounded probe sequence.");
                 index = unchecked(index + step * step) & mask;
                 step++;
             }

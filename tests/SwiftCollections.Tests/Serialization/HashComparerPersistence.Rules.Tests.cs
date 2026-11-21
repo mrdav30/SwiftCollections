@@ -100,6 +100,72 @@ public partial class HashComparerPersistenceTests
 
     [Theory]
     [MemberData(nameof(Formats))]
+    public void WrappedCollisionRestorePreservesMappingsAcrossCapacityBoundaries(bool binary)
+    {
+        foreach ((int count, int capacity) in new[] { (7, 8), (13, 16), (26, 32), (52, 64) })
+        {
+            var keys = new int[count];
+            var pairs = new KeyValuePair<int, int>[count];
+            for (int index = 0; index < count; index++)
+            {
+                // Every forward/reverse hash starts at the table's final slot.
+                keys[index] = int.MinValue + capacity - 1 + index * capacity;
+                pairs[index] = new(keys[index], capacity - 1 + index * capacity);
+            }
+            var state = new SwiftDictionaryState<int, int>(pairs);
+            var forward = ((byte)2, "lsf.runtime-equality-default", Array.Empty<byte>());
+            var dictionary = Decode<SwiftDictionary<int, int>>(Envelope(binary, state, forward), binary);
+            var set = Decode<SwiftHashSet<int>>(Envelope(binary, new SwiftArrayState<int>(keys),
+                ((byte)3, "lsf.runtime-equality-default", Array.Empty<byte>())), binary);
+            var bidirectional = Decode<SwiftBiDictionary<int, int>>(Envelope(binary, state, forward,
+                ((byte)4, "lsf.runtime-equality-default", Array.Empty<byte>()),
+                ((byte)5, "lsf.runtime-equality-default", Array.Empty<byte>())), binary);
+
+            Assert.Equal(capacity, dictionary.Capacity);
+            Assert.Equal(capacity, bidirectional.Capacity);
+            Assert.Equal(count, dictionary.Count);
+            Assert.Equal(count, set.Count);
+            Assert.Equal(count, bidirectional.Count);
+            foreach (KeyValuePair<int, int> pair in pairs)
+            {
+                Assert.Equal(pair.Value, dictionary[pair.Key]);
+                Assert.Contains(pair.Key, set);
+                Assert.Equal(pair.Value, bidirectional[pair.Key]);
+                Assert.Equal(pair.Key, bidirectional.GetKey(pair.Value));
+            }
+
+            Assert.True(dictionary.Remove(keys[0]));
+            Assert.True(set.Remove(keys[0]));
+            Assert.True(bidirectional.Remove(keys[0]));
+            int nextKey = int.MinValue + capacity - 1 + count * capacity;
+            int nextValue = capacity - 1 + count * capacity;
+            Assert.True(dictionary.Add(nextKey, nextValue));
+            Assert.True(set.Add(nextKey));
+            Assert.True(bidirectional.Add(nextKey, nextValue));
+            dictionary = RoundTrip(dictionary, binary);
+            set = RoundTrip(set, binary);
+            bidirectional = RoundTrip(bidirectional, binary);
+
+            Assert.Equal(count, dictionary.Count);
+            Assert.Equal(count, set.Count);
+            Assert.Equal(count, bidirectional.Count);
+            Assert.False(dictionary.ContainsKey(keys[0]));
+            Assert.DoesNotContain(keys[0], set);
+            Assert.False(bidirectional.TryGetKey(pairs[0].Value, out _));
+            for (int index = 1; index <= count; index++)
+            {
+                int key = int.MinValue + capacity - 1 + index * capacity;
+                int value = capacity - 1 + index * capacity;
+                Assert.Equal(value, dictionary[key]);
+                Assert.Contains(key, set);
+                Assert.Equal(value, bidirectional[key]);
+                Assert.Equal(key, bidirectional.GetKey(value));
+            }
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(Formats))]
     public void BidirectionalConfiguredSeedAndEffectiveRandomizedReverseRuleRemainDistinct(bool binary)
     {
         const int seed = -123;
