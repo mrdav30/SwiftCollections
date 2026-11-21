@@ -351,10 +351,9 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// </summary>
     /// <value>A cached read-only view of the keys associated with this dictionary.</value>
     /// <remarks>
-    /// The view keeps the dictionary alive and is not a snapshot. Count reads current dictionary state; the view
-    /// also captures the original entry array, which becomes stale after reallocation. Reacquiring the cached
-    /// property does not refresh it. Do not rely on CopyTo or value membership after resize, trim, or rehash
-    /// until the tracked view defect is corrected.
+    /// The view keeps the dictionary alive and reflects subsequent mutations, including resize, trim and rehash.
+    /// Copies and enumeration follow current hash-slot order. Enumeration follows the owner's mutation rules;
+    /// synchronize dictionary and view access externally.
     /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
@@ -363,8 +362,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// <summary>
     /// Gets the interface Keys.
     /// </summary>
-    /// <value>The same cached view returned by the public Keys property, with its storage-lifetime
-    /// limitations.</value>
+    /// <value>The same live, cached read-only view returned by the public Keys property.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     ICollection IDictionary.Keys => _keyCollection ??= new KeyCollection(this);
@@ -381,10 +379,10 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// </summary>
     /// <value>A cached read-only view of the values associated with this dictionary.</value>
     /// <remarks>
-    /// The view keeps the dictionary alive and is not a snapshot. Count reads current dictionary state; the view
-    /// also captures the original entry array, which becomes stale after reallocation. Reacquiring the cached
-    /// property does not refresh it. Do not rely on CopyTo or value membership after resize, trim, or rehash
-    /// until the tracked view defect is corrected.
+    /// The view keeps the dictionary alive and reflects subsequent mutations, including resize, trim and rehash.
+    /// Copies and enumeration follow current hash-slot order. Membership uses default value equality, not a
+    /// bidictionary's reverse comparer. Enumeration follows the owner's mutation rules; synchronize dictionary
+    /// and view access externally.
     /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
@@ -393,8 +391,7 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// <summary>
     /// Gets the interface Values.
     /// </summary>
-    /// <value>The same cached view returned by the public Values property, with its storage-lifetime
-    /// limitations.</value>
+    /// <value>The same live, cached read-only view returned by the public Values property.</value>
     [JsonIgnore]
     [MemoryPackIgnore]
     ICollection IDictionary.Values => _valueCollection ??= new ValueCollection(this);

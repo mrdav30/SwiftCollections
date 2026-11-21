@@ -20,16 +20,14 @@ public partial class SwiftDictionary<TKey, TValue>
     /// operations.
     /// </summary>
     /// <remarks>
-    /// Retains the owner and captures its entry array at construction. Count reads current owner state, but
-    /// copying/membership can use stale storage after reallocation; this is a tracked implementation defect.
-    /// Enumeration constructs a fresh enumerator from the current owner. Mutation through ICollection Add/Clear
-    /// throws; Remove returns false.
+    /// Retains the owner and reflects its current entries, including after resize, trim or rehash. Copies and
+    /// enumeration follow hash-slot order. Enumeration follows the owner's mutation rules; synchronize access
+    /// externally. Mutation through ICollection Add/Clear throws; Remove returns false.
     /// </remarks>
     [Serializable]
     public sealed partial class KeyCollection : ICollection<TKey>, ICollection, IReadOnlyCollection<TKey>, IEnumerable<TKey>, IEnumerable
     {
         private readonly SwiftDictionary<TKey, TValue> _dictionary;
-        private readonly Entry[] _entries;
 
         /// <summary>
         /// Initializes a new instance of the KeyCollection class that reflects the keys in the specified
@@ -41,13 +39,12 @@ public partial class SwiftDictionary<TKey, TValue>
         {
             ChronicleGuard.ThrowIfNull(dictionary, nameof(dictionary));
             _dictionary = dictionary;
-            _entries = dictionary._entries;
         }
 
         /// <summary>
         /// Gets the current number of entries in the owning dictionary.
         /// </summary>
-        /// <value>The owner's live Count, even when the captured entry array is stale.</value>
+        /// <value>The owner's current number of live entries.</value>
         public int Count => _dictionary._count;
 
         /// <summary>
@@ -99,7 +96,7 @@ public partial class SwiftDictionary<TKey, TValue>
         bool ICollection<TKey>.Remove(TKey item) => false;
 
         /// <summary>
-        /// Copies values from the captured entry storage into a caller array.
+        /// Copies the owner's current keys into a caller array.
         /// </summary>
         /// <param name="array">The caller-owned destination array.</param>
         /// <param name="arrayIndex">The zero-based destination offset with room for the owner's Count.</param>
@@ -108,8 +105,7 @@ public partial class SwiftDictionary<TKey, TValue>
         /// array.Length.</exception>
         /// <exception cref="T:System.ArgumentException">The remaining destination space is too small.</exception>
         /// <remarks>
-        /// Does not clear the destination. Do not use after owner storage replacement; Count and captured storage
-        /// can disagree, causing stale values or range errors.
+        /// Copies current owner storage in hash-slot order and overwrites only the copied range.
         /// </remarks>
         public void CopyTo(TKey[] array, int arrayIndex)
         {
@@ -117,10 +113,11 @@ public partial class SwiftDictionary<TKey, TValue>
             ChronicleGuard.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
             ChronicleGuard.ThrowIfArgument(array.Length - arrayIndex < _dictionary._count, nameof(array), "Insufficient space in the target array.");
 
-            for (int i = 0, j = arrayIndex; i < _entries.Length; i++)
+            Entry[] entries = _dictionary._entries;
+            for (int i = 0, j = arrayIndex; i < entries.Length; i++)
             {
-                if (_entries[i].IsUsed)
-                    array[j++] = _entries[i].Key;
+                if (entries[i].IsUsed)
+                    array[j++] = entries[i].Key;
             }
         }
 
@@ -145,12 +142,13 @@ public partial class SwiftDictionary<TKey, TValue>
                 CopyTo(keysArray, arrayIndex);
             else if (array is object[] objects)
             {
+                Entry[] entries = _dictionary._entries;
                 try
                 {
-                    for (int i = 0, j = arrayIndex; i < _entries.Length; i++)
+                    for (int i = 0, j = arrayIndex; i < entries.Length; i++)
                     {
-                        if (_entries[i].IsUsed)
-                            objects[j++] = _entries[i].Key;
+                        if (entries[i].IsUsed)
+                            objects[j++] = entries[i].Key;
                     }
                 }
                 catch (ArrayTypeMismatchException)

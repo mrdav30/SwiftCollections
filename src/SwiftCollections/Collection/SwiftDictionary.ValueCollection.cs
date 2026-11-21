@@ -20,16 +20,15 @@ public partial class SwiftDictionary<TKey, TValue>
     /// operations.
     /// </summary>
     /// <remarks>
-    /// Retains the owner and captures its entry array at construction. Count reads current owner state, but
-    /// copying/membership can use stale storage after reallocation; this is a tracked implementation defect.
-    /// Enumeration constructs a fresh enumerator from the current owner. Mutation through ICollection Add/Clear
-    /// throws; Remove returns false.
+    /// Retains the owner and reflects its current entries, including after resize, trim or rehash. Copies and
+    /// enumeration follow hash-slot order. Membership uses default value equality. Enumeration follows the
+    /// owner's mutation rules; synchronize access externally. Mutation through ICollection Add/Clear throws;
+    /// Remove returns false.
     /// </remarks>
     [Serializable]
     public sealed partial class ValueCollection : ICollection<TValue>, ICollection, IReadOnlyCollection<TValue>, IEnumerable<TValue>, IEnumerable
     {
         private readonly SwiftDictionary<TKey, TValue> _dictionary;
-        private readonly Entry[] _entries;
 
         /// <summary>
         /// Initializes a new instance of the ValueCollection class that reflects the values in the specified
@@ -41,13 +40,12 @@ public partial class SwiftDictionary<TKey, TValue>
         {
             ChronicleGuard.ThrowIfNull(dictionary, nameof(dictionary));
             _dictionary = dictionary;
-            _entries = dictionary._entries;
         }
 
         /// <summary>
         /// Gets the current number of entries in the owning dictionary.
         /// </summary>
-        /// <value>The owner's live Count, even when the captured entry array is stale.</value>
+        /// <value>The owner's current number of live entries.</value>
         public int Count => _dictionary._count;
 
         /// <summary>
@@ -87,13 +85,14 @@ public partial class SwiftDictionary<TKey, TValue>
         /// Checks membership through the implemented interface.
         /// </summary>
         /// <param name="item">The element to compare, add or remove; reference values are not cloned.</param>
-        /// <returns>true if an equal live entry exists; false otherwise. Uses the concrete collection's equality
-        /// rules.</returns>
+        /// <returns>true if a current live value matches using EqualityComparer&lt;TValue&gt;.Default; otherwise,
+        /// false.</returns>
         bool ICollection<TValue>.Contains(TValue item)
         {
+            Entry[] entries = _dictionary._entries;
             for (uint i = 0; i <= (uint)_dictionary._lastIndex; i++)
             {
-                if (_entries[i].IsUsed && EqualityComparer<TValue>.Default.Equals(_entries[i].Value, item))
+                if (entries[i].IsUsed && EqualityComparer<TValue>.Default.Equals(entries[i].Value, item))
                     return true;
             }
             return false;
@@ -107,7 +106,7 @@ public partial class SwiftDictionary<TKey, TValue>
         bool ICollection<TValue>.Remove(TValue item) => false;
 
         /// <summary>
-        /// Copies values from the captured entry storage into a caller array.
+        /// Copies the owner's current values into a caller array.
         /// </summary>
         /// <param name="array">The caller-owned destination array.</param>
         /// <param name="arrayIndex">The zero-based destination offset with room for the owner's Count.</param>
@@ -116,8 +115,7 @@ public partial class SwiftDictionary<TKey, TValue>
         /// array.Length.</exception>
         /// <exception cref="T:System.ArgumentException">The remaining destination space is too small.</exception>
         /// <remarks>
-        /// Does not clear the destination. Do not use after owner storage replacement; Count and captured storage
-        /// can disagree, causing stale values or range errors.
+        /// Copies current owner storage in hash-slot order and overwrites only the copied range.
         /// </remarks>
         public void CopyTo(TValue[] array, int arrayIndex)
         {
@@ -125,10 +123,11 @@ public partial class SwiftDictionary<TKey, TValue>
             ChronicleGuard.ThrowIfArrayIndexInvalid(arrayIndex, array.Length);
             ChronicleGuard.ThrowIfArgument(array.Length - arrayIndex < _dictionary._count, nameof(array), "Insufficient space in the target array.");
 
+            Entry[] entries = _dictionary._entries;
             for (int i = 0, j = arrayIndex; i <= _dictionary._lastIndex; i++)
             {
-                if (_dictionary._entries[i].IsUsed)
-                    array[j++] = _entries[i].Value;
+                if (entries[i].IsUsed)
+                    array[j++] = entries[i].Value;
             }
         }
 
@@ -153,11 +152,12 @@ public partial class SwiftDictionary<TKey, TValue>
                 CopyTo(valuesArray, arrayIndex);
             else if (array is object[] objects)
             {
+                Entry[] entries = _dictionary._entries;
                 try
                 {
                     for (int i = 0, j = arrayIndex; i <= _dictionary._lastIndex; i++)
-                        if (_entries[i].IsUsed)
-                            objects[j++] = _entries[i].Value!;
+                        if (entries[i].IsUsed)
+                            objects[j++] = entries[i].Value!;
                 }
                 catch (ArrayTypeMismatchException)
                 {

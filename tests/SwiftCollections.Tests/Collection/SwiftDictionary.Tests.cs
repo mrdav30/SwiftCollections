@@ -1,8 +1,10 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using SwiftCollections.Observable;
 using Xunit;
 
 #if !SWIFTCOLLECTIONS_DISABLE_MEMORYPACK
@@ -13,6 +15,174 @@ namespace SwiftCollections.Tests;
 
 public class SwiftDictionaryTests
 {
+    [Theory]
+    [InlineData("ensure-capacity")]
+    [InlineData("automatic-growth")]
+    [InlineData("remove-after-growth")]
+    [InlineData("trim-excess")]
+    [InlineData("rehash")]
+    [InlineData("clear-reuse")]
+    [InlineData("empty-state")]
+    public void KeyAndValueViews_ReflectOwnerAfterStorageChanges(string mutation)
+    {
+        var dictionary = new SwiftDictionary<int, string>(mutation == "trim-excess" ? 64 : 8) { { 1, "One" } };
+        var expected = new Dictionary<int, string> { { 1, "One" } };
+        ICollection<int> keys = dictionary.Keys;
+        ICollection<string> values = dictionary.Values;
+        using IEnumerator<int> oldKeys = keys.GetEnumerator();
+        using IEnumerator<string> oldValues = values.GetEnumerator();
+        Assert.True(oldKeys.MoveNext());
+        Assert.True(oldValues.MoveNext());
+
+        switch (mutation)
+        {
+            case "ensure-capacity":
+                dictionary.EnsureCapacity(64);
+                dictionary.Add(2, "Two");
+                expected.Add(2, "Two");
+                break;
+            case "automatic-growth":
+                for (int key = 2; key <= 12; key++)
+                {
+                    dictionary.Add(key, $"Value {key}");
+                    expected.Add(key, $"Value {key}");
+                }
+                Assert.True(dictionary.Capacity > 8);
+                break;
+            case "remove-after-growth":
+                dictionary.EnsureCapacity(64);
+                dictionary.Add(2, "Two");
+                Assert.True(dictionary.Remove(1));
+                expected.Clear();
+                expected.Add(2, "Two");
+                break;
+            case "trim-excess":
+                dictionary.TrimExcess();
+                Assert.Equal(8, dictionary.Capacity);
+                dictionary.Add(2, "Two");
+                expected.Add(2, "Two");
+                break;
+            case "rehash":
+                dictionary.SetComparer(new SelectiveIntHashComparer((1, 7), (2, 6)));
+                dictionary.Add(2, "Two");
+                expected.Add(2, "Two");
+                break;
+            case "clear-reuse":
+                dictionary.Clear();
+                expected.Clear();
+                dictionary.Add(2, "Two");
+                expected.Add(2, "Two");
+                break;
+            case "empty-state":
+                dictionary.State = new SwiftDictionaryState<int, string>(Array.Empty<KeyValuePair<int, string>>());
+                expected.Clear();
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(mutation));
+        }
+
+        if (mutation != "empty-state")
+        {
+            Assert.Throws<InvalidOperationException>(() => oldKeys.MoveNext());
+            Assert.Throws<InvalidOperationException>(() => oldValues.MoveNext());
+        }
+        AssertCurrentDictionaryViews(dictionary, keys, values, expected);
+    }
+
+    [Fact]
+    public void ValueCollection_ContainsAfterGrowth_UsesCurrentStorage()
+    {
+        var dictionary = new SwiftDictionary<int, string>();
+        ICollection<string> values = dictionary.Values;
+        dictionary.EnsureCapacity(64);
+        dictionary.Add(40, "Forty");
+
+        Assert.True(values.Contains("Forty"));
+        Assert.False(values.Contains("Missing"));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void KeyAndValueViews_InheritedOwnersReflectStorageChanges(bool observable)
+    {
+        SwiftDictionary<int, string> dictionary = observable
+            ? new SwiftObservableDictionary<int, string>()
+            : new SwiftBiDictionary<int, string>(null, StringComparer.OrdinalIgnoreCase);
+        dictionary.Add(1, "One");
+        ICollection<int> keys = dictionary.Keys;
+        ICollection<string> values = dictionary.Values;
+        dictionary.EnsureCapacity(64);
+        dictionary.Add(2, "Two");
+
+        AssertCurrentDictionaryViews(dictionary, keys, values,
+            new Dictionary<int, string> { { 1, "One" }, { 2, "Two" } });
+        Assert.False(values.Contains("ONE"));
+        if (dictionary is SwiftBiDictionary<int, string> bidictionary)
+            Assert.True(bidictionary.ContainsValue("ONE"));
+    }
+
+    private static void AssertCurrentDictionaryViews(SwiftDictionary<int, string> dictionary,
+        ICollection<int> keys, ICollection<string> values, Dictionary<int, string> expected)
+    {
+        Assert.Equal(expected.Count, dictionary.Count);
+        foreach (KeyValuePair<int, string> pair in expected)
+            Assert.Equal(pair.Value, dictionary[pair.Key]);
+        int[] expectedKeys = dictionary.Select(static pair => pair.Key).ToArray();
+        string[] expectedValues = dictionary.Select(static pair => pair.Value).ToArray();
+        Assert.Same(keys, dictionary.Keys);
+        Assert.Same(values, dictionary.Values);
+        Assert.Same(keys, ((IDictionary)dictionary).Keys);
+        Assert.Same(values, ((IDictionary)dictionary).Values);
+        Assert.Equal(expected.Count, keys.Count);
+        Assert.Equal(expected.Count, values.Count);
+        Assert.Equal(expectedKeys, keys.Select(static key => key));
+        Assert.Equal(expectedValues, values.Select(static value => value));
+        foreach (KeyValuePair<int, string> pair in expected)
+        {
+            Assert.True(keys.Contains(pair.Key));
+            Assert.True(values.Contains(pair.Value));
+        }
+        Assert.False(keys.Contains(-1));
+        Assert.False(values.Contains("Missing"));
+        if (!expected.ContainsKey(1))
+        {
+            Assert.False(keys.Contains(1));
+            Assert.False(values.Contains("One"));
+        }
+
+        int[] copiedKeys = Enumerable.Repeat(-1, expected.Count + 2).ToArray();
+        string[] copiedValues = Enumerable.Repeat("Untouched", expected.Count + 2).ToArray();
+        keys.CopyTo(copiedKeys, 1);
+        values.CopyTo(copiedValues, 1);
+        Assert.Equal(expectedKeys, copiedKeys.Skip(1).Take(expected.Count));
+        Assert.Equal(expectedValues, copiedValues.Skip(1).Take(expected.Count));
+        Assert.Equal(-1, copiedKeys[0]);
+        Assert.Equal(-1, copiedKeys[^1]);
+        Assert.Equal("Untouched", copiedValues[0]);
+        Assert.Equal("Untouched", copiedValues[^1]);
+
+        Array.Fill(copiedKeys, -1);
+        Array.Fill(copiedValues, "Untouched");
+        ((ICollection)keys).CopyTo(copiedKeys, 1);
+        ((ICollection)values).CopyTo(copiedValues, 1);
+        Assert.Equal(expectedKeys, copiedKeys.Skip(1).Take(expected.Count));
+        Assert.Equal(expectedValues, copiedValues.Skip(1).Take(expected.Count));
+        Assert.Equal(-1, copiedKeys[0]);
+        Assert.Equal(-1, copiedKeys[^1]);
+        Assert.Equal("Untouched", copiedValues[0]);
+        Assert.Equal("Untouched", copiedValues[^1]);
+        object[] keyObjects = Enumerable.Repeat<object>("Untouched", expected.Count + 2).ToArray();
+        object[] valueObjects = Enumerable.Repeat<object>("Untouched", expected.Count + 2).ToArray();
+        ((ICollection)keys).CopyTo(keyObjects, 1);
+        ((ICollection)values).CopyTo(valueObjects, 1);
+        Assert.Equal(expectedKeys.Cast<object>(), keyObjects.Skip(1).Take(expected.Count));
+        Assert.Equal(expectedValues.Cast<object>(), valueObjects.Skip(1).Take(expected.Count));
+        Assert.Equal("Untouched", keyObjects[0]);
+        Assert.Equal("Untouched", keyObjects[^1]);
+        Assert.Equal("Untouched", valueObjects[0]);
+        Assert.Equal("Untouched", valueObjects[^1]);
+    }
 
     [Fact]
     public void StateRestore_CustomDistinctKeysNeedComparerBeforeInsertion()
