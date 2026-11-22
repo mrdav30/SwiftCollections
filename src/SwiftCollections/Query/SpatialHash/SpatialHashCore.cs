@@ -57,7 +57,7 @@ internal struct SpatialHashCore<TKey, TVolume, TCell, TMapping>
 
     internal bool Insert(TKey key, TVolume bounds)
     {
-        ChronicleGuard.ThrowIfNull(key, nameof(key));
+        ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
 
         int existingIndex = FindEntryIndex(key);
         if (existingIndex >= 0)

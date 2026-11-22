@@ -1,13 +1,14 @@
 # 2D Query Parity Plan
 
-- **Status:** Phases 1–3 complete for implemented scope and local
-  Standard/Lean/target gates. Phase 4 is the complete Phases 0–3 optimization/
-  hardening review and final feature validation, including Unity smoke checks.
+- **Status:** Complete. Phases 0–4 implementation, optimization/hardening and
+  feature verification pass for Standard/Lean, net10.0/netstandard2.1 and the
+  tested Unity hosts.
+- **Completed:** 2026-11-22.
 - **Created:** 2026-11-21.
 - **Owner:** SwiftCollections, with FixedMathSharp owning any new exact geometry
   arithmetic.
 - **Tracking:**
-  [Feature work overview](feature-work-overview.md#2d-query-parity).
+  [Feature work overview](../feature-work-overview.md#2d-query-parity).
 - **Baseline:** SwiftCollections `cf4fdb3369afd555e73ee3eab84c4092c78d3647`,
   initially clean. Record actual revisions and local changes at each
   implementation phase; this planning baseline is not a release or benchmark
@@ -94,19 +95,20 @@ identical signatures across different families:
 
 ## Current owners and concrete reuse work
 
-The [generic BVH](../../src/SwiftCollections/Query/BoundingVolume/SwiftBVH.cs)
+The
+[generic BVH](../../../src/SwiftCollections/Query/BoundingVolume/SwiftBVH.cs)
 already depends only on
-[IBoundVolume](../../src/SwiftCollections/Query/Shared/Volume/IBoundVolume.cs).
+[IBoundVolume](../../../src/SwiftCollections/Query/Shared/Volume/IBoundVolume.cs).
 The 2D area-growth backend supplies the dimensional heuristic; no second binary
 tree, node implementation or scratch subsystem is needed.
 
 The
-[shared spatial hash core](../../src/SwiftCollections/Query/SpatialHash/SpatialHashCore.cs)
+[shared spatial hash core](../../../src/SwiftCollections/Query/SpatialHash/SpatialHashCore.cs)
 owns reusable entry arrays, free-slot reuse, upsert/relocation, key lookup,
 capacity, clear and query-stamp rollover/duplicate suppression. The existing
-[XYZ facade](../../src/SwiftCollections/Query/SpatialHash/SwiftSpatialHash.cs)
+[XYZ facade](../../../src/SwiftCollections/Query/SpatialHash/SwiftSpatialHash.cs)
 and new
-[XY facade](../../src/SwiftCollections/Query/SpatialHash/SwiftSpatialHash2D.cs)
+[XY facade](../../../src/SwiftCollections/Query/SpatialHash/SwiftSpatialHash2D.cs)
 embed that mutable core. They retain their dimensional mapper and protected
 candidate contracts. Constrained struct grid adapters map ranges and step native
 XY or XYZ cell coordinates without per-cell delegates or iterator allocation.
@@ -114,19 +116,19 @@ Stable facade-bound key-map callbacks observe the current core, rather than a
 copied struct. A Z=0 mapper alone would retain a third coordinate and visit
 extra padded Z layers; the XY owner uses two-coordinate keys.
 
-The [octree](../../src/SwiftCollections/Query/Octree/SwiftOctree.cs) explicitly
-allocates eight children, while most traversal, redistribution and merge loops
-already use Children.Length. Share these mechanics with four-child subdivision.
-Preserve the existing
-[octree partitioner](../../src/SwiftCollections/Query/Octree/IOctreeBoundsPartitioner.cs)
+The [octree](../../../src/SwiftCollections/Query/Octree/SwiftOctree.cs)
+explicitly allocates eight children, while most traversal, redistribution and
+merge loops already use Children.Length. Share these mechanics with four-child
+subdivision. Preserve the existing
+[octree partitioner](../../../src/SwiftCollections/Query/Octree/IOctreeBoundsPartitioner.cs)
 and its 0..7 contract. A quadtree must not publicly inherit from an octree just
 to reuse code. Phase 0 selected an embedded owner layout below; production
 extraction remains a measured gate for indirection, storage and warm costs.
 
 Reuse
-[QueryKeyIndexMap](../../src/SwiftCollections/Query/Shared/QueryKeyIndexMap.cs)
+[QueryKeyIndexMap](../../../src/SwiftCollections/Query/Shared/QueryKeyIndexMap.cs)
 and applicable
-[QueryTraversalScratch](../../src/SwiftCollections/Query/Shared/QueryTraversalScratch.cs).
+[QueryTraversalScratch](../../../src/SwiftCollections/Query/Shared/QueryTraversalScratch.cs).
 New shared ownership/extraction helpers must serve the existing 3D and new 2D
 owners in the same phase. Dimension-specific numeric helpers need an actual
 production consumer in their owning family. Do not rely on static-abstract
@@ -336,13 +338,13 @@ Preserve existing CI policy.
 | DocFX                                   | Fresh generated metadata/site from both Release/net10.0 DLL/XML inputs, warnings as errors; reconcile full authored member inventory and inspect bounds, generic/wrapper, options, mapper/partitioner and inherited comments/links. Check remaining targets/variants in emitted XML.                                                                                                                                                        |
 | Unity/netstandard consumer              | Use SwiftCollections-Unity's existing isolated smoke-project route with matching Standard/Lean core, companion, FixedMathSharp and Chronicler graphs. Exercise public 2D bounds/BVH/hash/quadtree/custom-backend controls in actual Editor/Mono and High-stripping IL2CPP players. Verify backend, loaded inputs and result markers; a .NET replay is not a substitute. Do not replace the adapter checkout's checked-in packages in place. |
 
-Use [CONTRIBUTING](../../CONTRIBUTING.md#local-validation) commands and each
+Use [CONTRIBUTING](../../../CONTRIBUTING.md#local-validation) commands and each
 test project's coverlet.runsettings. In coordinated source mode carry
 `UseLocalLsfStack=true` and `DisableTransitiveProjectReferences=true` globally
 through restore/build/test and build serially with `-m:1`; explicitly restore
 again when changing configuration/dependency mode. Package mode uses released
 dependencies and `DisableTransitiveProjectReferences=false`. Run
-[.assets/scripts/assert-full-coverage.ps1](../../.assets/scripts/assert-full-coverage.ps1)
+[.assets/scripts/assert-full-coverage.ps1](../../../.assets/scripts/assert-full-coverage.ps1)
 against fresh results containing both test projects. Do not add coverage
 exclusions, waive guards through the complexity register or weaken existing CI.
 
@@ -352,9 +354,10 @@ source/header, namespace-level type-per-file and generated-output rules. No
 Unity engine API enters either runtime assembly. UI conversions or engine
 adapters beyond smoke coverage require separate adapter scope.
 
-Cross-repo reminder: after the FixedMathSharp source changes land, update the
-SwiftCollections CI build/test FixedMathSharp pin to the intended commit. This
-is a maintainer reminder, not a release or feature-completion gate.
+Cross-repo reminder: update the SwiftCollections CI build/test FixedMathSharp
+pin to `8fdf889322f1bb82501c2afec63d6bb2f304ace2` or a later commit containing
+the area APIs and Debug fixes validated here. This is a maintainer reminder, not
+a release or feature-completion gate.
 
 ## Decision register and phase results
 
@@ -1408,7 +1411,188 @@ The complete Phases 0–3 optimization/hardening review and actual Unity
 Mono/High-stripping IL2CPP validation remain Phase 4 feature requirements. Phase
 3 made no publication, CI policy or pin changes.
 
-- Phase 4: not started; scope aligned to complete feature review, optimization,
-  hardening and final validation. Earlier phase records retain historical
-  dependency observations; their release/hosted readiness statements are not
-  current feature-completion gates.
+### Phase 4 — complete review, hardening and feature verification
+
+Complete: independent review, runtime hardening, strict coverage, target assets,
+API reference checks, maintained benchmarks and actual Unity validation pass.
+
+The phase starts from clean SwiftCollections
+`dc4af55d4fbfeb1c7ebf08e4a3d26264bc5709e9`, FixedMathSharp
+`8fdf889322f1bb82501c2afec63d6bb2f304ace2`, Chronicler
+`0281469ecc40e65a05867f473bc10f030e7f69f8` and the Unity adapter packages
+checkout `6252fd5cbdade58e0019217449dcec62b5e72967`. Independent reviews cover
+all Phases 0–3 bounds, BVH, spatial hash and quadtree work, including extracted
+XYZ owners, public/custom backends, fixed provider arithmetic, focused tests,
+XML and conceptual contracts. The refreshed development workflow ends feature
+plans at implementation and verification; the CI pin reminder above remains.
+
+#### Confirmed finding and bounded optimization decisions
+
+`SpatialHashCore.Insert` still called the object null guard. The existing
+maintained allocation control omitted duplicate Insert. Four maintained
+public-facade regressions now measure 1,000 warmed duplicate int-key inserts
+through Numerics/fixed XY and XYZ, assert 1,000 false results, Count one and
+unchanged bounds outside the measurement. All four fail on the pre-fix code with
+24,000 managed bytes and pass at zero after replacing the call with
+`ChronicleGuard.ThrowIfNullGeneric`. The guard remains first, with parameter
+name key, and preserves null rejection before lookup, mapper callbacks or
+mutation. Existing reference/null-key tests pass. This fixes an allocation
+exposed by the measured JIT tier; it is not a claim that every optimizing JIT
+previously allocated.
+
+The baseline's existing Release suite passes 2,125 core and 98 companion tests;
+only the added allocation regressions fail before the fix. No additional runtime
+defect emerged from independent core, fixed arithmetic or test/contract reviews.
+An options XML exception incorrectly mentioned depth/node capacity; it now
+describes its sole invalid argument, negative neighborhoodPadding.
+
+Source-only opportunities for readonly provider accessors or alternative tree
+list compaction have no measured caller bottleneck and are not implemented. No
+speculative cache, dispatch framework or ownership rewrite is added. The Phase 3
+user-accepted bounded Numerics timing tradeoff remains in force; fixed-point LSF
+workloads remain the priority. Phase 4 adds no runtime file, owner object,
+entry/cell/node field or API. Its runtime change is one guard substitution, plus
+the XML correction; the four regressions and the companion measurement helper
+add 90 test lines.
+
+#### Final builds, tests and coverage
+
+Use serial solution builds with `-c Release`, `-c ReleaseLean` and `-c Debug`,
+`-p:UseLocalLsfStack=true -p:DisableTransitiveProjectReferences=true -m:1`. Run
+both test projects with --no-build and the same two global properties,
+`--collect:"XPlat Code Coverage"`, their existing coverlet.runsettings and fresh
+result directories. The unchanged assert-full-coverage script passes:
+
+| Executed library target        | Core tests | Companion tests | Both runtime assemblies                     |
+| ------------------------------ | ---------: | --------------: | ------------------------------------------- |
+| Standard net10.0               |      2,127 |             100 | 100% lines, branches and executable methods |
+| Lean net10.0                   |      2,019 |             100 | 100% lines, branches and executable methods |
+| Debug net10.0                  |      2,125 |             100 | 100% lines, branches and executable methods |
+| Standard actual netstandard2.1 |      2,126 |             100 | 100% lines, branches and executable methods |
+| Lean actual netstandard2.1     |      2,018 |             100 | 100% lines, branches and executable methods |
+
+Covered/valid core counts remain 6,274/6,274 lines, 2,952/2,952 branches and
+1,400/1,400 executable methods in Standard; Lean 6,080/6,080, 2,876/2,876,
+1,359/1,359; Debug 8,244/8,244, 2,962/2,962, 1,400/1,400. Companion
+Standard/Lean counts are 205/205, 86/86 and 67/67; Debug 257/257 lines with the
+same branch/method counts. No exclusions, complexity waivers or CI changes.
+Actual netstandard DLLs use the already documented isolated test-copy bridge,
+matching dependencies and source-root mappings on .NET 10. The net10-only JSON
+case is inapplicable to that target. Existing xUnit2013 and Lean xUnit1026
+warnings remain; there is no final build/test failure in this matrix.
+
+#### Unity and cross-host deterministic replay
+
+Both matching Standard/Lean net10.0 and netstandard2.1 graphs produce identical
+traces on .NET 10. The netstandard graphs also pass on Unity 6000.3.9f1
+Editor/Mono. Fresh isolated Windows64 IL2CPP players also build and pass in both
+variants: High managed stripping, Release native compiler, nondevelopment,
+NET_Standard compatibility and engine stripping enabled. Copied plugin DLLs
+match the frozen graph byte for byte. Build settings, success markers, actual
+player ENABLE_IL2CPP marker, exit zero and result markers are checked. No
+blanket link preservation or tracked adapter/package/ .meta changes are needed.
+Visual Studio 18 BuildTools x64/x86 C++ tools and Windows SDK 10.0.26100.0
+supply the native toolchain.
+
+The same disposable netstandard helper drives 12 families: Numerics/fixed/custom
+2D BVH, spatial hash and quadtree, plus fixed XYZ BVH/hash/octree controls. Each
+has 128 entries from xorshift seed 0xC0FFEE (13/17/5 shifts), coordinates
+next%112-56, width i%7==0 ? 0 : 1+i%4 and height i%11==0 ? 0 : 1+i%3. Hash cells
+have size four, tree world [-128,128] on each planar axis, depth/capacity 8/4
+and minimum size one. Custom backends use a distinct interface-only volume and
+explicit mapper/partitioner. XYZ controls embed Z=[0,1], with tree world
+Z=[-128,128]. BVH/hash owners request initial capacity one; trees use node
+capacity four and merging enabled. Upsert keys 0–31 after moving bounds by
+(+17,-9), update keys 32–63 by (-11,+14), remove every third key with each
+removal repeated, then reinsert those keys. Clear and refill all 128 keys in
+reverse order. Query stages cover initial insertion, movement, removal,
+reinsertion and reverse refill. Each stage has 16 queries: whole world, origin
+point, miss [120,121]², then current stored anchor (17*q+3)%128 expanded -2/+4.
+Output begins with -99; verify retained prefix, unique valid keys and complete
+hit sets using independent integer endpoint inequalities. Fold the uint query
+index and output count including the -99 prefix, then only the appended uint
+keys: xor each whole uint value and multiply unchecked, using FNV offset
+14695981039346656037 and multiplier 1099511628211.
+
+All 12 ordered fingerprints agree across both flavors and actual hosts: BVH
+0E617952ED0AFBB9, spatial hash 018E2B36F998AA81 and tree 1ECD91A8D6196D01 for
+these deliberately equivalent inputs. This does not add a general
+cross-dimension/backend ordering contract. Additional controls cover
+full-domain/zero-height area, Size overflow, full-domain BVH cost clamp,
+raw-indivisible quadtree, fractional raw floor/Int32 clamp, nonfinite Numerics
+rejection, touching boundaries, BVH TryQuery failure without writes, broad
+point/neighborhood candidates versus exact hits, and world-rejected duplicate
+insertion preserving bounds.
+
+#### Reference and closeout
+
+All 105 new authored feature XML entries (79 core, 26 companion; 14 public
+types) are reconciled from source to emitted XML in all four target/variant
+combinations, with no missing applicable tags. Synthesized accessors/default
+struct construction and inherited members are accounted separately; no new query
+serializer API or authored public nested type/indexer exists. All eight local
+package DLL/XML pairs match the ordinary outputs, with correct Lean
+shim/dependency shape. Fresh canonical DocFX generation passes warnings as
+errors, zero warnings/errors: 118 HTML pages, 2,116 local paths and 480
+fragments resolve. Rendered review covers the corrected options exception,
+feature bounds/family/mapper/partitioner contracts, inherited links and the
+spatial guide. Desktop/390px browser previews pass after restarting a stale
+local preview tab; no document-width overflow or theme change. Targeted C#
+formatting passes.
+
+All runtime binaries still match the frozen DLLs used by the coverage and Unity
+checks after final test-only additions. Formatting, Markdown links and
+whitespace checks pass. Source, index and sibling-checkout preservation are
+verified. No unresolved feature defect or design decision remains. Historical
+provider Debug failures retain their old revisions/results above; this phase
+uses committed provider 8fdf889 and introduces no provider source change. No
+fresh whole-provider test/coverage run is claimed for the unchanged
+FixedMathSharp or Chronicler repos.
+
+#### Final maintained performance observations
+
+Run the existing Query2DBVHBenchmarks, Query2DSpatialHashBenchmarks and
+Query2DQuadtreeBenchmarks through BenchmarkRunner in each real configuration.
+Use BenchmarkDotNet 0.15.8 ShortRun, two warmups, five measured iterations and
+one launch; carry the source-mode environment and configuration into generated
+children. Windows 11 x64/i7-9700K, SDK 10.0.302, .NET 10.0.10. No competing
+builds, tests or profilers. Each flavor completes 27 child processes with exit
+zero and 135 measured iterations; outlier handling retains 129 Standard and 125
+Lean results. All 54 method/case results report zero managed bytes.
+
+Each benchmark reuses caller-owned result storage for 32 queries per invocation,
+clearing between queries. Inputs and controls are the maintained fixtures
+recorded in the previous phases: N=128/2,048/8,192 seeded unit boxes, native XY,
+positive-thickness XYZ embedding and independent brute-force counts. Mean
+microseconds per 32-query batch, native XY / XYZ embedding / brute force:
+
+| Family       | Entries | Standard                       | Lean                           |
+| ------------ | ------: | ------------------------------ | ------------------------------ |
+| BVH          |     128 | 3.0170 / 4.0380 / 6.8120       | 2.9960 / 4.1510 / 6.7720       |
+| BVH          |   2,048 | 16.9950 / 24.1560 / 239.5520   | 16.7990 / 24.2680 / 238.7280   |
+| BVH          |   8,192 | 110.2740 / 130.3330 / 956.5160 | 108.7270 / 130.3560 / 975.4690 |
+| Spatial hash |     128 | 0.9426 / 1.0879 / 3.9806       | 0.9057 / 1.0807 / 5.0863       |
+| Spatial hash |   2,048 | 1.0302 / 1.2443 / 195.3298     | 1.0332 / 1.2315 / 188.0684     |
+| Spatial hash |   8,192 | 1.5041 / 1.7151 / 783.3759     | 1.3463 / 1.6444 / 753.7244     |
+| Quadtree     |     128 | 0.8934 / 2.0503 / 4.0730       | 0.8890 / 2.0533 / 4.0060       |
+| Quadtree     |   2,048 | 1.8107 / 3.9065 / 190.0141     | 1.8076 / 3.9064 / 206.7610     |
+| Quadtree     |   8,192 | 2.9133 / 5.8344 / 797.5117     | 2.7670 / 5.8680 / 755.3242     |
+
+These are final workload observations, not balanced before/after optimization
+speed claims, cross-flavor comparisons or universal speed ratios. The measured
+hardening win is the separately reproduced 24 B/upsert to zero allocation
+result. All 361 core Query methods' name/signature/IL/implementation-attribute
+hashes match between ordinary outputs and each of the three retained benchmark
+builds per flavor: Standard
+`5e3411904384f90feff3e3c2285c1a6c13a09f57360177c0fe7368c4318939c6`; Lean
+`7451a919d07fbae36f3f2b2a997bda29286086d51122a3dfe9ddfc91d19a34cf`. Actual child
+dependency graphs agree with their configuration; Lean retains the
+source-validation shim reference identity without MemoryPack runtime/generator
+packages. Whole DLL identity across differing output paths is not assumed. The
+allocation finding is closed as SC-Benchmark-007 in the benchmark backlog; its
+regression and this record preserve the portable evidence.
+
+Feature completion excludes hosted runs, release/package publication and
+downstream adoption. Actual Unity coverage is Windows x64/6000.3.9f1; no other
+OS/architecture/editor certification is claimed. The existing CI policy remains
+unchanged and its dependency-pin reminder is not a completion gate.

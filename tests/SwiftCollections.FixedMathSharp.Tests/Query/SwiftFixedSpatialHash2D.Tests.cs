@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using FixedMathSharp;
 using Xunit;
 
@@ -254,6 +255,55 @@ public class SwiftFixedSpatialHash2DTests
                 Assert.Equal(expected, actual);
             }
         }
+    }
+
+    [Fact]
+    public void WarmTyped2DUpserts_AllocateNothing()
+    {
+        var index = new SwiftFixedSpatialHash2D<int>(16, Fixed64.One);
+        var bounds = Box(0, 0, 2, 2);
+        Assert.True(index.Insert(1, bounds));
+        int upserts = 0;
+        long allocated = MeasureWarmedAllocations(() =>
+        {
+            upserts = 0;
+            for (int i = 0; i < 1000; i++)
+                if (!index.Insert(1, bounds)) upserts++;
+        });
+        Assert.Equal(1000, upserts);
+        Assert.Equal(1, index.Count);
+        Assert.True(index.TryGetBounds(1, out var stored));
+        Assert.Equal(bounds, stored);
+        Assert.Equal(0L, allocated);
+    }
+
+    [Fact]
+    public void WarmTyped3DUpserts_AllocateNothing()
+    {
+        var index = new SwiftFixedSpatialHash<int>(16, Fixed64.One);
+        var bounds = new FixedBoundVolume(new Vector3d(0, 0, 0), new Vector3d(2, 2, 2));
+        Assert.True(index.Insert(1, bounds));
+        int upserts = 0;
+        long allocated = MeasureWarmedAllocations(() =>
+        {
+            upserts = 0;
+            for (int i = 0; i < 1000; i++)
+                if (!index.Insert(1, bounds)) upserts++;
+        });
+        Assert.Equal(1000, upserts);
+        Assert.Equal(1, index.Count);
+        Assert.True(index.TryGetBounds(1, out var stored));
+        Assert.Equal(bounds, stored);
+        Assert.Equal(0L, allocated);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static long MeasureWarmedAllocations(Action action)
+    {
+        action();
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        action();
+        return GC.GetAllocatedBytesForCurrentThread() - before;
     }
 
     private static int CellOracle(long raw, long size)

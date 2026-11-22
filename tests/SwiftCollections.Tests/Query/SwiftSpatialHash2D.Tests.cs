@@ -320,6 +320,46 @@ public class SwiftSpatialHash2DTests
     }
 
     [Fact]
+    public void WarmTyped2DUpserts_AllocateNothing()
+    {
+        var index = new SwiftSpatialHash2D<int>(16, 1);
+        var bounds = Box(0, 0, 2, 2);
+        Assert.True(index.Insert(1, bounds));
+        int upserts = 0;
+        long allocated = MeasureWarmedAllocations(() =>
+        {
+            upserts = 0;
+            for (int i = 0; i < 1000; i++)
+                if (!index.Insert(1, bounds)) upserts++;
+        });
+        Assert.Equal(1000, upserts);
+        Assert.Equal(1, index.Count);
+        Assert.True(index.TryGetBounds(1, out var stored));
+        Assert.Equal(bounds, stored);
+        Assert.Equal(0L, allocated);
+    }
+
+    [Fact]
+    public void WarmTyped3DUpserts_AllocateNothing()
+    {
+        var index = new SwiftSpatialHash<int>(16, 1);
+        var bounds = new BoundVolume(new(0, 0, 0), new(2, 2, 2));
+        Assert.True(index.Insert(1, bounds));
+        int upserts = 0;
+        long allocated = MeasureWarmedAllocations(() =>
+        {
+            upserts = 0;
+            for (int i = 0; i < 1000; i++)
+                if (!index.Insert(1, bounds)) upserts++;
+        });
+        Assert.Equal(1000, upserts);
+        Assert.Equal(1, index.Count);
+        Assert.True(index.TryGetBounds(1, out var stored));
+        Assert.Equal(bounds, stored);
+        Assert.Equal(0L, allocated);
+    }
+
+    [Fact]
     public void GrowthCollisionsRelocationAndReuse_AgreeWithIndependentHitSets()
     {
         const int count = 257;

@@ -14,7 +14,7 @@ feature-work plan and link it from the signal.
 ## Intake Rules
 
 - Signal IDs use `SC-Benchmark-NNN`. The next available ID is
-  `SC-Benchmark-007`.
+  `SC-Benchmark-008`.
 - Assign an ID at intake and never reuse it, including after closure or
   promotion. Check this file's history before changing the counter.
 - Open a signal from an actual benchmark, allocation guard, profiler capture, or
@@ -83,6 +83,34 @@ making a new performance claim.
 None.
 
 ## Closed Signals
+
+### SC-Benchmark-007 - Value-key spatial hash insertion boxing
+
+- **Discovered / closed:** 2026-11-22; fixed and verified during 2D query parity
+  Phase 4. No remaining performance gate.
+- **Owner:** SpatialHashCore.Insert, shared by Numerics/fixed 2D and 3D facades.
+- **Reproducer:** SwiftCollections baseline
+  dc4af55d4fbfeb1c7ebf08e4a3d26264bc5709e9, FixedMathSharp 8fdf889 and
+  Chronicler 0281469, source mode; Windows x64, SDK 10.0.302/.NET 10.0.10.
+  Establish int key 1 at bounds [0,2] per axis, capacity 16/cell size one, warm
+  1,000 duplicate Insert calls, then measure another 1,000 using
+  GC.GetAllocatedBytesForCurrentThread. Allocate the Action before measurement.
+  Assert all return false, Count stays one and bounds agree.
+- **Observed / expected:** 24,000 B / 0 B in each of the four public facade
+  regressions. The object null guard boxes int in the tested JIT tier. An
+  optimizing JIT may eliminate the old box; the evidence is tier-specific.
+- **Resolution:** Use existing ChronicleGuard.ThrowIfNullGeneric as the first
+  statement, retaining null exception, parameter name and pre-mutation ordering.
+  All four regressions now measure zero bytes across Standard/Lean and both
+  library targets; Debug and strict coverage also pass. Tests are named
+  WarmTyped2DUpserts_AllocateNothing and WarmTyped3DUpserts_AllocateNothing in
+  each query test project. Build with source-mode globals, then run each project
+  with --no-build and --filter FullyQualifiedName~Upserts_AllocateNothing.
+- **Evidence / reopening:**
+  [Phase 4 record](done/2026-11-22-2d-query-parity-plan.md#phase-4--complete-review-hardening-and-feature-verification).
+  Reopen for a reproduced allocation on unchanged-bounds typed upserts, or a
+  null/order contract regression. Fresh insertions and changed cell membership
+  can allocate storage and are outside this zero-allocation assertion.
 
 ### SC-Benchmark-006 - Unattributed native exit during persistence measurement
 
@@ -549,7 +577,7 @@ binaries.
 
 - **Discovered / closed:** 2026-11-18 / 2026-11-19; automatic validation and
   sorting rejected by contract decision for
-  [SC-Issue-010](issue-tracker.md#sc-issue-010---sorted-list-restore-loses-its-ordering-invariant).
+  [SC-Issue-010](issue-tracker.md#resolved-issues).
 - **Owner / environment:** `SwiftSortedList<int>.State`; baseline
   `31cd3eec80dff86b95f8cab621cc7ca281b4e7cc` versus the rejected SC-Issue-010 prototypes.
   Published dependencies (`UseLocalLsfStack=false`), Release/net10.0, SDK 10.0.302,
@@ -607,7 +635,7 @@ dotnet run --project ../SwiftCollectionsRepro/SwiftCollectionsRepro.csproj -c Re
 ### SC-Benchmark-003 - List-to-list copy capacity
 
 - **Discovered / closed:** 2026-11-18; fixed and verified during
-  [SC-Issue-009](issue-tracker.md#sc-issue-009---list-to-list-copy-grows-the-destination-only-once).
+  [SC-Issue-009](issue-tracker.md#resolved-issues).
 - **Owner / environment:** `SwiftList<int>.CopyTo(SwiftList<int>)`; baseline
   `63c6124572b703680e797770ed0d93e0eb88bea0` versus SC-Issue-009. Published
   dependencies (`UseLocalLsfStack=false`), Release/net10.0, SDK 10.0.302,
@@ -651,7 +679,7 @@ dotnet run --project ../SwiftCollectionsRepro/SwiftCollectionsRepro.csproj -c Re
 ### SC-Benchmark-002 - Exact Int16 normalization
 
 - **Discovered / closed:** 2026-11-18; verified during
-  [SC-Issue-007](issue-tracker.md#sc-issue-007---int16-normalization-fails-on-constant-input).
+  [SC-Issue-007](issue-tracker.md#resolved-issues).
 - **Owner / revisions:** `SwiftShortArray2D.Normalize`; baseline
   `0ffc9d76dc0ed3bfbf485cc7491c4cd66f01501e` versus the SC-Issue-007 integer
   interpolation. Published dependencies (`UseLocalLsfStack=false`), Release/net10.0,
@@ -709,7 +737,7 @@ dotnet run --project ../SwiftCollectionsRepro/SwiftCollectionsRepro.csproj -c Re
 ### SC-Benchmark-001 - Dimensional resize validation code generation
 
 - **Discovered / closed:** 2026-11-18; fixed during
-  [SC-Issue-006](issue-tracker.md#sc-issue-006---dimensional-arrays-accept-inconsistent-shapes).
+  [SC-Issue-006](issue-tracker.md#resolved-issues).
 - **Owner / revisions:** `SwiftArray3D<T>.Resize`; unfixed source
   `9ccb87724652516232322f3fe5ab0b173b493c4b` versus the SC-Issue-006 changes.
   Published dependency mode (`UseLocalLsfStack=false`), Release/net10.0,

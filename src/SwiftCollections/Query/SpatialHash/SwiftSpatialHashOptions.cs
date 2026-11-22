@@ -29,8 +29,7 @@ public readonly struct SwiftSpatialHashOptions : IEquatable<SwiftSpatialHashOpti
     /// </summary>
     /// <param name="neighborhoodPadding">The non-negative number of extra cells visited on every side of a
     /// neighborhood query; ordinary intersection Query ignores this padding.</param>
-    /// <exception cref="T:System.ArgumentOutOfRangeException">Padding/depth is negative or nodeCapacity is
-    /// zero/negative, as applicable.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">neighborhoodPadding is negative.</exception>
     public SwiftSpatialHashOptions(int neighborhoodPadding)
     {
         if (neighborhoodPadding < 0)

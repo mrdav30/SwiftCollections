@@ -36,28 +36,25 @@ without an agreed scope or concrete evidence gate.
 
 ## Active Feature Work
 
-### 2D Query Parity
-
-[2D query parity plan](2d-query-parity-plan.md) — Phases 1–3 complete for local
-bounds, BVH, native XY spatial hash and quadtree gates. Add Numerics and
-fixed-point 2D bounds, BVH, native XY spatial hash and quadtree families while
-reusing existing ownership, preserving 3D contracts and recording measured cost
-tradeoffs.
-
-The spatial hash shares one embedded mutable core between XY and XYZ owners,
-with dimensional mapping and stepping in constrained struct adapters. Local
-Standard/Lean and both target-framework gates pass with full coverage for Phases
-1–3. Native four-child quadtrees and existing eight-child octrees share the
-embedded subdivision owner. Compatibility, coverage and local performance gates
-pass with the bounded Numerics timing tradeoff accepted for the fixed-point LSF
-workload. Phase 4 reviews all Phases 0–3 for optimization, hardening and code
-reuse, then completes final feature validation, including Unity smoke checks.
-FixedMathSharp owns checked area and exact area-growth operations; retain the
-reminder to update its CI build/test dependency pin after cross-repo changes
-land. The plan owns the Standard/Lean, target-framework, full-coverage,
-performance and Unity acceptance matrix.
+No active feature plans.
 
 ## Recently Completed
+
+### 2D Query Parity
+
+[Completed 2D query parity plan](done/2026-11-22-2d-query-parity-plan.md) —
+native Numerics and fixed-point bounds, BVH, spatial hash and quadtree families
+reuse the existing dimension-independent owners. XY cells and four-child
+subdivision remain explicit dimensional boundaries while preserving the
+corresponding XYZ contracts.
+
+The final optimization/hardening review removed value-key spatial-hash upsert
+boxing. Standard/Lean and both target frameworks pass strict full coverage;
+Windows x64 Unity Editor/Mono and High-stripping IL2CPP smoke checks verify the
+fixed-point and custom-backend paths. The plan retains measured tradeoffs,
+source revisions, verification limits and the cross-repo CI pin reminder. The
+[spatial query guide](../api/guides/spatial-queries.md) owns current usage and
+caller contracts.
 
 ### Comparer Persistence
 
