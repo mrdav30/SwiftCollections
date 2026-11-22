@@ -72,54 +72,7 @@ diagnosis, decisions and reopening criteria stay with their owning issue.
 
 ## Active Issues
 
-### SC-Issue-023 - List object adapters misclassify callback invalid casts
-
-- **Status / priority:** Confirmed / P2; open, separate owner from SC-Issue-022.
-- **Discovered / revision:** 2026-11-21 at
-  `b5e03e40130c95879b7936ceafec1baf0d57329a`; reproduced using its frozen core
-  DLL while investigating SC-Issue-022.
-- **Affected members:** SwiftList<T>'s explicit IList.Add, IList.Insert and
-  IList.Remove enclose virtual mutation in conversion catches. Observable-list
-  subscriber failures are relabeled as NotSupportedException after mutation.
-- **Environment:** Windows x64, SDK 10.0.302/runtime 10.0.10, Release with
-  published dependencies. No list runtime fix is included in SC-Issue-022.
-
-**Portable reproducer** (use the console setup above):
-
-```csharp
-foreach (string op in new[] { "Add", "Insert", "Remove" })
-{
-    var d = new SwiftCollections.Observable.SwiftObservableList<int>();
-    if (op == "Remove") d.Add(1);
-    var original = new InvalidCastException("subscriber");
-    d.CollectionChanged += (_, _) => throw original;
-    System.Collections.IList list = d;
-    try
-    {
-        if (op == "Add") list.Add(1);
-        else if (op == "Insert") list.Insert(0, 1);
-        else list.Remove(1);
-    }
-    catch (Exception error)
-    {
-        Console.WriteLine($"{op}; {error.GetType().Name}; " +
-            $"{ReferenceEquals(original, error)}; {d.Count}");
-    }
-}
-```
-
-Observed: `Add; NotSupportedException; False; 1`,
-`Insert; NotSupportedException; False; 1`, and
-`Remove; NotSupportedException; False; 0`. Expected: the original
-InvalidCastException instance propagates, with those same committed counts.
-Callers cannot safely interpret the current error as rejecting an incompatible
-input or leaving the list unchanged.
-
-- **Next action:** Isolate list argument casts from virtual Add/Insert/Remove;
-  cover original subscriber/equality failures, committed state and preserved
-  wrong-type/null/index validation in Standard and Lean with full coverage.
-  The SlotMap/Stack Array.SetValue conversion catches do not invoke user mutation
-  and are not included without a separate reproducer.
+No active issues are currently recorded.
 
 ## Resolved Issues
 
@@ -129,6 +82,7 @@ they do not claim a fresh rerun or package release.
 
 | Issue                                                                                          | Resolved/closed | Outcome                                                                                                                                                                                                                                                              | Evidence                                                                                                                                                                                                       |
 | ---------------------------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SC-Issue-023 | 2026-11-21 | **Verified fix:** five list object adapters isolate conversion from virtual mutation/equality, preserving original user exceptions and existing type/null/index/reentrant-return contracts. | [Resolution, regressions and verification](#sc-issue-023---list-object-adapters-misclassify-callback-invalid-casts) |
 | SC-Issue-022 | 2026-11-21 | **Verified fix:** dictionary object adapters share conversion-only catches and invoke virtual mutation afterward, preserving original comparer/override/subscriber exceptions and existing conversion contracts. | [Resolution and verification](#sc-issue-022---object-dictionary-adapters-misclassify-callback-invalid-casts) |
 | SC-Issue-020 | 2026-11-21 | **Verified fix:** the Numerics octree shares widened midpoint arithmetic for child creation/selection and checks both rounded child spans before subdivision, preventing overflowing and nonshrinking children. | [Root cause, regressions and verification](#sc-issue-020---numerics-octree-subdivision-overflows-finite-midpoints) |
 | SC-Issue-019 | 2026-11-21 | **Verified fix; upsert policy approved:** BVH now owns one leaf per non-null key; repeated Insert updates bounds and returns false. Null is rejected before mutation. Generic, Numerics and fixed-point paths share the fix. | [Resolution and compatibility evidence](#sc-issue-019---bvh-duplicate-and-null-key-policy-differs-from-peer-indexes) |
@@ -1040,6 +994,184 @@ override or subscriber InvalidCastException, changes conversion/null precedence,
 or bypasses derived mutation rules. The analogous SwiftList owner is separately
 tracked as [SC-Issue-023](#sc-issue-023---list-object-adapters-misclassify-callback-invalid-casts);
 this fix does not expand list runtime behavior.
+
+### SC-Issue-023 - List object adapters misclassify callback invalid casts
+
+- **Status / priority:** Resolved 2026-11-21 / P2; verified fix, separate owner from SC-Issue-022.
+- **Discovered / revision:** 2026-11-21 at
+  `b5e03e40130c95879b7936ceafec1baf0d57329a`; reproduced using its frozen core
+  DLL while investigating SC-Issue-022. Reproduced before this fix at
+  `094e2af216c6f7d137cd09e9e74d68f1e77844fa`.
+- **Affected members:** SwiftList<T>'s explicit IList.Add, IList.Insert and
+  IList.Remove enclosed virtual mutation in conversion catches; IList.Contains
+  and IList.IndexOf also enclosed user equality. Correctly typed callback failures
+  were relabeled as NotSupportedException.
+- **Environment:** Windows x64, SDK 10.0.302/runtime 10.0.10, Release with
+  published dependencies. The dictionary fix in SC-Issue-022 did not change list runtime.
+
+**Portable reproducer** (use the console setup above):
+
+```csharp
+foreach (string op in new[] { "Add", "Insert", "Remove" })
+{
+    var d = new SwiftCollections.Observable.SwiftObservableList<int>();
+    if (op == "Remove") d.Add(1);
+    var original = new InvalidCastException("subscriber");
+    d.CollectionChanged += (_, _) => throw original;
+    System.Collections.IList list = d;
+    try
+    {
+        if (op == "Add") list.Add(1);
+        else if (op == "Insert") list.Insert(0, 1);
+        else list.Remove(1);
+    }
+    catch (Exception error)
+    {
+        Console.WriteLine($"{op}; {error.GetType().Name}; " +
+            $"{ReferenceEquals(original, error)}; {d.Count}");
+    }
+}
+```
+
+Observed: `Add; NotSupportedException; False; 1`,
+`Insert; NotSupportedException; False; 1`, and
+`Remove; NotSupportedException; False; 0`. Expected: the original
+InvalidCastException instance propagates, with those same committed counts.
+Callers cannot safely interpret the current error as rejecting an incompatible
+input or leaving the list unchanged.
+
+After: `Add; InvalidCastException; True; 1`,
+`Insert; InvalidCastException; True; 1`, and
+`Remove; InvalidCastException; True; 0`. Mutation timing and contents are unchanged;
+the original subscriber exception is preserved.
+
+**Related lookup reproducer** (same console setup; run independently):
+
+```csharp
+var original = new InvalidCastException("equality");
+var value = new EqualityFailure(original);
+System.Collections.IList list = new SwiftList<EqualityFailure> { value };
+foreach (string op in new[] { "Contains", "IndexOf" })
+{
+    try
+    {
+        if (op == "Contains") list.Contains(value);
+        else list.IndexOf(value);
+    }
+    catch (Exception error)
+    {
+        Console.WriteLine($"{op}; {error.GetType().Name}; " +
+            $"{ReferenceEquals(original, error)}; {list.Count}");
+    }
+}
+sealed class EqualityFailure(Exception failure) : IEquatable<EqualityFailure>
+{
+    public bool Equals(EqualityFailure other) => throw failure;
+}
+```
+
+Both lookups previously printed NotSupportedException/False/1. After the fix,
+both print InvalidCastException/True/1; no library mutation occurs. These paths
+share the same owner/cause and are included here rather than split into another
+issue. Tests also cover an InvalidOperationException from equality.
+
+**Root cause and resolution:** Catch scopes included user mutation/equality,
+not just casts. Three mutation adapters now share private ConvertObjectValue,
+which catches only InvalidCastException from conversion and preserves their
+`Wrong value type for ...` message. Contains and IndexOf share private
+ConvertObjectLookupValue, whose cast-only catch-all preserves their separate
+`Unsupported value type for ...` policy. Virtual mutation and equality execute
+after conversion completes, outside both helpers' catches. There are two private
+helpers with five production consumers, no fields/types or intermediate objects,
+and fewer duplicated runtime conversion blocks. Typed hot paths, storage layout,
+serialization/state restoration and public signatures are unchanged.
+
+**Preserved contracts and scope:** Mutation adapters still let null unboxing to
+non-nullable T throw NullReferenceException; lookup adapters still translate it
+to NotSupportedException. Reference/nullable null elements remain valid. Insert
+converts before index validation. IList.Add still returns final Count minus one
+after synchronous callbacks, including -1 after a handler clears the list. This
+existing reentrant behavior is documented, not redesigned. Notification failures
+follow committed mutation and may interrupt later notifications; failure does
+not imply rollback. The non-generic indexer calls the nonvirtual base setter;
+its separately documented catch-all/invalid-index behavior and hidden observable
+indexer contract are preserved. Array.SetValue copy catches in other owners do
+not invoke these user callbacks and remain outside this fix.
+
+**Regression evidence:** 35 new ObjectAdapter_ cases ran on unfixed source:
+11 failed for the intended exception type/identity mismatch and 24 controls
+passed. The red filter is
+`FullyQualifiedName~SwiftListTests.ObjectAdapter_|FullyQualifiedName~SwiftObservableListTests.ObjectAdapter_`.
+Cases cover all five adapters, typed controls, both observable notification
+stages with sender/payload/order and committed contents, equality failure before
+mutation with preserved enumeration, InvalidCast/InvalidOperation lookups,
+wrong-type/null conversion messages and precedence, reference/nullable nulls,
+invalid insertion indices and reentrant Add results. The post-fix focused filter
+`FullyQualifiedName~SwiftListTests|FullyQualifiedName~SwiftObservableListTests`
+passed all 189 tests.
+
+**Full validation:** Windows x64, SDK 10.0.302/runtime 10.0.10, published
+package dependencies (`UseLocalLsfStack=false`,
+`DisableTransitiveProjectReferences=false`). Run `dotnet build
+SwiftCollections.slnx -c CONFIG` with those properties, then both test projects
+with `dotnet test tests/PROJECT/PROJECT.csproj -c CONFIG --no-build
+--collect:"XPlat Code Coverage" --settings tests/PROJECT/coverlet.runsettings
+--results-directory FRESH_RESULTS` and the same properties. Run
+`.assets/scripts/assert-full-coverage.ps1 -CoverageDirectory FRESH_RESULTS` after
+both projects, using fresh directories per configuration. The unchanged strict
+gate passed every reported line, branch and executable method:
+
+| Configuration | Core tests | Companion tests | Core lines | Core branches | Core executable methods | Companion lines / branches / methods |
+| --- | ---: | ---: | --- | --- | --- | --- |
+| Release | 2040 | 46 | 6022/6022 | 2858/2858 | 1264/1264 | 121/121; 62/62; 35/35 |
+| ReleaseLean | 1932 | 46 | 5828/5828 | 2782/2782 | 1223/1223 | 121/121; 62/62; 35/35 |
+| Debug | 2038 | 46 | 7951/7951 | 2866/2866 | 1264/1264 | 155/155; 62/62; 35/35 |
+
+No failed/skipped tests, coverage exclusions or gate/CI-policy changes. Release
+build reported zero warnings/errors. Lean reported the pre-existing xUnit2013
+slot-map assertion and xUnit1026 observable-dictionary unused round-trip theory
+parameter warnings; Debug reported the slot-map warning. Those source assertions
+are unchanged here. No introduced warning or build error was observed.
+
+Both runtime assemblies built `netstandard2.1` and `net10.0` in all three
+configurations. Explicit package-mode `dotnet pack src/OWNER/OWNER.csproj
+-c CONFIG --no-build --no-restore` produced SwiftCollections,
+SwiftCollections.Lean, SwiftCollections.FixedMathSharp and
+SwiftCollections.FixedMathSharp.Lean. All eight assembly/target/variant DLL/XML
+pairs matched final build outputs byte-for-byte, and the DLLs used by all six
+coverage suites still matched those outputs. All packaged XML parsed.
+Fresh DocFX metadata/site generation with
+`dotnet tool run docfx docs/api/docfx.json --warningsAsErrors` passed with zero
+warnings/errors. The observable guide renders the corrected mutation/equality
+exception contract. All five explicit IList adapters remain hidden by the existing
+site metadata selection; their summaries, parameters, applicable returns,
+exceptions and remarks were checked in all four core target/variant XML files.
+The Add return text includes post-callback Count minus one. The public list page
+and guide links resolve; all 1,624 local href targets across 104 generated HTML
+pages passed file-target checks.
+
+**Warm allocation control:** An optimized disposable net10.0 caller preboxed
+integer values 10 and 20 and reused a capacity-eight SwiftList<int>. Each cycle
+called IList.Add, Insert, Contains, IndexOf and two Removes, checking Add's return,
+lookup results, typed contents and empty final Count. After 2,000 warmup cycles,
+10,000 measured cycles allocated zero thread bytes in the frozen baseline and
+current Standard/Lean, with every result correct. Blocking GC was used. Loaded
+core SHA256 values were
+`98B3F799EB1A95FE0816C44F56BA13531F9CB9E4D9B1B48EB0D65D8A8D5926A4`
+(baseline), `EBC4A304CAB5B5E7D735FF6059DB759611B5CD578015106A3A7A172D22452E5A`
+(Standard), and `E6D460F647D2177A3A4BF1A7540F1D91B87B65F0CAE8788AEA74FFAF3FF061F9`
+(Lean). Caller boxing, exceptions, observable notifications and capacity growth
+are excluded from that workload; no universal allocation or latency claim is
+made. Typed list operations are unchanged and no new timing benchmark was added.
+
+Hosted CI, Unity/IL2CPP, other platforms, downstream suites and a latency
+comparison were not run. No release is claimed.
+
+**Disposition / reopening:** Close the confirmed list defect. Reopen for a
+supported list mutation/lookup route that still relabels a user exception, changes
+the preserved conversion/null/index precedence, bypasses derived mutation or
+changes post-callback Add results. An indexer-policy redesign requires its own
+explicit scope; it is not a remaining callback gap in these five adapters.
 
 ### SC-Issue-021 - Persist collection comparers across serializers
 

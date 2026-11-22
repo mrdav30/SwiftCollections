@@ -337,18 +337,17 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// Adds an element through the implemented collection interface.
     /// </summary>
     /// <param name="value">The supplied value; must convert to the concrete generic type.</param>
-    /// <returns>The index of the added element.</returns>
+    /// <returns>Count minus one after Add and any synchronous callbacks complete. Reentrant callbacks can change
+    /// this result, including returning -1 if they clear the list.</returns>
+    /// <exception cref="NotSupportedException">value cannot be converted to T.</exception>
+    /// <exception cref="NullReferenceException">value is null and T is a non-nullable value type.</exception>
+    /// <remarks>
+    /// Converts before invoking the virtual Add. Override and notification exceptions propagate unchanged;
+    /// failure can follow committed mutation and does not imply rollback.
+    /// </remarks>
     int IList.Add(object? value)
     {
-        try
-        {
-            Add((T)value!);
-        }
-        catch (InvalidCastException)
-        {
-            throw new NotSupportedException($"Wrong value type for {value}");
-        }
-
+        Add(ConvertObjectValue(value));
         return _count - 1;
     }
 
@@ -472,16 +471,15 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// Removes a matching element through the implemented interface.
     /// </summary>
     /// <param name="value">The supplied value; must convert to the concrete generic type.</param>
+    /// <exception cref="NotSupportedException">value cannot be converted to T.</exception>
+    /// <exception cref="NullReferenceException">value is null and T is a non-nullable value type.</exception>
+    /// <remarks>
+    /// Converts before invoking the virtual Remove. Equality, override and notification exceptions propagate
+    /// unchanged; failure can follow committed mutation and does not imply rollback.
+    /// </remarks>
     void IList.Remove(object? value)
     {
-        try
-        {
-            Remove((T)value!);
-        }
-        catch (InvalidCastException)
-        {
-            throw new NotSupportedException($"Wrong value type for {value}");
-        }
+        Remove(ConvertObjectValue(value));
     }
 
     /// <summary>
@@ -579,16 +577,16 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// <param name="index">The zero-based logical or destination index, interpreted by this interface
     /// operation.</param>
     /// <param name="value">The supplied value; must convert to the concrete generic type.</param>
+    /// <exception cref="NotSupportedException">value cannot be converted to T.</exception>
+    /// <exception cref="NullReferenceException">value is null and T is a non-nullable value type.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">index is outside zero through Count inclusive.</exception>
+    /// <remarks>
+    /// Converts before validating the index and invoking the virtual Insert. Override and notification
+    /// exceptions propagate unchanged; failure can follow committed mutation and does not imply rollback.
+    /// </remarks>
     void IList.Insert(int index, object? value)
     {
-        try
-        {
-            Insert(index, (T)value!);
-        }
-        catch (InvalidCastException)
-        {
-            throw new NotSupportedException($"Wrong value type for {value}");
-        }
+        Insert(index, ConvertObjectValue(value));
     }
 
     /// <summary>
@@ -741,6 +739,30 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
 
     #region Utility Methods
 
+    private static T ConvertObjectValue(object? value)
+    {
+        try
+        {
+            return (T)value!;
+        }
+        catch (InvalidCastException)
+        {
+            throw new NotSupportedException($"Wrong value type for {value}");
+        }
+    }
+
+    private static T ConvertObjectLookupValue(object? value)
+    {
+        try
+        {
+            return (T)value!;
+        }
+        catch
+        {
+            throw new NotSupportedException($"Unsupported value type for {value}");
+        }
+    }
+
     /// <summary>
     /// Searches for the specified object and returns the zero-based arrayIndex of the first occurrence within the
     /// SwiftList.
@@ -755,18 +777,12 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// </summary>
     /// <param name="value">The supplied value; must convert to the concrete generic type.</param>
     /// <returns>The first matching index, or -1 if absent.</returns>
+    /// <exception cref="NotSupportedException">value cannot be converted to T, including null for a non-nullable
+    /// value type.</exception>
+    /// <remarks>Only conversion failures are translated. Equality exceptions propagate unchanged.</remarks>
     int IList.IndexOf(object? value)
     {
-        int index;
-        try
-        {
-            index = Array.IndexOf(_innerArray, (T)value!, 0, _count);
-        }
-        catch
-        {
-            throw new NotSupportedException($"Unsupported value type for {value}");
-        }
-        return index;
+        return IndexOf(ConvertObjectLookupValue(value));
     }
 
     /// <summary>
@@ -874,18 +890,12 @@ public partial class SwiftList<T> : IStateBacked<SwiftArrayState<T>>, ISwiftClon
     /// <param name="value">The supplied value; must convert to the concrete generic type.</param>
     /// <returns>true if an equal live entry exists; false otherwise. Uses the concrete collection's equality
     /// rules.</returns>
+    /// <exception cref="NotSupportedException">value cannot be converted to T, including null for a non-nullable
+    /// value type.</exception>
+    /// <remarks>Only conversion failures are translated. Equality exceptions propagate unchanged.</remarks>
     bool IList.Contains(object? value)
     {
-        int index;
-        try
-        {
-            index = IndexOf((T)value!);
-        }
-        catch
-        {
-            throw new NotSupportedException($"Unsupported value type for {value}");
-        }
-        return index != -1;
+        return IndexOf(ConvertObjectLookupValue(value)) != -1;
     }
 
     /// <summary>

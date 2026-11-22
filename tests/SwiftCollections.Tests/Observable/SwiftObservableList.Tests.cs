@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
@@ -14,6 +15,96 @@ namespace SwiftCollections.Observable.Tests;
 
 public class SwiftObservableListTests
 {
+    [Theory]
+    [InlineData("add", false, false)]
+    [InlineData("add", false, true)]
+    [InlineData("add", true, false)]
+    [InlineData("add", true, true)]
+    [InlineData("insert", false, false)]
+    [InlineData("insert", false, true)]
+    [InlineData("insert", true, false)]
+    [InlineData("insert", true, true)]
+    [InlineData("remove", false, false)]
+    [InlineData("remove", false, true)]
+    [InlineData("remove", true, false)]
+    [InlineData("remove", true, true)]
+    public void ObjectAdapter_SubscriberInvalidCastPropagatesAfterCommittedMutation(
+        string operation, bool typed, bool throwFromProperty)
+    {
+        var list = new SwiftObservableList<int> { 10 };
+        if (operation == "remove")
+            list.Add(20);
+        int[] expected = operation switch
+        {
+            "add" => new[] { 10, 20 },
+            "insert" => new[] { 20, 10 },
+            _ => new[] { 20 }
+        };
+        var failure = new InvalidCastException("Subscriber failed.");
+        var notifications = new List<string>();
+        list.CollectionChanged += (sender, args) =>
+        {
+            Assert.Same(list, sender);
+            Assert.Equal(expected, list);
+            bool remove = operation == "remove";
+            Assert.Equal(remove ? NotifyCollectionChangedAction.Remove : NotifyCollectionChangedAction.Add, args.Action);
+            Assert.Equal(remove ? 10 : 20, (int)(remove ? args.OldItems[0] : args.NewItems[0]));
+            Assert.Equal(operation == "add" ? 1 : 0, remove ? args.OldStartingIndex : args.NewStartingIndex);
+            notifications.Add("Collection");
+            if (!throwFromProperty)
+                throw failure;
+        };
+        list.PropertyChanged += (sender, args) =>
+        {
+            Assert.Same(list, sender);
+            Assert.Equal(nameof(list.Count), args.PropertyName);
+            Assert.Equal(expected, list);
+            notifications.Add("Property");
+            throw failure;
+        };
+
+        Assert.Same(failure, Assert.Throws<InvalidCastException>(() =>
+        {
+            IList objects = list;
+            switch (operation)
+            {
+                case "add":
+                    if (typed) list.Add(20); else objects.Add(20);
+                    break;
+                case "insert":
+                    if (typed) list.Insert(0, 20); else objects.Insert(0, 20);
+                    break;
+                case "remove":
+                    if (typed) list.Remove(10); else objects.Remove(10);
+                    break;
+                default: throw new ArgumentOutOfRangeException(nameof(operation));
+            }
+        }));
+
+        Assert.Equal(expected, list);
+        Assert.Equal(throwFromProperty ? new[] { "Collection", "Property" } : new[] { "Collection" }, notifications);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ObjectAdapter_AddReturnsFinalIndexAfterSubscriberMutation(bool clear)
+    {
+        var list = new SwiftObservableList<int> { 10 };
+        list.CollectionChanged += (_, args) =>
+        {
+            if (args.Action == NotifyCollectionChangedAction.Add && (int)args.NewItems[0] == 20)
+            {
+                if (clear) list.Clear(); else list.Add(30);
+            }
+        };
+
+        int index = ((IList)list).Add(20);
+
+        Assert.Equal(clear ? -1 : 2, index);
+        Assert.Equal(clear ? Array.Empty<int>() : new[] { 10, 20, 30 }, list);
+    }
+
     [Fact]
     public void Add_RaisesCollectionChangedEvent()
     {

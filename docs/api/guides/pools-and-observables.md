@@ -103,6 +103,10 @@ Dictionary object Add and non-generic dictionary assignments convert inputs
 before invoking typed mutation. Comparer and notification exceptions, including
 `InvalidCastException`, propagate unchanged through those adapters; an exception
 does not establish that the mutation was rejected.
+List `IList.Add`, `IList.Insert` and `IList.Remove` also convert inputs before
+invoking their observable overrides. Equality and notification failures propagate
+unchanged through these adapters. `IList.Contains` and `IList.IndexOf` likewise
+preserve exceptions from element equality; those lookups do not mutate the list.
 The observable list indexer remains hidden; base-typed list indexer
 writes, direct storage writes and inherited non-overridden mutators can bypass
 notifications.

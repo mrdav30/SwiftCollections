@@ -13,6 +13,182 @@ namespace SwiftCollections.Tests;
 
 public class SwiftListTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ObjectAdapter_RemoveEqualityInvalidCastPreservesIdentityAndContents(bool typed)
+    {
+        var failure = new InvalidCastException("Equality failed.");
+        var stored = new ThrowingEqualityItem(failure);
+        var list = new SwiftList<ThrowingEqualityItem> { stored };
+        var enumerator = list.GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+
+        Assert.Same(failure, Assert.Throws<InvalidCastException>(() =>
+        {
+            if (typed)
+                list.Remove(new ThrowingEqualityItem(failure));
+            else
+                ((IList)list).Remove(new ThrowingEqualityItem(failure));
+        }));
+
+        Assert.Same(stored, Assert.Single(list));
+        Assert.False(enumerator.MoveNext());
+    }
+
+    [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(false, false, true)]
+    [InlineData(false, true, false)]
+    [InlineData(false, true, true)]
+    [InlineData(true, false, false)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, false)]
+    [InlineData(true, true, true)]
+    public void ObjectAdapter_LookupEqualityFailuresRetainIdentityAndContents(
+        bool contains, bool typed, bool invalidCast)
+    {
+        Exception failure = invalidCast
+            ? new InvalidCastException("Equality failed.")
+            : new InvalidOperationException("Equality failed.");
+        var stored = new ThrowingEqualityItem(failure);
+        var sought = new ThrowingEqualityItem(failure);
+        var list = new SwiftList<ThrowingEqualityItem> { stored };
+        var enumerator = list.GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+
+        Exception actual = Record.Exception(() =>
+        {
+            if (typed)
+            {
+                if (contains) list.Contains(sought); else list.IndexOf(sought);
+            }
+            else
+            {
+                if (contains) ((IList)list).Contains(sought); else ((IList)list).IndexOf(sought);
+            }
+        });
+
+        Assert.Same(failure, actual);
+        Assert.Same(stored, Assert.Single(list));
+        Assert.False(enumerator.MoveNext());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ObjectAdapter_LookupRetainsWrongTypeAndNullUnboxingErrors(bool contains)
+    {
+        var list = new SwiftList<int> { 10 };
+        IList objects = list;
+        void Query(object value)
+        {
+            if (contains) objects.Contains(value); else objects.IndexOf(value);
+        }
+
+        NotSupportedException wrongType = Assert.Throws<NotSupportedException>(() => Query("bad"));
+        Assert.Equal("Unsupported value type for bad", wrongType.Message);
+        NotSupportedException nullValue = Assert.Throws<NotSupportedException>(() => Query(null));
+        Assert.Equal("Unsupported value type for ", nullValue.Message);
+        Assert.Equal(new[] { 10 }, list);
+    }
+
+    [Theory]
+    [InlineData("add")]
+    [InlineData("insert")]
+    [InlineData("remove")]
+    public void ObjectAdapter_InvalidTypeAndNullUnboxingKeepContents(string operation)
+    {
+        var list = new SwiftList<int> { 10, 20 };
+        IList objects = list;
+        void Mutate(object value)
+        {
+            switch (operation)
+            {
+                case "add": objects.Add(value); break;
+                case "insert": objects.Insert(1, value); break;
+                case "remove": objects.Remove(value); break;
+                default: throw new ArgumentOutOfRangeException(nameof(operation));
+            }
+        }
+
+        NotSupportedException wrongType = Assert.Throws<NotSupportedException>(() => Mutate("bad"));
+        Assert.Equal("Wrong value type for bad", wrongType.Message);
+        Assert.Null(wrongType.InnerException);
+        Assert.Throws<NullReferenceException>(() => Mutate(null));
+        Assert.Equal(new[] { 10, 20 }, list);
+    }
+
+    [Theory]
+    [InlineData("add")]
+    [InlineData("insert")]
+    [InlineData("remove")]
+    [InlineData("contains")]
+    [InlineData("indexof")]
+    public void ObjectAdapter_NullRemainsValidForReferenceAndNullableElements(string operation)
+    {
+        var references = new SwiftList<string> { "keep" };
+        var nullable = new SwiftList<int?> { 7 };
+        IList referenceObjects = references;
+        IList nullableObjects = nullable;
+        switch (operation)
+        {
+            case "add":
+                Assert.Equal(1, referenceObjects.Add(null));
+                Assert.Equal(1, nullableObjects.Add(null));
+                Assert.Equal(new[] { "keep", null }, references);
+                Assert.Equal(new int?[] { 7, null }, nullable);
+                break;
+            case "insert":
+                referenceObjects.Insert(0, null);
+                nullableObjects.Insert(0, null);
+                Assert.Equal(new[] { null, "keep" }, references);
+                Assert.Equal(new int?[] { null, 7 }, nullable);
+                break;
+            case "remove":
+                references.Add(null);
+                nullable.Add(null);
+                referenceObjects.Remove(null);
+                nullableObjects.Remove(null);
+                Assert.Equal(new[] { "keep" }, references);
+                Assert.Equal(new int?[] { 7 }, nullable);
+                break;
+            case "contains":
+                Assert.False(referenceObjects.Contains(null));
+                Assert.False(nullableObjects.Contains(null));
+                references.Add(null);
+                nullable.Add(null);
+                Assert.True(referenceObjects.Contains(null));
+                Assert.True(nullableObjects.Contains(null));
+                Assert.Equal(new[] { "keep", null }, references);
+                Assert.Equal(new int?[] { 7, null }, nullable);
+                break;
+            case "indexof":
+                Assert.Equal(-1, referenceObjects.IndexOf(null));
+                Assert.Equal(-1, nullableObjects.IndexOf(null));
+                references.Add(null);
+                nullable.Add(null);
+                Assert.Equal(1, referenceObjects.IndexOf(null));
+                Assert.Equal(1, nullableObjects.IndexOf(null));
+                Assert.Equal(new[] { "keep", null }, references);
+                Assert.Equal(new int?[] { 7, null }, nullable);
+                break;
+            default: throw new ArgumentOutOfRangeException(nameof(operation));
+        }
+    }
+
+    [Fact]
+    public void ObjectAdapter_InsertConvertsValueBeforeCheckingIndex()
+    {
+        var list = new SwiftList<int> { 10 };
+        IList objects = list;
+
+        Assert.Throws<NotSupportedException>(() => objects.Insert(-1, "bad"));
+        Assert.Throws<NullReferenceException>(() => objects.Insert(-1, null));
+        Assert.Throws<ArgumentOutOfRangeException>(() => objects.Insert(-1, 20));
+        Assert.Equal(new[] { 10 }, list);
+    }
+
     [Fact]
     public void Constructor_ShouldInitializeWithZeroCapacity()
     {
@@ -1168,4 +1344,13 @@ public class SwiftListTests
     {
         public int Compare(int x, int y) => throw new InvalidOperationException();
     }
+    private sealed class ThrowingEqualityItem(Exception failure) : IEquatable<ThrowingEqualityItem>
+    {
+        public bool Equals(ThrowingEqualityItem other) => throw failure;
+
+        public override bool Equals(object obj) => obj is ThrowingEqualityItem other && Equals(other);
+
+        public override int GetHashCode() => 0;
+    }
+
 }
