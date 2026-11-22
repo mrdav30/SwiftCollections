@@ -13,9 +13,10 @@ namespace SwiftCollections.Query;
 /// <typeparam name="TVolume">The value-type volume backend providing consistent intersection, union, equality and
 /// cost operations.</typeparam>
 /// <remarks>
-/// The octree retains this backend by reference. All methods must agree on coordinate space and child numbering.
-/// A containing child must enclose the entire entry and stay within the parent. Return false for straddlers;
-/// callbacks must not mutate/reenter the owning tree.
+/// The octree retains this backend by reference. Keep callback behavior stable for the tree's lifetime,
+/// including when Count is zero: an empty Clear can retain subdivided topology. All methods must agree on
+/// coordinate space and child numbering. A containing child must enclose the entire entry and stay within the
+/// parent. Return false for straddlers; callbacks must not mutate/reenter the owning tree.
 /// </remarks>
 public interface IOctreeBoundsPartitioner<TVolume>
     where TVolume : struct, IBoundVolume<TVolume>

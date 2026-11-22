@@ -9,6 +9,9 @@ using System.Threading;
 
 namespace SwiftCollections.Query;
 
+/// <summary>
+/// Reuses a cleared per-thread integer stack for query traversal.
+/// </summary>
 internal sealed class QueryTraversalScratch
 {
     private readonly ThreadLocal<SwiftIntStack> _intStack;

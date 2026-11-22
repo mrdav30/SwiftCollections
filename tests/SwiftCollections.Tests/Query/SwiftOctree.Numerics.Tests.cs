@@ -18,14 +18,17 @@ public class SwiftOctreeNumericsTests
         var lowerPoint = new BoundVolume(world.Min, world.Min);
         var upperPoint = new BoundVolume(world.Max, world.Max);
         var octree = new SwiftOctree<int>(world, new SwiftOctreeOptions(2, 1), 1f);
+        Assert.Equal(new SwiftOctreeOptions(2, 1), octree.Options);
+        Assert.Equal(world, octree.WorldBounds);
         Assert.True(octree.Insert(1, lowerPoint));
         Assert.True(octree.Insert(2, upperPoint));
         Assert.True(octree.Insert(3, lowerPoint));
 
         Assert.True(octree.DebugRootHasChildren);
         Assert.Equal(2, octree.DebugMaxDepth);
-        object root = typeof(SwiftOctree<int, BoundVolume>)
-            .GetField("_root", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(octree);
+        object core = typeof(SwiftOctree<int, BoundVolume>)
+            .GetField("_core", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(octree);
+        object root = core.GetType().GetField("_root", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(core);
         AssertFiniteSubdivision(root, world, 1f);
 
         var results = new List<int>();

@@ -10,6 +10,9 @@ using System.Runtime.CompilerServices;
 
 namespace SwiftCollections.Query;
 
+/// <summary>
+/// Adapts a 2D cell mapper to padded cell ranges and ordered coordinate stepping.
+/// </summary>
 internal readonly struct SpatialHashGrid2D<TVolume> : ISpatialHashGrid<TVolume, SwiftSpatialHashCellIndex2D>
     where TVolume : struct, IBoundVolume<TVolume>
 {

@@ -14,6 +14,9 @@ using SwiftCollections.Utility;
 
 namespace SwiftCollections.Query;
 
+/// <summary>
+/// Owns entries, cell membership, relocation and duplicate-safe queries shared by 2D and 3D spatial hashes.
+/// </summary>
 internal struct SpatialHashCore<TKey, TVolume, TCell, TMapping>
     where TKey : notnull
     where TVolume : struct, IBoundVolume<TVolume>

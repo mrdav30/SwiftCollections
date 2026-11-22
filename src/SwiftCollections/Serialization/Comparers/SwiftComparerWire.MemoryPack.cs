@@ -14,6 +14,9 @@ using MemoryPack;
 
 namespace SwiftCollections.Serialization;
 
+/// <summary>
+/// Reads and writes versioned comparer envelopes and descriptors for MemoryPack persistence.
+/// </summary>
 internal static class SwiftComparerWire
 {
     internal static SwiftComparerRegistry GetRegistry(IServiceProvider? provider)

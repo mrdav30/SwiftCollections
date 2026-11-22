@@ -11,6 +11,9 @@ using FixedMathSharp;
 
 namespace SwiftCollections.Query;
 
+/// <summary>
+/// Validates fixed-point cell sizes and maps coordinates to floored, Int32-clamped cell indices.
+/// </summary>
 internal static class FixedSpatialHashCellMapping
 {
     internal static void ValidateCellSize(Fixed64 cellSize)

@@ -12,6 +12,9 @@ using SwiftCollections.Utility;
 
 namespace SwiftCollections.Query;
 
+/// <summary>
+/// Maps query keys to owner-managed entry indices using deterministic comparers and owner callbacks.
+/// </summary>
 internal sealed class QueryKeyIndexMap<TKey> where TKey : notnull
 {
     private readonly IEqualityComparer<TKey> _comparer;

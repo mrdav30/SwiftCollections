@@ -7,4 +7,7 @@
 
 namespace SwiftCollections;
 
+/// <summary>
+/// Marks comparers that already use randomized hashing so collision handling does not replace them again.
+/// </summary>
 internal interface IRandomedEqualityComparer { }

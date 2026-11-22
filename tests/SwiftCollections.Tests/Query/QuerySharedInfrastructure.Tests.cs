@@ -257,6 +257,31 @@ public class QuerySharedInfrastructureTests
     }
 
     [Fact]
+    public void SwiftQuadtreeDiagnostics_WhenEntryStorageResizes_EmitsExpectedEvent()
+    {
+        DiagnosticLevel originalLevel = SwiftCollectionDiagnostics.Shared.MinimumLevel;
+        DiagnosticSink originalSink = SwiftCollectionDiagnostics.Shared.Sink;
+        var events = new List<DiagnosticEvent>();
+        try
+        {
+            SwiftCollectionDiagnostics.Shared.MinimumLevel = DiagnosticLevel.Info;
+            SwiftCollectionDiagnostics.Shared.Sink = (in DiagnosticEvent diagnostic) => events.Add(diagnostic);
+            var quadtree = new SwiftQuadtree<int>(new BoundVolume2D(Vector2.Zero, new Vector2(32)), new SwiftQuadtreeOptions(4, 4), 1);
+            for (int i = 0; i < 5; i++)
+                quadtree.Insert(i, new BoundVolume2D(new Vector2(i + 1), new Vector2(i + 1.25f)));
+            Assert.Contains(events, diagnostic =>
+                diagnostic.Level == DiagnosticLevel.Info
+                && diagnostic.Source == "SwiftQuadtree"
+                && diagnostic.Message.Contains("Resized quadtree entry storage"));
+        }
+        finally
+        {
+            SwiftCollectionDiagnostics.Shared.MinimumLevel = originalLevel;
+            SwiftCollectionDiagnostics.Shared.Sink = originalSink;
+        }
+    }
+
+    [Fact]
     public void DeterministicBoundVolumeDataset_Create_ReturnsStableSequenceForSharedFixtures()
     {
         IReadOnlyList<BoundVolume> first = DeterministicBoundVolumeDataset.Create(3, 9876);

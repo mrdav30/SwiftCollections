@@ -10,6 +10,9 @@ using System.Text.Json;
 
 namespace SwiftCollections.Serialization;
 
+/// <summary>
+/// Reads and writes the strict versioned JSON envelope metadata shared by comparer-aware converters.
+/// </summary>
 internal static class SwiftComparerJsonMetadata
 {
     private const int MaximumBase64Length = ((SwiftComparerRegistry.MaxConfigurationLength + 2) / 3) * 4;

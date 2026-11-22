@@ -1,8 +1,9 @@
 # 2D Query Parity Plan
 
-- **Status:** Phases 1 and 2 complete for implemented scope and local
-  Standard/Lean/target gates. Quadtree remains Phase 3. Hosted/released provider
-  readiness and historical Debug-baseline resolution remain separate records.
+- **Status:** Phases 1–3 complete for implemented scope and local
+  Standard/Lean/target gates. Unity and distribution closeout remain Phase 4.
+  Hosted/released provider readiness and historical Debug-baseline resolution
+  remain separate records.
 - **Created:** 2026-11-21.
 - **Owner:** SwiftCollections, with FixedMathSharp owning any new exact geometry
   arithmetic.
@@ -1140,5 +1141,232 @@ Hosted/provider release readiness still has its separate Phase 1 gates. Actual
 Unity Mono/High-stripping IL2CPP, hosted OS lanes and distribution closeout
 remain Phase 4 requirements; this local result does not close them.
 
-- Phase 3: not started.
+### Phase 3 — quadtree and shared subdivision tree
+
+Complete for implemented scope and local Standard/Lean/target, coverage,
+performance and documentation gates. The user accepted the bounded Numerics
+timing tradeoff for the shared owner, prioritizing the fixed-point LSF workload.
+Unity and distribution closeout remain Phase 4.
+
+The phase starts from clean SwiftCollections
+`57c6fb73e9151b66fdde9d7490977493a46cab2b`, FixedMathSharp
+`8fdf889322f1bb82501c2afec63d6bb2f304ace2` and Chronicler
+`0281469ecc40e65a05867f473bc10f030e7f69f8`. No provider source, dependency
+version, hosted pin or CI policy change is required. The independent provider
+fixes noted in Phase 2 are now committed upstream; no upstream full-suite
+resolution is claimed by this phase.
+
+#### Ownership, contracts and tests
+
+`SwiftQuadtree<TKey,TVolume>`, Numerics `SwiftQuadtree<TKey>` and
+`SwiftFixedQuadtree<TKey>` implement the frozen surface, alongside
+`IQuadtreeBoundsPartitioner<TVolume>` and `SwiftQuadtreeOptions`. The existing
+XYZ facade and new XY facade embed one mutable `SubdivisionTreeCore`.
+Constrained struct adapters retain each public backend and supply eight/four
+actual children. Ownership, key lookup, relocation, stable entry order,
+subdivision and merging have one implementation; the superseded octree engine is
+removed. Callbacks stay bound to the facade and read the current core after
+growth/clear. Primitive option fields avoid a second stored options value;
+zero-capacity getters return default without invoking validating constructors.
+
+Numeric XY reuses BoundVolume2D.Center for the widened-then-float split plane.
+Fixed XY uses FixedBoundArea's nearest-even center through its existing wrapper.
+Both minimum child spans on each axis must qualify. The shared companion
+`FixedTreeSubdivision` predicate/size guard serves old XYZ and new XY without
+materializing full Size/Area/Volume or adding wide arithmetic. Children use xBit
+| (yBit << 1), exact split points prefer the upper half and straddlers stay at
+the parent. Parents are queried before children in increasing index order.
+
+Tests cover full finite float worlds, adjacent/subnormal/degenerate bounds,
+complete raw fixed domains, 512 seeded BigInteger midpoint/span controls, actual
+shrinking/contained four-child topology, depth/merge/default options,
+world-validation order, canonical keys, collisions, growth, freed slots, partial
+callback/destination failures, reference cleanup and append prefixes.
+Interface-only custom volumes and non-IEquatable reference keys protect the
+frozen generic constraints.
+
+One introduced allocation was isolated before the fix: existing-key Insert with
+int keys allocated 24,000 B per 1,000 operations under the test's JIT
+conditions; Query, Contains, TryGetBounds and unchanged Update allocated zero.
+Replacing the object null guard with existing ChronicleGuard.ThrowIfNullGeneric
+preserves null/parameter/order contracts and removes the boxing dependency. The
+same five separate typed allocation tests now pass at zero bytes.
+
+Clear preserves the existing subtlety: nonempty Clear replaces the root and
+discards topology while retaining entry capacity; an already-empty Clear is a
+no-op, including after removing every entry with merging disabled. Both public
+partitioner interfaces now explicitly require stable behavior for the tree's
+lifetime. Changing split planes while old empty children remain can misroute
+later entries. No runtime clear-policy change or new restore API is added.
+Independent first-slice and final source reviews verified the shared boundary,
+exception/output ordering and applicable XML contracts.
+
+#### Build and strict coverage results
+
+Serial source builds use `UseLocalLsfStack=true`, globally carry
+`DisableTransitiveProjectReferences=true`, and build the unchanged solution with
+`-m:1`. Both test projects use their existing runsettings and fresh result
+folders. The existing full-coverage assertion passes every lane below without
+exclusions or complexity-register waivers.
+
+| Library DLLs executed               | Core tests | Companion tests | Coverage                                                 |
+| ----------------------------------- | ---------: | --------------: | -------------------------------------------------------- |
+| Release / net10.0                   |      2,125 |              98 | 100% line, branch and executable method, both assemblies |
+| ReleaseLean / net10.0               |      2,017 |              98 | 100% line, branch and executable method, both assemblies |
+| Debug / net10.0                     |      2,123 |              98 | 100% line, branch and executable method, both assemblies |
+| Release / actual netstandard2.1     |      2,124 |              98 | 100% line, branch and executable method, both assemblies |
+| ReleaseLean / actual netstandard2.1 |      2,016 |              98 | 100% line, branch and executable method, both assemblies |
+
+Core covered/valid counts: Release 6,274/6,274 lines, 2,952/2,952 branches,
+1,400/1,400 executable methods; Lean 6,080/6,080, 2,876/2,876, 1,359/1,359;
+Debug 8,244/8,244, 2,962/2,962, 1,400/1,400. Companion Release/Lean counts are
+205/205 lines, 86/86 branches and 67/67 methods; Debug has 257/257 lines with
+the same branch/method counts. The older target uses matching DLL/PDB/MemoryPack
+dependencies and the existing disposable test-project/source-root/legacy-call
+bridge approach on .NET 10. The one net10-only JSON case is inapplicable;
+netstandard is not a runtime.
+
+The clean baseline also passes Standard/Lean coverage with 2,082/1,974 core and
+74 companion tests. Pre-existing xUnit2013 (SlotMap line 138), Lean xUnit1026
+(ObservableDictionary line 279), and the formatter's design-time workspace-load
+warning remain. Initial new getter and Debug-only hash branch gaps were closed
+by real public API assertions. No failing product check remains in these lanes.
+
+#### Replay, allocations and storage
+
+XYZ uses the existing Phase 0 seeded six profiles at N=128,2,048,8,192, 16 query
+windows, world [-16,131104] per axis, options (8,8,merge), minimum size one, and
+both merge values. Native XY uses two seed draws per entry, identical profile
+transforms and (1,1) movement. Each lifecycle inserts, queries, moves the first
+N/4, removes/reinserts N-1, performs bounded churn, clears and
+reverse-reinserts. Complete hit sets use independent endpoint inequalities;
+query counts/ordered keys use the existing FNV fold.
+
+All 360 ordered lifecycle rows agree across four native graphs and across all
+eight old/current XYZ graphs. Warm Query and the combined unchanged
+lookup/update/upsert batches allocate zero bytes. Retained entry capacity and
+node/depth observations agree; populated Clear returns to one root. Custom and
+reference-key contracts have separate maintained tests.
+
+| Windows x64 footprint, node capacity eight         | Existing XYZ before/after | Native XY |
+| -------------------------------------------------- | ------------------------: | --------: |
+| Numerics public constructor including backend      |           1,416 / 1,416 B |     936 B |
+| Fixed public constructor including backend         |           1,256 / 1,256 B |   1,096 B |
+| Numerics entry payload                             |                 80 / 80 B |      32 B |
+| Fixed entry payload                                |                 64 / 64 B |      48 B |
+| Numerics node object, excluding referenced storage |               112 / 112 B |      64 B |
+| Fixed node object, excluding referenced storage    |                 96 / 96 B |      80 B |
+
+Constructor allocation averages 128 creations after 32 warmups. Node-only
+allocation uses warmed RuntimeHelpers.GetUninitializedObject to separate object
+payload from its list/children; entry size uses Unsafe.SizeOf. This is a bounded
+CLR footprint check, not retained-heap sizing or Unity/AOT evidence. Native
+nodes allocate four actual children rather than an eight-child embedding.
+
+#### Shared-tree timing and disposition
+
+Host matches Phase 2: Windows 11 x64, i7-9700K, SDK 10.0.302/runtime 10.0.10.
+Balanced ABBA processes disable tiered compilation, warm the real typed paths
+and measure 64 batches of 16 queries. No competing builds/tests/profilers. The
+span loop views private node-index storage without clearing/copying; mutation
+and reentry restrictions keep it stable. Query state, order and constructor
+budgets agree with the baseline.
+
+Broad results vary by geometry and process placement. A discriminating N=2,048
+mixed-size control, four processes/version, observes Numerics medians 14.268 ->
+15.363 us/batch with merging off and 14.321 -> 15.162 us with merging on:
+approximately 6-8%, or 50-70 ns/query. Fixed medians in that control are 14.989
+-> 8.130 and 14.676 -> 8.212 us. These are bounded caller results, not universal
+backend speed ratios or zero-overhead claims.
+
+Generated-code inspection found different recursive inlining from the old class
+owner. Array caching, explicit static traversal, compiler-hint boundaries and
+empty-node hints did not produce a consistent overall win; those experiments
+were removed. The final source retains the simple local span scan, without
+speculative dispatch frameworks or tuning attributes. Disposition: the user
+accepted the bounded Numerics cost in favor of the shared owner, clarifying that
+LSF consumers use the fixed-point controls. The local performance gate is closed
+with this tradeoff, not with a claim of unchanged Numerics timing. Reopen for a
+representative consumer whose measured query budget is exceeded, a new
+allocation/storage regression, or a consistent fixed-point regression; retain
+these profiles and units when comparing a proposed optimization.
+
+A separate mutation comparison uses independent prefilled owners and the same
+six profiles, three sizes, both merges and backends. Each operation has four
+warmups and 16 measured passes: fresh-storage insertion, changed update out/back
+pairs, remove/reinsert pairs (at most 128 touched keys), clear/refill and
+implicit N->2N growth through insertion. Constructors/prefill are outside growth
+timing. All 432 state/query rows, 288 retained-storage rows and allocation
+vectors agree old/current. Pair timings count a two-call pair; insertion/growth
+and clear/refill are amortized per inserted key. Do not label node recreation as
+allocation-free or mistake first-use/setup dispersion for a proven warm
+algorithmic regression.
+
+#### Maintained benchmarks, reference and final closeout
+
+Maintained Query2DQuadtreeBenchmarks compares native XY, positive-thickness XYZ
+embedding and brute force, materializing the same caller-owned results. It uses
+unit boxes, seed 0xC0FFEE/two draws modulo 1024, N=128,2,048,8,192, 32 anchor
+windows [(97*q+13)%N]-2/+4, world XY=[0,1024], embedded Z=[-512,512] with entry
+Z=[0,1], depth/capacity 8/8, merging off and minimum size one. BenchmarkDotNet
+0.15.8 ShortRun uses two warmup and five measured iterations, one launch, in
+each real package configuration. Each run completes nine child processes with
+exit zero and 45 measured iterations; statistics retain 43 Standard and 39 Lean
+results after outlier handling. Mean microseconds per 32-query batch (native XY
+/ XYZ embedding / brute force):
+
+| Entries | Standard                   | Lean                       |
+| ------- | -------------------------- | -------------------------- |
+| 128     | 0.8410 / 1.9787 / 4.0318   | 0.8882 / 2.0227 / 4.0006   |
+| 2,048   | 1.7779 / 3.5549 / 185.8097 | 1.7838 / 3.6861 / 200.8102 |
+| 8,192   | 2.7253 / 5.5557 / 760.0593 | 2.7400 / 5.6555 / 749.0168 |
+
+Every method reports zero managed bytes. These sparse-window observations do not
+establish a universal speed ratio or a cross-flavor speed difference. Kept child
+dependencies/configurations match their intended flavor; Lean has its shim and
+no MemoryPack.Core runtime dependency. Child core SHA-256: Standard
+`e75e5b4e9af71881237b4f1992d323c768c3a85db517144112629f5339f133b7`; Lean
+`04bfc4d66796e1966fdae8de930b3314363b8d40c0c46086bdf6ef5479a58c16`. Method-name,
+IL and implementation-attribute hashes for both facades, core, entry/node,
+adapters, options and concrete partitioners match ordinary outputs: Standard
+`3dfc4557f7f212c83f807abf3096dcbc711be5a79758c98a7f01ea40db2d0f8e`; Lean
+`2df7f36847ac3e671de013a0f344033db0c2de846f71963597f8d731fc889fa4`. Whole DLL
+identity across differing build paths is not assumed.
+
+Native mutation replays also pass all four variant/target graphs. Their 432
+state/query rows, 288 storage rows and all 360 per-operation allocation rows
+agree. These are function/storage/allocation controls, not a native timing
+comparison.
+
+All 32 new authored XML entries (30 core, two companion) have applicable tags
+reviewed against signatures, including options operators and property values.
+Eight source-validation packaged DLL/XML pairs match both targets/variants; Lean
+has its shim and no MemoryPack runtime/generator dependency. Package tags now
+include quadtree. Fresh canonical DocFX metadata/site output builds with
+warnings as errors and zero warnings/errors. All 118 HTML pages, 1,536 local
+paths and 480 fragments resolve. Rendered review covers the generic owner,
+Numerics/fixed specializations, options, partitioner and guide: names, returns,
+property values, inherited members, exceptions and links agree with source.
+Desktop and 390px browser previews confirm the layout; narrow text wraps and
+code blocks scroll within their container. No theme change.
+
+No new serializer API, authored public nested type or indexer was added; default
+struct construction/accessors are synthesized. Existing XYZ public signatures
+and constraints are retained. Targeted C# formatter verification, documentation
+formatting and whitespace checks pass with the existing design-time workspace
+warning only. No new bug-tracker issue or unresolved API decision remains. The
+final runtime binaries match those executed in the full coverage/replay matrix
+after removal of the discarded tuning experiments.
+
+Runtime growth ledger: 13 touched authored source files, 10 new files; net +762
+physical lines and +326 nonblank/noncomment lines relative to the phase
+baseline. Tests, benchmarks, docs and project metadata are counted separately.
+The old octree ownership engine is removed; two dimensional facades share one
+implementation and both fixed backends share the split-size helper. No legacy
+engine, fallback traversal or unused runtime framework remains.
+
+Unity Mono/High-stripping IL2CPP, hosted OS CI and released-provider readiness
+remain Phase 4/independent gates. This phase does not publish packages, modify
+CI policy, update pins or stage/commit changes.
+
 - Phase 4: not started.

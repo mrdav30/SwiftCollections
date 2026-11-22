@@ -5,7 +5,6 @@
 // See LICENSE file in the project root for full license information.
 //=======================================================================
 
-using System.Runtime.CompilerServices;
 using FixedMathSharp;
 
 namespace SwiftCollections.Query;
@@ -44,8 +43,7 @@ public sealed class SwiftFixedOctree<T> : SwiftOctree<T, FixedBoundVolume>
 
         public FixedBoundVolumeOctreePartitioner(Fixed64 minNodeSize)
         {
-            if (minNodeSize <= Fixed64.Zero)
-                throw new System.ArgumentOutOfRangeException(nameof(minNodeSize), minNodeSize, "Minimum node size must be greater than zero.");
+            FixedTreeSubdivision.ValidateMinimumNodeSize(minNodeSize);
 
             _minNodeSize = minNodeSize;
         }
@@ -66,23 +64,9 @@ public sealed class SwiftFixedOctree<T> : SwiftOctree<T, FixedBoundVolume>
             Vector3d midpoint = bounds.Center;
             Vector3d max = bounds.Max;
             ulong requiredRawSpan = (ulong)_minNodeSize.m_rawValue;
-            return HasMinimumChildSpan(min.X, midpoint.X, max.X, requiredRawSpan)
-                 & HasMinimumChildSpan(min.Y, midpoint.Y, max.Y, requiredRawSpan)
-                 & HasMinimumChildSpan(min.Z, midpoint.Z, max.Z, requiredRawSpan);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool HasMinimumChildSpan(
-            Fixed64 min,
-            Fixed64 midpoint,
-            Fixed64 max,
-            ulong requiredRawSpan)
-        {
-            // Ordered raw endpoints can span the complete signed scalar domain;
-            // unsigned subtraction preserves that exact non-negative distance.
-            ulong lowerRawSpan = unchecked((ulong)midpoint.m_rawValue - (ulong)min.m_rawValue);
-            ulong upperRawSpan = unchecked((ulong)max.m_rawValue - (ulong)midpoint.m_rawValue);
-            return lowerRawSpan >= requiredRawSpan & upperRawSpan >= requiredRawSpan;
+            return FixedTreeSubdivision.HasMinimumChildSpan(min.X, midpoint.X, max.X, requiredRawSpan)
+                 & FixedTreeSubdivision.HasMinimumChildSpan(min.Y, midpoint.Y, max.Y, requiredRawSpan)
+                 & FixedTreeSubdivision.HasMinimumChildSpan(min.Z, midpoint.Z, max.Z, requiredRawSpan);
         }
 
         public bool TryGetContainingChildIndex(FixedBoundVolume nodeBounds, FixedBoundVolume entryBounds, out int childIndex)

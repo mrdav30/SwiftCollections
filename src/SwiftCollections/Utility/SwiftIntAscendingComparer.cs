@@ -10,6 +10,9 @@ using System.Runtime.CompilerServices;
 
 namespace SwiftCollections;
 
+/// <summary>
+/// Provides ascending integer ordering for constrained value-type sort calls.
+/// </summary>
 internal readonly struct SwiftIntAscendingComparer : IComparer<int>
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -7,7 +7,12 @@
 
 namespace SwiftCollections.Serialization;
 
-// Capture and wire readers validate metadata and supply independently owned configuration storage.
+/// <summary>
+/// Carries a comparer codec identifier, version and configuration bytes across persistence boundaries.
+/// </summary>
+/// <remarks>
+/// Capture and wire readers validate metadata and supply independently owned configuration storage.
+/// </remarks>
 internal readonly struct SwiftComparerDescriptor
 {
     internal readonly string Id;

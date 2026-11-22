@@ -7,6 +7,17 @@ namespace SwiftCollections.Query.Tests;
 public class SwiftOctreeTypedVolumeTests
 {
     [Fact]
+    public void DefaultOptions_AreReturnedUnchangedAndDisableSubdivision()
+    {
+        var octree = CreateTypedOctree(default, 1);
+        Assert.Equal(default(SwiftOctreeOptions), octree.Options);
+        Assert.True(octree.Insert(1, default));
+        Assert.True(octree.Insert(2, default));
+        Assert.False(octree.DebugRootHasChildren);
+        Assert.Equal(0, octree.DebugMaxDepth);
+    }
+
+    [Fact]
     public void InsertAndQuery_WithTypedVolume_ReturnsIntersectingEntries()
     {
         var octree = CreateTypedOctree(new SwiftOctreeOptions(4, 2), 1f);

@@ -11,7 +11,12 @@ using System.Text.Json.Serialization;
 
 namespace SwiftCollections.Serialization;
 
-// Callbacks run once per persistence boundary, never during collection lookup or population.
+/// <summary>
+/// Persists hash collections through shared comparer metadata, state snapshots and owner-specific callbacks.
+/// </summary>
+/// <remarks>
+/// Callbacks run once per persistence boundary, never during collection lookup or population.
+/// </remarks>
 internal sealed class SwiftHashCollectionJsonConverter<TCollection, TState, TComparers> : JsonConverter<TCollection>
     where TCollection : class
 {

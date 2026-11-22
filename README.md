@@ -22,8 +22,8 @@ spatial indexing, deterministic runtimes, and allocation-sensitive tooling.
   packed sets, sparse sets, and sparse maps.
 - Dense iteration and stable or generation-checked handles for entity-style
   workloads.
-- 2D/3D BVH and spatial hash, plus 3D octree queries over `System.Numerics`
-  bounds.
+- 2D/3D BVH and spatial hash, plus quadtree/octree queries over
+  `System.Numerics` bounds.
 - Fixed-point query companions powered by
   [FixedMathSharp](https://github.com/mrdav30/FixedMathSharp).
 - Explicit state-backed serialization, with Standard and Lean package variants.
@@ -85,8 +85,8 @@ actors.Remove(player);
 For externally owned compact integer IDs, start with `SwiftSparseSet` or
 `SwiftSparseMap<T>`. For broad-phase queries, start with `SwiftBVH<TKey>`,
 `SwiftSpatialHash<TKey>`, or `SwiftOctree<TKey>`. For a planar world, use
-`SwiftBVH2D<TKey>` or `SwiftSpatialHash2D<TKey>` with native XY bounds; matching
-fixed-point wrappers live in the companion package.
+`SwiftBVH2D<TKey>`, `SwiftSpatialHash2D<TKey>`, or `SwiftQuadtree<TKey>` with
+native XY bounds; matching fixed-point wrappers live in the companion package.
 
 Shared logging and exception guards come from the independent
 `Chronicler.Diagnostics` package. See the

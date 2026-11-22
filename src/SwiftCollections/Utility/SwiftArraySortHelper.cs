@@ -11,6 +11,9 @@ using System.Runtime.CompilerServices;
 
 namespace SwiftCollections;
 
+/// <summary>
+/// Sorts array ranges using default, interface or constrained value-type comparers.
+/// </summary>
 internal static class SwiftArraySortHelper
 {
     private const int InsertionSortThreshold = 16;

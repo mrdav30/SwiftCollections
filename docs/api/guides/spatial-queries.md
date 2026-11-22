@@ -12,6 +12,7 @@ The query namespace provides mutable broad-phase structures over typed bounds:
 | `SwiftBVH2D<TKey>`                                               | Planar intersection queries over native XY bounds, using the same BVH owner. |
 | `SwiftSpatialHash<TKey>` / `SwiftSpatialHash<TKey, TVolume>`     | High-churn scenes with mostly uniform object sizes and sparse query windows. |
 | `SwiftSpatialHash2D<TKey>` / `SwiftSpatialHash2D<TKey, TVolume>` | Planar high-churn scenes with native XY cell storage and traversal.          |
+| `SwiftQuadtree<TKey>` / `SwiftQuadtree<TKey, TVolume>`           | Planar scenes with uneven density and repeated queries inside a fixed world. |
 | `SwiftOctree<TKey>` / `SwiftOctree<TKey, TVolume>`               | Dynamic scenes with uneven density and repeated regional queries.            |
 
 The 3D wrappers use `System.Numerics` `BoundVolume`; 2D wrappers use
@@ -22,6 +23,7 @@ wrappers for deterministic simulations:
 - `SwiftFixedBVH2D<TKey>` / `FixedBoundVolume2D`
 - `SwiftFixedSpatialHash<TKey>`
 - `SwiftFixedSpatialHash2D<TKey>`
+- `SwiftFixedQuadtree<TKey>`
 - `SwiftFixedOctree<TKey>`
 - `FixedBoundVolume`
 
@@ -56,8 +58,8 @@ Use native XY bounds for a planar world. The Numerics pair is `BoundVolume2D` /
 `SwiftBVH2D<TKey>`; the deterministic fixed-point pair is `FixedBoundVolume2D` /
 `SwiftFixedBVH2D<TKey>` in the companion package. Both wrappers specialize
 `SwiftBVH<TKey, TVolume>` rather than owning another tree implementation. The
-spatial hash also has native XY wrappers, described below. Octree wrappers use
-3D bounds.
+spatial hash and quadtree also have native XY wrappers, described below. Octree
+wrappers use 3D bounds.
 
 ```csharp
 using FixedMathSharp;
@@ -172,6 +174,94 @@ or serialized-order guarantee. Synchronize all access externally, including
 queries that mutate duplicate-suppression stamps. Query owners have no
 persistence contract.
 
+## 2D quadtree queries
+
+Use `SwiftQuadtree<TKey>` for uneven planar density and repeated regional
+queries inside a known world rectangle. Use `SwiftFixedQuadtree<TKey>` with
+`FixedBoundVolume2D` for deterministic fixed-point inputs. The tree has four
+actual children per split. Its copied `WorldBounds` stays fixed; entries must
+fit wholly inside it, including their boundaries.
+
+```csharp
+using FixedMathSharp;
+using SwiftCollections;
+using SwiftCollections.Query;
+
+var world = new FixedBoundVolume2D(new Vector2d(-16, -16), new Vector2d(16, 16));
+var index = new SwiftFixedQuadtree<int>(
+    worldBounds: world,
+    options: new SwiftQuadtreeOptions(maxDepth: 8, nodeCapacity: 8),
+    minNodeSize: Fixed64.One);
+var player = new FixedBoundVolume2D(new Vector2d(1, 2), new Vector2d(3, 4));
+index.Insert(7, player);
+
+var results = new SwiftList<int>(16);
+index.Query(new FixedBoundVolume2D(Vector2d.Zero, new Vector2d(4, 4)), results);
+// Contains 7; matching rectangles can touch the query boundary.
+
+index.UpdateEntryBounds(7, new FixedBoundVolume2D(new Vector2d(8, 2), new Vector2d(10, 4)));
+index.Remove(7);
+```
+
+`NodeCapacity` is a split threshold, not a limit on stored entries. A node may
+split after exceeding it, subject to `MaxDepth` and `minNodeSize`. Root depth is
+zero, so zero maximum depth disables subdivision. Explicit options require
+nonnegative depth and positive capacity; the two-argument constructor enables
+merging. `default(SwiftQuadtreeOptions)` is accepted as zero depth, zero
+capacity and merging false: entries remain in the root.
+
+Minimum node size is a positive child edge length in the bounds' coordinate
+units; the Numerics value must also be finite. Both actual child halves on both
+axes must meet that minimum, so a rounded midpoint must be strictly inside the
+parent before splitting. Fixed subdivision uses the nearest-even midpoint and
+unsigned raw-span comparisons across the full scalar domain. Numerics widens
+before rounding its midpoint and comparing child spans. Neither path
+materializes an overflowing full `Size` or `Area` to decide subdivision.
+Degenerate or numerically indivisible nodes remain leaves.
+
+Entries crossing either split plane stay at the parent. A wholly contained entry
+enters the child numbered `xBit | (yBit << 1)`; an exact point on a split plane
+prefers the upper half. Queries visit parent entries before children in
+increasing index order and append each intersecting indexed key once. Existing
+result entries are preserved, without deduplication against that prefix. Use a
+caller-owned buffer and clear it between independent queries.
+
+`Insert` returns true for a new key and false after updating an equal key's
+bounds, retaining the original canonical key. It checks world containment before
+duplicate lookup. `UpdateEntryBounds` returns true for an existing key,
+including unchanged bounds, and rejects an outside-world replacement before
+relocation. For an absent key it returns false before checking replacement
+containment. `TryGetBounds` returns a copied volume on success and writes
+default on failure. Query regions may extend outside the world.
+
+With `EnableMergeOnRemove`, removals and relocations attempt to combine leaf
+children when the parent's total fits the capacity threshold. Disabling it
+retains subdivisions, including when all entries have been removed. For a
+nonempty tree, `Clear` releases entries and replaces the subdivided root while
+preserving reusable entry capacity and world bounds. With `Count == 0`, `Clear`
+is a no-op and can retain empty subdivided topology. Future mutations can
+allocate entries or nodes; entry reuse is not a no-allocation guarantee.
+
+For a custom volume, implement `IBoundVolume<TVolume>` and
+`IQuadtreeBoundsPartitioner<TVolume>`, then construct
+`SwiftQuadtree<TKey, TVolume>`. The retained backend supplies containment,
+subdivision admission, child indices 0 through 3, and child construction. Use an
+out child index only after `TryGetContainingChildIndex` returns true. Its
+children must shrink and remain within the parent, and construction and
+placement must share split planes and numbering. Keep callback behavior stable
+for the tree's lifetime, including when empty: Clear can retain old subdivided
+topology. Callbacks must be pure and must not reenter or mutate the tree.
+
+Bounds and options are copied; use one coordinate space and unit system. Null
+keys/backends/results throw, and out-of-world insertions or updates throw as
+described above. Backend, hashing or allocation failures can leave partial index
+mutation; destination failures can leave partially appended results. These
+operations are not transactional. Synchronize all access externally. Identical
+fixed inputs, deterministic keys and the same mutation history determine order
+within the family; there is no cross-backend, cross-dimension or
+persisted-topology order guarantee. Query indexes have no serialization or
+restore contract.
+
 ## Insert bounds and query exact intersections
 
 This example uses the FixedMathSharp companion. The volume contains normalized
@@ -192,14 +282,14 @@ index.Query(bounds, results); // Contains "player".
 ```
 
 Clear or reuse result buffers explicitly between independent queries. BVH,
-spatial hash and octree each store one entry per non-null key. `Insert` returns
-`true` for a new key; an equal key updates the existing bounds and returns
-`false`, without increasing `Count` or replacing the stored key. Null insertion
-throws before mutation. Use distinct keys when several entries need equal
-values. None of these queries deduplicates against entries already present in
-the caller's result collection. Broad-phase volume matches do not replace your
-application's narrow-phase shape tests. Updates must follow changes to an
-indexed object's bounds; the index does not observe object movement
+spatial hash, quadtree and octree each store one entry per non-null key.
+`Insert` returns `true` for a new key; an equal key updates the existing bounds
+and returns `false`, without increasing `Count` or replacing the stored key.
+Null insertion throws before mutation. Use distinct keys when several entries
+need equal values. None of these queries deduplicates against entries already
+present in the caller's result collection. Broad-phase volume matches do not
+replace your application's narrow-phase shape tests. Updates must follow changes
+to an indexed object's bounds; the index does not observe object movement
 automatically.
 
 The numerics wrappers require finite ordered bounds. The built-in numerics

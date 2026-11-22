@@ -41,9 +41,9 @@ Read these before making non-trivial changes:
    hot-path behavior or a performance claim.
 7. `docs/complexity-exceptions.md` before refactoring high-complexity methods or
    adding a new intentional exception.
-8. [Feature work overview](docs/feature-work/feature-work-overview.md) for active,
-   deferred and completed feature plans. Keep design and phase evidence in each
-   owning plan; do not assign feature work bug-tracker IDs.
+8. [Feature work overview](docs/feature-work/feature-work-overview.md) for
+   active, deferred and completed feature plans. Keep design and phase evidence
+   in each owning plan; do not assign feature work bug-tracker IDs.
 9. [Issue tracker](docs/feature-work/issue-tracker.md) for bugs, defect
    investigations, resolved root causes and required verification.
 10. [Benchmark signal backlog](docs/feature-work/benchmark-signal-hardening-backlog.md)
@@ -81,22 +81,22 @@ expectations change:
 
 ## Repository Map
 
-| Path                                          | Purpose                                                | Notes                                                                                                            |
-| --------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| `src/SwiftCollections/Collection`             | Core collection types                                  | Includes dictionary, hash set, list, queue, stack, slot map, ticket map, packed set, sparse set, and sparse map. |
-| `src/SwiftCollections/Dimension`              | Flat 2D/3D arrays and typed array helpers              | Preserve index math and bounds behavior.                                                                         |
-| `src/SwiftCollections/EqualityComparer`       | SwiftCollections comparers                             | String default comparers are deterministic-oriented.                                                             |
-| `src/SwiftCollections/Observable`             | Observable collection variants                         | Prefer for tooling/host-facing notifications, not simulation hot paths without evidence.                         |
-| `src/SwiftCollections/Pool`                   | Object, array, and collection pools                    | Watch ownership and dispose/release contracts.                                                                   |
-| `src/SwiftCollections/Query`                  | BVH, spatial hash, octree, bounds, and query helpers   | Compiled in the core package. Keep mutable indexes single-owner unless synchronized externally.                  |
-| `src/SwiftCollections/Serialization`          | State structs and JSON/state converter support         | Build after changing state shape or serialization constructors.                                                  |
-| `src/SwiftCollections/Utility`                | Shared helpers, hashing, diagnostics, extensions       | Preserve helper exception contracts.                                                                             |
-| `src/SwiftCollections.FixedMathSharp`         | Fixed-point spatial query companion                    | Depends on FixedMathSharp or FixedMathSharp.Lean based on package variant.                                       |
-| `tests/SwiftCollections.Tests`                | Core xUnit v3 tests                                    | References only the core runtime assembly and mirrors its source areas.                                          |
-| `tests/SwiftCollections.FixedMathSharp.Tests` | Companion xUnit v3 tests                               | References the FixedMathSharp companion and can validate it against a published core package.                    |
-| `tests/SwiftCollections.Benchmarks`           | BenchmarkDotNet benchmarks                             | Alias-based runner supports `list`, `dictionary`, `query`, `all`, and other selections.                          |
-| `docs/api`                                    | Branded DocFX landing page, conceptual guides, and API | Publishes both runtime assemblies; generated `obj` output is ignored.                                            |
-| `.assets/scripts`                             | PowerShell release/version helpers                     | Requires PowerShell and GitVersion.Tool.                                                                         |
+| Path                                          | Purpose                                                       | Notes                                                                                                            |
+| --------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `src/SwiftCollections/Collection`             | Core collection types                                         | Includes dictionary, hash set, list, queue, stack, slot map, ticket map, packed set, sparse set, and sparse map. |
+| `src/SwiftCollections/Dimension`              | Flat 2D/3D arrays and typed array helpers                     | Preserve index math and bounds behavior.                                                                         |
+| `src/SwiftCollections/EqualityComparer`       | SwiftCollections comparers                                    | String default comparers are deterministic-oriented.                                                             |
+| `src/SwiftCollections/Observable`             | Observable collection variants                                | Prefer for tooling/host-facing notifications, not simulation hot paths without evidence.                         |
+| `src/SwiftCollections/Pool`                   | Object, array, and collection pools                           | Watch ownership and dispose/release contracts.                                                                   |
+| `src/SwiftCollections/Query`                  | BVH, spatial hash, quadtree/octree, bounds, and query helpers | Compiled in the core package. Keep mutable indexes single-owner unless synchronized externally.                  |
+| `src/SwiftCollections/Serialization`          | State structs and JSON/state converter support                | Build after changing state shape or serialization constructors.                                                  |
+| `src/SwiftCollections/Utility`                | Shared helpers, hashing, diagnostics, extensions              | Preserve helper exception contracts.                                                                             |
+| `src/SwiftCollections.FixedMathSharp`         | Fixed-point spatial query companion                           | Depends on FixedMathSharp or FixedMathSharp.Lean based on package variant.                                       |
+| `tests/SwiftCollections.Tests`                | Core xUnit v3 tests                                           | References only the core runtime assembly and mirrors its source areas.                                          |
+| `tests/SwiftCollections.FixedMathSharp.Tests` | Companion xUnit v3 tests                                      | References the FixedMathSharp companion and can validate it against a published core package.                    |
+| `tests/SwiftCollections.Benchmarks`           | BenchmarkDotNet benchmarks                                    | Alias-based runner supports `list`, `dictionary`, `query`, `all`, and other selections.                          |
+| `docs/api`                                    | Branded DocFX landing page, conceptual guides, and API        | Publishes both runtime assemblies; generated `obj` output is ignored.                                            |
+| `.assets/scripts`                             | PowerShell release/version helpers                            | Requires PowerShell and GitVersion.Tool.                                                                         |
 
 Ignore generated output when reviewing structure:
 
@@ -132,8 +132,8 @@ Serialization guidance:
   serializer contract. Follow the serialization guide for codecs and the
   version-one-only breaking format; do not add legacy readers or fallback.
 - State-backed collections should preserve state constructors and state structs.
-- Comparer-aware JSON converters compile for `netstandard2.1` and `net10.0`
-  in standard and Lean builds.
+- Comparer-aware JSON converters compile for `netstandard2.1` and `net10.0` in
+  standard and Lean builds.
 - Shared MemoryPack and interpolated-handler compatibility attributes come from
   Chronicler packages. Preserve existing package/target preprocessor patterns.
   The dictionary-specific internal nullability annotation stays with its
@@ -203,8 +203,8 @@ The query structures are runtime indexes, not passive data bags:
   mixed object sizes.
 - `SwiftSpatialHash<TKey, TVolume>`: best for high-churn, mostly uniform object
   sizes and sparse query windows.
-- `SwiftOctree<TKey, TVolume>`: best for uneven density and repeated regional
-  queries.
+- `SwiftOctree<TKey, TVolume>` and `SwiftQuadtree<TKey, TVolume>`: best for
+  uneven density and repeated regional queries inside fixed world bounds.
 
 Preserve these expectations:
 
@@ -212,7 +212,13 @@ Preserve these expectations:
 - XY and XYZ spatial hashes share the embedded mutable `SpatialHashCore`; keep
   dimensional stepping in their grid adapters. Bind key-map callbacks to the
   wrapper instance so they read the current core after growth or clear, never a
-  captured struct copy. Reuse the fixed-cell floor/clamp helper in both wrappers.
+  captured struct copy. Reuse the fixed-cell floor/clamp helper in both
+  wrappers.
+- Quadtrees and octrees share the embedded mutable `SubdivisionTreeCore` and
+  wrapper-bound key-map callbacks. Keep four/eight-child behavior at the
+  partitioner boundary and reuse fixed midpoint/span arithmetic. Preserve
+  parent-first traversal, straddlers, merge order and the empty-tree `Clear`
+  no-op, which can retain subdivided topology.
 - Keep mutable query structures single-owner unless the caller synchronizes
   access externally.
 - Keep all-hit query APIs writing into caller-owned collections.
@@ -241,6 +247,8 @@ C# 14 is the default language version; runtime projects override it to C# 11 for
 - Larger collection types often use `#region` blocks; preserve local style.
 - Avoid unrelated namespace or style changes. Keep cleanup explicit through the
   commands in `CONTRIBUTING.md`, excluding generated output.
+- Every internal type under `src` needs a concise XML summary describing its
+  purpose. Keep internal member documentation selective.
 - Give each namespace-level type or delegate its own file. Public/internal
   nested types use companion files while preserving generic constraints and CLR
   identities; private nested helpers may stay with their owner.
@@ -252,8 +260,8 @@ C# 14 is the default language version; runtime projects override it to C# 11 for
   Check emitted XML for both frameworks and Release/ReleaseLean separately;
   account for generated serializer APIs, synthesized members and hidden explicit
   interface implementations. Start inventory checks from clean generated
-  metadata/site directories; stale local files can survive a DocFX rebuild.
-  See `CONTRIBUTING.md` for the documentation workflow.
+  metadata/site directories; stale local files can survive a DocFX rebuild. See
+  `CONTRIBUTING.md` for the documentation workflow.
 - Leave work unstaged and uncommitted unless the user explicitly requests a
   commit.
 - Minimize XML/project-file formatting churn. Existing XML files mix tabs and
@@ -277,9 +285,10 @@ Full coverage is an explicit repo priority.
   branches rather than retaining uncovered guards or adding coverage exclusions.
 - Use each test project's `coverlet.runsettings` so core and companion coverage
   are collected independently; generated MemoryPack files stay excluded.
-- Run `.assets/scripts/assert-full-coverage.ps1` against fresh results containing
-  both test projects. The same check runs in every build/test CI lane and before
-  Pages publication; a green test run alone does not establish full coverage.
+- Run `.assets/scripts/assert-full-coverage.ps1` against fresh results
+  containing both test projects. The same check runs in every build/test CI lane
+  and before Pages publication; a green test run alone does not establish full
+  coverage.
 
 ## Validation Commands
 
@@ -339,7 +348,8 @@ assembly identities; CI sets it to false in package mode. See
 ## CI And Release Notes
 
 - `build-and-test.yml` runs `Release` and `ReleaseLean` on Ubuntu and Windows,
-  collecting and enforcing full coverage for both runtime assemblies in each lane.
+  collecting and enforcing full coverage for both runtime assemblies in each
+  lane.
 - `coverage.yml` publishes one GitHub Pages site after a successful `main` push:
   DocFX at the root, both runtime assemblies under `/api`, and the runtime
   coverage report under `/coverage`.

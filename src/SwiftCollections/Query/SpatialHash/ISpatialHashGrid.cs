@@ -8,6 +8,9 @@
 namespace SwiftCollections.Query;
 
 // Only dimensional mapping and coordinate stepping differ between the two grid owners.
+/// <summary>
+/// Defines dimensional cell-range mapping and coordinate stepping for the shared spatial hash engine.
+/// </summary>
 internal interface ISpatialHashGrid<TVolume, TCell>
     where TVolume : struct, IBoundVolume<TVolume>
     where TCell : struct

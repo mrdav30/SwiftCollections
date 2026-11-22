@@ -9,6 +9,9 @@ using System;
 
 namespace SwiftCollections.Serialization;
 
+/// <summary>
+/// Stores the identifier, version and encode/decode callbacks for a registered comparer codec.
+/// </summary>
 internal sealed class SwiftComparerRegistration<TComparer> where TComparer : class
 {
     internal readonly string Id;
