@@ -2,23 +2,27 @@
 
 ## Purpose
 
-Track correctness, determinism, API, documentation, build, tooling and test
-reliability concerns owned by SwiftCollections, including its FixedMathSharp
-companion, with a compact index of verified resolutions or documented
-investigation closures. Keep substantial implementation work in focused
-feature-work plans.
+Track bugs, correctness risks and defect investigations owned by
+SwiftCollections and its FixedMathSharp companion, including API, documentation,
+build, tooling and test-reliability defects. Keep a compact index of verified
+fixes and documented investigation closures. Feature scope and plan status
+belong in the [feature work overview](feature-work-overview.md); measured
+performance signals belong in the
+[benchmark backlog](benchmark-signal-hardening-backlog.md).
 
 ## Tracker Rules
 
-- Issue IDs use `SC-Issue-NNN`. The next available ID is `SC-Issue-024`.
-- Assign an ID at intake and preserve it through closure; never delete or reuse
-  IDs. Check Git history before advancing or repairing the counter. Unknown
-  historical IDs stay reserved rather than acquiring an inferred cause.
+- Issue IDs use `SC-Issue-NNN`. The next available ID is `SC-Issue-025`.
+- Assign bug IDs at intake and preserve them through closure; never reuse
+  previously assigned IDs, including IDs retired from feature tracking. Check
+  Git history before advancing or repairing the counter. Unknown historical IDs
+  stay reserved rather than acquiring an inferred cause.
 - Record discovery dates, status, priority, affected owners, reproducible
   evidence, impact and the next useful action. Distinguish confirmed defects
   from unverified concerns.
-- Keep active entries focused and self-contained. Link active plans rather than
-  duplicating their work.
+- Keep active bug entries focused and self-contained. Do not create feature
+  entries or assign features bug IDs. Link an owning feature plan when it
+  supplies context for a defect; keep feature progress in that plan and overview.
 - After verification, replace the active entry with a compact `Resolved Issues`
   row: the same ID, resolution/closure date, brief outcome and an evidence link.
   Keep detailed root causes, decisions and validation in an existing completion
@@ -72,7 +76,7 @@ diagnosis, decisions and reopening criteria stay with their owning issue.
 
 ## Active Issues
 
-No active issues are currently recorded.
+No active bugs are currently recorded.
 
 ## Resolved Issues
 
@@ -94,7 +98,6 @@ they do not claim a fresh rerun or package release.
 | <a id="sc-issue-013---base-indexer-writes-bypass-bidirectional-bookkeeping"></a>SC-Issue-013 | 2026-11-21 | **Verified fix:** the dictionary indexer is virtual and BiDictionary/ObservableDictionary override the shared slot, so base, generic and non-generic assignments honor reverse-map and notification contracts. BiDictionary validates null values before mutation, retains the stored forward key in reverse mappings after equivalent-key updates, and leaves reverse insertion with its existing insertion override rather than attempting it twice. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `e4f784ce623aa7e6777f11aef9fac394af6812aa`, Windows x64, SDK 10.0.302/runtime 10.0.10, Release/published dependencies. Portable reproducer: add `(1,10)` to `SwiftBiDictionary<int,int>`, assign `((SwiftDictionary<int,int>)d)[1]=20`, then print `d[1]`, `ContainsValue(10)` and `ContainsValue(20)`. Previously `20; True; False`; corrected `20; False; True`. Related concrete null assignments changed forward/reverse state before throwing; equivalent-key updates stored the alias rather than the stored key. Final 16-case group has 14 behavioral failures and two passing validation controls before correction, all passing afterward. It covers replacement/insertion, duplicate/null/type rejection, both comparers, canonical key ownership, enumeration, notification payload/order/no-op and Add/Remove/Clear continuation. Release/ReleaseLean/Debug solution builds pass with zero warnings/errors; core tests 1834/1730/1832 and companion 43 each pass without skips. Strict coverage is 100% of reported lines/branches/executable methods: core lines 6076/6076, 5882/5882, 8022/8022; branches 2880/2880, 2804/2804, 2888/2888. Both target frameworks and all four packages are checked; all eight DLL/XML pairs match. Metadata verifies the virtual base slot and both overrides. A .NET caller compiled against the old assembly works with only the fixed core substituted. Hash-checked Standard/Lean integer indexer/interface-update probes allocate zero bytes over 10000 warm iterations; no latency claim. Clean DocFX, rendered contracts and reference/link checks pass. **Comparer-replacement disposition:** preserve the precondition that replacement equality keeps stored keys/values distinct; no merge/deduplication or general exception-atomicity policy is added. Reopen that decision for an explicit reject/merge policy with failure-state tests. Arbitrary application-comparer exceptions can still leave partial changes, as documented. No introduced build/test/reference failure; hosted CI and Unity were not rerun. Reopen for a supported assignment path that bypasses either mapping or notification contract. | [Bidirectional regressions](../../tests/SwiftCollections.Tests/Collection/SwiftBiDictionary.Tests.cs), [observable regressions](../../tests/SwiftCollections.Tests/Observable/SwiftObservableDictionary.Tests.cs), [indexer contracts](../../src/SwiftCollections/Collection/SwiftBiDictionary.cs), [trusted-state decision](#sc-issue-010---sorted-list-restore-loses-its-ordering-invariant) |
 | <a id="sc-issue-012---dictionary-views-retain-detached-entry-arrays"></a>SC-Issue-012 | 2026-11-20 | **Verified fix:** key/value views retain only their owner and resolve its current entry array once per copy/membership call. Removed both cached arrays; preserved copy guards/order, default value equality and enumerator version semantics. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `3bf654f1e10e9b73e449706cb866002f0e419cdd`, Windows x64, SDK 10.0.302/runtime 10.0.10, Release/published dependencies. Portable reproducer: create `SwiftDictionary<int,int>`, add `(1,10)`, retain Keys/Values, call EnsureCapacity(64), add `(2,20)`, then copy each view into a two-element array. Previously `2; 1,0; 10,0`; corrected `2; 1,2; 10,20`. A value at key 40 after growth also reproduced IndexOutOfRangeException. Final ten-case regression group: nine failures and one clear/reuse control against the frozen unfixed core (`2C3469FCA6320196EEF85F6E658C7EA8C478A39BD5DFE6433236DBF5E1A0EF55`), all pass with the fix. Covers explicit/automatic growth, removal after growth, trim, comparer rehash, clear/reuse, empty internal state replacement, inherited BiDictionary/ObservableDictionary, typed/non-generic copies, live membership/order/identity and existing enumerator rules. Package-mode Release/ReleaseLean/Debug solution builds pass with zero warnings/errors; core tests 1815/1712/1813 and companion 43 each pass without skips. Both views retain full line/branch coverage. Initial core reports retained two unreachable persistence guards (lines 6084/6086, 5890/5892, 8030/8032; branches 2886/2888, 2810/2812, 2894/2896); this did not meet the full coverage gate. The [2026-11-21 correction](done/2026-11-20-comparer-persistence-plan.md#full-coverage-correction--2026-11-21) removes them after proof and restores 100% reported coverage in all three configurations. Hash-checked Standard/Lean probes each allocate zero bytes for 10000 warm typed-copy/membership iterations over two integer pairs; no latency claim. An initial disposable probe selected a frozen DLL from generated output; its results were discarded and reference selection corrected before the accepted runs. Eight assembly/XML pairs and all four package IDs match both target frameworks; clean DocFX, rendered view contracts and CI reference/local-link checks pass. No introduced source/build/test/reference failure; hosted CI and Unity were not rerun. Reopen for a valid owner mutation leaving retained views stale or a copy/equality contract regression. | [Regressions](../../tests/SwiftCollections.Tests/Collection/SwiftDictionary.Tests.cs), [key view](../../src/SwiftCollections/Collection/SwiftDictionary.KeyCollection.cs), [value view](../../src/SwiftCollections/Collection/SwiftDictionary.ValueCollection.cs) |
 | <a id="sc-issue-011---power-of-two-recognition-accepts-a-negative-input"></a>SC-Issue-011 | 2026-11-20 | **Verified fix:** require `x > 0` before the single-bit test; all non-positive inputs now return false. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `8099dd71d08311fee8cdf8d337ad6c59143624d3` on Windows x64, SDK 10.0.302/runtime 10.0.10, Release with published dependencies. Portable reproducer: `SwiftHashTools.IsPowerOfTwo(int.MinValue)` returned True; expected and corrected result is False. The 14-case theory fails only that case before the fix (13 controls pass); afterward all 23 utility cases pass. Existing `NextPowerOfTwo(1 << 30) == int.MaxValue` sentinel policy and its test remain unchanged; reopen that decision only for an agreed capacity-domain contract and validation of bit-mask consumers. No production caller of IsPowerOfTwo exists in this checkout. Package-mode Release/ReleaseLean/Debug solution builds pass with zero warnings/errors; core tests 1805/1702/1803 and companion 43 each pass with no skips. At this checkpoint the helper had full line/branch coverage, but two uncovered persistence guards remained. The subsequent 2026-11-21 correction removes those proven-unreachable branches and restores full reported coverage; see the linked proof. Checked both runtime assemblies' eight DLL/XML pairs and all four package IDs at both TFMs; clean DocFX, rendered contract and CI reference/local-link checks pass. No introduced build/test/reference failure; no hosted CI, Unity or timing rerun is claimed. Reopen for incorrect positive-power classification or a confirmed caller regression. | [Regression and sentinel control](../../tests/SwiftCollections.Tests/Utility/SwiftHashTools.Tests.cs), [helper and contracts](../../src/SwiftCollections/Utility/SwiftHashTools.cs), [coverage correction and proof](done/2026-11-20-comparer-persistence-plan.md#full-coverage-correction--2026-11-21) |
-| SC-Issue-021 | 2026-11-20 | Implemented strict comparer persistence for all five owners; both target/package graphs, actual Mono/High-stripping IL2CPP and hosted Windows/Linux tests pass. SC-Benchmark-006 subsequently closed by bounded no-source-change decision; the historical native failure remains unexplained and no crash fix is claimed. | [Resolution](#sc-issue-021), [completed plan](done/2026-11-20-comparer-persistence-plan.md#phase-3-closeout--2026-11-20) |
 | <a id="sc-issue-010---sorted-list-restore-loses-its-ordering-invariant"></a>SC-Issue-010 | 2026-11-19 | **Closed by contract decision; no runtime fix.** Preserve copy-only trusted-state restoration, the items-only schema and default comparer. No scan, comparison, validation, re-sort or comparison-failure atomicity promise is added. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `31cd3eec80dff86b95f8cab621cc7ca281b4e7cc` on Windows x64, SDK 10.0.302/runtime 10.0.10, Release with published dependencies. Portable reproducer (console setup above): construct `a = new SwiftSortedList<int>(new[] { 1, 2, 3 }, Comparer<int>.Create((x, y) => y.CompareTo(x)))`, then `b = new SwiftSortedList<int>(a.State)`. Enumeration is `3,2,1`; `b.Contains(1)` is False. This remains the consequence of using a custom-ordered snapshot with default binary lookup. Callers must provide state compatible with the restored default comparer before ordering-dependent use, or explicitly copy and sort once with `new SwiftSortedList<int>(a.State.Items, a.Comparer)`. A different comparer can be installed immediately after restore before lookup/mutation; setting the existing comparer is a no-op, and assigning State resets a comparer configured beforehand. Dictionary/set restore instead reinserts with default equality and can irreversibly merge entries: choose a comparer-aware constructor before insertion when custom identity matters. Rejected automatic normalization and its measured costs are preserved in SC-Benchmark-004. **Verification:** Runtime source matches the reproduced revision after removing XML comments. Added 18 standard /17 Lean contract cases (14/13 sorted-state cases plus four equality-loss cases); all are controls for the approved behavior, not a runtime-fix red/green claim. Sorted-list suites pass 98/96 cases. `dotnet build SwiftCollections.slnx` and `dotnet test SwiftCollections.slnx --no-build`, with `-c Release`, `ReleaseLean`, and `Debug` and `-p:UseLocalLsfStack=false`, pass: core 1578/1543/1576 and companion 43 each, zero build warnings/errors. Existing core coverlet settings report lines 5368/5368, 5354/5354, 7150/7150 and branches 2406/2406, 2406/2406, 2414/2414 respectively; sorted-list methods 59/59 in each. Both `SwiftCollections.dll`/`SwiftCollections.xml` and `SwiftCollections.FixedMathSharp.dll`/`SwiftCollections.FixedMathSharp.xml` checked at `netstandard2.1` and `net10.0` in Release/ReleaseLean; matching package contents checked for SwiftCollections, SwiftCollections.Lean, SwiftCollections.FixedMathSharp and SwiftCollections.FixedMathSharp.Lean. Clean-generated DocFX passes with warnings as errors; rendered constructors, state/property values, comparer contracts, inherited State link and DTO remarks checked, plus CI reference/local-link smoke checks and desktop/phone guide preview. No baseline or introduced build/test/reference failures observed. Hosted CI, other OS/architectures and a new timing comparison were not run; the rejected prototype timings are historical evidence only. Reopen only for a valid-state continuation or ownership defect, or an explicit new requirement for unordered-state validation or comparer persistence. No release is claimed. | [Trusted-state and comparer contracts](../api/guides/serialization-and-diagnostics.md#serialization), [sorted-state tests](../../tests/SwiftCollections.Tests/Collection/SwiftSortedList.Tests.cs), [rejected experiment](benchmark-signal-hardening-backlog.md#sc-benchmark-004---sorted-state-order-validation) |
 | <a id="sc-issue-009---list-to-list-copy-grows-the-destination-only-once"></a>SC-Issue-009 | 2026-11-18 | List-to-list CopyTo now guards insufficient capacity and requests the entire source Count through EnsureCapacity. Large copies obtain sufficient storage in one growth; fitting buffers, including non-power-of-two, exact-fit, self-copy and empty-to-empty targets, are reused. Policy disposition: only insufficient capacity causes growth; the old empty-to-empty allocation of eight slots is removed. Count replacement, shallow ownership, retained unused slots, target enumerator invalidation and null-target NullReferenceException remain implemented contracts. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `63c6124572b703680e797770ed0d93e0eb88bea0`: copying 100 items into an empty target threw ArgumentException and left target Count 0/Capacity 8; fixed output is Count 100/Capacity 128 with items 0..99. New group: baseline 13 failures/11 controls, all 24 pass after correction; existing JSON/MemoryPack continuation also reproduced the defect. Full list suite passed 113 cases. Release/ReleaseLean built both assemblies at netstandard2.1/net10.0 and all four package IDs; tests passed at net10.0 (core 1560/1526; companion 43 each). Debug passed 1558/43; all core lines/branches and authored list methods remained covered in all three configurations. Emitted XML and rendered CopyTo contracts checked; DocFX passed with warnings as errors. Reopen for valid-copy failure, unexpected allocation with sufficient storage, or an intentional null/capacity policy change. No release is claimed. | [Copy regressions](../../tests/SwiftCollections.Tests/Collection/SwiftList.Tests.cs), [copy owner and contract](../../src/SwiftCollections/Collection/SwiftList.cs), [performance evidence and limits](benchmark-signal-hardening-backlog.md#sc-benchmark-003---list-to-list-copy-capacity) |
 | <a id="sc-issue-008---exactly-full-queue-state-restores-an-invalid-tail"></a>SC-Issue-008 | 2026-11-18 | State restore now installs the new capacity mask before assigning `tail = count & mask`, matching known-count construction, Resize and TrimExcessCapacity. Exactly full queues can dequeue/refill or drain/reuse without growth; FIFO order, ownership, capacity reconstruction and serialization schema are preserved. Enqueue/Dequeue hot paths are unchanged. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `7ce79b7376b586df5455e4aa9d04a513d7f95338`: restoring items 0..7, dequeuing 0, then enqueueing 99 threw IndexOutOfRangeException instead of retaining [1,2,3,4,5,6,7,99]. New regressions: baseline 14 failures/11 passing controls; fixed 25 cases (23 Lean), covering boundary counts, stale-mask overwrite, wrapped snapshots, views, growth controls and JSON/MemoryPack continuation. Release/ReleaseLean built both assemblies at netstandard2.1/net10.0 and all four package IDs; tests passed at net10.0 (core 1536/1502; companion 43 each). Debug passed 1534/43; all core lines/branches and authored queue methods remained covered in all three configurations. DocFX passed with warnings as errors. Existing `queue-workload --filter '*SwiftQueue_WrapAroundChurn*' --job Dry` smoke completed four cases and four successful child exits; this is not a throughput comparison. Reopen for any valid snapshot that fails FIFO continuation or restores out-of-range ring indices. No release is claimed. | [Restore regressions](../../tests/SwiftCollections.Tests/Collection/SwiftQueue.Tests.cs), [queue owner](../../src/SwiftCollections/Collection/SwiftQueue.cs) |
@@ -1173,164 +1176,15 @@ the preserved conversion/null/index precedence, bypasses derived mutation or
 changes post-callback Add results. An indexer-policy redesign requires its own
 explicit scope; it is not a remaining callback gap in these five adapters.
 
-### SC-Issue-021 - Persist collection comparers across serializers
+## Historical Links
 
 <a id="sc-issue-021"></a>
+<a id="sc-issue-021---persist-collection-comparers-across-serializers"></a>
 
-- **Status / priority:** Resolved, implemented and validated 2026-11-20 / P2.
-  All five families pass actual standard/Lean High-stripping IL2CPP, Mono and
-  hosted Windows/Linux checks. SC-Benchmark-006 subsequently closed by a bounded
-  no-source-change decision; its historical native failure remains unexplained.
-- **Opened:** 2026-11-19, following the SC-Issue-010 trusted-state contract
-  decision and the explicit request for comparer persistence.
-- **Scope / impact:** Preserve supported ordering and equality/hash rules before
-  collection population in normal direct/nested JSON and standard MemoryPack
-  serialization. Cover all collection families, both runtime frameworks
-  (`netstandard2.1`, `net10.0`) and standard/Lean package graphs; Lean retains
-  JSON without a MemoryPack dependency. Losing comparison metadata can change
-  lookup semantics or discard custom-distinct entries.
-- **Disposition:** Keep raw-state schemas and their trusted restoration path.
-  Freeze strict v1 comparison metadata, typed custom
-  registrations/factories and clear
-  unsupported/unknown-codec failures at persistence boundaries. Do not add
-  registry work to collection hot paths or reinstate the rejected ordering scan.
-  SC-Issue-010 remains a historical contract closure, not a persistence fix.
-  The user superseded the initial legacy-helper design during pre-commit review:
-  owner persistence supports only version one as an intentional breaking change,
-  with no legacy reader, migration helper or default fallback. Reopen that
-  disposition only for an explicit compatibility requirement and agreed evidence.
-- **Phase 0 evidence:** Thirteen legacy families / 52 exact payloads were captured;
-  the sorted-list legacy bytes now live directly in executable rejection tests.
-  The transport model passes modern and matched standard-2.1 graphs; actual
-  Unity 6000.3.9f1 Mono smoke suites pass standard 25/25 and Lean 24/24. Baseline
-  solution tests pass core 1578/1543 plus companion 43 each. All 6240 planned
-  warm baseline samples completed; these are calibration, not accepted future
-  overhead budgets. The plan preserves protocol, factory-recognition, fallback
-  and compatibility decisions and their limits.
-- **Initial Phase 1 evidence (before pre-commit review):** The actual sorted-list family preserves supported
-  rules through strict-v1 direct/nested JSON and standard MemoryPack, with typed
-  factories and configured lambda recapture. The initial explicit migration
-  helper is removed by the pre-commit decision above. Raw
-  state remains copy-only. From baseline
-  `bf69e2152dff02f5f9f3ad335afcddf7560b4e81`, the two intended unsupported-capture
-  regressions fail before the change and pass afterward. Release/ReleaseLean/Debug
-  solution builds pass without warnings; core tests 1702/1632/1700 and companion
-  43 each pass with full reachable line/branch/method coverage. Both assemblies
-  and XMLs at both TFMs match all four package outputs. Clean-generated DocFX
-  and local-path/fragment checks pass; actual Unity 6000.3.9f1 Mono smoke passes
-  26 standard / 25 Lean cases using the production standard-2.1 plugins.
-  Independent runtime reviews found no remaining correctness issue.
-  These counts describe the initial snapshot, including the removed helper;
-  the post-review validation below supersedes that snapshot.
-- **Performance disposition — 2026-11-20:** The user accepts the measured fixed
-  serialization cost and, after the bounded hot-path investigation, explicitly
-  accepts the remaining native-context timing uncertainty to close Phase 1.
-  [SC-Benchmark-005](benchmark-signal-hardening-backlog.md#sc-benchmark-005---comparer-persistence-hot-timing-acceptance)
-  closes as no actionable hot-path regression identified. Preserve adverse
-  timings and attribution limits; there is no equal-cycle or universal timing
-  equivalence claim. No algorithmic work or warm allocation was added in the
-  inspected hot paths, and no repeatable meaningful caller elapsed-time
-  regression attributable to the implementation was established. Reopen for an
-  attributable representative-caller regression, hot allocation or behavior
-  defect. Later families require their own evidence.
-- **Pre-commit review:** The user removed the migration helper and selected
-  v1-only owner records as an intentional breaking format. Legacy literals now
-  test strict rejection. Independent reviews found no remaining correctness
-  issue; new tests protect reference identity, factory-buffer isolation and
-  segmented configurations. Empty JSON configurations skip 10,928 bytes of
-  scratch work; the focused empty-owner decode median improves about 12%, with
-  unchanged allocation, without making a hot-path claim. Current
-  Release/ReleaseLean/Debug core tests pass 1704/1635/1702, companion 43 each,
-  with full reachable line/branch/method coverage and zero build warnings.
-  All target/package XML checks and clean reference checks pass; updated Unity
-  smoke remains 26/25. The plan preserves the current counts and measurement
-  limits. SC-Benchmark-005 was open at that review checkpoint and is now closed
-  by the separate performance disposition above.
-- **Hot-path isolation:** At `cbd9a734082d7a002699766937b79dc547a8cebb`,
-  optimized direct callers and a fixed-binary JIT-policy counterfactual
-  demonstrate timing sensitivity to the execution context. Standard token-pair
-  cycles change from -6.1% to +9.4% relative to baseline across alignment
-  policies; optimized Lean is about -0.1% in both. Longer Standard string churn
-  retains +3.4% cycles despite lower wall time. No algorithm defect or justified
-  runtime fix was found. All 798 corrected timing/control intervals pass
-  behavior, zero timed allocation and no-GC checks. Fresh Release/ReleaseLean
-  builds pass both TFMs without warnings; tests pass 1704/1635 core plus 43
-  companion each. The benchmark signal preserves inputs, exclusions, denied
-  hardware tracing and remaining attribution limits. The user accepts those
-  limits for Phase 1; hardware tracing is no longer a closure requirement.
-- **Phase 1 closeout:** All Phase 1 tasks are checked in the
-  [2026-11-20 closeout](done/2026-11-20-comparer-persistence-plan.md#phase-1-closeout--2026-11-20).
-  This documentation-only decision reuses the recorded validation of
-  `cbd9a734082d7a002699766937b79dc547a8cebb`; it adds no runtime changes or new
-  validation runs. Previous uncommitted benchmark work is preserved.
-- **Phase 2 evidence:** Dictionary, HashSet, BiDictionary and ObservableDictionary
-  preserve typed equality through shared registry and transport helpers. Fresh
-  table construction uses no new entropy; all three bidirectional roles survive
-  actual collision fallback and subsequent mutation. Observable replacement is
-  private and notification-free. Raw DTOs and ordinary hot loops are unchanged.
-  Four initial unsupported-save regressions fail before implementation and pass
-  after it. Release/Lean/Debug builds pass both TFMs without warnings; core tests
-  pass 1789/1687/1787 and companion 43 each. All reachable coverage is complete;
-  the two unreachable probe-exhaustion guards and raw counts are documented.
-  All four packages match their assembly/XML outputs, the complete authored core
-  XML inventory has no tag gaps, and clean DocFX/rendered link checks pass.
-  Unity Mono smoke passes 29/27. Fourteen comparerless families retain 42 exact
-  payloads across variants. The final boundary comparison completes 1728 checked
-  intervals; descriptor-array allocations were removed and large bidictionary
-  decode allocation falls through pre-sized construction. The
-  [Phase 2 record](done/2026-11-20-comparer-persistence-plan.md#phase-2-execution-record--2026-11-20)
-  preserves inputs, hashes, costs, exclusions and review results.
-- **Initial Phase 3 evidence:** Independent old/new readers, all 16 target/variant
-  combinations and 32 Windows/Linux exchanges pass; configured captures and
-  continuation traces agree across fresh processes. Final Unity Mono checks
-  pass both variants with reflection-disabled JSON and standard MemoryPack.
-  Full Release/Lean/Debug builds pass; tests are 1791/1688/1789 core plus 43
-  companion each, with all reachable coverage. All eight assembly/XML pairs
-  match packages; complete authored/compiled inventories and clean rendered
-  references pass. The hardening review removes BiDictionary's temporary reverse
-  array through shared specialized population, saving 524312 bytes at 65536
-  int/int entries. Local large binary medians improve about 2.3%/6.2% for
-  Dictionary/BiDictionary; tiny boundary timings remain mixed. Independent
-  code/render reviews find no remaining confirmed defect. Both IL2CPP builds
-  are blocked by missing MSVC/Windows SDK; no player/AOT success is claimed.
-  See the [Phase 3 record](done/2026-11-20-comparer-persistence-plan.md#phase-3-execution-record--2026-11-20)
-  for complete inputs, adverse variants, raw counts, exclusions and limits.
-- **Final closeout:** Installed MSVC x64/x86 and Windows SDK 10.0.26100 through
-  the existing Build Tools installation. Both actual Unity 6000.3.9f1 Windows64
-  IL2CPP players pass High stripping with JSON reflection disabled, including
-  default/nullable/enum/ordinal and custom rules, generated metadata, recapture
-  and continuation. Standard also passes closed registered MemoryPack paths.
-  Fresh Release/Lean/Debug local builds/tests pass 1791/1688/1789 core plus 43
-  companion each. The five approved commits through `cab616d` are pushed;
-  [hosted CI](https://github.com/mrdav30/SwiftCollections/actions/runs/44807840605)
-  passes actual tests in all four Windows/Ubuntu Release/Lean jobs. A stale Debug
-  source/package restore mismatch is corrected without a source or CI change.
-- **Initial reliability disposition:** The user delegated final judgment. Close
-  feature implementation acceptance while keeping SC-Benchmark-006 explicitly open for
-  release review. The calibrated full capture identifies BiDictionary JSON
-  after Dictionary binary IO; two current replays and thirty million BCL-only
-  reference-copy controls pass. No root cause or crash fix is claimed. Reopen
-  this issue for an attributable collection defect or failed supported contract.
-- **Measurement reliability:** One earlier disposable measurement process ended
-  with a native access violation. A recovered Windows minidump confirms its
-  invocation and fatal CLR exception handling with System.Text.Json callers,
-  but that dump's originating managed method is unresolved. Two additional
-  larger Phase 3 baseline JSON batches fail in the nested Utf8JsonReader path.
-  Replays and independent controls complete without establishing a fix, common
-  cause or ownership. [SC-Benchmark-006](benchmark-signal-hardening-backlog.md#sc-benchmark-006---unattributed-native-exit-during-persistence-measurement)
-  retains the evidence and subsequent no-source-change closure. Its binary-free
-  BiDictionary control reproduces the frozen baseline's native CLR failure;
-  both current Standard and both current Lean processes pass. Source review
-  finds no attributable defect. No crash fix or source exoneration is claimed.
-- **Next action:** No implementation or investigation work remains queued.
-  Keep SC-Benchmark-006's historical uncertainty visible in release review and
-  reopen for a current-code recurrence, concrete source defect or changed risk
-  evidence under its recorded criteria. Implementation acceptance is complete;
-  no package release or universal runtime/architecture/AOT guarantee is claimed.
-- **Plan / acceptance:** [Comparer persistence plan](done/2026-11-20-comparer-persistence-plan.md)
-  owns the inventory, decisions, phases, validation and performance gates.
-  The former plan-only fixture directory is removed; maintained tests consume
-  the required legacy sorted-list literals directly.
+The former SC-Issue-021 feature record moved to the
+[completed comparer plan](done/2026-11-20-comparer-persistence-plan.md#historical-feature-tracking-closeout).
+These anchors preserve incoming links only; feature status belongs in the
+[feature work overview](feature-work-overview.md#comparer-persistence).
 
 ## Issue Template
 

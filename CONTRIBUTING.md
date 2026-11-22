@@ -2,8 +2,9 @@
 
 Focused fixes and documentation improvements can go directly through a pull
 request. For substantial public API, architecture, serialization, or performance
-changes, open an issue or discussion first so the intended contract and evidence
-bar are clear.
+changes, propose a focused plan or discussion first so the intended contract
+and evidence bar are clear. Link feature plans from the
+[feature work overview](docs/feature-work/feature-work-overview.md).
 
 Please follow the [Code of Conduct](CODE_OF_CONDUCT.md). See
 [Support](.github/SUPPORT.md) for help and [Security](SECURITY.md) for private
@@ -27,8 +28,11 @@ surface without that runtime dependency. The FixedMathSharp companion family
 declares its minimum compatible published SwiftCollections version separately,
 so the two families can be released independently.
 
-Record reproducible concerns outside the current change in the
-[issue tracker](docs/feature-work/issue-tracker.md). Preserve issue IDs, source
+Track significant active, deferred and completed feature work through the
+[feature work overview](docs/feature-work/feature-work-overview.md), with design
+and phase evidence in their owning plans. Feature work does not receive bug IDs.
+Record reproducible bugs and defect investigations outside the current change in
+the [issue tracker](docs/feature-work/issue-tracker.md). Preserve issue IDs, source
 revisions and verification evidence; track each concern in its owning
 repository.
 

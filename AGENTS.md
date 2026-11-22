@@ -41,11 +41,14 @@ Read these before making non-trivial changes:
    hot-path behavior or a performance claim.
 7. `docs/complexity-exceptions.md` before refactoring high-complexity methods or
    adding a new intentional exception.
-8. [Issue tracker](docs/feature-work/issue-tracker.md) for active concerns,
-   resolved root causes and required verification in the owning repository.
-9. [Benchmark signal backlog](docs/feature-work/benchmark-signal-hardening-backlog.md)
-   for measured performance, allocation, scaling and benchmark reliability
-   concerns.
+8. [Feature work overview](docs/feature-work/feature-work-overview.md) for active,
+   deferred and completed feature plans. Keep design and phase evidence in each
+   owning plan; do not assign feature work bug-tracker IDs.
+9. [Issue tracker](docs/feature-work/issue-tracker.md) for bugs, defect
+   investigations, resolved root causes and required verification.
+10. [Benchmark signal backlog](docs/feature-work/benchmark-signal-hardening-backlog.md)
+    for measured performance, allocation, scaling and benchmark reliability
+    concerns.
 
 ## Source Of Truth
 
@@ -69,7 +72,8 @@ expectations change:
 - `docs/api/guides/OVERVIEW.md` and the DocFX source and configuration under
   `docs/api`
 - `docs/complexity-exceptions.md`
-- `docs/feature-work/issue-tracker.md` for issue intake and resolution evidence
+- `docs/feature-work/feature-work-overview.md` for feature scope and plan status
+- `docs/feature-work/issue-tracker.md` for bug intake and resolution evidence
 - relevant tests and benchmarks
 - `.github/workflows/build-and-test.yml`
 - `.github/workflows/coverage.yml`
