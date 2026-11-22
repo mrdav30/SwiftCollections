@@ -16,6 +16,143 @@ namespace SwiftCollections.Tests;
 public class SwiftDictionaryTests
 {
     [Theory]
+    [InlineData("public-add", false)]
+    [InlineData("public-add", true)]
+    [InlineData("interface-insert", false)]
+    [InlineData("interface-insert", true)]
+    [InlineData("interface-replace", false)]
+    [InlineData("interface-replace", true)]
+    [InlineData("typed-add", false)]
+    [InlineData("typed-add", true)]
+    public void ObjectAdapter_ComparerInvalidCastRetainsIdentityAndContents(string operation, bool throwFromHash)
+    {
+        var failure = new InvalidCastException("Comparer failed.");
+        bool fail = false;
+        var comparer = EqualityComparer<int>.Create(
+            (left, right) => fail && !throwFromHash ? throw failure : left == right,
+            _ => fail && throwFromHash ? throw failure : 0);
+        var dictionary = new SwiftDictionary<int, int>(8, comparer) { { 1, 10 } };
+        var enumerator = dictionary.GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+        fail = true;
+
+        InvalidCastException actual = Assert.Throws<InvalidCastException>(() =>
+        {
+            switch (operation)
+            {
+                case "public-add": dictionary.Add((object)2, (object)20); break;
+                case "interface-insert": ((IDictionary)dictionary)[2] = 20; break;
+                case "interface-replace": ((IDictionary)dictionary)[1] = 20; break;
+                case "typed-add": dictionary.Add(2, 20); break;
+                default: throw new ArgumentOutOfRangeException(nameof(operation));
+            }
+        });
+
+        Assert.Same(failure, actual);
+        fail = false;
+        Assert.Equal(new KeyValuePair<int, int>(1, 10), Assert.Single(dictionary));
+        Assert.False(enumerator.MoveNext());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ObjectAdapter_BidirectionalReverseComparerInvalidCastPropagatesBeforeMutation(bool indexer)
+    {
+        var failure = new InvalidCastException("Reverse comparer failed.");
+        bool fail = false;
+        var reverseComparer = EqualityComparer<int>.Create(
+            (left, right) => fail ? throw failure : left == right,
+            static _ => 0);
+        var dictionary = new SwiftBiDictionary<int, int>(null, reverseComparer) { { 1, 10 } };
+        fail = true;
+
+        Assert.Same(failure, Assert.Throws<InvalidCastException>(() =>
+        {
+            if (indexer)
+                ((IDictionary)dictionary)[1] = 20;
+            else
+                dictionary.Add((object)2, (object)20);
+        }));
+
+        fail = false;
+        Assert.Equal(new KeyValuePair<int, int>(1, 10), Assert.Single(dictionary));
+        Assert.True(dictionary.TryGetKey(10, out int key));
+        Assert.Equal(1, key);
+        Assert.False(dictionary.TryGetKey(20, out _));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ObjectAdapter_ValueErrorFormattingInvalidCastIsNotReclassifiedAsKeyError(bool indexer)
+    {
+        var failure = new InvalidCastException("Value formatting failed.");
+        var value = new InvalidCastStringObject(failure);
+        var dictionary = new SwiftDictionary<int, int>();
+
+        Assert.Same(failure, Assert.Throws<InvalidCastException>(() =>
+        {
+            if (indexer)
+                ((IDictionary)dictionary)[1] = value;
+            else
+                dictionary.Add((object)1, value);
+        }));
+
+        Assert.Empty(dictionary);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ObjectAdapter_ConversionFailuresKeepValidationOrderAndContents(bool indexer)
+    {
+        var dictionary = new SwiftDictionary<int, int> { { 1, 10 } };
+        void Mutate(object key, object value)
+        {
+            if (indexer)
+                ((IDictionary)dictionary)[key] = value;
+            else
+                dictionary.Add(key, value);
+        }
+
+        ArgumentNullException nullValue = Assert.Throws<ArgumentNullException>(() => Mutate("bad-key", null));
+        Assert.Equal("value", nullValue.ParamName);
+        ArgumentException badKey = Assert.Throws<ArgumentException>(() => Mutate("bad-key", "bad-value"));
+        Assert.Equal($"Key bad-key does not match expected {typeof(int)}", badKey.Message);
+        Assert.Null(badKey.ParamName);
+        ArgumentException badValue = Assert.Throws<ArgumentException>(() => Mutate(1, "bad-value"));
+        Assert.Equal($"Value bad-value does not match expected {typeof(int)}", badValue.Message);
+        Assert.Null(badValue.ParamName);
+        Assert.Throws<NullReferenceException>(() => Mutate(null, 20));
+        Assert.Equal(new KeyValuePair<int, int>(1, 10), Assert.Single(dictionary));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ObjectAdapter_NullValuesRemainValidForReferenceAndNullableValues(bool indexer)
+    {
+        var references = new SwiftDictionary<string, string>();
+        var nullable = new SwiftDictionary<string, int?>();
+        if (indexer)
+        {
+            ((IDictionary)references)["key"] = null;
+            ((IDictionary)nullable)["key"] = null;
+            Assert.Throws<ArgumentNullException>(() => ((IDictionary)references)[null] = "value");
+        }
+        else
+        {
+            references.Add((object)"key", null);
+            nullable.Add((object)"key", null);
+            Assert.Throws<ArgumentNullException>(() => references.Add((object)null, "value"));
+        }
+
+        Assert.Equal(new KeyValuePair<string, string>("key", null), Assert.Single(references));
+        Assert.Equal(new KeyValuePair<string, int?>("key", null), Assert.Single(nullable));
+    }
+
+    [Theory]
     [InlineData("ensure-capacity")]
     [InlineData("automatic-growth")]
     [InlineData("remove-after-growth")]
@@ -1836,6 +1973,11 @@ public class SwiftDictionaryTests
         Assert.False(enumerator.MoveNext());
         Assert.True(dictionary.Remove(present));
         Assert.Empty(dictionary);
+    }
+
+    private sealed class InvalidCastStringObject(InvalidCastException failure)
+    {
+        public override string ToString() => throw failure;
     }
 
     private sealed class NonNullKeyComparer<TKey> : IEqualityComparer<TKey>

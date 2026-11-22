@@ -303,6 +303,10 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// lookup/removal.</param>
     /// <value>The stored value, or null on get for an absent or incompatible key. Assignment converts supplied
     /// values to their generic types and dispatches to the concrete indexer override.</value>
+    /// <remarks>
+    /// Assignment translates only failed key/value conversions into argument-type errors. Comparer and override
+    /// exceptions propagate unchanged; a failure can occur after mutation and does not imply rollback.
+    /// </remarks>
     [JsonIgnore]
     [MemoryPackIgnore]
     object? IDictionary.this[object obj]
@@ -320,23 +324,8 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
         }
         set
         {
-            ChronicleGuard.ThrowIfNullAndNullsAreIllegal(value, default(TValue));
-            try
-            {
-                TKey tempKey = (TKey)obj;
-                try
-                {
-                    this[tempKey] = (TValue)value!;
-                }
-                catch (InvalidCastException)
-                {
-                    throw new ArgumentException($"Value {value} does not match expected {typeof(TValue)}");
-                }
-            }
-            catch (InvalidCastException)
-            {
-                throw new ArgumentException($"Key {obj} does not match expected {typeof(TKey)}");
-            }
+            ConvertObjectPair(obj, value, out TKey typedKey, out TValue typedValue);
+            this[typedKey] = typedValue;
         }
     }
 
@@ -533,27 +522,13 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     /// generic type.</exception>
     /// <remarks>
     /// Delegates to the Boolean Add form and ignores duplicate rejection; duplicate keys do not throw.
+    /// Only failed key/value conversions are translated into argument-type errors. Comparer and override
+    /// exceptions propagate unchanged; a failure can occur after mutation and does not imply rollback.
     /// </remarks>
     public void Add(object key, object? value)
     {
-        ChronicleGuard.ThrowIfNullAndNullsAreIllegal(value, default(TValue));
-
-        try
-        {
-            TKey tempKey = (TKey)key;
-            try
-            {
-                Add(tempKey, (TValue)value!);
-            }
-            catch (InvalidCastException)
-            {
-                throw new ArgumentException($"Value {value} does not match expected {typeof(TValue)}");
-            }
-        }
-        catch (InvalidCastException)
-        {
-            throw new ArgumentException($"Key {key} does not match expected {typeof(TKey)}");
-        }
+        ConvertObjectPair(key, value, out TKey typedKey, out TValue typedValue);
+        Add(typedKey, typedValue);
     }
 
     /// <summary>
@@ -884,6 +859,29 @@ public partial class SwiftDictionary<TKey, TValue> : IStateBacked<SwiftDictionar
     #endregion
 
     #region Utility Methods
+
+    private static void ConvertObjectPair(object key, object? value, out TKey typedKey, out TValue typedValue)
+    {
+        ChronicleGuard.ThrowIfNullAndNullsAreIllegal(value, default(TValue));
+
+        try
+        {
+            typedKey = (TKey)key;
+        }
+        catch (InvalidCastException)
+        {
+            throw new ArgumentException($"Key {key} does not match expected {typeof(TKey)}");
+        }
+
+        try
+        {
+            typedValue = (TValue)value!;
+        }
+        catch (InvalidCastException)
+        {
+            throw new ArgumentException($"Value {value} does not match expected {typeof(TValue)}");
+        }
+    }
 
     /// <summary>
     /// Initializes the dictionary with the specified capacity.

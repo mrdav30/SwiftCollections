@@ -10,7 +10,7 @@ feature-work plans.
 
 ## Tracker Rules
 
-- Issue IDs use `SC-Issue-NNN`. The next available ID is `SC-Issue-023`.
+- Issue IDs use `SC-Issue-NNN`. The next available ID is `SC-Issue-024`.
 - Assign an ID at intake and preserve it through closure; never delete or reuse
   IDs. Check Git history before advancing or repairing the counter. Unknown
   historical IDs stay reserved rather than acquiring an inferred cause.
@@ -72,61 +72,54 @@ diagnosis, decisions and reopening criteria stay with their owning issue.
 
 ## Active Issues
 
-### SC-Issue-022 - Object dictionary adapters misclassify callback invalid casts
+### SC-Issue-023 - List object adapters misclassify callback invalid casts
 
-- **Status / priority:** Confirmed / P2; open, separate from SC-Issue-018.
+- **Status / priority:** Confirmed / P2; open, separate owner from SC-Issue-022.
 - **Discovered / revision:** 2026-11-21 at
-  `5d9e3c1932e59749694e5ec2f46c8d46f6db371c`; reproduced before and after the
-  notification fix in Standard/Lean, including matching-dependency netstandard
-  replays on .NET 10.
-- **Affected members:** `SwiftDictionary<TKey, TValue>.Add(object, object)` and
-  the non-generic IDictionary indexer setter. Their InvalidCastException catches
-  include virtual mutation, not just argument conversion, so derived notification
-  code can be misclassified as a bad key/value argument.
-- **Environment:** Windows x64, SDK 10.0.302, runtime 10.0.10, Release with
-  published dependencies (`UseLocalLsfStack=false`).
-- **Caller impact:** A valid insertion/replacement commits, then the caller sees
-  an argument-type error rather than the subscriber failure. The message falsely
-  describes a correctly typed value as incompatible and discards the original
-  exception instead of retaining it as InnerException. Retrying under an
-  assumption that validation rejected the mutation is unsafe.
+  `b5e03e40130c95879b7936ceafec1baf0d57329a`; reproduced using its frozen core
+  DLL while investigating SC-Issue-022.
+- **Affected members:** SwiftList<T>'s explicit IList.Add, IList.Insert and
+  IList.Remove enclose virtual mutation in conversion catches. Observable-list
+  subscriber failures are relabeled as NotSupportedException after mutation.
+- **Environment:** Windows x64, SDK 10.0.302/runtime 10.0.10, Release with
+  published dependencies. No list runtime fix is included in SC-Issue-022.
 
 **Portable reproducer** (use the console setup above):
 
 ```csharp
-foreach (bool replace in new[] { false, true })
+foreach (string op in new[] { "Add", "Insert", "Remove" })
 {
-    var d = new SwiftCollections.Observable.SwiftObservableDictionary<int, int>();
-    if (replace) d.Add(1, 10);
+    var d = new SwiftCollections.Observable.SwiftObservableList<int>();
+    if (op == "Remove") d.Add(1);
     var original = new InvalidCastException("subscriber");
     d.CollectionChanged += (_, _) => throw original;
+    System.Collections.IList list = d;
     try
     {
-        if (replace) ((System.Collections.IDictionary)d)[1] = 20;
-        else ((System.Collections.IDictionary)d).Add(1, 10);
+        if (op == "Add") list.Add(1);
+        else if (op == "Insert") list.Insert(0, 1);
+        else list.Remove(1);
     }
     catch (Exception error)
     {
-        Console.WriteLine($"{replace}; {error.GetType().Name}; " +
-            $"{ReferenceEquals(original, error)}; {d.Count}; {d[1]}");
-        Console.WriteLine(error.Message);
+        Console.WriteLine($"{op}; {error.GetType().Name}; " +
+            $"{ReferenceEquals(original, error)}; {d.Count}");
     }
 }
 ```
 
-Expected: the original InvalidCastException propagates after the documented
-committed mutation. Observed: `False; ArgumentException; False; 1; 10` and
-`True; ArgumentException; False; 1; 20`. Messages say `Value 10 does not match
-expected System.Int32` and likewise for value 20. The original is not retained as
-InnerException. A direct typed Add control propagates the same original
-InvalidCastException instance and also leaves the mapping committed.
+Observed: `Add; NotSupportedException; False; 1`,
+`Insert; NotSupportedException; False; 1`, and
+`Remove; NotSupportedException; False; 0`. Expected: the original
+InvalidCastException instance propagates, with those same committed counts.
+Callers cannot safely interpret the current error as rejecting an incompatible
+input or leaving the list unchanged.
 
-- **Root cause / next action:** Restrict conversion catches to the casts, then
-  invoke virtual Add/indexer mutation outside them. Add regressions for both
-  object adapters, derived subscribers and comparer failures, while preserving
-  existing null/wrong-type validation and nontransactional mutation contracts.
-  Do not change rollback or notification coverage policy as part of that fix.
-  [Source](../../src/SwiftCollections/Collection/SwiftDictionary.cs).
+- **Next action:** Isolate list argument casts from virtual Add/Insert/Remove;
+  cover original subscriber/equality failures, committed state and preserved
+  wrong-type/null/index validation in Standard and Lean with full coverage.
+  The SlotMap/Stack Array.SetValue conversion catches do not invoke user mutation
+  and are not included without a separate reproducer.
 
 ## Resolved Issues
 
@@ -136,6 +129,7 @@ they do not claim a fresh rerun or package release.
 
 | Issue                                                                                          | Resolved/closed | Outcome                                                                                                                                                                                                                                                              | Evidence                                                                                                                                                                                                       |
 | ---------------------------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SC-Issue-022 | 2026-11-21 | **Verified fix:** dictionary object adapters share conversion-only catches and invoke virtual mutation afterward, preserving original comparer/override/subscriber exceptions and existing conversion contracts. | [Resolution and verification](#sc-issue-022---object-dictionary-adapters-misclassify-callback-invalid-casts) |
 | SC-Issue-020 | 2026-11-21 | **Verified fix:** the Numerics octree shares widened midpoint arithmetic for child creation/selection and checks both rounded child spans before subdivision, preventing overflowing and nonshrinking children. | [Root cause, regressions and verification](#sc-issue-020---numerics-octree-subdivision-overflows-finite-midpoints) |
 | SC-Issue-019 | 2026-11-21 | **Verified fix; upsert policy approved:** BVH now owns one leaf per non-null key; repeated Insert updates bounds and returns false. Null is rejected before mutation. Generic, Numerics and fixed-point paths share the fix. | [Resolution and compatibility evidence](#sc-issue-019---bvh-duplicate-and-null-key-policy-differs-from-peer-indexes) |
 | SC-Issue-018 | 2026-11-21 | **Verified fix:** observable Add emits CollectionChanged/Add and PropertyChanged/Entries[] only after successful insertion across all six dispatch forms. Duplicate mappings remain intact; existing resize and subscriber-failure semantics are preserved. Standard/Lean/Debug pass strict 100% reported coverage on verified package/runtime inputs. | [Resolution and verification](#sc-issue-018---duplicate-dictionary-add-emits-a-false-change-notification), [regressions](../../tests/SwiftCollections.Tests/Observable/SwiftObservableDictionary.Tests.cs) |
@@ -898,6 +892,154 @@ finite world that creates nonfinite/out-of-parent or nonshrinking children,
 violates the documented computed minimum-size test, or routes an entry into a
 child that does not contain it. Reassess separately if cross-platform floating-
 point reproducibility or exact-real span admission becomes a supported contract.
+
+### SC-Issue-022 - Object dictionary adapters misclassify callback invalid casts
+
+- **Status / priority:** Resolved 2026-11-21 / P2; verified fix, separate from SC-Issue-018.
+- **Discovered / revision:** 2026-11-21 at
+  `5d9e3c1932e59749694e5ec2f46c8d46f6db371c`; reproduced before and after the
+  notification fix in Standard/Lean, including matching-dependency netstandard
+  replays on .NET 10. Reproduced again before this fix at
+  `b5e03e40130c95879b7936ceafec1baf0d57329a`.
+- **Affected members:** `SwiftDictionary<TKey, TValue>.Add(object, object)` and
+  the non-generic IDictionary indexer setter. Their InvalidCastException catches
+  include virtual mutation, not just argument conversion, so derived notification
+  code can be misclassified as a bad key/value argument.
+- **Environment:** Windows x64, SDK 10.0.302, runtime 10.0.10, Release with
+  published dependencies (`UseLocalLsfStack=false`).
+- **Caller impact:** A valid insertion/replacement commits, then the caller sees
+  an argument-type error rather than the subscriber failure. The message falsely
+  describes a correctly typed value as incompatible and discards the original
+  exception instead of retaining it as InnerException. Retrying under an
+  assumption that validation rejected the mutation is unsafe.
+
+**Portable reproducer** (use the console setup above):
+
+```csharp
+foreach (bool replace in new[] { false, true })
+{
+    var d = new SwiftCollections.Observable.SwiftObservableDictionary<int, int>();
+    if (replace) d.Add(1, 10);
+    var original = new InvalidCastException("subscriber");
+    d.CollectionChanged += (_, _) => throw original;
+    try
+    {
+        if (replace) ((System.Collections.IDictionary)d)[1] = 20;
+        else ((System.Collections.IDictionary)d).Add(1, 10);
+    }
+    catch (Exception error)
+    {
+        Console.WriteLine($"{replace}; {error.GetType().Name}; " +
+            $"{ReferenceEquals(original, error)}; {d.Count}; {d[1]}");
+        Console.WriteLine(error.Message);
+    }
+}
+```
+
+Expected: the original InvalidCastException propagates after the documented
+committed mutation. Observed: `False; ArgumentException; False; 1; 10` and
+`True; ArgumentException; False; 1; 20`. Messages say `Value 10 does not match
+expected System.Int32` and likewise for value 20. The original is not retained as
+InnerException. A direct typed Add control propagates the same original
+InvalidCastException instance and also leaves the mapping committed.
+
+After: `False; InvalidCastException; True; 1; 10` and
+`True; InvalidCastException; True; 1; 20`. Both retain the original `subscriber`
+exception and the same committed mapping. Typed controls behave the same way.
+
+**Root cause and resolution:** Both object adapters enclosed virtual mutation
+in the value-conversion catch, nested inside a key-conversion catch. The shared
+private static ConvertObjectPair helper now performs only the existing input
+conversion sequence: null-value guard, key cast, then value cast. Each catch
+surrounds only its own cast. Add and the explicit IDictionary setter invoke
+virtual mutation after the helper returns, outside both catches. This also
+prevents an InvalidCastException from a malformed value's error-message ToString
+from being relabeled as a key conversion error.
+
+There is one helper with two production consumers, no new fields/types or
+intermediate tuple/pair objects. Typed mutation, notification order, duplicate
+semantics, serialization/restore and public signatures are unchanged. Existing
+validation order, messages and exception types are preserved: disallowed null
+values are checked first; a null non-nullable value-type key still fails
+unboxing with NullReferenceException, and reference null keys still reach typed
+validation. Nullable/reference null values remain valid. Exceptions from
+comparers, overrides and subscribers now propagate unchanged. Failure is not a
+rollback guarantee: notification failure follows committed mutation, and
+existing load-threshold checks may resize before a later typed failure.
+
+**Regression evidence:** The `FullyQualifiedName~ObjectAdapter_` filter ran
+28 cases against unfixed source: 18 failed for the intended exception type/identity
+mismatch and 10 controls passed. Tests cover public object Add, non-generic
+IDictionary.Add and indexer insertion/replacement; collection/property subscriber
+failures and notification interruption; forward hash/equality comparers;
+bidictionary reverse comparers; value formatting; exact validation precedence,
+messages, nullable/reference nulls and non-nullable key unboxing. The assertions
+distinguish pre-mutation comparer failures with spare capacity from committed
+subscriber failures and retain typed controls. After the fix, the focused
+SwiftDictionaryTests/SwiftObservableDictionaryTests/SwiftBiDictionaryTests filter
+passed all 219 cases.
+
+**Full validation:** Windows x64, SDK 10.0.302/runtime 10.0.10, published
+package mode (`UseLocalLsfStack=false`, `DisableTransitiveProjectReferences=false`).
+From the repository root, run `dotnet build SwiftCollections.slnx -c CONFIG`
+with those properties. Run each test project with `dotnet test
+tests/PROJECT/PROJECT.csproj -c CONFIG --no-build --collect:"XPlat Code Coverage"
+--settings tests/PROJECT/coverlet.runsettings --results-directory FRESH_RESULTS`
+and the same properties, then `.assets/scripts/assert-full-coverage.ps1
+-CoverageDirectory FRESH_RESULTS` after both projects. Fresh configuration-specific
+results passed the unchanged strict raw-count gate:
+
+| Configuration | Core tests | Companion tests | Core lines | Core branches | Core executable methods | Companion lines / branches / methods |
+| --- | ---: | ---: | --- | --- | --- | --- |
+| Release | 2005 | 46 | 6031/6031 | 2858/2858 | 1262/1262 | 121/121; 62/62; 35/35 |
+| ReleaseLean | 1897 | 46 | 5837/5837 | 2782/2782 | 1221/1221 | 121/121; 62/62; 35/35 |
+| Debug | 2003 | 46 | 7964/7964 | 2866/2866 | 1262/1262 | 155/155; 62/62; 35/35 |
+
+No failed/skipped tests, exclusions or coverage/CI-policy changes. Existing
+analyzer warnings remain: xUnit2013 for the unchanged slot-map size assertion
+and Lean xUnit1026 for the pre-existing observable round-trip theory's unused
+`binary` parameter. The added tests do not alter that theory. No introduced
+warning or build error was observed. Full builds include both runtime assemblies
+for `netstandard2.1` and `net10.0`, with C# 11 compatibility retained for netstandard.
+
+Explicit `dotnet pack src/OWNER/OWNER.csproj -c CONFIG --no-build --no-restore`
+with the package-mode properties produced SwiftCollections, SwiftCollections.Lean,
+SwiftCollections.FixedMathSharp and SwiftCollections.FixedMathSharp.Lean. All
+eight assembly/target/variant DLL and XML pairs matched final source-build outputs
+byte-for-byte. DLL inputs from all six coverage suites still matched those same
+outputs. All packaged XML parsed. Fresh DocFX metadata/site generation with
+`dotnet tool run docfx docs/api/docfx.json --warningsAsErrors` passed with zero
+warnings/errors. The rendered object Add section shows key/value parameters,
+existing conversion exceptions and original-exception/no-rollback remarks. The
+explicit IDictionary indexer is hidden by the existing site metadata selection; its updated
+contract was checked in emitted XML. Both adapters were checked in all four
+core target/variant XML files. The observable guide renders the corrected
+contract. All 1,624 local href targets across 104 generated HTML pages resolved.
+
+**Warm allocation control:** A disposable optimized net10.0 caller preboxed an
+integer key and two values once and reused a capacity-eight SwiftDictionary<int,int>.
+Each cycle exercised public object Add/remove, IDictionary.Add/remove, and
+IDictionary indexer insert/replace/remove, checking exact typed values and counts.
+After 2,000 warmup cycles, 10,000 measured cycles allocated zero thread bytes in
+the frozen baseline, current Standard and current Lean, with every value correct
+and final Count zero. Blocking GC was used. Loaded core SHA256 values were
+`D85F26EACB85C8B26AA0E59E03DEFEAF3297913F75206DE74F02D2A6DB341747`
+(baseline), `28244B4BFD01E45D3E6379E49C229DC548D8D4B4F930A2BED938FD29FF6CB30D`
+(Standard), and `2E8AB11EA0D205568CA92FC05759545DC8FAA9536F2792CE56BAE796F547A5C9`
+(Lean). This excludes boxing performed by callers before entering the adapters,
+exception allocation, notifications and resizing; it is not a universal allocation
+or latency guarantee. Typed probe/mutation code is unchanged, and no new timing
+benchmark or before/after latency claim is introduced.
+
+Hosted CI, Unity/IL2CPP, other platforms and downstream suites were not run;
+no release is claimed. The list reproducer remains unchanged after this fix.
+
+**Disposition / reopening:** Close the confirmed dictionary defect. Reopen for
+an object dictionary route that still relabels a correctly typed comparer,
+override or subscriber InvalidCastException, changes conversion/null precedence,
+or bypasses derived mutation rules. The analogous SwiftList owner is separately
+tracked as [SC-Issue-023](#sc-issue-023---list-object-adapters-misclassify-callback-invalid-casts);
+this fix does not expand list runtime behavior.
 
 ### SC-Issue-021 - Persist collection comparers across serializers
 

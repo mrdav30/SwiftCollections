@@ -15,6 +15,65 @@ namespace SwiftCollections.Observable.Tests;
 public class SwiftObservableDictionaryTests
 {
     [Theory]
+    [InlineData("public-add", false)]
+    [InlineData("public-add", true)]
+    [InlineData("interface-add", false)]
+    [InlineData("interface-add", true)]
+    [InlineData("interface-insert", false)]
+    [InlineData("interface-insert", true)]
+    [InlineData("interface-replace", false)]
+    [InlineData("interface-replace", true)]
+    [InlineData("typed-add", false)]
+    [InlineData("typed-add", true)]
+    [InlineData("typed-replace", false)]
+    [InlineData("typed-replace", true)]
+    public void ObjectAdapter_SubscriberInvalidCastPropagatesAfterCommittedMutation(string operation, bool throwFromProperty)
+    {
+        var dictionary = new SwiftObservableDictionary<int, int>();
+        bool replace = operation.EndsWith("replace", StringComparison.Ordinal);
+        if (replace)
+            dictionary.Add(1, 10);
+        var failure = new InvalidCastException("Subscriber failed.");
+        var notifications = new List<string>();
+        dictionary.CollectionChanged += (sender, args) =>
+        {
+            Assert.Same(dictionary, sender);
+            Assert.Equal(replace ? NotifyCollectionChangedAction.Replace : NotifyCollectionChangedAction.Add, args.Action);
+            Assert.Equal(20, dictionary[1]);
+            Assert.Single(dictionary);
+            notifications.Add("Collection");
+            if (!throwFromProperty)
+                throw failure;
+        };
+        dictionary.PropertyChanged += (sender, args) =>
+        {
+            Assert.Same(dictionary, sender);
+            Assert.Equal("Entries[]", args.PropertyName);
+            Assert.Equal(20, dictionary[1]);
+            notifications.Add("Property");
+            throw failure;
+        };
+
+        InvalidCastException actual = Assert.Throws<InvalidCastException>(() =>
+        {
+            switch (operation)
+            {
+                case "public-add": dictionary.Add((object)1, (object)20); break;
+                case "interface-add": ((IDictionary)dictionary).Add(1, 20); break;
+                case "interface-insert":
+                case "interface-replace": ((IDictionary)dictionary)[1] = 20; break;
+                case "typed-add": dictionary.Add(1, 20); break;
+                case "typed-replace": dictionary[1] = 20; break;
+                default: throw new ArgumentOutOfRangeException(nameof(operation));
+            }
+        });
+
+        Assert.Same(failure, actual);
+        Assert.Equal(new KeyValuePair<int, int>(1, 20), Assert.Single(dictionary));
+        Assert.Equal(throwFromProperty ? new[] { "Collection", "Property" } : new[] { "Collection" }, notifications);
+    }
+
+    [Theory]
     [InlineData("concrete")]
     [InlineData("base")]
     [InlineData("pair")]

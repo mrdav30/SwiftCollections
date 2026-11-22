@@ -90,8 +90,8 @@ unless the ordering and notification cost are explicitly tested and benchmarked.
 Keep event subscription lifetimes explicit. Unsubscribe handlers when a host or
 view is released, and avoid changing authoritative simulation decisions from
 notifications whose call order the host has not defined.
-Notifications run synchronously after mutation. A handler exception propagates
-without rolling the mutation back and can prevent later notifications. Only the
+Notifications run synchronously after mutation. A failing handler can prevent
+later notifications; the mutation is not rolled back. Only the
 observable mutation members emit events. Dictionary indexer assignments use the
 observable override through base, generic dictionary and non-generic dictionary
 references. Dictionary Add calls notify only after successful insertion, with
@@ -99,6 +99,10 @@ CollectionChanged(Add) followed by PropertyChanged(Entries[]). Equal-key
 rejection preserves the stored mapping and Count and emits neither event. The
 base load-threshold check can still resize storage and invalidate enumerators
 before rejection; absence of notifications is not a storage-lifetime guarantee.
+Dictionary object Add and non-generic dictionary assignments convert inputs
+before invoking typed mutation. Comparer and notification exceptions, including
+`InvalidCastException`, propagate unchanged through those adapters; an exception
+does not establish that the mutation was rejected.
 The observable list indexer remains hidden; base-typed list indexer
 writes, direct storage writes and inherited non-overridden mutators can bypass
 notifications.
