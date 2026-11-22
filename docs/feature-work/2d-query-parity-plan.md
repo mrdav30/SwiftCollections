@@ -1,7 +1,7 @@
 # 2D Query Parity Plan
 
-- **Status:** Planned; implementation and performance validation have not
-  started.
+- **Status:** Phase 0 complete: contracts and baseline evidence frozen. Phase 1
+  implementation is next; no new runtime API ships from Phase 0.
 - **Created:** 2026-11-21.
 - **Owner:** SwiftCollections, with FixedMathSharp owning any new exact geometry
   arithmetic.
@@ -33,13 +33,13 @@ matching custom-backend extension points; new ray, nearest-neighbor, sweep,
 shape-contact and query-index persistence APIs are outside its scope. Existing
 state/serializer formats stay unchanged.
 
-## Proposed API and parity inventory
+## Frozen API and parity inventory
 
-Names below are the recommended additive surface, to freeze in Phase 0. Keep
-current 3D type names, constructors, generic constraints, inheritance
-relationships and public/protected member signatures intact.
+Names below are the additive surface frozen in Phase 0. Keep current 3D type
+names, constructors, generic constraints, inheritance relationships and
+public/protected member signatures intact.
 
-| Family                 | Proposed surface                                                                                          | Reuse boundary                                                                                                       |
+| Family                 | Frozen surface                                                                                            | Reuse boundary                                                                                                       |
 | ---------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | Bounds                 | `BoundVolume2D` over Vector2; `FixedBoundVolume2D` over Vector2d and FixedBoundArea                       | Implement existing `IBoundVolume<TVolume>`; introduce no second bounds interface or geometry owner.                  |
 | BVH                    | `SwiftBVH2D<TKey>`, `SwiftFixedBVH2D<TKey>`                                                               | Thin wrappers over existing `SwiftBVH<TKey, TVolume>`; reuse its node type, storage, key map and traversal scratch.  |
@@ -52,9 +52,10 @@ Parity means equivalent caller contracts within each corresponding family, not
 identical signatures across different families:
 
 - **BVH:** constructor/capacity, Count, Insert, void UpdateEntryBounds, Remove,
-  Clear, FindEntry, Query and TryQuery; retain NodePool, RootNode and
-  RootNodeIndex through the generic engine. Document borrowed-array replacement,
-  node-index reuse and the existing node inspection/mutation limits.
+  Clear, FindEntry, EnsureCapacity, Query and TryQuery; retain NodePool,
+  RootNode and RootNodeIndex through the generic engine. Document borrowed-array
+  replacement, node-index reuse and the existing node inspection/mutation
+  limits.
 - **Spatial hash:** capacity/options constructors, Count, Options, Insert,
   Boolean UpdateEntryBounds, Remove, Contains, TryGetBounds, EnsureCapacity,
   Clear, exact Query and QueryNeighborhood. Fixed wrapper parity includes
@@ -108,8 +109,8 @@ already use Children.Length. Share these mechanics with four-child subdivision.
 Preserve the existing
 [octree partitioner](../../src/SwiftCollections/Query/Octree/IOctreeBoundsPartitioner.cs)
 and its 0..7 contract. A quadtree must not publicly inherit from an octree just
-to reuse code. The internal owner/layout mechanism remains a measured design
-gate: composition can add an object, indirection or retained-owner cost.
+to reuse code. Phase 0 selected an embedded owner layout below; production
+extraction remains a measured gate for indirection, storage and warm costs.
 
 Reuse
 [QueryKeyIndexMap](../../src/SwiftCollections/Query/Shared/QueryKeyIndexMap.cs)
@@ -134,12 +135,21 @@ normalized endpoints, inclusive intersection, union, containment and a
 full-domain nearest-even midpoint. Full Size can be unrepresentable;
 indexing/subdivision must operate from endpoints rather than materializing it.
 
-The recommended new provider API is
-`FixedBoundArea.GetAreaExpansionCost(FixedBoundArea other)`, with the same
-public long-cost convention as the existing 3D volume-expansion metric: form
-union area minus the current rectangle's area exactly, then round down to square
-coordinate units and clamp only the final result to long.MaxValue. Zero/sub-unit
-growth can yield zero; preserve deterministic BVH tie-breaking.
+The new provider APIs are checked `FixedBoundArea.Area` and
+`FixedBoundArea.GetAreaExpansionCost(FixedBoundArea other)`, with the latter
+using the same public long-cost convention as the existing 3D volume-expansion
+metric: form union area minus the current rectangle's area exactly, then round
+down to square coordinate units and clamp only the final result to
+long.MaxValue. Zero/sub-unit growth can yield zero; preserve deterministic BVH
+tie-breaking.
+
+Area returns Fixed64 square-coordinate units using checked nearest-even Q32.32
+rounding, including overflow from rounding carry. Compute it independently of
+Size: a full-width, zero-height rectangle has zero area even when Size throws.
+Both APIs must share one provider-private exact raw-area operation. Mark the new
+derived Area getter `[JsonIgnore]` and `[MemoryPackIgnore]` to preserve native
+FixedBoundArea and BoundingAreaState payloads. SwiftCollections delegates to
+these APIs rather than owning another fixed-point area implementation.
 
 Full signed Q32.32 endpoints require unsigned raw spans and exact products up to
 128 bits. Subtract raw areas before discarding 64 fractional bits. Put this
@@ -148,11 +158,11 @@ arithmetic. Do not copy wide geometry into SwiftCollections, multiply
 potentially unrepresentable Fixed64 sizes, or require runtime
 BigInteger/System.UInt128. BigInteger is suitable as an independent test oracle.
 
-| Readiness boundary observed during planning                                                                      | State                                                                                                                                       |
-| ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Local FixedMathSharp `b501340558c6132484be2f40957233c1b3d29cab`                                                  | Clean; FixedBoundArea basics available, public area-expansion cost absent.                                                                  |
-| Current SwiftCollections hosted-develop FixedMathSharp pin `3da3a8ad9964d3e0413080737fec12ba107b48e4`            | New area API readiness not established; it has not been added by this plan.                                                                 |
-| Cached FixedMathSharp and FixedMathSharp.Lean 8.0.0, package revision `763efc57cea399cde375fe0ef4aa296c1eaa3cba` | Both TFMs expose bounds basics and public 3D volume cost; no public area-growth member found in package XML. No new API compile is claimed. |
+| Readiness boundary observed during planning                                                                      | State                                                                                                                          |
+| ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Local FixedMathSharp `b501340558c6132484be2f40957233c1b3d29cab`                                                  | Clean; FixedBoundArea basics available; Area and area-expansion cost absent.                                                   |
+| Current SwiftCollections hosted-develop FixedMathSharp pin `3da3a8ad9964d3e0413080737fec12ba107b48e4`            | New area API readiness not established; it has not been added by this plan.                                                    |
+| Cached FixedMathSharp and FixedMathSharp.Lean 8.0.0, package revision `763efc57cea399cde375fe0ef4aa296c1eaa3cba` | Both TFMs expose bounds basics and public 3D volume cost; neither new area member is available. No new API compile is claimed. |
 
 Record provider and consumer revisions and test each boundary separately:
 coordinated source first, then an authorized immutable/fetchable hosted pin
@@ -174,14 +184,13 @@ actions, not authorized by this documentation-only plan.
   overflow-safe loop counters and padding clipping near Int32 limits.
   Full-domain bounds support is not a feasible full-domain cell-iteration
   promise.
-- Recommended Numerics policy: finite ordered endpoints, a default zero-size
-  origin box, and finite positive cell/minimum-node sizes. Freeze whether bounds
-  constructors enforce the endpoint precondition in Phase 0; do not accidentally
-  impose new validation or normalization on existing 3D callers.
-- For new Numerics XY mapping, freeze an explicit floor/out-of-range conversion
-  policy; recommend widened quotient plus Int32 clamping, documented as computed
-  floating-point mapping. Preserve existing 3D mapping behavior during
-  extraction; any incompatible correction requires separate disposition.
+- Numerics policy: constructors enforce finite ordered endpoints, with a default
+  zero-size origin box and finite positive cell/minimum-node sizes. Do not
+  impose this new validation or normalization on existing 3D callers.
+- New Numerics XY mapping uses widened quotient, floor and Int32 clamping,
+  documented as computed floating-point mapping. Preserve existing 3D mapping
+  behavior during extraction; any incompatible correction requires separate
+  disposition.
 - Compute Numerics area differences from endpoints widened before subtraction
   and multiplication; finite float spans/products fit double. Floor/clamp the
   public cost explicitly. This is not an arbitrary-precision or cross-platform
@@ -199,13 +208,13 @@ actions, not authorized by this documentation-only plan.
 
 ## Implementation phases and exit gates
 
-| Phase                         | Work                                                                                                                                                                                                                                                                              | Exit evidence                                                                                                                                                                                                                                                                                                   |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0 — Contracts and baselines   | Freeze the complete member inventory, names, numeric defaults/validation, custom-backend contracts and measured reuse mechanism candidates. Record source/package graphs and existing 3D output/order, allocation, time and storage baselines. Scope the FixedMathSharp addition. | Decision record below completed; a bounded layout/prototype comparison supports the intended common owners. No performance or dependency gate inferred from source inspection.                                                                                                                                  |
-| 1 — Bounds and BVH            | Implement/test exact provider cost in FixedMathSharp, then both 2D bounds backends and thin wrappers over the existing generic BVH. Use insert → query → move → query → remove → reuse through public APIs as the first working slice.                                            | Correct hits and fixed traces, edge/full-domain cost oracles, NodePool/TryQuery parity, warm allocation and practical time; both affected repos pass applicable coverage/variant checks. Independent first-slice review before expansion. Hosted/package dependencies remain separately pending if unavailable. |
-| 2 — Native XY spatial hash    | Introduce XY cell/mapper APIs and concrete loops while sharing ownership/stamps/relocation with XYZ. Uplift fixed mapping with both consumers. Include fixed point-candidate helpers.                                                                                             | Complete mutation/exact/neighborhood/candidate contracts, rollover and range-edge tests; native two-coordinate storage; measured 3D compatibility and allocation/time/footprint gates pass.                                                                                                                     |
-| 3 — Quadtree and shared tree  | Add four-child backends and public wrappers around shared internal ownership/subdivision/merge logic. Keep existing 3D extension points and order.                                                                                                                                | Four actual children, contained/shrinking bounds, straddler and merge/depth tests, default-options controls, fixed full-domain tests and measured 3D compatibility gates pass.                                                                                                                                  |
-| 4 — Distribution and closeout | Complete public docs/inventory, package inspection, supported runtime/Unity checks and any authorized consumer smoke. Reconcile all decisions, measurements and dependency gates here.                                                                                            | Every matrix lane and exclusion reported; strict coverage and required hosted/package/Unity gates pass. No release claim without separate release work. Archive by repository convention after completion.                                                                                                      |
+| Phase                         | Work                                                                                                                                                                                                                                                                              | Exit evidence                                                                                                                                                                                                                                                                                                        |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0 — Contracts and baselines   | Freeze the complete member inventory, names, numeric defaults/validation, custom-backend contracts and measured reuse mechanism candidates. Record source/package graphs and existing 3D output/order, allocation, time and storage baselines. Scope the FixedMathSharp addition. | Decision record below completed; a bounded layout/prototype comparison supports the intended common owners. No performance or dependency gate inferred from source inspection.                                                                                                                                       |
+| 1 — Bounds and BVH            | Implement/test checked area and exact provider cost in FixedMathSharp, then both 2D bounds backends and thin wrappers over the existing generic BVH. Use insert → query → move → query → remove → reuse through public APIs as the first working slice.                           | Correct hits and fixed traces, edge/full-domain area/cost oracles, NodePool/TryQuery parity, warm allocation and practical time; both affected repos pass applicable coverage/variant checks. Independent first-slice review before expansion. Hosted/package dependencies remain separately pending if unavailable. |
+| 2 — Native XY spatial hash    | Introduce XY cell/mapper APIs and concrete loops while sharing ownership/stamps/relocation with XYZ. Uplift fixed mapping with both consumers. Include fixed point-candidate helpers.                                                                                             | Complete mutation/exact/neighborhood/candidate contracts, rollover and range-edge tests; native two-coordinate storage; measured 3D compatibility and allocation/time/footprint gates pass.                                                                                                                          |
+| 3 — Quadtree and shared tree  | Add four-child backends and public wrappers around shared internal ownership/subdivision/merge logic. Keep existing 3D extension points and order.                                                                                                                                | Four actual children, contained/shrinking bounds, straddler and merge/depth tests, default-options controls, fixed full-domain tests and measured 3D compatibility gates pass.                                                                                                                                       |
+| 4 — Distribution and closeout | Complete public docs/inventory, package inspection, supported runtime/Unity checks and any authorized consumer smoke. Reconcile all decisions, measurements and dependency gates here.                                                                                            | Every matrix lane and exclusion reported; strict coverage and required hosted/package/Unity gates pass. No release claim without separate release work. Archive by repository convention after completion.                                                                                                           |
 
 Run independent ponytail review after the first shared working slice, after any
 substantial extraction, and before each phase handoff. Fix verified findings.
@@ -273,8 +282,9 @@ owner/control measurements should keep the investigation bounded.
 
 ## Validation and distribution matrix
 
-Implementation gates below are planned requirements, not results from this
-documentation-only change. Preserve existing CI policy.
+Implementation gates below remain requirements. The Phase 0 record reports the
+baseline lanes actually run; it does not close implementation or release gates.
+Preserve existing CI policy.
 
 | Lane                                    | Required evidence                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -304,12 +314,12 @@ adapters beyond smoke coverage require separate adapter scope.
 
 ## Decision register and phase results
 
-| Decision                                   | Current disposition                                                                                                                       | Reopening/closure criterion                                                                                                           |
-| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Shared ownership                           | Reuse BVH unchanged; uplift hash/tree ownership with actual 2D+3D consumers. Internal representation remains pending Phase 0 measurement. | Choose measured layout without breaking current public/protected identities; record and resolve confirmed costs before expansion.     |
-| Fixed 2D heuristic                         | Recommend exact provider-owned area expansion, floored/clamped final long like 3D. New API is not available yet.                          | Freeze units/rounding, implement/test provider, then independently close source, hosted-pin and released-package gates.               |
-| Names, validation and topology             | Recommended additive names/contracts above; bounds validation, Numerics cell conversion and final core layouts await Phase 0 freeze.      | Record selected signatures, boundary behavior and rationale; consequential behavior/performance departures need explicit disposition. |
-| Persistence and additional query operators | Excluded from this parity pass; existing owner/state formats unchanged.                                                                   | Reopen only for a separately requested caller contract with concrete consumers.                                                       |
+| Decision                                   | Current disposition                                                                                                                                                                                   | Reopening/closure criterion                                                                                                                                             |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shared ownership                           | Reuse BVH unchanged. Select embedded mutable cores for hash/tree; retain stable wrapper callback receivers and existing public extension points. Reject an extra heap core: measured +24 B per owner. | Reopen if production XY/four-child extraction changes existing identities, storage, order or warm costs. Production latency acceptance remains required.                |
+| Fixed 2D arithmetic                        | Provider-owned checked nearest-even Area and exact area expansion, with floored/clamped final long cost. Both reuse private raw-area arithmetic; neither API is available yet.                        | Implement/test provider, then independently close source, hosted-pin and released-package gates. Reopen only for a demonstrated correctness or caller-contract problem. |
+| Names, validation and topology             | Additive inventory and boundary behavior frozen below; endpoint-only bounds, native XY keys/loops and four-child topology.                                                                            | Reopen on implementation evidence that the chosen contract cannot preserve correctness, compatibility or required costs; record any consequential departure.            |
+| Persistence and additional query operators | Excluded from this parity pass; existing owner/state formats unchanged.                                                                                                                               | Reopen only for a separately requested caller contract with concrete consumers.                                                                                         |
 
 Maintain concise phase results in this file: revisions/dirty state, chosen
 contracts, net runtime growth and deletions, test/coverage counts, baseline
@@ -319,7 +329,307 @@ readiness and remaining gaps. Preserve portable inputs, commands, outcomes and
 reopening criteria here; completion must not depend on disposable captures or
 separate phase reports.
 
-- Phase 0: not started.
+### Phase 0 — contracts and baseline evidence
+
+Completed; baseline builds/tests captured 2026-11-21. SwiftCollections revision
+`2db3b152d461e7abb3bf614b07b096a1ad38bf04` was clean, with an empty index.
+FixedMathSharp remained clean at the local revision in the readiness table. This
+phase changes this plan and the feature overview only: **zero runtime
+lines/files, new runtime objects, production delegates or dependency changes**.
+Disposable source-derived prototypes were independently reviewed before the
+layout decision. No duplicate engine or probe becomes maintained source.
+
+#### Complete additive member contract
+
+All new types use namespace `SwiftCollections.Query`. Owners constrain
+`TKey : notnull`; generic owners and backend interfaces constrain
+`TVolume : struct, IBoundVolume<TVolume>`. Add no IEquatable requirement to
+custom volumes and change no existing 3D constraints.
+
+- **Bounds:** readonly `BoundVolume2D(Vector2 min, Vector2 max)` and
+  `FixedBoundVolume2D(Vector2d min, Vector2d max)`, each implementing
+  IBoundVolume and IEquatable of itself. Both expose Min, Max, Center, Size,
+  Area, Union, Intersects, GetCost, BoundsEquals, typed/object Equals, ==, !=,
+  GetHashCode and diagnostic ToString. Retain endpoints only, without cached
+  metadata or a validity flag. Target payloads are 16 B Numerics and 32 B fixed;
+  only the Numerics prototype and native FixedBoundArea sizes were measured, not
+  a completed fixed wrapper. Default is a valid origin point; touching
+  edges/corners intersect. Methods copy input values and do not mutate them.
+- **Numerics bounds:** validate finite min, finite max, then componentwise min
+  <= max. Nonfinite endpoints throw ArgumentOutOfRangeException naming min/max;
+  inversion throws ArgumentException naming max. Do not normalize. Center widens
+  before summing/halving and narrows to Vector2. Size widens differences and
+  throws OverflowException if a positive span exceeds float.MaxValue. Area is
+  double square-coordinate units from widened spans, independent of Size. Cost
+  floors computed union-area increase, clamps to [0, long.MaxValue], and
+  preserves zero-cost ties. This is computed floating arithmetic, not an
+  exact-real or lockstep guarantee.
+- **Fixed bounds:** normalize via FixedBoundArea.FromMinMax; delegate Center,
+  Size, Area and area-growth cost to that owner. Size/Area retain their checked
+  overflow contracts. Do not derive cost from rounded Area or Size. Use
+  deterministic endpoint hashing; equal values must hash equally, including
+  equivalent zero representations. Hashes are not persistent identities.
+- **BVH wrappers:** `SwiftBVH2D<TKey>(int capacity)` and
+  `SwiftFixedBVH2D<TKey>(int capacity)` specialize the existing generic owner.
+  Inherit the entire BVH inventory above, including EnsureCapacity and generic
+  SwiftBVHNode inspection. Retain capacity normalization, borrowed-array
+  invalidation, physical node-index reuse, absent-update behavior and TryQuery
+  preflight/alias/plain-SwiftList contracts. Add no parallel node type.
+- **Hash constructors:** generic
+  `(int capacity, ISpatialHashCellMapper2D<TVolume> cellMapper)` and the same
+  with final SwiftSpatialHashOptions options; Numerics
+  `(int capacity, float cellSize)` and fixed `(int capacity, Fixed64 cellSize)`,
+  each with the corresponding three-argument options overload. All expose the
+  hash inventory above. Omitted options use Default padding one;
+  default(options) remains padding zero. Preserve entry-capacity normalization
+  and reuse semantics.
+- **XY extension surface:** readonly SwiftSpatialHashCellIndex2D(int x, int y),
+  X/Y, IEquatable, typed/object equality, ==, !=, deterministic
+  SwiftHashTools.CombineHashCodes(X, Y), and diagnostic ToString.
+  ISpatialHashCellMapper2D.GetCellRange(TVolume bounds, out
+  SwiftSpatialHashCellIndex2D minCell, out SwiftSpatialHashCellIndex2D maxCell)
+  supplies inclusive, ordered ranges. The generic owner retains the mapper
+  reference and exposes protected void CollectCellCandidates(
+  SwiftSpatialHashCellIndex2D cell, ICollection<TKey> results). The fixed
+  wrapper adds GetCellIndex(Vector2d point) and void CollectPointCandidates(
+  Vector2d point, ICollection<TKey> results). Candidate methods append cell
+  occupants without exact intersection filtering. XY traversal increases X then
+  Y, with Y fastest. No public dimension parameter or cell-budget policy.
+- **Quadtree constructors:** generic
+  `(TVolume worldBounds, SwiftQuadtreeOptions options, IQuadtreeBoundsPartitioner<TVolume> boundsPartitioner)`;
+  Numerics
+  `(BoundVolume2D worldBounds, SwiftQuadtreeOptions options, float minNodeSize)`;
+  fixed
+  `(FixedBoundVolume2D worldBounds, SwiftQuadtreeOptions options, Fixed64 minNodeSize)`.
+  Expose the quadtree inventory above.
+- **Quadtree extension surface:** IQuadtreeBoundsPartitioner has bool
+  ContainsBounds(TVolume outer, TVolume inner), bool CanSubdivide(TVolume
+  bounds), bool TryGetContainingChildIndex(TVolume nodeBounds, TVolume
+  entryBounds, out int childIndex), and TVolume CreateChildBounds(TVolume
+  parentBounds, int childIndex). Indices are 0..3; built-ins set the false
+  out-index to -1, and callers use a custom out-index only on true. Pure,
+  mutually consistent callbacks must keep their behavior stable while indexed;
+  the owner retains the backend reference for its lifetime. SwiftQuadtreeOptions
+  has `(int maxDepth, int nodeCapacity)` and
+  `(int maxDepth, int nodeCapacity, bool enableMergeOnRemove)`; MaxDepth,
+  NodeCapacity, EnableMergeOnRemove; IEquatable, typed/object equality, ==, !=
+  and deterministic integer-component GetHashCode. Omitted merge is true.
+  Explicit negative depth/nonpositive capacity throw
+  ArgumentOutOfRangeException. Default struct is accepted, zero/zero/false, and
+  unsplit. No additional Default property or ToString is required.
+- **Validation and failure:** null keys/backends/results throw
+  ArgumentNullException before their applicable operation. Cell/minimum-node
+  sizes must be positive and Numerics-finite; otherwise throw
+  ArgumentOutOfRangeException naming the size. Quadtree Insert checks world
+  containment before duplicate lookup; outside bounds throw
+  ArgumentOutOfRangeException naming bounds. Update of an absent key returns
+  false before replacement-world validation; a present outside-world update
+  throws ArgumentOutOfRangeException naming newBounds before relocation.
+  TryGetBounds false writes default; queries may extend outside WorldBounds.
+  Retain canonical stored keys and the existing family-specific callback/Add
+  failure mutation and partial-output contracts. No rollback promise is added.
+- **Topology/lifetime:** xBit | (yBit << 1), upper-half preference for exact
+  split-plane points, straddlers at the parent, parent entries then children in
+  increasing index. Admit a split only when both actual halves on both axes meet
+  the minimum and the midpoint is strictly internal. Wrappers copy
+  options/bounds, retain backend references, and require externally synchronized
+  ownership. No new serializer/state APIs are included. XML and inherited
+  rendering for every member remain implementation acceptance work.
+
+#### Reuse experiment and selected layout
+
+Compare existing generic owners with (a) an embedded mutable core struct and (b)
+the same core inside one extra heap object. Derive both candidates from the
+revision's actual hash/octree algorithms, key map and integer stack; change only
+namespace/type binding, wrapper forwarding, stable callback receivers, and
+constrained instance four/eight-child selection. Preserve the existing
+mapper/partitioner interface reference and pre-create one identical backend for
+all compared owners. No static-abstract dispatch is required.
+
+Select the embedded direction. The wrapper must own a mutable, non-readonly core
+field; bind key-map callbacks to stable wrapper methods that consult that field.
+Capturing a core instance method group or returning a writable core by value
+risks boxing/copying stale entry storage. Production extraction must remove the
+superseded mutation engine and serve 2D and 3D in the same phase.
+
+| Windows x64 measurement            | Existing | Embedded | Extra heap core |
+| ---------------------------------- | -------: | -------: | --------------: |
+| Hash construction, capacity 16     |  2,504 B |  2,504 B |         2,528 B |
+| Tree construction, node capacity 8 |  1,392 B |  1,392 B |         1,416 B |
+| Numerics hash/tree entry value     |     80 B |     80 B |            80 B |
+| Fixed tree entry value             |     64 B |     64 B |            64 B |
+
+Constructor allocation averages 128 creations after 32 warmups, excluding shared
+pre-created backend allocation. These are managed allocation budgets, not
+retained graph sizes. Existing BVH construction at capacity 16 averaged 2,523 B,
+including amortized ThreadLocal setup. Raw sizes: existing Numerics bounds 64 B,
+fixed 3D bounds 48 B, prototype XY bounds 16 B, native FixedBoundArea 32 B; XYZ
+cell 12 B versus XY cell 8 B. Generic BVH nodes were 104/88/48 B for Numerics
+3D/fixed 3D/prototype XY; prototype XY tree entries were 32 B. These demonstrate
+storage direction, not finished 2D node budgets.
+
+The hash candidate deliberately retains XYZ loops/keys: this proves ownership
+layout and callbacks, not native XY range performance. The tree candidate uses
+the same traversal/mutation engine for four and eight actual children. Fixed
+tree controls use the existing fixed partitioner. FixedBoundArea defensive
+copies in a readonly wrapper remain a Phase 1 measurement gate.
+
+#### Portable workloads and observed behavior
+
+Windows 11 build 26300.10075, Intel i7-9700K x64, SDK 10.0.302, .NET 10.0.10.
+Run sequentially with DOTNET_TieredCompilation=0 and blocking GC for the layout
+probe. Prebind the same method delegates for every candidate outside timed
+loops; no direct-call versus delegate-call comparison.
+
+Use N = 128, 2,048, 8,192, and profiles in this order: uniform, clustered,
+mixed, sparse, coincident, moving. For each profile reset xorshift32 to 0xC0FFEE
+(xor shifts left 13, right 17, left 5). Draw each XYZ coordinate modulo 1024;
+clustered takes each modulo 32, sparse multiplies by 64, coincident uses
+(16,16,16). Size is one, except every eighth mixed entry uses eight. Keys are
+insertion indices. Moving starts with uniform geometry. Replacement bounds
+translate by (1,0,1). World is [-16,131104] on every axis, cell size 8, tree
+options (8,8,false), minimum size 1. For q=0..15, use initial[(97*q+13)%N].Min
+as anchor and query [anchor-2,anchor+4].
+
+For each family: insert; verify each query's complete hit set against brute
+force; move the first N/4; verify; remove N-1 twice and reinsert; verify;
+clear/reinsert and verify. Compare ordered results against the existing owner at
+the same history, not across families. Across all four Standard/Lean × TFM
+graphs, 54 initial/moved trace pairs and ten added lifecycle traces matched.
+FNV-1a-style trace starts at 14695981039346656037; for each query fold its
+count, then each key as uint, by xor then unchecked multiplication
+by 1099511628211. The N=2,048 moving initial/moved traces were both
+`D521AC3F973E33C5` for all three families (16 total hits per batch).
+
+Additional discriminating checks:
+
+- Hash capacity 4 → 257 keys i*1024, using the clustered scene above at N=257
+  and creating one key-map collision cluster; verify Count/Contains/TryGetBounds
+  including an absent default out-value. Remove every third key, verify before
+  reuse, reinsert moved bounds, force query-stamp rollover, verify empty clear,
+  then reverse reinsert. Query destination prefixes survive. Expected decimal
+  traces in that stage order: 14907020542346869103, 17918045562206898519,
+  15993923500476605704, 15993923500476605704,
+  9808874869469701221, 3895179500948589832.
+- Fixed tree existing/embedded/heap: world [-16,128], options (6,4,true),
+  minimum size 1; 65 unit entries at (i%8*8,i/8*8,i%4*8), key i*1024. Four
+  queries start at (q*8,0,0) and extend by (24,96,96). Verify growth, move key
+  zero to [60,61]^3, remove/reuse it, clear/reverse insert. Traces:
+  3657918031866667180, 2449310433242302389,
+  2449310433242302389, 4029054762149554101. Full hit-set and ordered comparisons
+  pass.
+- Four-child proof: world [0,16]^2, options (4,1,true), minimum size 1, unit
+  boxes at (1,1), (12,1), (1,12), (12,12). Verify exactly four root children and
+  each quadrant, move key zero to the fourth box, remove twice, inspect
+  count/query before clearing, then clear/reuse.
+
+Warm exact queries allocated zero bytes in every tested family/layout/profile:
+eight warm and eight measured batches of 16 queries, pre-sized results. At
+N=2,048 moving, existing BVH/hash/tree construction allocated
+689,432/787,360/399,728 B including probe delegate bindings and insertion; these
+are cold-workload allocations, not retained heap sizes. Bounded probe coverage
+is not production edge-case, retained-churn or mutation-allocation acceptance.
+
+Balanced query-only ABCCBA comparisons repeat four rounds, eight warm and 64
+measured 16-query batches per sample, moving the first 512 keys before each
+sample. Eight samples/layout: Standard median hash existing/embedded/heap
+0.897/0.898/0.905 microseconds per batch; tree 19.661/20.161/17.056. Lean
+medians were hash 1.059/1.103/1.095 and tree 16.590/15.996/16.498. Sample ranges
+reached 0.889–5.116 microseconds for hash and 14.409–47.656 for tree across
+these runs. This sparse-hit timing evidence is inconclusive: no
+latency-equivalence or accepted-regression claim.
+
+Existing BenchmarkDotNet DynamicNeighbor smoke baselines (milliseconds per
+invocation, managed bytes in parentheses):
+
+| Owner        |  Standard N=2,048 |      Lean N=2,048 |   Standard N=8,192 |       Lean N=8,192 |
+| ------------ | ----------------: | ----------------: | -----------------: | -----------------: |
+| BVH          |  6.578 (16,544 B) |  6.519 (16,544 B) |  14.573 (65,696 B) |  19.892 (65,696 B) |
+| Spatial hash | 11.749 (79,200 B) | 11.502 (79,200 B) | 12.661 (327,552 B) | 14.469 (327,552 B) |
+| Octree       |       3.043 (0 B) |       3.080 (0 B) |      6.132 (336 B) |      5.993 (336 B) |
+
+Reproduce using the unchanged QueryCollectionComparison benchmarks at the
+recorded revision:
+`dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c <Release|ReleaseLean> -f net10.0 --no-build -- query --filter '*DynamicNeighbor_Swift*' --job Short --warmupCount 1 --iterationCount 3 --launchCount 1`.
+The workload performs N/4 moves and 32 passes of 64 queries per invocation, with
+iteration setup outside timing. Each configuration had six successful child
+exits and 18 measured results; all 12 children/36 results completed. Existing
+single-invocation setup produced MinIterationTime warnings and wide confidence
+intervals. These are practical-scale baseline smoke results, not
+isolated-operation budgets or evidence of an introduced cost.
+
+#### Build, target and package baseline checks
+
+Use released package mode: Chronicler.Core/Core.Lean and Diagnostics 1.0.0,
+FixedMathSharp/Lean 8.0.0, MemoryPack.Core 1.21.4 in Standard and the existing
+shim in Lean. For both configurations run:
+
+```powershell
+dotnet build SwiftCollections.slnx -c <configuration> -p:UseLocalLsfStack=false -p:DisableTransitiveProjectReferences=false
+dotnet test tests/<test-project>/<test-project>.csproj -c <configuration> --no-build -p:UseLocalLsfStack=false -p:DisableTransitiveProjectReferences=false --collect:"XPlat Code Coverage" --settings tests/<test-project>/coverlet.runsettings --results-directory <fresh-results>
+./.assets/scripts/assert-full-coverage.ps1 -CoverageDirectory <fresh-results>
+```
+
+Run both test projects into fresh per-configuration results before the gate. All
+tests passed, with zero failures/skips; raw coverage passed unchanged:
+
+| Configuration / assembly | Tests |       Lines |    Branches | Executable methods |
+| ------------------------ | ----: | ----------: | ----------: | -----------------: |
+| Release core             | 2,040 | 6,022/6,022 | 2,858/2,858 |        1,264/1,264 |
+| Release companion        |    46 |     121/121 |       62/62 |              35/35 |
+| ReleaseLean core         | 1,932 | 5,828/5,828 | 2,782/2,782 |        1,223/1,223 |
+| ReleaseLean companion    |    46 |     121/121 |       62/62 |              35/35 |
+
+Both runtime assemblies built for net10.0 and netstandard2.1 in both
+configurations. Inspected the four fresh build-generated 0.0.0 NuGet packages:
+all eight `lib/<TFM>/SwiftCollections[.FixedMathSharp].dll` and adjacent XML
+pairs matched the build output; XML parsed with 139 core/30 companion query
+member entries per target/variant. Standard dependency groups retained
+MemoryPack; Lean retained its shim without MemoryPack runtime/generator
+packages. This is baseline package inspection, not a new-API inventory check or
+release pack acceptance.
+
+The same source-derived prototypes compiled separately for netstandard2.1 with
+C# 11, zero warnings/errors, and ran through a .NET 10 consumer using the actual
+netstandard2.1 runtime/dependency DLLs. Both flavors passed all controls and
+matched net10.0 traces. A first disposable consumer mixed a net10.0
+FixedMathSharp DLL with netstandard MemoryPack and failed with
+MissingMethodException for RegisterFormatter; using the matching netstandard2.1
+FixedMathSharp asset resolved it. This was probe dependency assembly, not a
+reproduced source defect. Future consumer runs must select the entire matching
+graph, not just the two SwiftCollections DLLs.
+
+Verified loaded core/companion SHA-256 pairs:
+
+| Configuration / target       | SwiftCollections                                                   | SwiftCollections.FixedMathSharp                                    |
+| ---------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| Release / net10.0            | `92c6531863d4e265a76f7bf614e666276e9fb17a680947e836f3b0a9d6ecb655` | `b2085ecc8add3d92e642a9cadc7031fde75f3254331ec5f55be7b5d18ac2dad7` |
+| ReleaseLean / net10.0        | `2d3f64b91a118b4db0d82607c264e9085ce579648657a7a75a6f17d2309075d3` | `a2efabff289239dec1ee5a865bd175af747efead0752590db221b68e2dcbf38c` |
+| Release / netstandard2.1     | `17ce2a30a501df3147fe31401963bade6b19274a120cfb96e68efb80e021d7ae` | `8d57904fab81951041a24091278c7893253f0ed4cc4468f8196475e8bde4ccbc` |
+| ReleaseLean / netstandard2.1 | `18ce03af760303ddeda1a559a578d4218df7f6e3de290cd47cc6ca3376a4a650` | `df649750551f58c29a983947ea1eedf1fabca14a92570f217f90d50146a0570b` |
+
+Baseline build warnings: xUnit2013 in SwiftSlotMap tests; Lean additionally
+xUnit1026 for the unused binary theory parameter in ObservableDictionary tests.
+No baseline test/coverage failure, introduced source failure or confirmed
+runtime defect was found. Independent review's initial probe gaps (growth,
+collision repair, fixed candidate and observable removal) were corrected and
+re-reviewed before accepting this evidence. No bug or benchmark item is needed.
+
+Documentation checks: Prettier 3.9.5, all 16 local Markdown links/fragments, and
+git diff --check passed. The index stayed unchanged. These feature-work files
+are outside DocFX's published content inputs; no site rebuild was needed for
+their edits.
+
+**Remaining gates:** Phase 1 must implement and validate both provider APIs,
+readonly-wrapper cost, real 2D bounds and BVH; Phases 2/3 must prove production
+native XY/four-child extraction, all edge contracts, retained churn storage,
+warm mutation costs and latency. Debug, hosted CI, actual Unity Mono/High
+IL2CPP, new-API DocFX rendering/inventory and release dependency readiness were
+not run or claimed in Phase 0. A netstandard DLL replay on .NET 10 proves no
+Unity/AOT result. No source-mode provider call exists yet; source, hosted-pin
+and package gates remain independently pending. No measured production
+regression has been accepted or moved into a backlog.
+
 - Phase 1: not started.
 - Phase 2: not started.
 - Phase 3: not started.

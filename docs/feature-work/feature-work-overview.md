@@ -32,16 +32,18 @@ without an agreed scope or concrete evidence gate.
 
 ### 2D Query Parity
 
-[2D query parity plan](2d-query-parity-plan.md) — planned; implementation has
-not started. Add Numerics and fixed-point 2D bounds, BVH, native XY spatial hash
-and quadtree families while reusing existing ownership and preserving 3D
-contracts and measured costs.
+[2D query parity plan](2d-query-parity-plan.md) — Phase 0 complete; runtime
+implementation is next. Add Numerics and fixed-point 2D bounds, BVH, native XY
+spatial hash and quadtree families while reusing existing ownership and
+preserving 3D contracts and measured costs.
 
-The next step is Phase 0: freeze the API/numeric contracts and establish reuse
-baselines. FixedMathSharp owns the required exact area-growth operation; local
-source, hosted dependency pins and released packages have separate readiness
-gates. The plan owns the Standard/Lean, target-framework, full-coverage,
-performance and Unity acceptance matrix.
+The next step is Phase 1: provider-owned area arithmetic, 2D bounds and thin BVH
+wrappers. API/numeric contracts and reuse baselines are frozen; embedded shared
+owners are the selected direction, subject to production performance checks.
+FixedMathSharp owns checked area and exact area-growth operations; local source,
+hosted dependency pins and released packages have separate readiness gates. The
+plan owns the Standard/Lean, target-framework, full-coverage, performance and
+Unity acceptance matrix.
 
 ## Recently Completed
 
