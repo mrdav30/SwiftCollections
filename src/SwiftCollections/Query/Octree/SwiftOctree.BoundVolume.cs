@@ -22,8 +22,8 @@ namespace SwiftCollections.Query;
 /// it is not sorted or a serialized order guarantee. Determinism requires deterministic keys, input order and
 /// volume/mapping arithmetic. A key is indexed once; duplicate Insert updates its bounds and returns false. A
 /// query adds each matching stored key once, independently of keys already in the destination. Supply finite
-/// ordered bounds whose endpoint sums and differences remain finite in single precision; finite endpoints alone
-/// do not ensure a representable subdivision midpoint.
+/// ordered bounds. Subdivision uses widened arithmetic and the same rounded midpoint for child construction and
+/// selection. It stops when either resulting child span on any axis is below the minimum node size.
 /// </remarks>
 public sealed class SwiftOctree<TKey> : SwiftOctree<TKey, BoundVolume>
     where TKey : notnull, IEquatable<TKey>
@@ -36,7 +36,8 @@ public sealed class SwiftOctree<TKey> : SwiftOctree<TKey, BoundVolume>
     /// <param name="options">The options copied by value. default(SwiftOctreeOptions) yields depth/capacity zero
     /// and merging false; the tree does not validate it.</param>
     /// <param name="minNodeSize">The strictly positive minimum child edge length in bounds coordinate units,
-    /// required on every axis before subdivision. Must also be finite.</param>
+    /// required for both rounded child spans on every axis before subdivision, compared in double precision.
+    /// Must also be finite.</param>
     /// <exception cref="T:System.ArgumentOutOfRangeException">The cell/node size is not positive or is
     /// non-finite.</exception>
     public SwiftOctree(BoundVolume worldBounds, SwiftOctreeOptions options, float minNodeSize)
@@ -66,15 +67,30 @@ public sealed class SwiftOctree<TKey> : SwiftOctree<TKey, BoundVolume>
 
         public bool CanSubdivide(BoundVolume bounds)
         {
-            Vector3 childSize = bounds.Size * 0.5f;
-            return childSize.X >= _minNodeSize &&
-                   childSize.Y >= _minNodeSize &&
-                   childSize.Z >= _minNodeSize;
+            Vector3 midpoint = GetMidpoint(bounds);
+            return HasMinimumChildSpan(bounds.Min.X, midpoint.X, bounds.Max.X)
+                 & HasMinimumChildSpan(bounds.Min.Y, midpoint.Y, bounds.Max.Y)
+                 & HasMinimumChildSpan(bounds.Min.Z, midpoint.Z, bounds.Max.Z);
+        }
+
+        private bool HasMinimumChildSpan(float min, float midpoint, float max)
+        {
+            return (double)midpoint - min >= _minNodeSize
+                 & (double)max - midpoint >= _minNodeSize;
+        }
+
+        private static Vector3 GetMidpoint(BoundVolume bounds)
+        {
+            // Widen before addition; narrow only the shared split plane, including for subnormal spans.
+            return new Vector3(
+                (float)(((double)bounds.Min.X + bounds.Max.X) * 0.5),
+                (float)(((double)bounds.Min.Y + bounds.Max.Y) * 0.5),
+                (float)(((double)bounds.Min.Z + bounds.Max.Z) * 0.5));
         }
 
         public bool TryGetContainingChildIndex(BoundVolume nodeBounds, BoundVolume entryBounds, out int childIndex)
         {
-            Vector3 midpoint = (nodeBounds.Min + nodeBounds.Max) * 0.5f;
+            Vector3 midpoint = GetMidpoint(nodeBounds);
 
             int xBit;
             if (entryBounds.Min.X >= midpoint.X)
@@ -115,7 +131,7 @@ public sealed class SwiftOctree<TKey> : SwiftOctree<TKey, BoundVolume>
 
         public BoundVolume CreateChildBounds(BoundVolume parentBounds, int childIndex)
         {
-            Vector3 midpoint = (parentBounds.Min + parentBounds.Max) * 0.5f;
+            Vector3 midpoint = GetMidpoint(parentBounds);
             bool upperX = (childIndex & 1) != 0;
             bool upperY = (childIndex & 2) != 0;
             bool upperZ = (childIndex & 4) != 0;

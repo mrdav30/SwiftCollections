@@ -72,40 +72,6 @@ diagnosis, decisions and reopening criteria stay with their owning issue.
 
 ## Active Issues
 
-### SC-Issue-020 - Numerics octree subdivision overflows finite midpoints
-
-- **Status / priority:** Confirmed / P2; open.
-- **Discovered:** 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`.
-- **Affected owners / impact:** SwiftOctree<TKey> built-in numerics partitioner creates infinite, nonshrinking children from ordered finite endpoints near 1e38f..3e38f.
-- **Evidence environment:** Windows x64, SDK 10.0.302, runtime 10.0.10, Release with published dependencies (`UseLocalLsfStack=false`).
-
-**Reproducer** (use the console setup above):
-
-```csharp
-var world = new SwiftCollections.Query.BoundVolume(
-    new System.Numerics.Vector3(1e38f), new System.Numerics.Vector3(3e38f));
-var t = new SwiftCollections.Query.SwiftOctree<int>(world,
-    new SwiftCollections.Query.SwiftOctreeOptions(2, 1), 1f);
-var point = new SwiftCollections.Query.BoundVolume(
-    new System.Numerics.Vector3(1e38f), new System.Numerics.Vector3(1e38f));
-t.Insert(1, point); t.Insert(2, point);
-var root = typeof(SwiftCollections.Query.SwiftOctree<int,
-    SwiftCollections.Query.BoundVolume>).GetField("_root",
-    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-    .GetValue(t)!;
-var children = (Array)root.GetType().GetProperty("Children")!.GetValue(root)!;
-var child = children.GetValue(0)!;
-Console.WriteLine(child.GetType().GetProperty("Bounds")!.GetValue(child));
-```
-
-Observed: child Min=1e38 and Max=+Infinity on every axis. Its first grandchild
-has the same nonshrinking bounds and stores both entries. Expected: finite
-children inside the finite parent, or safe subdivision refusal. CanSubdivide
-uses (Max-Min)/2, while child construction/selection use (Min+Max)/2, which
-overflows here. The bounded probe uses depth two.
-
-- **Next action:** Use a consistent overflow-aware midpoint and verify containment/progress. The fixed-point counterpart uses its backend's safe center. Until fixed, keep endpoint sums and differences finite.
-
 ### SC-Issue-022 - Object dictionary adapters misclassify callback invalid casts
 
 - **Status / priority:** Confirmed / P2; open, separate from SC-Issue-018.
@@ -170,6 +136,7 @@ they do not claim a fresh rerun or package release.
 
 | Issue                                                                                          | Resolved/closed | Outcome                                                                                                                                                                                                                                                              | Evidence                                                                                                                                                                                                       |
 | ---------------------------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SC-Issue-020 | 2026-11-21 | **Verified fix:** the Numerics octree shares widened midpoint arithmetic for child creation/selection and checks both rounded child spans before subdivision, preventing overflowing and nonshrinking children. | [Root cause, regressions and verification](#sc-issue-020---numerics-octree-subdivision-overflows-finite-midpoints) |
 | SC-Issue-019 | 2026-11-21 | **Verified fix; upsert policy approved:** BVH now owns one leaf per non-null key; repeated Insert updates bounds and returns false. Null is rejected before mutation. Generic, Numerics and fixed-point paths share the fix. | [Resolution and compatibility evidence](#sc-issue-019---bvh-duplicate-and-null-key-policy-differs-from-peer-indexes) |
 | SC-Issue-018 | 2026-11-21 | **Verified fix:** observable Add emits CollectionChanged/Add and PropertyChanged/Entries[] only after successful insertion across all six dispatch forms. Duplicate mappings remain intact; existing resize and subscriber-failure semantics are preserved. Standard/Lean/Debug pass strict 100% reported coverage on verified package/runtime inputs. | [Resolution and verification](#sc-issue-018---duplicate-dictionary-add-emits-a-false-change-notification), [regressions](../../tests/SwiftCollections.Tests/Observable/SwiftObservableDictionary.Tests.cs) |
 | SC-Issue-017 | 2026-11-21 | **Verified fix and consolidation:** one embedded lifecycle owner guards all rental/backing-access routes across six inherited collection pools and the sparse-map pool. Flush stays reusable; Dispose is terminal. Duplicate lifecycle code is removed while named Release parameters remain compatible. Standard/Lean/Debug pass strict 100% reported coverage; constructor/disposal allocation improves in the tested workloads. | [Resolution, compatibility and lifecycle decisions](#sc-issue-017---disposed-collection-wrappers-still-rent-through-get), [regressions](../../tests/SwiftCollections.Tests/Pool/SwiftPoolLifecycle.Tests.cs) |
@@ -785,6 +752,152 @@ maintained benchmark/build infrastructure changed. Those incomplete attempts
 are excluded from performance evidence. No source defect was inferred from
 that local artifact collision. Hosted CI, Unity/IL2CPP, other OS/architectures and
 full downstream suites were not run. No release is claimed.
+
+### SC-Issue-020 - Numerics octree subdivision overflows finite midpoints
+
+- **Status / priority:** Resolved 2026-11-21 / P2; verified fix.
+- **Discovered:** 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`;
+  reproduced before this fix at `948fca0f3791430c4da3b1bce317e4bc37d6ac0b`.
+- **Affected owners / impact:** SwiftOctree<TKey> built-in numerics partitioner creates infinite, nonshrinking children from ordered finite endpoints near 1e38f..3e38f.
+- **Evidence environment:** Windows x64, SDK 10.0.302, runtime 10.0.10, Release with published dependencies (`UseLocalLsfStack=false`).
+
+**Reproducer** (use the console setup above):
+
+```csharp
+var world = new SwiftCollections.Query.BoundVolume(
+    new System.Numerics.Vector3(1e38f), new System.Numerics.Vector3(3e38f));
+var t = new SwiftCollections.Query.SwiftOctree<int>(world,
+    new SwiftCollections.Query.SwiftOctreeOptions(2, 1), 1f);
+var point = new SwiftCollections.Query.BoundVolume(
+    new System.Numerics.Vector3(1e38f), new System.Numerics.Vector3(1e38f));
+t.Insert(1, point); t.Insert(2, point);
+var root = typeof(SwiftCollections.Query.SwiftOctree<int,
+    SwiftCollections.Query.BoundVolume>).GetField("_root",
+    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+    .GetValue(t)!;
+var children = (Array)root.GetType().GetProperty("Children")!.GetValue(root)!;
+var child = children.GetValue(0)!;
+Console.WriteLine(child.GetType().GetProperty("Bounds")!.GetValue(child));
+```
+
+Before: the first child has Min=1e38 and Max=+Infinity on every axis. Its first
+grandchild has the same nonshrinking bounds and stores both entries. After: the
+first child has Min=1e38 and finite Max near 2e38 on each axis; deeper children
+remain inside their parents and strictly shrink. The reproducer is bounded to
+depth two and does not depend on exhausting memory or stack depth.
+
+**Root cause and resolution:** The built-in Numerics partitioner computed child
+size with `(Max-Min)/2` but constructed and selected children with `(Min+Max)/2`.
+Single-precision sums and differences can overflow despite finite endpoints.
+Parent half-size also ignores asymmetric rounding of the actual split plane:
+adjacent or unevenly spaced endpoints can produce an endpoint-equal midpoint or
+one child below the configured minimum edge length.
+
+One private midpoint helper now widens endpoints before addition and halves in
+double precision, then rounds the shared split plane to float. CanSubdivide,
+CreateChildBounds and TryGetContainingChildIndex use that same calculation. A
+private per-axis predicate checks both resulting child spans in double precision
+against the finite positive minimum size. Both halves must pass on every axis;
+zero-width and endpoint-equal splits are refused. No public signature, field,
+helper type or persistence format changed. Runtime growth is two private helper
+methods within the existing owner, reused by its production partition operations.
+
+**Scope and numeric contract:** Ordered finite endpoints are still required;
+this does not add validation of malformed/nonfinite worlds. Split planes are
+float values; span comparisons are double-precision calculations, not arbitrary-
+precision real-distance guarantees. Subdivision no longer needs finite float
+endpoint sums or parent differences. BoundVolume.Center, Size and Volume retain
+their independent arithmetic and overflow contracts. Generic custom partitioners
+and the fixed-point partitioner are unchanged; existing fixed full-domain tests
+remain controls. Source search found no octree runtime callers in GridForge,
+Gravitas or Trailblazer: their current index consumers use other owners, so no
+consumer source change or consumer test-suite claim is made here. The corrected
+rounding/minimum-size behavior may change topology and traversal order for
+previously overflowing or undersized splits; no sorted query-order guarantee is
+introduced. Octrees have no authored serialization/restore contract.
+
+**Regression evidence:** 17 `Midpoint_` cases ran against the unfixed owner:
+12 failed for the intended invalid-child/minimum-size behavior and 5 controls
+passed. Cases cover positive/negative same-sign extremes, the complete finite
+float range, all eight child octants at two levels, finite endpoints, containment,
+strict progress, actual split boundaries, query/update/removal/reinsertion,
+per-axis adjacent floats, odd-ULP spans, asymmetric subnormal rounding,
+zero-width axes, overflowing parent spans and a valid subnormal split. The
+independent containment/progress/hit checks supplement the expected split-plane
+oracle. After the fix, `FullyQualifiedName~SwiftOctree` passed 52 core tests and
+15 companion tests, including existing custom/fixed partitioner controls.
+
+**Full validation:** Windows x64, SDK 10.0.302/runtime 10.0.10, published
+package dependencies (`UseLocalLsfStack=false`,
+`DisableTransitiveProjectReferences=false`). Run `dotnet build
+SwiftCollections.slnx -c CONFIG` with those properties, then each test project
+with `dotnet test tests/PROJECT/PROJECT.csproj -c CONFIG --no-build
+--collect:"XPlat Code Coverage" --settings tests/PROJECT/coverlet.runsettings
+--results-directory FRESH_RESULTS` and the same properties. After both projects,
+run `.assets/scripts/assert-full-coverage.ps1 -CoverageDirectory FRESH_RESULTS`.
+Use fresh, distinct result directories per configuration. The unchanged strict
+gate passed every reported line, branch and executable method:
+
+| Configuration | Core tests | Companion tests | Core lines | Core branches | Core executable methods | Companion lines / branches / methods |
+| --- | ---: | ---: | --- | --- | --- | --- |
+| Release | 1977 | 46 | 6035/6035 | 2858/2858 | 1261/1261 | 121/121; 62/62; 35/35 |
+| ReleaseLean | 1869 | 46 | 5841/5841 | 2782/2782 | 1220/1220 | 121/121; 62/62; 35/35 |
+| Debug | 1975 | 46 | 7971/7971 | 2866/2866 | 1261/1261 | 155/155; 62/62; 35/35 |
+
+No failed/skipped tests, coverage exclusions or gate/CI policy changes. The red
+command adds `--filter FullyQualifiedName~Midpoint_` before fixing runtime source;
+the green command uses `--filter FullyQualifiedName~SwiftOctree` after the fix.
+Release build reported no warnings. Lean reported the two pre-existing warnings
+in untouched committed tests: xUnit2013 at SwiftSlotMap.Tests.cs:138 and
+xUnit1026 for unused `binary` at SwiftObservableDictionary.Tests.cs:220. Debug
+reported the same slot-map warning. No introduced build warning/error was found.
+
+Both assemblies built `netstandard2.1` and `net10.0` in all three configurations.
+Explicit package-mode `dotnet pack src/OWNER/OWNER.csproj -c CONFIG --no-build
+--no-restore` produced SwiftCollections, SwiftCollections.Lean,
+SwiftCollections.FixedMathSharp and SwiftCollections.FixedMathSharp.Lean. Each
+of the eight assembly/target/variant DLL and XML pairs matched final build
+outputs byte-for-byte, and the DLLs used by the coverage suites still matched
+those same outputs. All packaged XML parsed. Fresh DocFX metadata/site generation with `dotnet tool run docfx
+docs/api/docfx.json --warningsAsErrors` passed with zero warnings/errors. The
+rendered Numerics octree page shows widened subdivision, both child spans,
+constructor parameter names and the existing size exception. Emitted constructor
+XML was checked in all four core target/variant combinations; the guide also
+renders the corrected contract. All 1,624 local href targets across 104 generated
+HTML pages resolved.
+
+**Bounded performance checks:** A disposable optimized net10.0 caller used the
+same extreme positive world, two keys at opposite endpoint points, depth two,
+capacity one, merging disabled and a caller-owned List<int> of capacity two.
+After 2,000 alternating key-1 endpoint updates and lower-point queries, 10,000
+measured update/query cycles allocated zero thread bytes in Standard and Lean;
+all updates returned true, lower queries alternated exactly [1]/empty, and
+Count remained two. Blocking GC was used; loaded core SHA256 values were
+`FE0521DD85A743E46DE3437D545F8F7BA56533D04F0A08BF6053D76B09548F8E`
+(Standard) and
+`A9B7F7C5E4DB4ADAF7800AAE7E9EBA5B5BF1C0F82040A086BB9ABFA6E946A600`
+(Lean). This is allocation evidence for that warmed, retained-topology workload,
+not an allocation guarantee for subdivision/merging or arbitrary backends.
+
+The existing QueryCollectionComparisonBenchmarks.DynamicNeighbor_SwiftOctree
+workload completed both sizes (2,048 / 8,192 objects) under BenchmarkDotNet
+0.15.8: one launch, one warmup, three measured iterations, invocation count one.
+Both children exited zero with all six expected measured results. Means were
+3.087 / 5.657 ms; reported allocations were zero / 336 bytes. The short iterations
+raised MinIterationTime warnings and had wide confidence intervals. These are
+workload-execution results only, not a latency comparison, regression attribution
+or zero-overhead claim. Old ignored baseline project copies were temporarily
+hidden to avoid the known local BenchmarkDotNet project-name collision and
+restored afterward; no maintained benchmark infrastructure changed.
+
+Hosted CI, Unity/IL2CPP, other architectures/OSes and downstream suites were not
+run; no release or cross-platform floating-point determinism is claimed.
+
+**Disposition / reopening:** Close the confirmed defect. Reopen for an ordered
+finite world that creates nonfinite/out-of-parent or nonshrinking children,
+violates the documented computed minimum-size test, or routes an entry into a
+child that does not contain it. Reassess separately if cross-platform floating-
+point reproducibility or exact-real span admission becomes a supported contract.
 
 ### SC-Issue-021 - Persist collection comparers across serializers
 

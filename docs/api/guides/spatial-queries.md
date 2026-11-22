@@ -76,11 +76,15 @@ Broad-phase volume matches do not replace your application's narrow-phase shape
 tests. Updates must follow changes to an indexed object's bounds; the index does
 not observe object movement automatically.
 
-The numerics wrappers require finite ordered bounds and representable
-intermediate arithmetic. In particular, numerics octree endpoint sums and
-differences must remain finite during subdivision; finite endpoints alone do
-not ensure a finite midpoint. Fixed-point wrappers have separate arithmetic
-contracts and do not use those floating-point midpoint calculations.
+The numerics wrappers require finite ordered bounds. The built-in numerics
+octree widens midpoint and child-span arithmetic to double precision before
+rounding split planes to float, so subdivision supports the full finite float
+endpoint range. Child creation and selection use the same split plane;
+subdivision stops when either rounded child span on any axis is below
+`minNodeSize`, including when no interior float midpoint exists. Span comparisons
+use double precision. This does not change `BoundVolume.Center`, `Size` or
+`Volume`; their separate arithmetic can still overflow. Fixed-point wrappers
+retain their own arithmetic contracts.
 
 For a BVH query with fixed storage, use `TryQuery(bounds, results, traversal)`.
 Supply a plain `SwiftList<TKey>` and a separate `Span<int>` for traversal.
