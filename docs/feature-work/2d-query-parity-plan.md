@@ -1,7 +1,9 @@
 # 2D Query Parity Plan
 
-- **Status:** Phase 0 complete: contracts and baseline evidence frozen. Phase 1
-  implementation is next; no new runtime API ships from Phase 0.
+- **Status:** Phase 1 complete for implemented scope and local
+  Standard/Lean/target gates. Native XY hash and quadtree remain later phases.
+  Hosted/released provider readiness and the unrelated Debug baseline remain
+  separate pending gates.
 - **Created:** 2026-11-21.
 - **Owner:** SwiftCollections, with FixedMathSharp owning any new exact geometry
   arithmetic.
@@ -317,7 +319,7 @@ adapters beyond smoke coverage require separate adapter scope.
 | Decision                                   | Current disposition                                                                                                                                                                                   | Reopening/closure criterion                                                                                                                                             |
 | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Shared ownership                           | Reuse BVH unchanged. Select embedded mutable cores for hash/tree; retain stable wrapper callback receivers and existing public extension points. Reject an extra heap core: measured +24 B per owner. | Reopen if production XY/four-child extraction changes existing identities, storage, order or warm costs. Production latency acceptance remains required.                |
-| Fixed 2D arithmetic                        | Provider-owned checked nearest-even Area and exact area expansion, with floored/clamped final long cost. Both reuse private raw-area arithmetic; neither API is available yet.                        | Implement/test provider, then independently close source, hosted-pin and released-package gates. Reopen only for a demonstrated correctness or caller-contract problem. |
+| Fixed 2D arithmetic                        | Implemented in coordinated source: checked nearest-even Area and exact expansion share private raw-area arithmetic. Hosted/released APIs remain pending.                                              | Implement/test provider, then independently close source, hosted-pin and released-package gates. Reopen only for a demonstrated correctness or caller-contract problem. |
 | Names, validation and topology             | Additive inventory and boundary behavior frozen below; endpoint-only bounds, native XY keys/loops and four-child topology.                                                                            | Reopen on implementation evidence that the chosen contract cannot preserve correctness, compatibility or required costs; record any consequential departure.            |
 | Persistence and additional query operators | Excluded from this parity pass; existing owner/state formats unchanged.                                                                                                                               | Reopen only for a separately requested caller contract with concrete consumers.                                                                                         |
 
@@ -630,7 +632,225 @@ Unity/AOT result. No source-mode provider call exists yet; source, hosted-pin
 and package gates remain independently pending. No measured production
 regression has been accepted or moved into a backlog.
 
-- Phase 1: not started.
+### Phase 1 — bounds and BVH
+
+Started 2026-11-22 from clean SwiftCollections
+`34ebf95d05af72985d84f10bef7f1de1efbaa774`, FixedMathSharp
+`b501340558c6132484be2f40957233c1b3d29cab` and Chronicler
+`0281469ecc40e65a05867f473bc10f030e7f69f8`. Results include the uncommitted
+patches in the two owning repositories; Chronicler is unchanged.
+
+#### Implementation and first-slice review
+
+- Added the two readonly bounds values and two thin BVH wrappers. Existing
+  generic BVH, 3D bounds, key map, traversal and ownership code are unchanged.
+  Four new runtime files total 314 lines including XML/headers; no extra owner
+  object, delegate, dimension tag, cached metadata or parallel tree engine.
+- FixedMathSharp adds 68 runtime lines in FixedBoundArea: checked Area and exact
+  area-expansion cost share one private raw-area operation using existing
+  Multiply64To128. No new arithmetic type, runtime file, dependency or fallback.
+- Public lifecycle tests cover canonical upsert, growth, borrowed nodes,
+  TryQuery preflight/alias/subclass rules, full-domain bounds, moving entries
+  and complete brute-force hit sets. Independent first-slice review passed.
+- Review found new Numerics Size admission could lose a tiny overflow in double
+  subtraction. Epsilon/unit regressions failed before correction, then passed.
+  Compare the smaller magnitude against maxFloat minus the larger; that
+  subtraction is exact in the only possible overflow region. An independent
+  IEEE-bit BigInteger oracle checks 256 boundary/sign pairs and 512 seeded
+  finite pairs, both axes. Existing 3D metadata remains unchanged.
+- Provider rounding/carry, full-domain cost and cancellation tests use
+  BigInteger, including 512 seeded cases; companion cost tests add 256 cases. No
+  coverage exclusion, guard waiver or complexity exception was added.
+
+#### Build and coverage results
+
+Build both solutions serially with
+`-p:UseLocalLsfStack=true -p:DisableTransitiveProjectReferences=true -m:1`,
+carrying both properties through restore/build/test. Run each existing test
+project with its own coverlet.runsettings, fresh results and the owning
+assert-full-coverage.ps1. FixedMathSharp.Chronicler.Tests runs separately,
+outside its coverage gate.
+
+| Actual runtime target / configuration | Core tests | Companion tests | Core lines / branches / methods | Companion lines / branches / methods |
+| ------------------------------------- | ---------: | --------------: | ------------------------------- | ------------------------------------ |
+| net10.0 / Release                     |      2,060 |              60 | 6,055 / 2,888 / 1,281           | 141 / 64 / 53                        |
+| net10.0 / ReleaseLean                 |      1,952 |              60 | 5,861 / 2,812 / 1,240           | 141 / 64 / 53                        |
+| netstandard2.1 / Release              |      2,059 |              60 | 6,055 / 2,888 / 1,281           | 141 / 64 / 53                        |
+| netstandard2.1 / ReleaseLean          |      1,951 |              60 | 5,861 / 2,812 / 1,240           | 141 / 64 / 53                        |
+| net10.0 / Debug                       |      2,058 |              60 | 7,991 / 2,896 / 1,281           | 176 / 64 / 53                        |
+
+All listed SwiftCollections tests pass with zero skips; every coverage count is
+covered/total, exactly 100%. Both runtime libraries compile with C# 11 for
+netstandard2.1 and the configured language version for net10.0.
+
+| Provider target / configuration | Core tests | Lines / branches | Methods: core / FluentAssertions |
+| ------------------------------- | ---------: | ---------------- | -------------------------------- |
+| net10.0 / Release               |      7,460 | 68,877 / 22,888  | 5,298 / 63                       |
+| net10.0 / ReleaseLean           |      7,438 | 68,970 / 22,888  | 5,294 / 63                       |
+| netstandard2.1 / Release        |      7,460 | 68,880 / 22,896  | 5,295 / 63                       |
+| netstandard2.1 / ReleaseLean    |      7,438 | 68,973 / 22,896  | 5,291 / 63                       |
+
+All provider rows pass with 100% raw lines, branches and executable methods.
+Line/branch totals combine the two assemblies in the existing gate. Chronicler
+companion tests pass 49/49 in Release, ReleaseLean and Debug.
+
+Actual netstandard DLLs are exercised by disposable copies of the existing test
+projects using original test sources, matching DLL/PDB references, original
+assembly names and Coverlet source-root mappings. They execute on .NET 10;
+netstandard is not a runtime. Align test-side framework defines and MemoryPack
+generator 1.21.4 with the netstandard dependency API: set
+DisableImplicitFrameworkDefines=true and define NETSTANDARD2_1 plus
+NETSTANDARD2_1_OR_GREATER. Legacy bridges bind the existing public static
+serializer and TryFormat methods where static-abstract dispatch and
+ISpanFormattable are unavailable. The existing NET10-only TicketMap JSON test is
+inapplicable to that compilation; no runtime member or coverage point is
+excluded. In the copied tests, reflection-bound delegates call the concrete
+public static Serialize/Deserialize and instance TryFormat methods; they replace
+unavailable interface dispatch without changing the tested wire bytes or format
+results. No maintained harness, project or test-policy change.
+
+#### Baseline Debug failures
+
+Full FixedMathSharp Debug passes 7,458 tests and fails two. Its raw gate also
+fails: 80,017/80,028 lines and 23,114/23,160 branches. Uncovered points lie in
+unchanged geometry/wide files; all three new provider methods have 100% Debug
+line/branch coverage. This is not a green Debug gate; no threshold was relaxed.
+
+Both test failures reproduce individually in a pristine package-mode export of
+b501340: warmed cylinder-polytope queries allocate 576 B, and deliberately
+incomplete hull topology reaches Debug.Fail before returning false. The provider
+issue tracker records FMS-Issue-045 as a test/precondition conflict, without a
+proven valid-closed-hull contact defect. Its benchmark backlog owns the
+unattributed Debug allocation signal. Both retain inputs, portable commands,
+revision and next action. The full pristine Debug coverage matrix was not
+replayed; gap classification relies on unchanged affected source and separate
+baseline test controls. Keep that lane open for scoped follow-up. Release/Lean
+gates and new-feature Debug checks pass.
+
+#### Behavior, storage and performance
+
+The consumer uses N=128,2,048,8,192, xorshift32 seed 0xC0FFEE and two XY draws
+modulo 1024 per entry. Size is one, except every eighth entry uses eight.
+Sixteen query anchors use (97*q+13)%N and [anchor-2,anchor+4]. Move the first
+N/4 by (1,1), remove/reinsert the last key, run eight bounded remove/reinsert
+passes over the first N/4, then clear/reverse insert. Check full hit sets and
+ordered per-backend traces at each stage, destination prefixes and unchanged
+node capacity during bounded churn. All four target/variant graphs matched all
+45 trace rows. The N=2,048 fixed initial trace is `793827A200840CEC`. Use the
+Phase 0 FNV fold, query count then ordered keys, with row order N,
+numerics/fixed/mutable-control, and initial/moved/reused/churned/clear-reverse.
+SHA-256 of those `TRACE,backend,N,stage,HEX` rows joined with LF and a final LF:
+`6bd7fad2e91f5be0a13bb4c37960b5250ed0c880782a173334064b7c79ad96e9`.
+
+Actual bounds sizes are 16/32 B Numerics/fixed; int-key BVH nodes are 48/72 B
+versus existing 3D 104/88 B. Standard target runs report zero warmed allocation
+for Query, TryQuery and updates with pre-sized buffers. All four graphs pass
+those allocation and lifecycle checks. Warm update delegates and entry points
+before measurement.
+
+Readonly fixed-wrapper controls use the same native arithmetic in a disposable
+mutable value over the same BVH. ABBA repeats four rounds, eight samples/layout:
+16 warm and 256 measured batches of sixteen queries; builds pre-size 2*N nodes.
+Standard/net10.0 N=2,048 median query times are 14.943/15.293 us for wrapper/
+control, with build medians 712.8/696.0 us. netstandard medians are
+14.960/15.356 and 794.4/809.15 us. No consistent wrapper penalty was
+demonstrated. Large-owner build allocations match (328,336 B at 2,048; 1,311,376
+B at 8,192); small cold samples include shared ThreadLocal slot-growth noise.
+This is not a retained-heap or universal latency-equivalence claim. No extra
+cache/copy workaround was justified.
+
+The maintained Query2DBVH benchmark uses actual APIs and the existing runner.
+All controls clear and write the same caller-owned results. It uses unit boxes,
+the same seed/XY range and 32 anchored queries; embedding has Z thickness one.
+Standard CLI smoke reproduction after building with source flags (the final
+kept-binary results use the configured job described below):
+
+```powershell
+$env:UseLocalLsfStack='true'
+$env:DisableTransitiveProjectReferences='true'
+dotnet tests/SwiftCollections.Benchmarks/bin/Release/net10.0/SwiftCollections.Benchmarks.dll all --filter '*Query2DBVHBenchmarks*' --job Short --warmupCount 2 --iterationCount 5 --launchCount 1
+```
+
+| Configuration / N |  Native 2D | 3D embedding | Brute force |
+| ----------------- | ---------: | -----------: | ----------: |
+| Standard / 128    |   3.098 us |     3.914 us |    6.622 us |
+| Standard / 2,048  |  16.282 us |    23.771 us |  233.573 us |
+| Standard / 8,192  | 106.400 us |   127.134 us |  932.733 us |
+| Lean / 128        |   3.014 us |     3.993 us |    4.819 us |
+| Lean / 2,048      |  15.966 us |    23.611 us |  232.408 us |
+| Lean / 8,192      | 104.999 us |   127.497 us |  942.138 us |
+
+Every method reports zero managed bytes. Both final runs completed nine child
+processes with exit zero and 45 actual measured iterations; BDN's documented
+outlier handling retained 44 Standard and 43 Lean results. Preserve that
+qualification. An earlier Standard CLI run also completed (45 actual/40
+retained) and gave 2.963/16.013/107.268 us for native 2D; it supports the
+direction without replacing the final kept-binary run above. An unsupported CLI
+configuration argument produced help only and was excluded, despite the runner's
+zero exit.
+
+Use Job.ShortRun.WithCustomBuildConfiguration(configuration), two warmups, five
+iterations, one launch and ConfigOptions.KeepBenchmarkFiles when selecting
+ReleaseLean explicitly; the CLI job otherwise defaults to Release. A disposable
+launcher reused the maintained benchmark type and checked every Summary.Report
+and ExecuteResult, without changing the maintained launcher or CI. Inspect the
+launch paths/deps before accepting variant results. Both kept children used
+source identities, and Lean had its shim with no MemoryPack.Core dependency.
+
+Child core SHA-256: Standard
+`0f9e0cf814caeef347aed2a25d86af6539e0bdc2997d6c48aee2f8dd92d0959c`; Lean
+`cce4ef6c6318e619b8c6575d43372e7355c72b3438b6a086e483e808ba6f751c`. Whole-child
+DLL hashes differ from ordinary outputs under BDN isolated build paths; no
+whole-assembly byte-identity claim is made. Method-name-plus-IL hashes for BVH,
+its node and the two new Numerics types match their ordinary outputs: Standard
+`f6db4e273b7bcef926555835595e3a451e97e788bb806e03186a75456cfd3a50`; Lean
+`26c077ff82bac9c118d6cc6d3efb33e6551cb97b96ed21b09f4069c6ec1c1034`. These are
+bounded workload results, not universal throughput, cross-flavor speed ratios or
+frame-latency claims. No performance tradeoff was accepted.
+
+#### Documentation, wire compatibility and dependencies
+
+Fresh isolated copies of the authored DocFX layout build with original
+assembly/XML inputs and templates, warnings as errors: both sites pass with zero
+warnings. Copying the layout preserves TOC paths and starts with empty
+metadata/site output while preserving existing generated files. Rendered HTML
+review covers all four new types, spatial guide and both provider members:
+parameters, return text, property values, inherited specializations, exceptions,
+links and fragments resolve. No browser visual-layout claim.
+
+All eight SwiftCollections DLL/XML pairs in the four source-mode package IDs
+match build output; each assembly adds 19 authored XML entries with applicable
+tags. Property accessors/backing fields are synthesized; the values have no
+authored parameterless constructor, partial extension or nested public type. All
+four provider target/variant pairs also match, including both new members. Lean
+retains the shim without MemoryPack runtime/generator packages. These are
+source-validation packages, not release candidates. Inherited members retain
+existing identities; no query serializer API was added.
+
+Area's ignore attributes preserve native state payloads. A released-8.0.0
+control and both actual Standard targets emit identical State-only JSON and
+32-byte full-domain MemoryPack endpoints:
+`00000000000000800000000000000080ffffffffffffff7fffffffffffffff7f`. JSON stores
+raw Min=(-9223372036854775808,-9223372036854775808) and
+Max=(9223372036854775807,9223372036854775807), without reading overflowing Area.
+Roundtrip restores the bounds and checked Area still throws.
+
+Local provider-to-consumer readiness is verified with these patches. Hosted pin
+and released 8.0.0 packages still lack both members and remain separate pending
+gates. Land the provider before selecting an authorized immutable hosted pin;
+validate released Standard/Lean dependencies before release. No version/pin/
+workflow change, publishing or legacy fallback. Actual Unity Mono/High IL2CPP
+and distribution closeout remain Phase 4 requirements.
+
+Final checks: targeted C# formatter verification passes in both repositories
+(the SC design-time workspace emits a load warning; actual builds/tests pass).
+Prettier 3.9.5 and git diff --check pass; 71 changed-document local links and
+fragments resolve. Generated site path checks pass for 108 SC and 69 provider
+pages (1,393 and 5,472 local links); new-page fragments were independently
+reviewed. Canonical rebuilds preserve all twelve runtime DLL hashes used by the
+four target/variant consumer graphs. No staged/index, commit, CI-policy or
+Chronicler worktree change.
+
 - Phase 2: not started.
 - Phase 3: not started.
 - Phase 4: not started.

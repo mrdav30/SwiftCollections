@@ -22,7 +22,8 @@ spatial indexing, deterministic runtimes, and allocation-sensitive tooling.
   packed sets, sparse sets, and sparse maps.
 - Dense iteration and stable or generation-checked handles for entity-style
   workloads.
-- BVH, spatial hash, and octree queries over `System.Numerics` volumes.
+- 2D/3D BVH, plus 3D spatial hash and octree queries over `System.Numerics`
+  bounds.
 - Fixed-point query companions powered by
   [FixedMathSharp](https://github.com/mrdav30/FixedMathSharp).
 - Explicit state-backed serialization, with Standard and Lean package variants.

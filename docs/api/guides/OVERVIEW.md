@@ -34,8 +34,10 @@ or [coverage report](https://mrdav30.github.io/SwiftCollections/coverage/).
 Sorted-list, dictionary, hash-set, bidictionary and observable-dictionary JSON
 and standard MemoryPack preserve supported comparison rules. Register custom
 factories and use version-one owner records; old state-only owner records are
-rejected. See [comparer persistence](serialization-and-diagnostics.md#preserve-hash-equality-during-serialization)
-and [sorted ordering](serialization-and-diagnostics.md#preserve-sorted-list-ordering-during-serialization).
+rejected. See
+[comparer persistence](serialization-and-diagnostics.md#preserve-hash-equality-during-serialization)
+and
+[sorted ordering](serialization-and-diagnostics.md#preserve-sorted-list-ordering-during-serialization).
 
 ## Choose a guide
 
@@ -46,6 +48,11 @@ and [sorted ordering](serialization-and-diagnostics.md#preserve-sorted-list-orde
 | Index and query spatial bounds                                                            | [Spatial queries](spatial-queries.md)                             |
 | Rent collections and manage host notifications                                            | [Pools and observable collections](pools-and-observables.md)      |
 | Save explicit state and configure diagnostic output                                       | [Serialization and diagnostics](serialization-and-diagnostics.md) |
+
+For planar broad-phase queries, use `SwiftBVH2D<TKey>` with `BoundVolume2D`, or
+the companion's `SwiftFixedBVH2D<TKey>` with `FixedBoundVolume2D`. Both reuse
+the generic BVH's ownership, result-buffer and node-view contracts. See
+[2D bounds and BVH queries](spatial-queries.md#2d-bounds-and-bvh-queries).
 
 ## Clearing And Retained References
 
