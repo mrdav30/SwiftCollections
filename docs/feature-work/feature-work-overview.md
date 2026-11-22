@@ -24,6 +24,12 @@ run or a package release.
   allocation, timing, scaling and benchmark-reliability concerns. Link a feature
   plan when substantial implementation is needed.
 
+Feature plans end at implementation, hardening, tests, documentation and
+supported-host validation. Keep release/publication, distribution and downstream
+adoption outside their completion criteria. When source changes span repos,
+include a reminder to update the owning CI build/test dependency pins after the
+changes land; do not turn that reminder into a release-readiness gate.
+
 Keep status in one owning record. Link related bugs or benchmark signals from a
 plan rather than duplicating their histories here. Do not add speculative ideas
 without an agreed scope or concrete evidence gate.
@@ -44,11 +50,12 @@ Standard/Lean and both target-framework gates pass with full coverage for Phases
 1–3. Native four-child quadtrees and existing eight-child octrees share the
 embedded subdivision owner. Compatibility, coverage and local performance gates
 pass with the bounded Numerics timing tradeoff accepted for the fixed-point LSF
-workload. Unity and distribution closeout remain Phase 4. FixedMathSharp owns
-checked area and exact area-growth operations; local source, hosted dependency
-pins and released packages have separate readiness gates. The plan owns the
-Standard/Lean, target-framework, full-coverage, performance and Unity acceptance
-matrix.
+workload. Phase 4 reviews all Phases 0–3 for optimization, hardening and code
+reuse, then completes final feature validation, including Unity smoke checks.
+FixedMathSharp owns checked area and exact area-growth operations; retain the
+reminder to update its CI build/test dependency pin after cross-repo changes
+land. The plan owns the Standard/Lean, target-framework, full-coverage,
+performance and Unity acceptance matrix.
 
 ## Recently Completed
 

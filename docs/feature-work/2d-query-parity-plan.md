@@ -1,9 +1,8 @@
 # 2D Query Parity Plan
 
 - **Status:** Phases 1–3 complete for implemented scope and local
-  Standard/Lean/target gates. Unity and distribution closeout remain Phase 4.
-  Hosted/released provider readiness and historical Debug-baseline resolution
-  remain separate records.
+  Standard/Lean/target gates. Phase 4 is the complete Phases 0–3 optimization/
+  hardening review and final feature validation, including Unity smoke checks.
 - **Created:** 2026-11-21.
 - **Owner:** SwiftCollections, with FixedMathSharp owning any new exact geometry
   arithmetic.
@@ -23,9 +22,10 @@ result-buffer contracts as the corresponding 3D family.
 
 Reuse the dimension-independent owners. Keep XY geometry, cell traversal and
 four-child subdivision at explicit dimensional boundaries. Protect the existing
-3D API, storage contracts, behavior and measured costs while extracting shared
-logic. Fixed-point backends are the authoritative lockstep path; Numerics
-backends do not promise cross-platform floating-point determinism.
+3D API, storage contracts and behavior while accounting for measured cost
+tradeoffs during shared-logic extraction. Fixed-point backends are the
+authoritative lockstep path; Numerics backends do not promise cross-platform
+floating-point determinism.
 
 Implementation covers `SwiftCollections`, `SwiftCollections.Lean`,
 `SwiftCollections.FixedMathSharp` and `SwiftCollections.FixedMathSharp.Lean`,
@@ -34,6 +34,13 @@ adapter/smoke-test host. This feature adds axis-aligned bounds backends and
 matching custom-backend extension points; new ray, nearest-neighbor, sweep,
 shape-contact and query-index persistence APIs are outside its scope. Existing
 state/serializer formats stay unchanged.
+
+Completion covers feature implementation, optimization/hardening, tests,
+documentation and supported-host validation. Release scheduling, publication,
+distribution and adoption by downstream applications are outside this plan.
+Cross-repository source changes require validation of the intended
+provider/consumer graph. Preserve existing CI policy; dependency pin updates and
+released-package availability do not block feature completion.
 
 ## Frozen API and parity inventory
 
@@ -168,13 +175,10 @@ BigInteger/System.UInt128. BigInteger is suitable as an independent test oracle.
 | Current SwiftCollections hosted-develop FixedMathSharp pin `3da3a8ad9964d3e0413080737fec12ba107b48e4`            | New area API readiness not established; it has not been added by this plan.                                                    |
 | Cached FixedMathSharp and FixedMathSharp.Lean 8.0.0, package revision `763efc57cea399cde375fe0ef4aa296c1eaa3cba` | Both TFMs expose bounds basics and public 3D volume cost; neither new area member is available. No new API compile is claimed. |
 
-Record provider and consumer revisions and test each boundary separately:
-coordinated source first, then an authorized immutable/fetchable hosted pin
-after provider land, then released Standard/Lean packages before release
-acceptance. Use `UseLocalLsfStack=true` for local development of the new call.
-Local success does not close hosted or released-package gates. Publishing,
-pushing, dependency version changes and workflow-pin updates are separate
-actions, not authorized by this documentation-only plan.
+Record provider and consumer revisions and validate the actual coordinated
+Standard/Lean source graphs with `UseLocalLsfStack=true`. The planning table
+above records the dependency state observed then. Do not infer published package
+availability from a passing source build.
 
 ### Mapping and subdivision
 
@@ -212,18 +216,51 @@ actions, not authorized by this documentation-only plan.
 
 ## Implementation phases and exit gates
 
-| Phase                         | Work                                                                                                                                                                                                                                                                              | Exit evidence                                                                                                                                                                                                                                                                                                        |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0 — Contracts and baselines   | Freeze the complete member inventory, names, numeric defaults/validation, custom-backend contracts and measured reuse mechanism candidates. Record source/package graphs and existing 3D output/order, allocation, time and storage baselines. Scope the FixedMathSharp addition. | Decision record below completed; a bounded layout/prototype comparison supports the intended common owners. No performance or dependency gate inferred from source inspection.                                                                                                                                       |
-| 1 — Bounds and BVH            | Implement/test checked area and exact provider cost in FixedMathSharp, then both 2D bounds backends and thin wrappers over the existing generic BVH. Use insert → query → move → query → remove → reuse through public APIs as the first working slice.                           | Correct hits and fixed traces, edge/full-domain area/cost oracles, NodePool/TryQuery parity, warm allocation and practical time; both affected repos pass applicable coverage/variant checks. Independent first-slice review before expansion. Hosted/package dependencies remain separately pending if unavailable. |
-| 2 — Native XY spatial hash    | Introduce XY cell/mapper APIs and concrete loops while sharing ownership/stamps/relocation with XYZ. Uplift fixed mapping with both consumers. Include fixed point-candidate helpers.                                                                                             | Complete mutation/exact/neighborhood/candidate contracts, rollover and range-edge tests; native two-coordinate storage; measured 3D compatibility and allocation/time/footprint gates pass.                                                                                                                          |
-| 3 — Quadtree and shared tree  | Add four-child backends and public wrappers around shared internal ownership/subdivision/merge logic. Keep existing 3D extension points and order.                                                                                                                                | Four actual children, contained/shrinking bounds, straddler and merge/depth tests, default-options controls, fixed full-domain tests and measured 3D compatibility gates pass.                                                                                                                                       |
-| 4 — Distribution and closeout | Complete public docs/inventory, package inspection, supported runtime/Unity checks and any authorized consumer smoke. Reconcile all decisions, measurements and dependency gates here.                                                                                            | Every matrix lane and exclusion reported; strict coverage and required hosted/package/Unity gates pass. No release claim without separate release work. Archive by repository convention after completion.                                                                                                           |
+| Phase                                | Work                                                                                                                                                                                                                                                                              | Exit evidence                                                                                                                                                                                                                                                                                       |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0 — Contracts and baselines          | Freeze the complete member inventory, names, numeric defaults/validation, custom-backend contracts and measured reuse mechanism candidates. Record source/package graphs and existing 3D output/order, allocation, time and storage baselines. Scope the FixedMathSharp addition. | Decision record below completed; a bounded layout/prototype comparison supports the intended common owners. No performance or dependency gate inferred from source inspection.                                                                                                                      |
+| 1 — Bounds and BVH                   | Implement/test checked area and exact provider cost in FixedMathSharp, then both 2D bounds backends and thin wrappers over the existing generic BVH. Use insert → query → move → query → remove → reuse through public APIs as the first working slice.                           | Correct hits and fixed traces, edge/full-domain area/cost oracles, NodePool/TryQuery parity, warm allocation and practical time; both affected repos pass applicable coverage/variant checks. Independent first-slice review before expansion. Record the validated provider/consumer source graph. |
+| 2 — Native XY spatial hash           | Introduce XY cell/mapper APIs and concrete loops while sharing ownership/stamps/relocation with XYZ. Uplift fixed mapping with both consumers. Include fixed point-candidate helpers.                                                                                             | Complete mutation/exact/neighborhood/candidate contracts, rollover and range-edge tests; native two-coordinate storage; measured 3D compatibility and allocation/time/footprint gates pass.                                                                                                         |
+| 3 — Quadtree and shared tree         | Add four-child backends and public wrappers around shared internal ownership/subdivision/merge logic. Keep existing 3D extension points and order.                                                                                                                                | Four actual children, contained/shrinking bounds, straddler and merge/depth tests, default-options controls, fixed full-domain tests and measured 3D compatibility gates pass.                                                                                                                      |
+| 4 — Review, hardening and validation | Review all work from Phases 0–3 for correctness, determinism, optimization and reuse; fix verified findings, then complete feature tests/coverage, docs/inventory, target-asset and Unity smoke checks.                                                                           | Independent review findings resolved; feature validation matrix and strict coverage pass, with baseline failures and limitations explicit. Record accepted tradeoffs and final feature evidence, then archive by repository convention.                                                             |
 
 Run independent ponytail review after the first shared working slice, after any
 substantial extraction, and before each phase handoff. Fix verified findings.
 Never retain an old copied engine or fallback alongside a replacement to make
 checks appear green.
+
+### Phase 4 review scope
+
+Review the complete Phases 0–3 implementation and evidence, including the frozen
+caller contracts and the source extracted into existing 3D owners:
+
+1. Trace bounds, BVH, spatial hash and quadtree families through their Numerics
+   and fixed-point wrappers, generic owners, adapters and shared helpers. Check
+   interfaces, overloads and dimensional counterparts against callers, tests and
+   XML/guide contracts.
+2. Harden arithmetic limits, zero/default/degenerate inputs, boundary routing,
+   canonical keys, lifecycle/reuse, failure mutation, output buffers and
+   borrowed storage. Protect existing state/serialization contracts and
+   deterministic fixed-point traces across configurations and hosts.
+3. Review allocations, copying, dispatch, retained storage and duplicated logic.
+   Reuse or simplify existing owners where evidence supports it; remove
+   superseded machinery. Prioritize fixed-point LSF workloads and preserve
+   accepted contracts, allocation budgets and documented timing dispositions.
+   Measure representative current-code workloads before and after any proposed
+   runtime optimization; do not reopen accepted nanosecond-scale tradeoffs
+   without new caller-impact evidence.
+4. Obtain independent source/test review across the complete feature. Reproduce
+   verified defects, add meaningful regressions and resolve introduced defects
+   within this pass. Record pre-existing unrelated failures separately; use the
+   owning bug tracker for confirmed out-of-scope defects.
+5. Run the feature validation matrix below against final source: Standard, Lean,
+   both target frameworks, strict 100% coverage, deterministic replay,
+   appropriate benchmarks, emitted XML/reference checks and actual Unity
+   Editor/Mono plus High-stripping IL2CPP smoke checks. Report exact inputs,
+   configurations, outcomes and any concrete limitations.
+6. Reconcile API inventory, docs, contributor guidance, runtime growth and
+   accepted decisions in this plan. Close the feature when implementation and
+   validation requirements are met, then archive the plan.
 
 ## Correctness, determinism and performance evidence
 
@@ -284,10 +321,10 @@ redesign or explicit user disposition before the phase closes; do not defer an
 introduced cost into the benchmark backlog to claim completion. Independent
 owner/control measurements should keep the investigation bounded.
 
-## Validation and distribution matrix
+## Feature validation matrix
 
 Implementation gates below remain requirements. The Phase 0 record reports the
-baseline lanes actually run; it does not close implementation or release gates.
+baseline lanes actually run; final feature checks must use the final source.
 Preserve existing CI policy.
 
 | Lane                                    | Required evidence                                                                                                                                                                                                                                                                                                                                                                                                                           |
@@ -295,9 +332,8 @@ Preserve existing CI policy.
 | Release and ReleaseLean, net10.0        | Full solution build/tests; fresh assembly-specific coverage for core and companion, with 100% reported lines, branches and executable methods using the unchanged strict gate.                                                                                                                                                                                                                                                              |
 | Debug, net10.0                          | Build/tests and strict per-assembly coverage for refactor/guard/null/default differences.                                                                                                                                                                                                                                                                                                                                                   |
 | Release and ReleaseLean, netstandard2.1 | Both assemblies compile with C# 11 and the matching dependency graph; inspect emitted XML and packaged target assets. Build and execute a representative consumer using those actual DLLs on a supported host. netstandard is a contract target, not a runtime.                                                                                                                                                                             |
-| Four package IDs × two TFMs             | Explicit pack; inspect all eight DLL/XML pairs, dependencies and expected new API. Standard/Lean must agree on query contracts; Lean must not gain MemoryPack runtime/generator dependencies. Inspect any new bounds-value serialization attributes deliberately; add no query-owner persistence contract.                                                                                                                                  |
+| Four package IDs × two TFMs             | Build local package fixtures; inspect all eight DLL/XML pairs, dependencies and expected new API. Standard/Lean must agree on query contracts; Lean must not gain MemoryPack runtime/generator dependencies. Inspect any new bounds-value serialization attributes deliberately; add no query-owner persistence contract.                                                                                                                   |
 | DocFX                                   | Fresh generated metadata/site from both Release/net10.0 DLL/XML inputs, warnings as errors; reconcile full authored member inventory and inspect bounds, generic/wrapper, options, mapper/partitioner and inherited comments/links. Check remaining targets/variants in emitted XML.                                                                                                                                                        |
-| Hosted CI                               | Existing Windows/Ubuntu Release/Lean lanes, with correct package/source dependency mode and authorized fetchable upstream pins. Report unavailable lanes as pending.                                                                                                                                                                                                                                                                        |
 | Unity/netstandard consumer              | Use SwiftCollections-Unity's existing isolated smoke-project route with matching Standard/Lean core, companion, FixedMathSharp and Chronicler graphs. Exercise public 2D bounds/BVH/hash/quadtree/custom-backend controls in actual Editor/Mono and High-stripping IL2CPP players. Verify backend, loaded inputs and result markers; a .NET replay is not a substitute. Do not replace the adapter checkout's checked-in packages in place. |
 
 Use [CONTRIBUTING](../../CONTRIBUTING.md#local-validation) commands and each
@@ -316,22 +352,26 @@ source/header, namespace-level type-per-file and generated-output rules. No
 Unity engine API enters either runtime assembly. UI conversions or engine
 adapters beyond smoke coverage require separate adapter scope.
 
+Cross-repo reminder: after the FixedMathSharp source changes land, update the
+SwiftCollections CI build/test FixedMathSharp pin to the intended commit. This
+is a maintainer reminder, not a release or feature-completion gate.
+
 ## Decision register and phase results
 
-| Decision                                   | Current disposition                                                                                                                                                                                   | Reopening/closure criterion                                                                                                                                             |
-| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Shared ownership                           | Reuse BVH unchanged. Select embedded mutable cores for hash/tree; retain stable wrapper callback receivers and existing public extension points. Reject an extra heap core: measured +24 B per owner. | Reopen if production XY/four-child extraction changes existing identities, storage, order or warm costs. Production latency acceptance remains required.                |
-| Fixed 2D arithmetic                        | Implemented in coordinated source: checked nearest-even Area and exact expansion share private raw-area arithmetic. Hosted/released APIs remain pending.                                              | Implement/test provider, then independently close source, hosted-pin and released-package gates. Reopen only for a demonstrated correctness or caller-contract problem. |
-| Names, validation and topology             | Additive inventory and boundary behavior frozen below; endpoint-only bounds, native XY keys/loops and four-child topology.                                                                            | Reopen on implementation evidence that the chosen contract cannot preserve correctness, compatibility or required costs; record any consequential departure.            |
-| Persistence and additional query operators | Excluded from this parity pass; existing owner/state formats unchanged.                                                                                                                               | Reopen only for a separately requested caller contract with concrete consumers.                                                                                         |
+| Decision                                   | Current disposition                                                                                                                                                                                   | Reopening/closure criterion                                                                                                                                  |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Shared ownership                           | Reuse BVH unchanged. Select embedded mutable cores for hash/tree; retain stable wrapper callback receivers and existing public extension points. Reject an extra heap core: measured +24 B per owner. | Reopen if production XY/four-child extraction changes existing identities, storage, order or warm costs. Production latency acceptance remains required.     |
+| Fixed 2D arithmetic                        | Implemented in coordinated source: checked nearest-even Area and exact expansion share private raw-area arithmetic. Validate the recorded provider/consumer graph.                                    | Provider/consumer source checks establish feature correctness. Reopen only for a demonstrated correctness or caller-contract problem.                        |
+| Names, validation and topology             | Additive inventory and boundary behavior frozen below; endpoint-only bounds, native XY keys/loops and four-child topology.                                                                            | Reopen on implementation evidence that the chosen contract cannot preserve correctness, compatibility or required costs; record any consequential departure. |
+| Persistence and additional query operators | Excluded from this parity pass; existing owner/state formats unchanged.                                                                                                                               | Reopen only for a separately requested caller contract with concrete consumers.                                                                              |
 
 Maintain concise phase results in this file: revisions/dirty state, chosen
 contracts, net runtime growth and deletions, test/coverage counts, baseline
 versus introduced failures, workload/units and measured uncertainty,
 assemblies/TFMs/ packages/XML checked, consumer/Unity evidence, dependency
-readiness and remaining gaps. Preserve portable inputs, commands, outcomes and
-reopening criteria here; completion must not depend on disposable captures or
-separate phase reports.
+source revisions and remaining feature gaps. Preserve portable inputs, commands,
+outcomes and reopening criteria here; completion must not depend on disposable
+captures or separate phase reports.
 
 ### Phase 0 — contracts and baseline evidence
 
@@ -837,12 +877,11 @@ raw Min=(-9223372036854775808,-9223372036854775808) and
 Max=(9223372036854775807,9223372036854775807), without reading overflowing Area.
 Roundtrip restores the bounds and checked Area still throws.
 
-Local provider-to-consumer readiness is verified with these patches. Hosted pin
-and released 8.0.0 packages still lack both members and remain separate pending
-gates. Land the provider before selecting an authorized immutable hosted pin;
-validate released Standard/Lean dependencies before release. No version/pin/
-workflow change, publishing or legacy fallback. Actual Unity Mono/High IL2CPP
-and distribution closeout remain Phase 4 requirements.
+Local provider-to-consumer readiness is verified with these patches. At this
+phase, the recorded hosted pin and released 8.0.0 packages lack both members;
+this is historical dependency context, not unfinished feature work. No
+version/pin/workflow change, publishing or legacy fallback. Actual Unity
+Mono/High IL2CPP remain Phase 4 feature-validation requirements.
 
 Final checks: targeted C# formatter verification passes in both repositories
 (the SC design-time workspace emits a load warning; actual builds/tests pass).
@@ -860,7 +899,7 @@ starts from SwiftCollections `4ca068867405b1c1eb76c409eba2043deae71a50` and
 FixedMathSharp `0a81be7b59920d367692eff35e19d4dda1bb2b4b`, with initially clean
 worktrees and empty indexes. Phase 2 changes SwiftCollections only; the provider
 APIs from Phase 1 remain the coordinated-source dependency. Hosted pins and
-released packages retain their separate readiness gates.
+released packages are recorded separately as historical dependency context.
 
 The generic and Numerics `SwiftSpatialHash2D` facades, fixed
 `SwiftFixedSpatialHash2D`, XY cell index and mapper implement the frozen
@@ -1102,7 +1141,7 @@ and concrete mappers match ordinary outputs: Standard
 `7a9ccf4e24f586f66e6ef76c85054220cd1c9bf8d9aa8aa65c834b9a252632b2`. Whole DLL
 identity across different build paths is not assumed.
 
-#### API, documentation and remaining distribution gates
+#### API, documentation and remaining feature checks
 
 Existing XYZ public/protected declarations, parameter names, generic constraints
 and protected hooks match the frozen source. The additive inventory is **35
@@ -1136,17 +1175,17 @@ C# formatter verification and documentation formatting pass; the existing SC
 design-time workspace-load warning remains, with successful real builds. No new
 source defect or unresolved API decision was identified for the bug tracker.
 This phase makes no CI policy, dependency pin, version, index, commit or
-provider source change; concurrent provider work is preserved separately.
-Hosted/provider release readiness still has its separate Phase 1 gates. Actual
-Unity Mono/High-stripping IL2CPP, hosted OS lanes and distribution closeout
-remain Phase 4 requirements; this local result does not close them.
+provider source change; concurrent provider work is preserved separately. Actual
+Unity Mono/High-stripping IL2CPP validation remains a Phase 4 feature
+requirement; this local result does not establish Unity/AOT behavior. The
+current scope above supersedes earlier release/hosted-pin closure requirements.
 
 ### Phase 3 — quadtree and shared subdivision tree
 
 Complete for implemented scope and local Standard/Lean/target, coverage,
 performance and documentation gates. The user accepted the bounded Numerics
 timing tradeoff for the shared owner, prioritizing the fixed-point LSF workload.
-Unity and distribution closeout remain Phase 4.
+The complete optimization/hardening review and Unity validation remain Phase 4.
 
 The phase starts from clean SwiftCollections
 `57c6fb73e9151b66fdde9d7490977493a46cab2b`, FixedMathSharp
@@ -1365,8 +1404,11 @@ The old octree ownership engine is removed; two dimensional facades share one
 implementation and both fixed backends share the split-size helper. No legacy
 engine, fallback traversal or unused runtime framework remains.
 
-Unity Mono/High-stripping IL2CPP, hosted OS CI and released-provider readiness
-remain Phase 4/independent gates. This phase does not publish packages, modify
-CI policy, update pins or stage/commit changes.
+The complete Phases 0–3 optimization/hardening review and actual Unity
+Mono/High-stripping IL2CPP validation remain Phase 4 feature requirements. Phase
+3 made no publication, CI policy or pin changes.
 
-- Phase 4: not started.
+- Phase 4: not started; scope aligned to complete feature review, optimization,
+  hardening and final validation. Earlier phase records retain historical
+  dependency observations; their release/hosted readiness statements are not
+  current feature-completion gates.
