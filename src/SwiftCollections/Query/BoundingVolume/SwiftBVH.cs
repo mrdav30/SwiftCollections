@@ -26,7 +26,7 @@ namespace SwiftCollections.Query;
 /// Key and volume callbacks must not reenter or mutate the index. Bounds are copied and keys are retained;
 /// changing a key's equality/hash breaks lookup. Query ordering depends on current topology and mutation history;
 /// it is not sorted or a serialized order guarantee. Determinism requires deterministic keys, input order and
-/// volume/mapping arithmetic. BVH permits duplicate-key leaves; use unique keys for duplicate-free results.
+/// volume/mapping arithmetic. Each non-null key owns one leaf; inserting an equal key updates its bounds.
 /// </remarks>
 public class SwiftBVH<TKey, TVolume>
     where TKey : notnull
@@ -110,7 +110,7 @@ public class SwiftBVH<TKey, TVolume>
     /// <summary>
     /// Gets the total number of leaf nodes in the BVH.
     /// </summary>
-    /// <value>The number of indexed leaves, including separately inserted duplicate keys.</value>
+    /// <value>The number of distinct indexed keys, each owning one leaf.</value>
     public int Count => _leafCount;
 
     #endregion
@@ -157,20 +157,30 @@ public class SwiftBVH<TKey, TVolume>
     }
 
     /// <summary>
-    /// Inserts a key and copied bounds.
+    /// Inserts a key and copied bounds, or updates the bounds of an existing key.
     /// </summary>
     /// <param name="value">The non-null stable key to insert or locate; reference keys are retained, not
     /// cloned.</param>
     /// <param name="bounds">The volume in the same caller-defined coordinate space and units as other indexed
     /// bounds; copied by value. No transform is applied.</param>
-    /// <returns>true after allocating a new leaf, including when the key already exists.</returns>
+    /// <returns>true for a new key; false for an existing key, whose bounds are updated.</returns>
+    /// <exception cref="T:System.ArgumentNullException">value is null; the index is unchanged.</exception>
     /// <remarks>
-    /// Duplicate keys allocate additional leaves; lookup/update/removal resolve one matching leaf. Null keys are
-    /// not rejected here and can create leaves that guarded lookup/removal cannot address. Key/volume/allocation
-    /// failures can leave partial mutation; the operation is not transactional.
+    /// An existing key retains its original stored key and leaf index, without allocating another leaf or
+    /// changing Count. Equal bounds leave the tree unchanged. Key/volume/allocation failures can leave partial
+    /// mutation; the operation is not transactional.
     /// </remarks>
     public bool Insert(TKey value, TVolume bounds)
     {
+        ChronicleGuard.ThrowIfNullGeneric(value, nameof(value));
+
+        int existingIndex = _keyToNodeIndex.Find(value);
+        if (existingIndex >= 0)
+        {
+            UpdateEntryBounds(existingIndex, bounds);
+            return false;
+        }
+
         int newNodeIndex = AllocateNode(value, bounds, true); // Allocate new node as a leaf
         _rootNodeIndex = InsertIntoTree(_rootNodeIndex, newNodeIndex);
         InsertIntoBuckets(value, newNodeIndex);
@@ -299,7 +309,7 @@ public class SwiftBVH<TKey, TVolume>
     /// applied.</param>
     /// <exception cref="T:System.ArgumentNullException">The key is null.</exception>
     /// <remarks>
-    /// Updates one matching key's bounds; absent keys change nothing. Bounds are copied by value; the caller's
+    /// Updates the existing key's bounds; absent keys change nothing. Bounds are copied by value; the caller's
     /// original is not retained. Callback/allocation failures can leave partial mutation.
     /// </remarks>
     public void UpdateEntryBounds(TKey value, TVolume newBounds)
@@ -309,6 +319,11 @@ public class SwiftBVH<TKey, TVolume>
         int index = _keyToNodeIndex.Find(value);
         if (index == -1) return;
 
+        UpdateEntryBounds(index, newBounds);
+    }
+
+    private void UpdateEntryBounds(int index, TVolume newBounds)
+    {
         ref SwiftBVHNode<TKey, TVolume> node = ref _nodePool[index];
         if (!node.IsAllocated) return; // Skip update if node has been removed
 
@@ -341,7 +356,7 @@ public class SwiftBVH<TKey, TVolume>
     /// </summary>
     /// <param name="value">The non-null stable key to insert or locate; reference keys are retained, not
     /// cloned.</param>
-    /// <returns>true if one matching indexed entry was removed; false if absent, with entries
+    /// <returns>true if the indexed key and its leaf were removed; false if absent, with entries
     /// unchanged.</returns>
     /// <exception cref="T:System.ArgumentNullException">The key is null.</exception>
     public bool Remove(TKey value)
@@ -515,8 +530,8 @@ public class SwiftBVH<TKey, TVolume>
     /// <remarks>
     /// Appends without clearing results. Empty/no-hit queries preserve existing entries. Destination Add or
     /// volume/backend exceptions can leave partially appended output; no rollback is provided. Do not mutate the
-    /// index from result callbacks. Visits right subtrees before left because traversal uses a stack. May append
-    /// duplicate keys if duplicate leaves were inserted. Internal traversal scratch can grow and allocate.
+    /// index from result callbacks. Visits right subtrees before left because traversal uses a stack. Appends
+    /// each matching key once. Internal traversal scratch can grow and allocate.
     /// </remarks>
     public void Query(TVolume queryBounds, ICollection<TKey> results)
     {
@@ -602,7 +617,7 @@ public class SwiftBVH<TKey, TVolume>
     /// </summary>
     /// <param name="value">The non-null stable key to insert or locate; reference keys are retained, not
     /// cloned.</param>
-    /// <returns>The physical node index of one matching leaf, or -1 if absent. Indices can be reused after
+    /// <returns>The physical node index of the matching leaf, or -1 if absent. Indices can be reused after
     /// mutation.</returns>
     /// <exception cref="T:System.ArgumentNullException">value is null.</exception>
     public int FindEntry(TKey value)

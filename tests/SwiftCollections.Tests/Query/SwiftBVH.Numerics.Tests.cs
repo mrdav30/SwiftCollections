@@ -830,21 +830,120 @@ namespace SwiftCollections.Query.Tests
             Assert.Throws<InvalidOperationException>(() => bvh.Query(volume, new List<int>()));
         }
 
-        [Fact]
-        public void DuplicateKeyHandling_ReplacesOldEntry()
+        [Theory]
+        [InlineData(0, false)]
+        [InlineData(0, true)]
+        [InlineData(3, false)]
+        [InlineData(3, true)]
+        public void KeyPolicy_DuplicateInsertUpdatesExistingLeaf(int siblings, bool move)
         {
             var bvh = new SwiftBVH<int>(10);
             var volume1 = new BoundVolume(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
-            var volume2 = new BoundVolume(new Vector3(2, 2, 2), new Vector3(3, 3, 3));
+            var volume2 = move ? new BoundVolume(new Vector3(20), new Vector3(21)) : volume1;
+            var allBounds = new BoundVolume(new Vector3(-1), new Vector3(30));
 
-            bvh.Insert(1, volume1);
-            bvh.Insert(1, volume2);
+            Assert.True(bvh.Insert(1, volume1));
+            for (int i = 0; i < siblings; i++)
+                Assert.True(bvh.Insert(i + 2, new BoundVolume(new Vector3(i + 3), new Vector3(i + 4))));
+            int index = bvh.FindEntry(1);
+            int root = bvh.RootNodeIndex;
+            var nodes = bvh.NodePool;
+
+            Assert.False(bvh.Insert(1, volume2));
+
+            Assert.Equal(siblings + 1, bvh.Count);
+            Assert.Equal(index, bvh.FindEntry(1));
+            Assert.Equal(root, bvh.RootNodeIndex);
+            Assert.Same(nodes, bvh.NodePool);
+            Assert.True(bvh.NodePool[index].Bounds.BoundsEquals(volume2));
 
             var results = new List<int>();
+            bvh.Query(volume1, results);
+            Assert.Equal(move ? Array.Empty<int>() : new[] { 1 }, results);
+            results.Clear();
             bvh.Query(volume2, results);
+            Assert.Equal(new[] { 1 }, results);
+            results.Clear();
+            bvh.Query(allBounds, results);
+            Assert.Equal(siblings + 1, results.Count);
+            Assert.Single(results, item => item == 1);
 
-            Assert.Single(results);
-            Assert.Equal(1, results[0]);
+            var buffered = new SwiftList<int>(siblings + 2) { 99 };
+            Assert.True(bvh.TryQuery(allBounds, buffered, new int[bvh.Count]));
+            Assert.Equal(99, buffered[0]);
+            Assert.Equal(results.Count + 1, buffered.Count);
+            for (int i = 0; i < results.Count; i++)
+                Assert.Equal(results[i], buffered[i + 1]);
+
+            Assert.True(bvh.Remove(1));
+            Assert.False(bvh.Remove(1));
+            Assert.Equal(-1, bvh.FindEntry(1));
+            results.Clear();
+            bvh.Query(allBounds, results);
+            Assert.Equal(siblings, results.Count);
+            Assert.DoesNotContain(1, results);
+            Assert.True(bvh.Insert(1, volume1));
+            Assert.Equal(siblings + 1, bvh.Count);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void KeyPolicy_NullInsertThrowsBeforeMutatingStorage(bool populated)
+        {
+            var bvh = new SwiftBVH<string>(1);
+            var bounds = new BoundVolume(Vector3.Zero, Vector3.One);
+            if (populated)
+                Assert.True(bvh.Insert("existing", bounds));
+            var nodes = bvh.NodePool;
+            var snapshot = (SwiftBVHNode<string, BoundVolume>[])nodes.Clone();
+            int root = bvh.RootNodeIndex;
+
+            Assert.Throws<ArgumentNullException>("value", () => bvh.Insert(null, bounds));
+
+            Assert.Same(nodes, bvh.NodePool);
+            Assert.Equal(snapshot, bvh.NodePool);
+            Assert.Equal(root, bvh.RootNodeIndex);
+            Assert.Equal(populated ? 1 : 0, bvh.Count);
+            var results = new List<string>();
+            bvh.Query(bounds, results);
+            Assert.Equal(populated ? new[] { "existing" } : Array.Empty<string>(), results);
+        }
+
+        [Fact]
+        public void KeyPolicy_EqualReferenceKeyRetainsOriginalAndSurvivesCollidingRemoval()
+        {
+            var bvh = new SwiftBVH<CollidingKey>(4);
+            var original = new CollidingKey(1);
+            var equal = new CollidingKey(1);
+            var collision = new CollidingKey(2);
+            var oldBounds = new BoundVolume(Vector3.Zero, Vector3.One);
+            var newBounds = new BoundVolume(new Vector3(10), new Vector3(11));
+            Assert.True(bvh.Insert(collision, oldBounds));
+            Assert.True(bvh.Insert(original, oldBounds));
+            int originalIndex = bvh.FindEntry(original);
+
+            Assert.False(bvh.Insert(equal, newBounds));
+
+            Assert.Equal(2, bvh.Count);
+            Assert.Equal(originalIndex, bvh.FindEntry(equal));
+            Assert.Same(original, bvh.NodePool[originalIndex].Value);
+            var results = new List<CollidingKey>();
+            bvh.Query(oldBounds, results);
+            Assert.Same(collision, Assert.Single(results));
+            results.Clear();
+            bvh.Query(newBounds, results);
+            Assert.Same(original, Assert.Single(results));
+            Assert.True(bvh.Remove(collision));
+            Assert.Equal(originalIndex, bvh.FindEntry(equal));
+            Assert.True(bvh.Remove(equal));
+            Assert.False(bvh.Remove(original));
+            Assert.Equal(0, bvh.Count);
+            Assert.True(bvh.Insert(equal, oldBounds));
+            Assert.Same(equal, bvh.NodePool[bvh.FindEntry(original)].Value);
+            bvh.Clear();
+            Assert.True(bvh.Insert(original, newBounds));
+            Assert.Equal(1, bvh.Count);
         }
 
         private sealed class CollidingKey : IEquatable<CollidingKey>

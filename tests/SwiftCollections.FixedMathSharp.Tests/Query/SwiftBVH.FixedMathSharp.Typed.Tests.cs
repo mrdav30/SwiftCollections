@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using FixedMathSharp;
 using Xunit;
@@ -6,6 +7,52 @@ namespace SwiftCollections.Query.Tests
 {
     public class SwiftBVHFixedMathSharpTypedTests
     {
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void KeyPolicy_FixedVolumeDuplicateUpdatesOneLeaf(bool wrapper)
+        {
+            SwiftBVH<int, FixedBoundVolume> bvh = wrapper
+                ? new SwiftFixedBVH<int>(8)
+                : new SwiftBVH<int, FixedBoundVolume>(8);
+            var first = new FixedBoundVolume(new Vector3d(0, 0, 0), new Vector3d(1, 1, 1));
+            var second = new FixedBoundVolume(new Vector3d(10, 10, 10), new Vector3d(11, 11, 11));
+            Assert.True(bvh.Insert(1, first));
+            Assert.True(bvh.Insert(2, first));
+
+            Assert.False(bvh.Insert(1, second));
+            Assert.False(bvh.Insert(1, second));
+
+            Assert.Equal(2, bvh.Count);
+            var results = new List<int>();
+            bvh.Query(first, results);
+            Assert.Equal(new[] { 2 }, results);
+            results.Clear();
+            bvh.Query(second, results);
+            Assert.Equal(new[] { 1 }, results);
+            results.Clear();
+            bvh.Query(first.Union(second), results);
+            Assert.Equal(2, results.Count);
+            Assert.Contains(1, results);
+            Assert.Contains(2, results);
+            Assert.True(bvh.Remove(1));
+            Assert.False(bvh.Remove(1));
+            Assert.Equal(1, bvh.Count);
+        }
+
+        [Fact]
+        public void KeyPolicy_FixedWrapperRejectsNullBeforeMutation()
+        {
+            var bvh = new SwiftFixedBVH<string>(1);
+            var nodes = bvh.NodePool;
+
+            Assert.Throws<ArgumentNullException>("value", () => bvh.Insert(null, default));
+
+            Assert.Same(nodes, bvh.NodePool);
+            Assert.Equal(0, bvh.Count);
+            Assert.Equal(-1, bvh.RootNodeIndex);
+        }
+
         [Fact]
         public void SwiftFixedBVH_Wrapper_UsesFixedBoundVolumeEngine()
         {

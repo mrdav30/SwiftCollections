@@ -72,40 +72,6 @@ diagnosis, decisions and reopening criteria stay with their owning issue.
 
 ## Active Issues
 
-### SC-Issue-019 - BVH duplicate and null-key policy differs from peer indexes
-
-- **Status / priority:** Deferred API decision / P2; preserve current behavior pending the disposition below.
-- **Discovered:** 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`.
-- **Affected owners / impact:** SwiftBVH inserts duplicate leaves and accepts null keys that guarded lookups cannot address; hash/octree duplicate insertion instead updates bounds.
-- **Evidence environment:** Windows x64, SDK 10.0.302, runtime 10.0.10, Release with published dependencies (`UseLocalLsfStack=false`).
-
-**Reproducer** (use the console setup above):
-
-```csharp
-var b = new SwiftCollections.Query.BoundVolume(
-    System.Numerics.Vector3.Zero, System.Numerics.Vector3.One);
-var t = new SwiftCollections.Query.SwiftBVH<int>(4);
-t.Insert(1, b); t.Insert(1, b);
-var hits = new List<int>(); t.Query(b, hits);
-Console.WriteLine($"{t.Count}; {string.Join(",", hits)}");
-var n = new SwiftCollections.Query.SwiftBVH<string>(4);
-n.Insert(null!, b);
-Console.WriteLine(n.Count);
-// n.FindEntry(null!) and n.Remove(null!) throw ArgumentNullException.
-```
-
-Observed: `2; 1,1` and 1. Duplicate Insert creates separate leaves; null creates
-a leaf that guarded lookup/removal cannot address. The existing
-`DuplicateKeyHandling_ReplacesOldEntry` test queries only the second
-non-overlapping volume, so it does not prove replacement. Spatial hash/octree
-instead upsert and return false. **Disposition: deferred API choice; preserve
-and document current behavior pending a policy decision.** Choose rejection, upsert, or
-explicit multi-entry ownership before runtime changes. Reopen with an agreed
-policy and tests of Count, a query intersecting both leaves, repeated removal,
-and null insertion before mutation.
-
-- **Next action:** Choose rejection, upsert or multi-entry semantics, then cover Count, both-leaf queries, removal and null validation.
-
 ### SC-Issue-020 - Numerics octree subdivision overflows finite midpoints
 
 - **Status / priority:** Confirmed / P2; open.
@@ -204,6 +170,7 @@ they do not claim a fresh rerun or package release.
 
 | Issue                                                                                          | Resolved/closed | Outcome                                                                                                                                                                                                                                                              | Evidence                                                                                                                                                                                                       |
 | ---------------------------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SC-Issue-019 | 2026-11-21 | **Verified fix; upsert policy approved:** BVH now owns one leaf per non-null key; repeated Insert updates bounds and returns false. Null is rejected before mutation. Generic, Numerics and fixed-point paths share the fix. | [Resolution and compatibility evidence](#sc-issue-019---bvh-duplicate-and-null-key-policy-differs-from-peer-indexes) |
 | SC-Issue-018 | 2026-11-21 | **Verified fix:** observable Add emits CollectionChanged/Add and PropertyChanged/Entries[] only after successful insertion across all six dispatch forms. Duplicate mappings remain intact; existing resize and subscriber-failure semantics are preserved. Standard/Lean/Debug pass strict 100% reported coverage on verified package/runtime inputs. | [Resolution and verification](#sc-issue-018---duplicate-dictionary-add-emits-a-false-change-notification), [regressions](../../tests/SwiftCollections.Tests/Observable/SwiftObservableDictionary.Tests.cs) |
 | SC-Issue-017 | 2026-11-21 | **Verified fix and consolidation:** one embedded lifecycle owner guards all rental/backing-access routes across six inherited collection pools and the sparse-map pool. Flush stays reusable; Dispose is terminal. Duplicate lifecycle code is removed while named Release parameters remain compatible. Standard/Lean/Debug pass strict 100% reported coverage; constructor/disposal allocation improves in the tested workloads. | [Resolution, compatibility and lifecycle decisions](#sc-issue-017---disposed-collection-wrappers-still-rent-through-get), [regressions](../../tests/SwiftCollections.Tests/Pool/SwiftPoolLifecycle.Tests.cs) |
 | SC-Issue-016 | 2026-11-21 | **Verified fix:** object-pool Clear deducts only popped inactive objects before destruction, retaining outstanding rentals and correct partial-failure accounting. Shared wrapper contracts agree. Standard/Lean/Debug tests and strict 100% reported line/branch/executable-method coverage pass; the unchanged slot-map analyzer warning is recorded separately. | [Resolution, verification and contract dispositions](#sc-issue-016---pool-clear-loses-outstanding-rental-counts), [regressions](../../tests/SwiftCollections.Tests/Pool/SwiftObjectPool.Tests.cs) |
@@ -672,6 +639,152 @@ surface, as described in the
 Reopen if an API promises complete notifications; first verify base/interface
 dispatch and subscriber-exception behavior. This limitation is separate from
 the confirmed false Add notification above.
+
+### SC-Issue-019 - BVH duplicate and null-key policy differs from peer indexes
+
+- **Status / priority:** Resolved 2026-11-21 / P2; user-approved upsert contract and verified fix.
+- **Discovered:** 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`;
+  reproduced before this fix at `b5234b3f67720f2d887e703f0ede396161f9adf1`.
+- **Affected owners / impact:** SwiftBVH inserts duplicate leaves and accepts null keys that guarded lookups cannot address; hash/octree duplicate insertion instead updates bounds.
+- **Evidence environment:** Windows x64, SDK 10.0.302, runtime 10.0.10, Release with published dependencies (`UseLocalLsfStack=false`).
+
+**Reproducer** (use the console setup above):
+
+```csharp
+var b = new SwiftCollections.Query.BoundVolume(
+    System.Numerics.Vector3.Zero, System.Numerics.Vector3.One);
+var t = new SwiftCollections.Query.SwiftBVH<int>(4);
+t.Insert(1, b); t.Insert(1, b);
+var hits = new List<int>(); t.Query(b, hits);
+Console.WriteLine($"{t.Count}; {string.Join(",", hits)}");
+var n = new SwiftCollections.Query.SwiftBVH<string>(4);
+n.Insert(null!, b);
+Console.WriteLine(n.Count);
+// n.FindEntry(null!) and n.Remove(null!) throw ArgumentNullException.
+```
+
+Before: `2; 1,1` and 1. Both inserts return true and null insertion succeeds.
+After: `1; 1` and null insertion throws `ArgumentNullException` with parameter
+`value`, leaving Count zero. The first insert returns true, the second false.
+
+**Root cause and resolution:** Generic BVH Insert allocated a leaf before checking
+its shared key map. The map deliberately supplies low-level bucket storage, not
+uniqueness enforcement. BVH now guards null and looks up the key before mutation.
+An existing key uses the same private index-based bounds update as public
+UpdateEntryBounds, avoiding a second key lookup. The original stored key, leaf
+index, topology, node-array capacity and Count are retained; changed bounds
+refresh ancestors and equal bounds do nothing. New keys follow the existing
+allocation/insertion path. Numerics, typed backends and FixedMathSharp inherit
+the fix. No fields, helper types, public signatures or persistence formats changed.
+Volume/hash/allocation exceptions remain nontransactional; null rejection alone
+is guaranteed to precede mutation. BVH has no authored serialization/restore path.
+
+**Disposition and compatibility:** The user explicitly selected the same upsert
+contract as spatial hash and octree on 2026-11-21. This replaces the earlier
+deferred choice. Duplicate-key multi-entry ownership is intentionally unsupported;
+callers needing multiple leaves must supply distinct stable keys. False means an
+existing entry was updated, not that the call did nothing. Equal reference keys
+retain the original canonical stored key. The unreleased migration guide records
+this behavior change without claiming publication. Reopen only for an explicit
+multi-entry requirement, a supported consumer relying on the former policy, or
+an invariant/behavior regression under the selected contract.
+
+**Regression evidence:** The old DuplicateKeyHandling_ReplacesOldEntry queried
+only the second non-overlapping region and passed with an orphaned old leaf.
+The strengthened test checks old/new/all regions, Count, result flags, stable
+leaf/storage identity, ordinary/buffered query equivalence, repeated removal and
+reinsertion, both root-only and multi-leaf trees, and same/moved bounds. Further
+cases cover null snapshots before mutation, colliding equal reference keys,
+canonical retention, Clear/reuse, key zero/default point bounds, custom typed
+volumes, fixed generic/wrapper paths and warmed allocation. All 9 core and 3
+companion `KeyPolicy_` cases failed against unfixed source for the intended
+return/null/ownership behavior. After the fix, the `FullyQualifiedName~SwiftBVH`
+focused suites passed 59 core and 7 companion tests.
+
+**Full validation:** Windows x64, SDK 10.0.302/runtime 10.0.10, package mode
+(`UseLocalLsfStack=false`, `DisableTransitiveProjectReferences=false`). From the
+repository root, run `dotnet build SwiftCollections.slnx -c CONFIG` with those
+properties, then each test project with `dotnet test tests/PROJECT/PROJECT.csproj
+-c CONFIG --no-build --collect:"XPlat Code Coverage" --settings
+tests/PROJECT/coverlet.runsettings --results-directory FRESH_RESULTS` and the
+same properties. Run `.assets/scripts/assert-full-coverage.ps1 -CoverageDirectory
+FRESH_RESULTS` after both projects; use a separate fresh directory for each
+configuration. The unchanged strict gate passed, including every reported point.
+
+| Configuration | Core tests | Companion tests | Core lines | Core branches | Core executable methods | Companion lines / branches / methods |
+| --- | ---: | ---: | --- | --- | --- | --- |
+| Release | 1960 | 46 | 6029/6029 | 2862/2862 | 1259/1259 | 121/121; 62/62; 35/35 |
+| ReleaseLean | 1852 | 46 | 5835/5835 | 2786/2786 | 1218/1218 | 121/121; 62/62; 35/35 |
+| Debug | 1958 | 46 | 7961/7961 | 2870/2870 | 1259/1259 | 155/155; 62/62; 35/35 |
+
+No tests failed or were skipped, and no exclusions or coverage/CI policy changed.
+The focused red command uses `--filter FullyQualifiedName~KeyPolicy_` before the
+runtime fix; the green command uses `--filter FullyQualifiedName~SwiftBVH` after
+it. Build warnings are pre-existing in untouched committed test code:
+`xUnit2013` at SwiftSlotMap.Tests.cs:138 (all configurations) and `xUnit1026` for
+the unused `binary` theory parameter at SwiftObservableDictionary.Tests.cs:220
+(Lean only). No introduced build errors or warnings were observed.
+
+**Downstream compatibility:** Source review and focused coordinated-source runs
+cover the real BVH consumers. Gravitas PhysicsMesh clears each triangle tree and
+inserts unique integer triangle indices; GridForge GridSpatialIndex rejects
+already-owned grid IDs, and sparse voxel storage inserts unique owned Voxel
+references. These callers ignore Insert's Boolean result and do not depend on
+multiple equal leaves. Both test output directories were hash-checked against
+the exact source-built core and companion DLLs before returning to package mode.
+
+- GridForge `24ca0f51600c3f1ade727bc1e57ac85d2b22c2b3`: filter
+  `FullyQualifiedName~GridSpatialIndexTests|FullyQualifiedName~SparseVoxelGridTests`,
+  56/56 Release and 56/56 ReleaseLean.
+- Gravitas `556d4051e19560720231a58b5c5b79c6ab9fc22d`: filter
+  `FullyQualifiedName~PhysicsMesh|FullyQualifiedName~MeshTriangleQueryAllocationTests|FullyQualifiedName~MeshAuthored`,
+  268/268 Release and 267/267 ReleaseLean.
+
+For either consumer, run `dotnet test tests/OWNER.Tests/OWNER.Tests.csproj
+-c CONFIG -f net10.0 -p:UseLocalLsfStack=true
+-p:DisableTransitiveProjectReferences=true -m:1 --filter FILTER` from its checkout.
+Sibling source revisions were Chronicler
+`0281469ecc40e65a05867f473bc10f030e7f69f8` and FixedMathSharp
+`b501340558c6132484be2f40957233c1b3d29cab`. Existing consumer workflow/guidance
+edits and GridForge's staged AGENTS changes were preserved; no consumer runtime
+source or test changes were needed. These are focused integration checks, not a
+claim of full consumer-suite coverage, hosted CI readiness or a package release.
+
+**Targets, packages and reference:** The full solution built both runtime
+assemblies for `netstandard2.1` and `net10.0` in Release/ReleaseLean (and Debug).
+Explicit `dotnet pack src/OWNER/OWNER.csproj -c CONFIG --no-build --no-restore`
+with package-mode properties produced SwiftCollections, SwiftCollections.Lean,
+SwiftCollections.FixedMathSharp and SwiftCollections.FixedMathSharp.Lean. All
+eight assembly/target/variant DLL and adjacent XML pairs matched the final build
+outputs byte-for-byte; the coverage test DLL inputs also matched those outputs.
+All packaged XML parsed, and Insert parameter names, false-return text and null
+exception were checked in all four core XML variants. Fresh DocFX metadata/site
+built with `dotnet tool run docfx docs/api/docfx.json --warningsAsErrors`, zero
+warnings/errors. Generic BVH and both wrapper pages show the new key contract;
+Insert, Count, Query and inherited member links were inspected. All 1,624 local
+href targets across 104 generated HTML pages resolved.
+
+**Allocation and bounded workload check:** The maintained custom-volume test
+warms 1,000 alternating duplicate-bound updates, then measures another 1,000
+actual Insert calls: zero thread allocations, no newly inserted leaf, Count two.
+It passes in all three configurations. Existing BvhWorkloadBenchmarks.SwiftBVH_Insert
+ran all three sizes (1,024 / 4,096 / 16,384 entries) under BenchmarkDotNet 0.15.8,
+one launch, one warmup and three measured iterations, Windows x64/.NET 10.0.10.
+Means were 511.2 us / 2.1681 ms / 11.4320 ms per newly constructed/populated tree,
+with 336.72 / 1,347.2 / 5,377.1 KiB allocated per tree. All three children exited
+zero and provided all nine expected measured results. This is current-workload
+evidence only; no baseline latency comparison or universal allocation claim is
+made. The new-key path adds the required key lookup; duplicate updates reuse its
+found index without a second lookup. No scan or additional per-entry storage
+was added.
+
+The first benchmark attempts could not generate a child because old ignored
+baseline snapshots supplied duplicate project names. Their two project files
+were temporarily hidden during the accepted run and restored afterward; no
+maintained benchmark/build infrastructure changed. Those incomplete attempts
+are excluded from performance evidence. No source defect was inferred from
+that local artifact collision. Hosted CI, Unity/IL2CPP, other OS/architectures and
+full downstream suites were not run. No release is claimed.
 
 ### SC-Issue-021 - Persist collection comparers across serializers
 

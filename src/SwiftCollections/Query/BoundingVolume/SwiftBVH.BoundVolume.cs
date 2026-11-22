@@ -16,7 +16,7 @@ namespace SwiftCollections.Query;
 /// Key and volume callbacks must not reenter or mutate the index. Bounds are copied and keys are retained;
 /// changing a key's equality/hash breaks lookup. Query ordering depends on current topology and mutation history;
 /// it is not sorted or a serialized order guarantee. Determinism requires deterministic keys, input order and
-/// volume/mapping arithmetic. BVH permits duplicate-key leaves; use unique keys for duplicate-free results.
+/// volume/mapping arithmetic. Each non-null key owns one leaf; inserting an equal key updates its bounds.
 /// </remarks>
 public class SwiftBVH<T> : SwiftBVH<T, BoundVolume>
     where T : notnull

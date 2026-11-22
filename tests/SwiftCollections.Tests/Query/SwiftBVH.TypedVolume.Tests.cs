@@ -8,6 +8,49 @@ namespace SwiftCollections.Query.Tests
     public class SwiftBVHTypedVolumeTests
     {
         [Fact]
+        public void KeyPolicy_TypedVolumeDuplicateUpdatesDefaultBoundsWithoutAllocatingLeaves()
+        {
+            var bvh = new SwiftBVH<int, TestBoundVolume>(8);
+            var moved = new TestBoundVolume(10, 10, 10, 11, 11, 11);
+            Assert.True(bvh.Insert(0, default));
+            Assert.True(bvh.Insert(1, new TestBoundVolume(2, 2, 2, 3, 3, 3)));
+
+            Assert.False(bvh.Insert(0, moved));
+
+            Assert.Equal(2, bvh.Count);
+            var results = new List<int>();
+            bvh.Query(default, results);
+            Assert.Empty(results);
+            bvh.Query(moved, results);
+            Assert.Equal(new[] { 0 }, results);
+            Assert.True(bvh.Remove(0));
+            Assert.False(bvh.Remove(0));
+            Assert.Equal(1, bvh.Count);
+        }
+
+        [Fact]
+        public void KeyPolicy_WarmDuplicateUpdatesDoNotAllocate()
+        {
+            var bvh = new SwiftBVH<int, TestBoundVolume>(8);
+            var first = new TestBoundVolume(0, 0, 0, 1, 1, 1);
+            var second = new TestBoundVolume(10, 10, 10, 11, 11, 11);
+            bvh.Insert(1, first);
+            bvh.Insert(2, second);
+            for (int i = 0; i < 1000; i++)
+                bvh.Insert(1, (i & 1) == 0 ? first : second);
+
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            bool inserted = false;
+            for (int i = 0; i < 1000; i++)
+                inserted |= bvh.Insert(1, (i & 1) == 0 ? first : second);
+            long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+            Assert.False(inserted);
+            Assert.Equal(0, allocated);
+            Assert.Equal(2, bvh.Count);
+        }
+
+        [Fact]
         public void InsertAndQuery_WithCustomTypedVolume_ReturnsExpectedMatches()
         {
             var bvh = new SwiftBVH<int, TestBoundVolume>(8);

@@ -66,10 +66,12 @@ index.Query(bounds, results); // Contains "player".
 ```
 
 Clear or reuse result buffers explicitly between independent queries.
-Spatial hash and octree duplicate insertion updates the existing key's bounds
-and returns `false`; BVH currently creates an additional leaf and returns `true`.
-Use unique BVH keys when queries must not append duplicates. None of these calls
-deduplicates against entries already present in the caller's result collection.
+BVH, spatial hash and octree each store one entry per non-null key. `Insert`
+returns `true` for a new key; an equal key updates the existing bounds and returns
+`false`, without increasing `Count` or replacing the stored key. Null insertion
+throws before mutation. Use distinct keys when several entries need equal values.
+None of these queries deduplicates against entries already present in the
+caller's result collection.
 Broad-phase volume matches do not replace your application's narrow-phase shape
 tests. Updates must follow changes to an indexed object's bounds; the index does
 not observe object movement automatically.

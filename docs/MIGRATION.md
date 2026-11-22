@@ -1,5 +1,18 @@
 # SwiftCollections Migration Guide
 
+## BVH key ownership (unreleased)
+
+`SwiftBVH<TKey, TVolume>`, `SwiftBVH<TKey>` and `SwiftFixedBVH<TKey>` now match
+spatial hash and octree key ownership. `Insert` returns `true` only for a new
+key. Reinserting an equal key updates its bounds and returns `false`; it retains
+the original key object and leaf index and leaves `Count` unchanged. Queries no
+longer emit multiple leaves for that key, and one successful removal removes it.
+Use distinct stable keys when you need multiple independently indexed entries.
+Null insertion throws `ArgumentNullException` before changing the tree, matching
+lookup, update and removal. Callers relying on duplicate leaves or an always-true
+return must adapt. No signatures or persistence formats change; no release is
+implied by this entry.
+
 ## Collection comparison metadata (unreleased)
 
 <a id="sorted-list-comparison-metadata-unreleased"></a>
