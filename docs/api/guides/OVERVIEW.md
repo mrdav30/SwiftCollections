@@ -49,10 +49,13 @@ and
 | Rent collections and manage host notifications                                            | [Pools and observable collections](pools-and-observables.md)      |
 | Save explicit state and configure diagnostic output                                       | [Serialization and diagnostics](serialization-and-diagnostics.md) |
 
-For planar broad-phase queries, use `SwiftBVH2D<TKey>` with `BoundVolume2D`, or
-the companion's `SwiftFixedBVH2D<TKey>` with `FixedBoundVolume2D`. Both reuse
-the generic BVH's ownership, result-buffer and node-view contracts. See
-[2D bounds and BVH queries](spatial-queries.md#2d-bounds-and-bvh-queries).
+For planar broad-phase queries, use `SwiftBVH2D<TKey>` or
+`SwiftSpatialHash2D<TKey>` with `BoundVolume2D`. The companion offers
+`SwiftFixedBVH2D<TKey>` and `SwiftFixedSpatialHash2D<TKey>` with
+`FixedBoundVolume2D` for deterministic fixed-point inputs. See
+[2D bounds and BVH queries](spatial-queries.md#2d-bounds-and-bvh-queries) and
+[2D spatial hash queries](spatial-queries.md#2d-spatial-hash-queries) for
+ownership, buffer, mapping and ordering contracts.
 
 ## Clearing And Retained References
 

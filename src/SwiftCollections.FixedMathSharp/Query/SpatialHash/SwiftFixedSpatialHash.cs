@@ -5,7 +5,6 @@
 // See LICENSE file in the project root for full license information.
 //=======================================================================
 
-using System;
 using System.Runtime.CompilerServices;
 using FixedMathSharp;
 
@@ -85,33 +84,9 @@ public class SwiftFixedSpatialHash<T> : SwiftSpatialHash<T, FixedBoundVolume>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public SwiftSpatialHashCellIndex GetCellIndex(Vector3d point) =>
         new(
-            ToCell(point.X, _cellSize),
-            ToCell(point.Y, _cellSize),
-            ToCell(point.Z, _cellSize));
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int ToCell(Fixed64 value, Fixed64 cellSize)
-    {
-        if ((uint)cellSize.m_rawValue == 0U)
-        {
-            int wholeValue = (int)(value.m_rawValue >> 32);
-            int wholeCellSize = (int)(cellSize.m_rawValue >> 32);
-            int wholeQuotient = wholeValue / wholeCellSize;
-            return wholeValue % wholeCellSize < 0
-                ? wholeQuotient - 1
-                : wholeQuotient;
-        }
-
-        long quotient = value.m_rawValue / cellSize.m_rawValue;
-        if (value.m_rawValue % cellSize.m_rawValue < 0L)
-            quotient--;
-
-        if (quotient < int.MinValue)
-            return int.MinValue;
-        if (quotient > int.MaxValue)
-            return int.MaxValue;
-        return (int)quotient;
-    }
+            FixedSpatialHashCellMapping.ToCell(point.X, _cellSize),
+            FixedSpatialHashCellMapping.ToCell(point.Y, _cellSize),
+            FixedSpatialHashCellMapping.ToCell(point.Z, _cellSize));
 
     private sealed class FixedBoundVolumeCellMapper : ISpatialHashCellMapper<FixedBoundVolume>
     {
@@ -119,8 +94,7 @@ public class SwiftFixedSpatialHash<T> : SwiftSpatialHash<T, FixedBoundVolume>
 
         public FixedBoundVolumeCellMapper(Fixed64 cellSize)
         {
-            if (cellSize <= Fixed64.Zero)
-                throw new ArgumentOutOfRangeException(nameof(cellSize), cellSize, "Cell size must be greater than zero.");
+            FixedSpatialHashCellMapping.ValidateCellSize(cellSize);
 
             _cellSize = cellSize;
         }
@@ -140,7 +114,7 @@ public class SwiftFixedSpatialHash<T> : SwiftSpatialHash<T, FixedBoundVolume>
 
         private int ToCell(Fixed64 value)
         {
-            return SwiftFixedSpatialHash<T>.ToCell(value, _cellSize);
+            return FixedSpatialHashCellMapping.ToCell(value, _cellSize);
         }
     }
 }

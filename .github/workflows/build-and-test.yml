@@ -48,7 +48,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: mrdav30/FixedMathSharp
-          ref: 3da3a8ad9964d3e0413080737fec12ba107b48e4
+          ref: 8fdf889322f1bb82501c2afec63d6bb2f304ace2
           path: FixedMathSharp
           persist-credentials: false
 

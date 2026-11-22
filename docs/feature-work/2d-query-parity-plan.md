@@ -1,9 +1,8 @@
 # 2D Query Parity Plan
 
-- **Status:** Phase 1 complete for implemented scope and local
-  Standard/Lean/target gates. Native XY hash and quadtree remain later phases.
-  Hosted/released provider readiness and the unrelated Debug baseline remain
-  separate pending gates.
+- **Status:** Phases 1 and 2 complete for implemented scope and local
+  Standard/Lean/target gates. Quadtree remains Phase 3. Hosted/released provider
+  readiness and historical Debug-baseline resolution remain separate records.
 - **Created:** 2026-11-21.
 - **Owner:** SwiftCollections, with FixedMathSharp owning any new exact geometry
   arithmetic.
@@ -94,16 +93,18 @@ The 2D area-growth backend supplies the dimensional heuristic; no second binary
 tree, node implementation or scratch subsystem is needed.
 
 The
-[spatial hash](../../src/SwiftCollections/Query/SpatialHash/SwiftSpatialHash.cs)
+[shared spatial hash core](../../src/SwiftCollections/Query/SpatialHash/SpatialHashCore.cs)
 owns reusable entry arrays, free-slot reuse, upsert/relocation, key lookup,
-capacity, clear and query-stamp rollover/duplicate suppression. Its
-[mapper](../../src/SwiftCollections/Query/SpatialHash/ISpatialHashCellMapper.cs)
-and protected candidate API explicitly use XYZ cell indices. Production 2D
-storage must use XY keys and XY range loops. A Z=0 mapper alone retains a third
-coordinate and padded neighborhood queries still visit extra Z layers. Keep
-concrete loops at the dimensional boundary; share the ownership and
-candidate-processing mechanics without per-cell delegates or iterator
-allocation.
+capacity, clear and query-stamp rollover/duplicate suppression. The existing
+[XYZ facade](../../src/SwiftCollections/Query/SpatialHash/SwiftSpatialHash.cs)
+and new
+[XY facade](../../src/SwiftCollections/Query/SpatialHash/SwiftSpatialHash2D.cs)
+embed that mutable core. They retain their dimensional mapper and protected
+candidate contracts. Constrained struct grid adapters map ranges and step native
+XY or XYZ cell coordinates without per-cell delegates or iterator allocation.
+Stable facade-bound key-map callbacks observe the current core, rather than a
+copied struct. A Z=0 mapper alone would retain a third coordinate and visit
+extra padded Z layers; the XY owner uses two-coordinate keys.
 
 The [octree](../../src/SwiftCollections/Query/Octree/SwiftOctree.cs) explicitly
 allocates eight children, while most traversal, redistribution and merge loops
@@ -851,6 +852,293 @@ reviewed. Canonical rebuilds preserve all twelve runtime DLL hashes used by the
 four target/variant consumer graphs. No staged/index, commit, CI-policy or
 Chronicler worktree change.
 
-- Phase 2: not started.
+### Phase 2 — native XY spatial hash
+
+Complete for the implemented local scope and gates below. The implementation
+starts from SwiftCollections `4ca068867405b1c1eb76c409eba2043deae71a50` and
+FixedMathSharp `0a81be7b59920d367692eff35e19d4dda1bb2b4b`, with initially clean
+worktrees and empty indexes. Phase 2 changes SwiftCollections only; the provider
+APIs from Phase 1 remain the coordinated-source dependency. Hosted pins and
+released packages retain their separate readiness gates.
+
+The generic and Numerics `SwiftSpatialHash2D` facades, fixed
+`SwiftFixedSpatialHash2D`, XY cell index and mapper implement the frozen
+inventory above. One embedded `SpatialHashCore` now serves both dimensional
+families. `SpatialHashGrid2D` and `SpatialHashGrid3D` provide ordinary
+constrained instance dispatch for mapping and coordinate stepping, compatible
+with C# 11 and netstandard2.1. No extra heap core or per-cell delegate is
+introduced. The core stores neighborhood padding as an integer and reconstructs
+the public options value; this keeps its embedded field layout compact. The
+executed owner-byte and warm-latency controls below establish acceptance for the
+tested workloads, without a universal speed or startup claim.
+
+Runtime growth is ten new files and two changed owners: a net 738 authored
+lines, including XML, or 316 nonblank/noncomment lines. The superseded XYZ
+engine is removed; one engine serves both dimensions. Both grids and the fixed
+mapping helper have production consumers in this phase. No extra heap core,
+per-entry dimension field, per-cell temporary or public dimensional framework.
+
+The companion's existing raw fixed-cell mapping is uplifted into
+`FixedSpatialHashCellMapping`, consumed by both XY and XYZ bounds/point mapping.
+It retains the integral-cell-size fast path, signed floor and Int32 clamping.
+Numerics XY uses widened division and clamping while existing XYZ Numerics
+mapping remains unchanged. Shared mutation code keeps the existing
+nontransactional failure timing, canonical keys, reusable capacity and query
+stamp semantics; no new serializer or state contract is added.
+
+Focused tests cover native cell value semantics, defaults, exact versus
+neighborhood/point candidates, append prefixes, boundary order, negative and
+clamped mapping, invalid inputs, callback failures, stamp rollover, collisions,
+growth, relocation and reuse. Fixed tests compare raw mapping against a
+BigInteger oracle and the existing XYZ mapping. The maintained
+`Query2DSpatialHashBenchmarks` compares public XY queries with a 3D embedding
+and brute-force materialization at 128, 2,048 and 8,192 entries.
+
+The first shared slice and final source received independent read-only
+`ponytail-review` across both facades, grid adapters, mapping helper and tests.
+No confirmed correctness, public API, failure-contract or test-oracle finding
+remains. The final borrowed-span cell loop was reviewed separately: callbacks
+cannot mutate the index, so its private list storage remains stable. Stamp,
+intersection and destination-write ordering are preserved.
+
+#### Builds, tests and strict coverage
+
+Only SwiftCollections source changes in this phase. Serial coordinated-source
+builds use
+`dotnet build SwiftCollections.slnx -c <configuration> -p:UseLocalLsfStack=true -p:DisableTransitiveProjectReferences=true -m:1`.
+Both test projects use their existing runsettings and fresh coverage
+directories; `assert-full-coverage.ps1` passes every lane, including executable
+methods. No exclusions, weakened gate, complexity-register waiver or maintained
+probe infrastructure was added.
+
+| Runtime DLLs exercised              | Core tests | Companion tests | Coverage in both assemblies                 |
+| ----------------------------------- | ---------: | --------------: | ------------------------------------------- |
+| Release / net10.0                   |      2,082 |              74 | 100% lines, branches and executable methods |
+| ReleaseLean / net10.0               |      1,974 |              74 | 100% lines, branches and executable methods |
+| Debug / net10.0                     |      2,080 |              74 | 100% lines, branches and executable methods |
+| Release / actual netstandard2.1     |      2,081 |              74 | 100% lines, branches and executable methods |
+| ReleaseLean / actual netstandard2.1 |      1,973 |              74 | 100% lines, branches and executable methods |
+
+Core covered/valid counts are 6,160/6,160 lines, 2,910/2,910 branches and
+1,333/1,333 executable methods in Release; Lean is 5,966/5,966, 2,834/2,834 and
+1,292/1,292. Debug is 8,131/8,131, 2,918/2,918 and 1,333/1,333. Companion counts
+are 162/162 lines, 64/64 branches and 60/60 methods in both release
+variants/targets; Debug has 201/201 lines and the same branch/method counts.
+
+Both libraries compile for both targets in each release variant, including C# 11
+for netstandard2.1. Disposable copies of the existing test projects run against
+the actual netstandard DLL/PDB graph on .NET 10, with legacy target conditional
+symbols and matching MemoryPack assets. They retain the Phase 1 bridge for
+generated MemoryPack calls and source-root mappings for coverage; no production
+test is replaced. The one net10-only JSON test is inapplicable to the older
+target. This verifies netstandard library execution on a supported host, not a
+nonexistent netstandard runtime or Unity/AOT.
+
+Pre-existing analyzer warnings remain: xUnit2013 at SwiftSlotMap.Tests.cs:138,
+and Lean-only xUnit1026 at SwiftObservableDictionary.Tests.cs:279. They also
+occur in the frozen baseline. Initial extraction checks exposed missing test
+coverage for inverted custom mapper ranges and forwarded getters/capacity;
+focused tests close those gaps. No new test/build failure remains. The
+historical FMS #45 Debug precondition concern and provider Debug allocation
+signal remain Phase 1 baseline evidence; hash mapping does not use those paths.
+Their independent resolution is outside this phase. This pass edits neither
+provider.
+
+#### Provider snapshots and concurrent work
+
+The frozen comparison provider is clean commit
+`0a81be7b59920d367692eff35e19d4dda1bb2b4b`. During this pass, independent
+uncommitted FixedMathSharp changes appeared in `ConvexHullCylinderContact.cs`,
+`WideOrientedBox.CylinderStrictOverlap.cs` and `WideOrientedBox.ScaledHull.cs`,
+with related tests/guidance/CI records. They remove the disputed Debug failure
+and cache box-hull triangle topology; this pass preserves them. The
+production-source diff fingerprint at validation is SHA-256
+`e3a0c7300c1bb27f2c6811ae78ca4266e235004cc5681a76a8012c34e51aa85a`
+(`git diff --binary HEAD -- src/FixedMathSharp`). No upstream full-suite or
+Debug-resolution claim is made here.
+
+Old/new performance controls load the same frozen provider. Source-mode builds
+and their test outputs also exercise the current provider patchset; final
+netstandard coverage and all four consumer replays are repeated with its
+canonical DLL/PDB graph. Both providers retain source identity 0.0.0.0 and the
+same revision-bearing product version. Their whole DLLs differ: the bounded
+metadata comparison finds real WideOrientedBox topology-storage changes, so
+whole-provider equivalence is not claimed. Query-used Fixed64 comparisons and
+FixedBoundBox/FixedBoundArea intersection methods and implementation hints are
+byte-identical in the Standard net10.0 comparison. Current-graph query traces
+also match the frozen graphs. All eight SwiftCollections runtime DLL hashes
+remain stable through canonical rebuilds. Chronicler remains clean.
+
+#### Replay, ownership and footprint
+
+The legacy probe reuses the Phase 0 XYZ seed, six profiles, three sizes, 16
+query windows, cell size eight and mutation history. It additionally checks
+neighborhood candidates, complete exact hit sets, append prefixes, canonical
+keys, growth, remove/reuse and reverse insertion after clear. All **144 ordered
+trace rows** match old/new across all eight baseline/current x variant x target
+graphs; every warmed exact/neighborhood batch allocates zero bytes.
+
+The native XY consumer uses two coordinate draws per entry from seed 0xC0FFEE,
+the same profile transforms and sizes, and the same 16 anchor/window rule. Move
+the first N/4 by (1,1); then remove/reinsert N-1, churn the first N/4 for eight
+remove/reinsert passes, clear and reverse reinsert. Exact hit sets use
+independent endpoint inequalities. Cell/point candidate sets use independent
+floor mapping, with BigInteger raw division for fixed coordinates. Fold result
+counts and ordered keys using the Phase 0 FNV rule, separately for exact,
+neighborhood and point candidates. All **180 lifecycle trace rows** match across
+the four native graphs. All **108 warm allocation rows per graph** (exact,
+neighborhood and point) are zero bytes. Canonical reference identity, cleared
+reference keys, retained entry arrays and cell-table storage are checked.
+
+For fixed N=2,048 moving, initial exact/neighborhood/point traces are
+`76A9FC9DB09549D6` / `91D501EB1C45B18C` / `58A3DBF47D50BF57`. After moving,
+exact is unchanged; neighborhood/point become `508C8A80229F07F3` /
+`D31EF1BC66799392`. Remove/reinsert and bounded churn preserve that row;
+clear/reverse insertion changes the order as permitted.
+
+| Windows x64 public constructor, capacity 16 |  Before |   After |
+| ------------------------------------------- | ------: | ------: |
+| Existing Numerics XYZ, including mapper     | 2,528 B | 2,528 B |
+| Existing fixed XYZ, including mapper        | 2,280 B | 2,280 B |
+| Native Numerics XY, including mapper        |     N/A | 1,568 B |
+| Native fixed XY, including mapper           |     N/A | 1,896 B |
+
+These are average managed allocations over 128 constructions after 32 warmups,
+not retained-heap graph sizes. XY cell values are 8 B versus XYZ's 12 B; native
+entry values are 28 B Numerics and 48 B fixed. Bounded churn preserves
+entry-array identity; clear preserves entry/cell-table capacity, removes
+occupied cells and releases all cell-list and reference-key slots. Refilling can
+allocate new lists. Native mutation controls also compare 612 public-state/query
+trace rows and 324 retained-capacity rows across all four graphs: all match.
+Warm same-bounds upsert/update, contains and no-growth capacity checks allocate
+zero; relocation and cell recreation retain their existing allocation contracts.
+The first cold Numerics insertion sample totals 163,248 B Standard versus
+163,104 B Lean over 512 inserts, identically within each target. Do not turn
+warm results into a zero-allocation cold-setup or mutation promise.
+
+#### Measured shared-core costs
+
+Host: Windows 11 10.0.26300.10075, i7-9700K, .NET SDK 10.0.302 and runtime
+10.0.10 x64. Acceptance timings run without competing builds/tests/profilers.
+Legacy processes disable tiered compilation and use balanced ABBA order, eight
+runs per version. Each sample is 64 batches of 16 exact queries, after warmup,
+using the same history and verified loaded DLLs. At N=2,048, medians in
+microseconds per batch are:
+
+| Profile    | Numerics before/after | Fixed before/after |
+| ---------- | --------------------: | -----------------: |
+| Uniform    |         0.859 / 0.810 |      1.020 / 0.958 |
+| Clustered  |         8.770 / 8.409 |      9.707 / 8.688 |
+| Mixed size |         0.964 / 0.897 |      1.143 / 1.063 |
+| Sparse     |         1.189 / 1.124 |      1.419 / 1.328 |
+| Coincident |     184.841 / 187.139 |  177.260 / 165.169 |
+| Moving     |         0.857 / 0.786 |      1.010 / 0.939 |
+
+The dense Numerics distributions overlap; this does not establish zero overhead
+or a meaningful slowdown. The other tested query profiles are generally lower.
+The first extraction added eight constructor bytes and showed a dense-loop
+signal. Primitive padding storage removes the extra bytes; a local read-only
+span removes repeated list-indexer work without changing cell order or callback
+semantics. Unsupported inline-hint experiments were discarded. No extra heap
+owner or per-cell delegate remains. These bounded controls do not establish
+universal timing equivalence.
+
+A separate balanced mutation control uses four processes per version, all six
+profiles/sizes, two warm passes and 16 measured passes over up to 256 existing
+keys. Moving alternates (9,0,9) and original bounds; remove/reinsert restores
+the same keys. It separates construction, fresh-storage insertion, unchanged
+upsert/update, lookup, movement, removal/reinsertion, no-growth capacity,
+clear/refill and explicit growth. All allocation rows, **612 state/query rows**
+and **324 capacity rows** agree between old/new. Relocation median ratios range
+0.951-1.033, remove/reinsert 0.884-1.029 and clear/refill 0.895-1.117 across the
+tested cases; short operations and individual ranges remain noisy. These are
+bounded observations, not universal latency-equivalence claims.
+
+An initial first-explicit-growth sample mixed code-warm states: old Insert uses
+its public EnsureCapacity, while extracted Insert uses the core method before
+the facade's first explicit call. At N=128 uniform it observed 1.382/3.777 ms
+Numerics and 1.350/2.705 ms fixed before/after for growth plus 128 inserts. This
+is consistent with unmatched first-use compilation, not an isolated steady-state
+growth comparison; exact startup attribution is not established. The
+discriminating control warms the same explicit Grow helper on three independent
+prefilled owners, then times four fresh prefilled owners, excluding
+construction/fill. Warm growth is 185.156/180.274 ns per insert Numerics and
+196.485/168.262 ns fixed at N=128 uniform; at N=2,048 uniform it is
+128.260/127.850 and 140.753/138.916 ns. Allocation totals match. Keep the
+first-use observation distinct; no startup-latency guarantee or runtime fix is
+claimed from it.
+
+#### Native XY query benchmark
+
+The maintained `Query2DSpatialHashBenchmarks` uses unit boxes, seed 0xC0FFEE,
+two draws modulo 1024, capacity N, cell size eight and 32 windows anchored at
+(97*q+13)%N with offsets [-2,+4]. Controls materialize the same caller-owned
+results: native XY, XYZ embedding with Z=[0,1], and brute force. Setup checks
+hit counts independently. BenchmarkDotNet 0.15.8 ShortRun uses one launch, two
+warmups and five measured iterations with the actual build configuration.
+
+| Variant / entries | Native XY | XYZ embedding | Brute force |
+| ----------------- | --------: | ------------: | ----------: |
+| Standard / 128    |  0.898 us |      1.096 us |    5.018 us |
+| Standard / 2,048  |  1.011 us |      1.204 us |  182.773 us |
+| Standard / 8,192  |  1.348 us |      1.635 us |  750.845 us |
+| Lean / 128        |  0.924 us |      1.100 us |    3.812 us |
+| Lean / 2,048      |  1.007 us |      1.221 us |  187.280 us |
+| Lean / 8,192      |  1.283 us |      1.575 us |  739.050 us |
+
+Every method reports zero managed bytes. Both runs complete nine child processes
+with exit zero and 45 actual measured iterations; outlier handling retains 41
+Standard and 43 Lean results. They are sparse-window workload observations, not
+cross-flavor speed claims. Kept child configuration/dependencies are inspected;
+Lean uses the shim and has no MemoryPack.Core runtime dependency.
+
+Child core SHA-256: Standard
+`ce4010218a8e61d5a67bd39267fa2f5ba496c405c908b2f738b376531643a050`; Lean
+`af7f72d252b8e8ea135cc77f76d8f5bef024849fbd5099be61db340edb2543f2`.
+Method-name-plus-IL hashes for both facades, the core/entry, grids, cell index
+and concrete mappers match ordinary outputs: Standard
+`10c768585417e40c6ed15e4bf2f218d6ce13b7bb1b34fac08ce5fd8dca0073c8`; Lean
+`7a9ccf4e24f586f66e6ef76c85054220cd1c9bf8d9aa8aa65c834b9a252632b2`. Whole DLL
+identity across different build paths is not assumed.
+
+#### API, documentation and remaining distribution gates
+
+Existing XYZ public/protected declarations, parameter names, generic constraints
+and protected hooks match the frozen source. The additive inventory is **35
+authored XML entries: 30 core and five companion**, covering five public types,
+all constructors, properties, methods, operators and the protected hook. Every
+entry has a summary and applicable param/typeparam/returns/value tags. Inherited
+members retain the generic owner's identity and correctly specialize their
+volume type in the rendered member list. Accessors/backing fields and the cell's
+implicit default construction are synthesized; no public nested type, indexer,
+partial declaration or generated serializer API was introduced.
+
+All four source-validation package IDs include matching net10.0 and
+netstandard2.1 DLL/XML pairs: SwiftCollections, SwiftCollections.Lean,
+SwiftCollections.FixedMathSharp and SwiftCollections.FixedMathSharp.Lean. All
+eight pairs match ordinary outputs and contain the 30/five additive entries;
+Lean retains its shim without MemoryPack runtime/generator dependencies. These
+are build fixtures, not published release packages or a release decision.
+
+Fresh metadata/site output from the canonical DocFX configuration builds with
+warnings as errors: zero warnings/errors, 113 HTML pages, 1,467 local paths and
+459 local fragments resolve. Existing generated output was preserved before the
+fresh build. An isolated authored-layout preview also passed; its resource
+mapping needed a relative source path. Canonical edit links use tracked docs
+paths. Rendered review covers both XY facades, fixed wrapper, mapper, cell
+operators/properties, inherited links and the spatial guide: parameter names,
+out validity, returns, values, exceptions and links agree with source. Browser
+preview checks the guide at desktop and 390px width and the generic API page;
+code blocks scroll within their container on narrow screens. No theme change.
+
+C# formatter verification and documentation formatting pass; the existing SC
+design-time workspace-load warning remains, with successful real builds. No new
+source defect or unresolved API decision was identified for the bug tracker.
+This phase makes no CI policy, dependency pin, version, index, commit or
+provider source change; concurrent provider work is preserved separately.
+Hosted/provider release readiness still has its separate Phase 1 gates. Actual
+Unity Mono/High-stripping IL2CPP, hosted OS lanes and distribution closeout
+remain Phase 4 requirements; this local result does not close them.
+
 - Phase 3: not started.
 - Phase 4: not started.

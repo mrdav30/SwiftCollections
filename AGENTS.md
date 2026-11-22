@@ -209,6 +209,10 @@ The query structures are runtime indexes, not passive data bags:
 Preserve these expectations:
 
 - Keep query result behavior deterministic and duplicate-safe.
+- XY and XYZ spatial hashes share the embedded mutable `SpatialHashCore`; keep
+  dimensional stepping in their grid adapters. Bind key-map callbacks to the
+  wrapper instance so they read the current core after growth or clear, never a
+  captured struct copy. Reuse the fixed-cell floor/clamp helper in both wrappers.
 - Keep mutable query structures single-owner unless the caller synchronizes
   access externally.
 - Keep all-hit query APIs writing into caller-owned collections.

@@ -32,18 +32,20 @@ without an agreed scope or concrete evidence gate.
 
 ### 2D Query Parity
 
-[2D query parity plan](2d-query-parity-plan.md) — Phase 1 bounds and BVH
-complete; local Standard/Lean and target validation passed. Add Numerics and
-fixed-point 2D bounds, BVH, native XY spatial hash and quadtree families while
-reusing existing ownership and preserving 3D contracts and measured costs.
+[2D query parity plan](2d-query-parity-plan.md) — Phases 1 and 2 complete for
+local bounds, BVH and native XY spatial hash gates; quadtree follows in Phase 3.
+Add Numerics and fixed-point 2D bounds, BVH, native XY spatial hash and quadtree
+families while reusing existing ownership and preserving 3D contracts and
+measured costs.
 
-The next implementation step is Phase 2: native XY spatial hash. API/numeric
-contracts and reuse baselines are frozen; embedded shared owners are the
-selected direction, subject to production performance checks. FixedMathSharp
-owns checked area and exact area-growth operations; local source, hosted
-dependency pins and released packages have separate readiness gates. The plan
-owns the Standard/Lean, target-framework, full-coverage, performance and Unity
-acceptance matrix.
+The spatial hash shares one embedded mutable core between XY and XYZ owners,
+with dimensional mapping and stepping in constrained struct adapters. Local
+Standard/Lean and both target-framework gates pass with full coverage. Quadtree
+implementation follows in Phase 3, with Unity and distribution closeout in
+Phase 4. FixedMathSharp owns checked area and exact area-growth operations;
+local source, hosted dependency pins and released packages have separate
+readiness gates. The plan owns the Standard/Lean, target-framework,
+full-coverage, performance and Unity acceptance matrix.
 
 ## Recently Completed
 

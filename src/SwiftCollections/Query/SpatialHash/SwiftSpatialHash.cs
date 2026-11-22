@@ -5,12 +5,9 @@
 // See LICENSE file in the project root for full license information.
 //=======================================================================
 
-using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Chronicler.Diagnostics;
-using SwiftCollections.Diagnostics;
-using SwiftCollections.Utility;
 
 namespace SwiftCollections.Query;
 
@@ -33,17 +30,8 @@ public class SwiftSpatialHash<TKey, TVolume>
     where TKey : notnull
     where TVolume : struct, IBoundVolume<TVolume>
 {
-    private const string _diagnosticSource = nameof(SwiftSpatialHash<TKey, TVolume>);
-
-    private readonly ISpatialHashCellMapper<TVolume> _cellMapper;
-    private readonly QueryKeyIndexMap<TKey> _keyToEntryIndex;
-    private readonly SwiftDictionary<SwiftSpatialHashCellIndex, SwiftList<int>> _cells;
-    private readonly SwiftIntStack _freeEntries;
-
-    private SpatialHashEntry[] _entries;
-    private int _peakCount;
-    private int _count;
-    private int _queryStamp;
+    // Key-map callbacks must observe this field, never a captured copy of the mutable core.
+    private SpatialHashCore<TKey, TVolume, SwiftSpatialHashCellIndex, SpatialHashGrid3D<TVolume>> _core;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="T:SwiftCollections.Query.SwiftSpatialHash`2" /> class.
@@ -71,34 +59,27 @@ public class SwiftSpatialHash<TKey, TVolume>
     public SwiftSpatialHash(int capacity, ISpatialHashCellMapper<TVolume> cellMapper, SwiftSpatialHashOptions options)
     {
         ChronicleGuard.ThrowIfNull(cellMapper, nameof(cellMapper));
-
-        capacity = SwiftHashTools.NextPowerOfTwo(capacity);
-
-        _cellMapper = cellMapper;
-        _keyToEntryIndex = new QueryKeyIndexMap<TKey>(capacity, MatchesEntryKey, IsAllocatedEntry, GetEntryKey);
-        _cells = new SwiftDictionary<SwiftSpatialHashCellIndex, SwiftList<int>>(capacity);
-        _freeEntries = new SwiftIntStack();
-        _entries = new SpatialHashEntry[capacity];
-        Options = options;
+        _core = new SpatialHashCore<TKey, TVolume, SwiftSpatialHashCellIndex, SpatialHashGrid3D<TVolume>>(
+            capacity, new SpatialHashGrid3D<TVolume>(cellMapper), options, MatchesEntryKey, IsAllocatedEntry, GetEntryKey);
     }
 
     /// <summary>
     /// Gets the number of active entries stored in the spatial hash.
     /// </summary>
     /// <value>The number of indexed distinct keys.</value>
-    public int Count => _count;
+    public int Count => _core.Count;
 
     /// <summary>
     /// Gets the options used by this spatial hash.
     /// </summary>
     /// <value>The constructor-supplied options value; later changes to the caller's copy have no effect.</value>
-    public SwiftSpatialHashOptions Options { get; }
+    public SwiftSpatialHashOptions Options => _core.Options;
 
     /// <summary>
     /// Inserts a key and copied bounds, or updates the bounds of an existing key.
     /// </summary>
-    /// <param name="key">The non-null stable key to insert or locate; reference keys are retained, not
-    /// cloned.</param>
+    /// <param name="key">The non-null stable key to insert or locate. A new key is retained without cloning;
+    /// an equal existing key keeps its original canonical key.</param>
     /// <param name="bounds">The volume in the same caller-defined coordinate space and units as other indexed
     /// bounds; copied by value. No transform is applied.</param>
     /// <returns>true for a new key; false for an existing key whose bounds have nevertheless been
@@ -108,55 +89,22 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// This operation is not transactional if key hashing, volume operations, mapping, or allocation throws.
     /// Existing bounds may be relocated even though false is returned.
     /// </remarks>
-    public bool Insert(TKey key, TVolume bounds)
-    {
-        ChronicleGuard.ThrowIfNull(key, nameof(key));
-
-        int existingIndex = FindEntryIndex(key);
-        if (existingIndex >= 0)
-        {
-            UpdateEntryBounds(existingIndex, bounds);
-            return false;
-        }
-
-        EnsureCapacity(_count + 1);
-
-        int entryIndex = AllocateEntry(key, bounds);
-        AddEntryToCells(entryIndex, bounds);
-        _keyToEntryIndex.Insert(key, entryIndex);
-        _count++;
-        return true;
-    }
+    public bool Insert(TKey key, TVolume bounds) => _core.Insert(key, bounds);
 
     /// <summary>
     /// Removes an entry from the spatial hash.
     /// </summary>
-    /// <param name="key">The non-null stable key to insert or locate; reference keys are retained, not
-    /// cloned.</param>
+    /// <param name="key">The non-null key identifying the entry to remove. This lookup value is not retained.</param>
     /// <returns>true if one matching indexed entry was removed; false if absent, with entries
     /// unchanged.</returns>
     /// <exception cref="T:System.ArgumentNullException">The key is null.</exception>
-    public bool Remove(TKey key)
-    {
-        ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
-
-        int entryIndex = FindEntryIndex(key);
-        if (entryIndex < 0)
-            return false;
-
-        RemoveEntryFromCells(entryIndex, _entries[entryIndex].Bounds);
-        _keyToEntryIndex.Remove(key);
-        _entries[entryIndex].Reset();
-        _freeEntries.Push(entryIndex);
-        _count--;
-        return true;
-    }
+    public bool Remove(TKey key) => _core.Remove(key);
 
     /// <summary>
     /// Updates the bounds for an existing entry.
     /// </summary>
-    /// <param name="key">The non-null stable key to insert or locate; reference keys are retained, not
-    /// cloned.</param>
+    /// <param name="key">The non-null key identifying the entry to update. This lookup value is not retained;
+    /// the original canonical key is preserved.</param>
     /// <param name="newBounds">Replacement bounds in the same coordinate space; copied by value. No transform is
     /// applied.</param>
     /// <returns>true if the key exists, including unchanged bounds; false if absent, without changing
@@ -166,54 +114,26 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// Updates one matching key's bounds; absent keys change nothing. Bounds are copied by value; the caller's
     /// original is not retained. Callback/allocation failures can leave partial mutation.
     /// </remarks>
-    public bool UpdateEntryBounds(TKey key, TVolume newBounds)
-    {
-        ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
-
-        int entryIndex = FindEntryIndex(key);
-        if (entryIndex < 0)
-            return false;
-
-        return UpdateEntryBounds(entryIndex, newBounds);
-    }
+    public bool UpdateEntryBounds(TKey key, TVolume newBounds) => _core.UpdateEntryBounds(key, newBounds);
 
     /// <summary>
     /// Determines whether the spatial hash contains the specified key.
     /// </summary>
-    /// <param name="key">The non-null stable key to insert or locate; reference keys are retained, not
-    /// cloned.</param>
+    /// <param name="key">The non-null key to locate. This lookup value is not retained.</param>
     /// <returns>true if the key is indexed; otherwise false. No entries change.</returns>
     /// <exception cref="T:System.ArgumentNullException">key is null.</exception>
-    public bool Contains(TKey key)
-    {
-        ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
-        return FindEntryIndex(key) >= 0;
-    }
+    public bool Contains(TKey key) => _core.Contains(key);
 
     /// <summary>
     /// Attempts to retrieve the bounds registered for the supplied key.
     /// </summary>
-    /// <param name="key">The non-null stable key to insert or locate; reference keys are retained, not
-    /// cloned.</param>
+    /// <param name="key">The non-null key to locate. This lookup value is not retained.</param>
     /// <param name="bounds">Receives a copy of the stored bounds on success; default(TVolume) when the key is
     /// absent.</param>
     /// <returns>true if the key is indexed and bounds is valid; false if absent, with bounds set to default. No
     /// entries change.</returns>
     /// <exception cref="T:System.ArgumentNullException">key is null.</exception>
-    public bool TryGetBounds(TKey key, out TVolume bounds)
-    {
-        ChronicleGuard.ThrowIfNullGeneric(key, nameof(key));
-
-        int entryIndex = FindEntryIndex(key);
-        if (entryIndex < 0)
-        {
-            bounds = default;
-            return false;
-        }
-
-        bounds = _entries[entryIndex].Bounds;
-        return true;
-    }
+    public bool TryGetBounds(TKey key, out TVolume bounds) => _core.TryGetBounds(key, out bounds);
 
     /// <summary>
     /// Queries the spatial hash and returns only entries whose bounds intersect the supplied query volume.
@@ -229,11 +149,7 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// index from result callbacks. Visits cells in increasing X, then Y, then Z (Z fastest), suppressing repeat
     /// visits of the same stored entry. Tests actual volume intersection after candidate gathering.
     /// </remarks>
-    public void Query(TVolume queryBounds, ICollection<TKey> results)
-    {
-        ChronicleGuard.ThrowIfNull(results, nameof(results));
-        ExecuteQuery(queryBounds, 0, true, results);
-    }
+    public void Query(TVolume queryBounds, ICollection<TKey> results) => _core.Query(queryBounds, results);
 
     /// <summary>
     /// Queries the spatial hash using the supplied query volume plus the configured neighborhood padding.
@@ -250,11 +166,7 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// visits of the same stored entry. Returns cell-neighborhood candidates without testing actual bounds
     /// intersection; padding is clipped to Int32 cell-coordinate limits.
     /// </remarks>
-    public void QueryNeighborhood(TVolume queryBounds, ICollection<TKey> results)
-    {
-        ChronicleGuard.ThrowIfNull(results, nameof(results));
-        ExecuteQuery(queryBounds, Options.NeighborhoodPadding, false, results);
-    }
+    public void QueryNeighborhood(TVolume queryBounds, ICollection<TKey> results) => _core.QueryNeighborhood(queryBounds, results);
 
     /// <summary>
     /// Collects every entry registered in one already-mapped spatial cell.
@@ -269,15 +181,7 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// </remarks>
     protected void CollectCellCandidates(
         SwiftSpatialHashCellIndex cell,
-        ICollection<TKey> results)
-    {
-        ChronicleGuard.ThrowIfNull(results, nameof(results));
-        if (!_cells.TryGetValue(cell, out SwiftList<int> entryIndices))
-            return;
-
-        for (int i = 0; i < entryIndices.Count; i++)
-            results.Add(_entries[entryIndices[i]].Key);
-    }
+        ICollection<TKey> results) => _core.CollectCellCandidates(cell, results);
 
     /// <summary>
     /// Ensures the spatial hash can store the specified number of entries without growing its entry storage.
@@ -285,17 +189,11 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// <param name="capacity">The requested initial storage length in entries. Non-positive values normalize to
     /// one; growth rounds up. Keep capacities below 2^30 and within available array memory.</param>
     /// <remarks>
-    /// Grows only when the normalized requested length exceeds existing storage. No entries are removed; borrowed
-    /// arrays can be detached. Capacity is entry storage, not a no-allocation guarantee for later mutations.
+    /// Grows only when the normalized requested length exceeds existing storage. No entries are removed. Capacity is entry storage,
+    /// not a no-allocation guarantee for later mutations.
     /// </remarks>
     public void EnsureCapacity(int capacity)
-    {
-        capacity = SwiftHashTools.NextPowerOfTwo(capacity);
-        if (capacity <= _entries.Length)
-            return;
-
-        ResizeEntryStorage(capacity);
-    }
+        => _core.EnsureCapacity(capacity);
 
     /// <summary>
     /// Removes all entries and cell registrations from the spatial hash.
@@ -304,219 +202,14 @@ public class SwiftSpatialHash<TKey, TVolume>
     /// Removes all entries and retained keys while preserving reusable entry capacity. Clears occupied-cell lists
     /// and query stamps; subsequent inserts can allocate cell lists.
     /// </remarks>
-    public void Clear()
-    {
-        if (_count == 0)
-            return;
-
-        for (int i = 0; i < _peakCount; i++)
-            _entries[i].Reset();
-
-        _cells.Clear();
-        _keyToEntryIndex.Clear();
-        _freeEntries.Reset();
-        _peakCount = 0;
-        _count = 0;
-        _queryStamp = 0;
-    }
+    public void Clear() => _core.Clear();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private int AllocateEntry(TKey key, TVolume bounds)
-    {
-        int entryIndex;
-        if (_freeEntries.Count > 0)
-            entryIndex = _freeEntries.Pop();
-        else
-            entryIndex = _peakCount++;
-
-        _entries[entryIndex].Key = key;
-        _entries[entryIndex].Bounds = bounds;
-        _entries[entryIndex].IsAllocated = true;
-        _entries[entryIndex].QueryStamp = 0;
-        return entryIndex;
-    }
-
-    private bool UpdateEntryBounds(int entryIndex, TVolume newBounds)
-    {
-        TVolume currentBounds = _entries[entryIndex].Bounds;
-        if (currentBounds.BoundsEquals(newBounds))
-            return true;
-
-        RemoveEntryFromCells(entryIndex, currentBounds);
-        _entries[entryIndex].Bounds = newBounds;
-        AddEntryToCells(entryIndex, newBounds);
-        return true;
-    }
-
-    private void ExecuteQuery(TVolume queryBounds, int padding, bool requireIntersection, ICollection<TKey> results)
-    {
-        if (_count == 0)
-            return;
-
-        int queryStamp = RentQueryStamp();
-        _cellMapper.GetCellRange(queryBounds, out SwiftSpatialHashCellIndex minCell, out SwiftSpatialHashCellIndex maxCell);
-
-        long minX = Math.Max(int.MinValue, (long)minCell.X - padding);
-        long minY = Math.Max(int.MinValue, (long)minCell.Y - padding);
-        long minZ = Math.Max(int.MinValue, (long)minCell.Z - padding);
-        long maxX = Math.Min(int.MaxValue, (long)maxCell.X + padding);
-        long maxY = Math.Min(int.MaxValue, (long)maxCell.Y + padding);
-        long maxZ = Math.Min(int.MaxValue, (long)maxCell.Z + padding);
-
-        for (long x = minX; x <= maxX; x++)
-        {
-            for (long y = minY; y <= maxY; y++)
-            {
-                for (long z = minZ; z <= maxZ; z++)
-                {
-                    var cell = new SwiftSpatialHashCellIndex((int)x, (int)y, (int)z);
-                    ProcessQueryCell(cell, queryBounds, queryStamp, requireIntersection, results);
-                }
-            }
-        }
-    }
-
-    private void ProcessQueryCell(
-        SwiftSpatialHashCellIndex cell,
-        TVolume queryBounds,
-        int queryStamp,
-        bool requireIntersection,
-        ICollection<TKey> results)
-    {
-        if (!_cells.TryGetValue(cell, out SwiftList<int> entryIndices))
-            return;
-
-        for (int i = 0; i < entryIndices.Count; i++)
-            TryAddQueryResult(entryIndices[i], queryBounds, queryStamp, requireIntersection, results);
-    }
-
-    private void TryAddQueryResult(
-        int entryIndex,
-        TVolume queryBounds,
-        int queryStamp,
-        bool requireIntersection,
-        ICollection<TKey> results)
-    {
-        ref SpatialHashEntry entry = ref _entries[entryIndex];
-        if (entry.QueryStamp == queryStamp)
-            return;
-
-        entry.QueryStamp = queryStamp;
-
-        if (requireIntersection && !entry.Bounds.Intersects(queryBounds))
-            return;
-
-        results.Add(entry.Key);
-    }
-
-    private void AddEntryToCells(int entryIndex, TVolume bounds)
-    {
-        _cellMapper.GetCellRange(bounds, out SwiftSpatialHashCellIndex minCell, out SwiftSpatialHashCellIndex maxCell);
-
-        for (long x = minCell.X; x <= maxCell.X; x++)
-        {
-            for (long y = minCell.Y; y <= maxCell.Y; y++)
-            {
-                for (long z = minCell.Z; z <= maxCell.Z; z++)
-                {
-                    var cell = new SwiftSpatialHashCellIndex((int)x, (int)y, (int)z);
-                    if (!_cells.TryGetValue(cell, out SwiftList<int> entryIndices))
-                    {
-                        entryIndices = new SwiftList<int>(1);
-                        _cells[cell] = entryIndices;
-                    }
-
-                    entryIndices.Add(entryIndex);
-                }
-            }
-        }
-    }
-
-    private void RemoveEntryFromCells(int entryIndex, TVolume bounds)
-    {
-        _cellMapper.GetCellRange(bounds, out SwiftSpatialHashCellIndex minCell, out SwiftSpatialHashCellIndex maxCell);
-
-        for (long x = minCell.X; x <= maxCell.X; x++)
-        {
-            for (long y = minCell.Y; y <= maxCell.Y; y++)
-            {
-                for (long z = minCell.Z; z <= maxCell.Z; z++)
-                {
-                    var cell = new SwiftSpatialHashCellIndex((int)x, (int)y, (int)z);
-                    RemoveEntryFromCell(cell, entryIndex);
-                }
-            }
-        }
-    }
-
-    private void RemoveEntryFromCell(SwiftSpatialHashCellIndex cell, int entryIndex)
-    {
-        SwiftList<int> entryIndices = _cells[cell];
-        RemoveEntryIndex(entryIndices, entryIndex);
-        if (entryIndices.Count == 0)
-            _cells.Remove(cell);
-    }
-
-    private static void RemoveEntryIndex(SwiftList<int> entryIndices, int entryIndex)
-    {
-        entryIndices.RemoveAt(entryIndices.IndexOf(entryIndex));
-    }
+    private bool MatchesEntryKey(int index, TKey key) => _core.MatchesEntryKey(index, key);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private int FindEntryIndex(TKey key)
-    {
-        return _keyToEntryIndex.Find(key);
-    }
+    private bool IsAllocatedEntry(int index) => _core.IsAllocatedEntry(index);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void ResizeEntryStorage(int newCapacity)
-    {
-        Array.Resize(ref _entries, newCapacity);
-        _cells.EnsureCapacity(newCapacity);
-        _keyToEntryIndex.ResizeAndRehash(newCapacity, _peakCount);
-        SwiftCollectionDiagnostics.Shared.Info($"Resized spatial hash entry storage to {newCapacity} entries.", _diagnosticSource);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private int RentQueryStamp()
-    {
-        if (_queryStamp == int.MaxValue)
-        {
-            for (int i = 0; i < _peakCount; i++)
-                _entries[i].QueryStamp = 0;
-
-            _queryStamp = 0;
-            SwiftCollectionDiagnostics.Shared.Warn($"Query stamp overflow detected. Spatial hash query stamps were reset.", _diagnosticSource);
-        }
-
-        return ++_queryStamp;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private bool MatchesEntryKey(int index, TKey key)
-    {
-        return EqualityComparer<TKey>.Default.Equals(_entries[index].Key, key);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private bool IsAllocatedEntry(int index) => _entries[index].IsAllocated;
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private TKey GetEntryKey(int index) => _entries[index].Key;
-
-    private struct SpatialHashEntry
-    {
-        public TKey Key;
-        public TVolume Bounds;
-        public int QueryStamp;
-        public bool IsAllocated;
-
-        public void Reset()
-        {
-            Key = default!;
-            Bounds = default;
-            QueryStamp = 0;
-            IsAllocated = false;
-        }
-    }
+    private TKey GetEntryKey(int index) => _core.GetEntryKey(index);
 }

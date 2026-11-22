@@ -6,20 +6,22 @@ title: Spatial queries
 
 The query namespace provides mutable broad-phase structures over typed bounds:
 
-| Type                                                         | Best Fit                                                                     |
-| ------------------------------------------------------------ | ---------------------------------------------------------------------------- |
-| `SwiftBVH<TKey>` / `SwiftBVH<TKey, TVolume>`                 | Mixed-size objects, broad intersection queries, and heterogeneous scenes.    |
-| `SwiftBVH2D<TKey>`                                           | Planar intersection queries over native XY bounds, using the same BVH owner. |
-| `SwiftSpatialHash<TKey>` / `SwiftSpatialHash<TKey, TVolume>` | High-churn scenes with mostly uniform object sizes and sparse query windows. |
-| `SwiftOctree<TKey>` / `SwiftOctree<TKey, TVolume>`           | Dynamic scenes with uneven density and repeated regional queries.            |
+| Type                                                             | Best Fit                                                                     |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `SwiftBVH<TKey>` / `SwiftBVH<TKey, TVolume>`                     | Mixed-size objects, broad intersection queries, and heterogeneous scenes.    |
+| `SwiftBVH2D<TKey>`                                               | Planar intersection queries over native XY bounds, using the same BVH owner. |
+| `SwiftSpatialHash<TKey>` / `SwiftSpatialHash<TKey, TVolume>`     | High-churn scenes with mostly uniform object sizes and sparse query windows. |
+| `SwiftSpatialHash2D<TKey>` / `SwiftSpatialHash2D<TKey, TVolume>` | Planar high-churn scenes with native XY cell storage and traversal.          |
+| `SwiftOctree<TKey>` / `SwiftOctree<TKey, TVolume>`               | Dynamic scenes with uneven density and repeated regional queries.            |
 
-The default wrappers use `System.Numerics` `BoundVolume`. The
-`SwiftCollections.FixedMathSharp` package adds fixed-point wrappers for
-deterministic simulations:
+The 3D wrappers use `System.Numerics` `BoundVolume`; 2D wrappers use
+`BoundVolume2D`. The `SwiftCollections.FixedMathSharp` package adds fixed-point
+wrappers for deterministic simulations:
 
 - `SwiftFixedBVH<TKey>`
 - `SwiftFixedBVH2D<TKey>` / `FixedBoundVolume2D`
 - `SwiftFixedSpatialHash<TKey>`
+- `SwiftFixedSpatialHash2D<TKey>`
 - `SwiftFixedOctree<TKey>`
 - `FixedBoundVolume`
 
@@ -33,9 +35,9 @@ materializing an unrepresentable full size. Reading `Size` or `Volume` throws
 itself uses rounded, saturating `Fixed64` multiplication, so valid component
 spans do not guarantee an exact representable cubic volume.
 
-`SwiftFixedSpatialHash<TKey>.GetCellIndex(...)` exposes the hash's exact Q32.32
-floor mapping for callers that must classify bounds with the same cell contract.
-The quotient is then clamped into the signed `int` cell-coordinate range; cell
+The fixed spatial hashes' `GetCellIndex(...)` methods expose exact Q32.32 floor
+mapping for callers that must classify bounds with the same cell contract. The
+quotient is then clamped into the signed `int` cell-coordinate range; cell
 indices are not unbounded raw quotients. `CollectPointCandidates(...)` appends
 every entry from that mapped cell into caller-owned storage without exact-bound
 filtering; use `Query(...)` when exact intersection results are required.
@@ -53,8 +55,9 @@ structures unless you add synchronization externally.
 Use native XY bounds for a planar world. The Numerics pair is `BoundVolume2D` /
 `SwiftBVH2D<TKey>`; the deterministic fixed-point pair is `FixedBoundVolume2D` /
 `SwiftFixedBVH2D<TKey>` in the companion package. Both wrappers specialize
-`SwiftBVH<TKey, TVolume>` rather than owning another tree implementation.
-Spatial hash and octree wrappers currently use 3D bounds.
+`SwiftBVH<TKey, TVolume>` rather than owning another tree implementation. The
+spatial hash also has native XY wrappers, described below. Octree wrappers use
+3D bounds.
 
 ```csharp
 using FixedMathSharp;
@@ -97,6 +100,77 @@ storage that growth can replace, and node indices can be reused after mutation;
 do not modify indexed nodes. Identical fixed inputs, deterministic key behavior
 and mutation history determine query order. There is no cross-backend,
 cross-dimension or persisted-topology order guarantee.
+
+## 2D spatial hash queries
+
+Use `SwiftSpatialHash2D<TKey>` when planar objects have mostly similar sizes and
+you query small windows in a sparse grid. Use `SwiftFixedSpatialHash2D<TKey>`
+for deterministic fixed-point mapping. These owners use two-coordinate cells and
+visit X then Y, with Y changing fastest; they do not embed rectangles into a
+padded 3D grid.
+
+```csharp
+using FixedMathSharp;
+using SwiftCollections;
+using SwiftCollections.Query;
+
+var index = new SwiftFixedSpatialHash2D<int>(capacity: 16, cellSize: new Fixed64(4));
+var player = new FixedBoundVolume2D(new Vector2d(1, 2), new Vector2d(3, 4));
+index.Insert(7, player);
+
+var results = new SwiftList<int>(16);
+index.Query(player, results); // Contains 7 after testing actual rectangle intersection.
+
+results.Clear();
+index.CollectPointCandidates(new Vector2d(0, 0), results);
+// Contains 7 because the player occupies cell (0, 0); the point is outside the player.
+
+index.UpdateEntryBounds(7, new FixedBoundVolume2D(new Vector2d(8, 2), new Vector2d(10, 4)));
+index.Remove(7);
+```
+
+`Query` tests actual intersections and adds each matching indexed key once.
+`QueryNeighborhood` instead returns all candidates in the mapped rectangle plus
+the configured whole-cell padding, without intersection filtering.
+`CollectPointCandidates` returns the occupants of one mapped cell. All append to
+caller-owned results, leave existing entries intact and do not deduplicate
+against the existing prefix. Clear the destination between independent queries.
+
+Constructors without options use `SwiftSpatialHashOptions.Default`, whose
+padding is one. Explicit `default(SwiftSpatialHashOptions)` uses zero padding.
+Both mapped endpoints are inclusive, so touching cell boundaries can register a
+rectangle in more than one cell. Negative fractional coordinates floor toward
+negative infinity. Fixed mapping divides raw coordinates exactly before flooring
+and clamping to signed Int32 cells. Numerics mapping widens the quotient to
+double, then floors and clamps; it does not promise cross-platform lockstep
+determinism. Neighborhood expansion clips to Int32 limits. A broad range still
+visits every mapped cell and can require impractical work.
+
+`Insert` retains one canonical key and returns false after updating an equal
+key's bounds. `UpdateEntryBounds` returns true for an existing key, including
+unchanged bounds, and false for an absent key. `TryGetBounds` returns a copied
+volume on success and writes default on failure. Bounds are copied; use one
+coordinate space and unit system throughout the index. Cell size must be
+positive, and the Numerics cell size must also be finite. `Clear` removes
+registrations and retained keys while preserving reusable entry capacity; later
+inserts can allocate cell lists. `EnsureCapacity` reserves entry slots, not
+every future cell list or result buffer.
+
+For custom volumes, implement `IBoundVolume<TVolume>` and
+`ISpatialHashCellMapper2D<TVolume>`, then construct
+`SwiftSpatialHash2D<TKey, TVolume>`. The retained mapper must return stable,
+ordered inclusive ranges that cover every possible intersection. Derived owners
+can expose the protected `CollectCellCandidates` hook for an already mapped
+`SwiftSpatialHashCellIndex2D`. Keep key, volume and mapper callbacks pure and
+avoid reentry. Mutations are not transactional when callbacks or allocation
+throw; destination failures can leave partially appended output.
+
+Query order follows cells and mutation history rather than sorting keys.
+Identical fixed inputs, deterministic keys and the same mutation history
+determine results within this family. There is no cross-dimension, cross-backend
+or serialized-order guarantee. Synchronize all access externally, including
+queries that mutate duplicate-suppression stamps. Query owners have no
+persistence contract.
 
 ## Insert bounds and query exact intersections
 

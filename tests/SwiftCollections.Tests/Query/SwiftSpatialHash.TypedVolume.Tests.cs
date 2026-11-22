@@ -231,9 +231,7 @@ public class SwiftSpatialHashTypedVolumeTests
             var hash = new SwiftSpatialHash<int, TestBoundVolume>(1, s_unitCellMapper);
             hash.Insert(1, new TestBoundVolume(0, 0, 0, 0.25f, 0.25f, 0.25f));
             hash.Insert(2, new TestBoundVolume(1, 1, 1, 1.25f, 1.25f, 1.25f));
-            typeof(SwiftSpatialHash<int, TestBoundVolume>)
-                .GetField("_queryStamp", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .SetValue(hash, int.MaxValue);
+            SetQueryStamp(hash, int.MaxValue);
 
             var results = new List<int>();
             hash.Query(new TestBoundVolume(0, 0, 0, 2, 2, 2), results);
@@ -260,15 +258,44 @@ public class SwiftSpatialHashTypedVolumeTests
     {
         var hash = new SwiftSpatialHash<int, TestBoundVolume>(2, s_unitCellMapper);
         hash.Insert(1, new TestBoundVolume(0, 0, 0, 1, 1, 1));
-        typeof(SwiftSpatialHash<int, TestBoundVolume>)
-            .GetField("_queryStamp", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .SetValue(hash, int.MaxValue);
+        SetQueryStamp(hash, int.MaxValue);
 
         var results = new List<int>();
         hash.Query(new TestBoundVolume(0, 0, 0, 1, 1, 1), results);
 
         Assert.Single(results);
         Assert.Equal(1, results[0]);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void InvertedCustomRanges_PreserveEmptyLoopsAndPaddingRecovery(int axis)
+    {
+        var mapper = new ControlledRangeMapper { InvalidAxis = axis };
+        var hash = new SwiftSpatialHash<int, TestBoundVolume>(1, mapper);
+        Assert.Equal(1, hash.Options.NeighborhoodPadding);
+        hash.EnsureCapacity(8);
+        hash.EnsureCapacity(0);
+        Assert.True(hash.Insert(1, default));
+        Assert.Equal(1, hash.Count);
+        Assert.True(hash.Contains(1));
+        var results = new List<int> { 77 };
+        hash.Query(default, results);
+        Assert.Equal(new[] { 77 }, results);
+        Assert.True(hash.Remove(1));
+        Assert.Equal(0, hash.Count);
+
+        mapper.InvalidAxis = -1;
+        Assert.True(hash.Insert(2, default));
+        mapper.InvalidAxis = axis;
+        hash.Query(default, results);
+        Assert.Equal(new[] { 77 }, results);
+        hash.QueryNeighborhood(default, results);
+        Assert.Equal(new[] { 77, 2 }, results);
+        mapper.InvalidAxis = -1;
+        Assert.True(hash.Remove(2));
     }
 
     [Fact]
@@ -289,6 +316,15 @@ public class SwiftSpatialHashTypedVolumeTests
         Assert.Empty(results);
         Assert.Throws<ArgumentNullException>(() =>
             hash.CollectCellCandidatesForTest(new SwiftSpatialHashCellIndex(0, 0, 0), null));
+    }
+
+    private static void SetQueryStamp(SwiftSpatialHash<int, TestBoundVolume> hash, int stamp)
+    {
+        FieldInfo field = typeof(SwiftSpatialHash<int, TestBoundVolume>)
+            .GetField("_core", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        object core = field.GetValue(hash)!;
+        core.GetType().GetField("_queryStamp", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(core, stamp);
+        field.SetValue(hash, core);
     }
 
     private sealed class TestSpatialHash : SwiftSpatialHash<int, TestBoundVolume>
@@ -320,5 +356,15 @@ public class SwiftSpatialHashTypedVolumeTests
         }
 
         private int ToCell(float value) => (int)System.MathF.Floor(value / _cellSize);
+    }
+
+    private sealed class ControlledRangeMapper : ISpatialHashCellMapper<TestBoundVolume>
+    {
+        public int InvalidAxis = -1;
+        public void GetCellRange(TestBoundVolume bounds, out SwiftSpatialHashCellIndex minCell, out SwiftSpatialHashCellIndex maxCell)
+        {
+            minCell = new(InvalidAxis == 0 ? 1 : 0, InvalidAxis == 1 ? 1 : 0, InvalidAxis == 2 ? 1 : 0);
+            maxCell = default;
+        }
     }
 }
