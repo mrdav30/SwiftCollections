@@ -1,5 +1,25 @@
 # SwiftCollections Migration Guide
 
+## FixedMathSharp v9 dependency alignment (unreleased)
+
+The FixedMathSharp companion now requires `FixedMathSharp` 9.0.0, or
+`FixedMathSharp.Lean` 9.0.0 for Lean. Its 2D bounds adapter uses the exact
+`FixedBoundArea.Area` and `GetAreaExpansionCost` APIs introduced in v9. The core
+SwiftCollections package still has no FixedMathSharp dependency.
+
+Update the matching Standard or Lean family and rebuild consumers against the
+resolved package graph. `UseLocalLsfStack=true` selects sibling source projects;
+a passing source build does not validate the released-package references.
+Keep source and package validation separate, including netstandard2.1 assets.
+
+FixedMathSharp v9 removes `ToDirection`, rejects zero rotation inputs and
+corrects geometry/numeric edge cases. Review its
+[migration guide](https://github.com/mrdav30/FixedMathSharp/blob/v9.0.0/docs/MIGRATION.md#migrating-from-v8x-to-v9x)
+and verify saved-state/replay expectations at the owning consumer. This
+dependency alignment does not change SwiftCollections collection state schemas
+or imply a downstream release. Update CI source pins after the reviewed
+consumer commits land.
+
 ## BVH key ownership (unreleased)
 
 `SwiftBVH<TKey, TVolume>`, `SwiftBVH<TKey>` and `SwiftFixedBVH<TKey>` now match
