@@ -36,7 +36,25 @@ without an agreed scope or concrete evidence gate.
 
 ## Active Feature Work
 
-No active feature plans.
+### SwiftDenseTicketMap
+
+[SwiftDenseTicketMap plan](swift-dense-ticket-map-plan.md) — planned dense value
+storage with collection-owned generational tickets. Combine compact iteration,
+swap-back removal and stale-ticket checks while retaining existing collection
+contracts and each consumer's domain identity/order rules. Explore a
+complementary externally keyed dense store for optional data sharing an owner's
+tickets; implement the owning map first.
+
+Phase 0 will freeze lifetime, state, capacity and borrowing contracts and
+compare complete storage layouts against existing ticket-map and composed
+baselines. It also records the paired ownership/lifetime checkpoint. The plan
+covers determinism, code reuse, Standard/Lean, both target frameworks,
+serialization, full coverage, realistic usage scenarios and isolated Unity
+verification. An explicit documentation hardening step clarifies when to choose
+slot, ticket, dense-ticket, sparse and packed containers in the existing
+collection guide. External-store implementation and paired-store tests require a
+focused follow-on plan; consumer migrations and ECS coordination remain outside
+this feature.
 
 ## Recently Completed
 
