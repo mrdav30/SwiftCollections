@@ -1,8 +1,8 @@
 # SwiftTicketStore Plan
 
-- **Status:** Phases 0 and 1 complete. The dense store, validated raw state and
-  paired scenarios are implemented with full managed-target coverage. Phase 2
-  persistence hardening is next; final supported-host checks remain in Phase 3.
+- **Status:** Phases 0 through 2 complete. The dense store and persistence paths
+  pass full managed-target coverage and closed-metadata interoperability checks.
+  Phase 3 final hardening, broader documentation and supported-host checks are next.
 - **Created:** 2026-11-23.
 - **Owner:** SwiftCollections core.
 - **Tracking:**
@@ -520,7 +520,7 @@ planning pass; executed Phase 0 evidence follows.
 
 - Phase 0: complete; executed evidence and limits below.
 - Phase 1: complete; implementation and verification evidence below.
-- Phase 2: not started.
+- Phase 2: complete; persistence and interoperability evidence below.
 - Phase 3: not started.
 
 
@@ -908,3 +908,144 @@ pin matches; its Chronicler pin remains
 hosted validation of that different pin. No provider, dependency pin or CI
 policy was changed. No new confirmed out-of-scope defect or benchmark signal
 requires a tracker item. This closes Phase 1 only; Phase 2 is next.
+
+
+## Phase 2 results - persistence
+
+### Scope and implemented contracts
+
+The existing production state constructor, shared Chronicler JSON converter
+and generated MemoryPack paths satisfy the frozen contracts. No runtime source,
+API, wire shape, dependency, CI policy, custom formatter, registry or helper was
+changed. Six maintained serialization test/metadata/DTO files add 1079 lines;
+there is no new maintained benchmark or verification launcher. Existing
+DenseTicketPersistencePayload and DenseTicketPersistenceValue fixtures are
+reused by both codecs, and the paired replay reuses the closed JSON bootstrap.
+
+The 72 new Standard cases comprise 40 JSON, 24 MemoryPack and eight paired-world
+cases; Lean runs the 46 applicable JSON/raw/paired cases. Literal default JSON
+and a literal 50-byte binary control independently pin values [101,202,303],
+indices [0,7,3] and generations [0,UInt32.MaxValue,9]. A separate MemoryPack
+writer checks owner header 1, state header 3 and array ordering without invoking
+the owner/state formatter. Continuations assert exact ticket/value associations,
+swap-back order, stale rejection and occupied-index conflicts.
+
+Tests cover nullable, string/null, reference and reference-containing payloads,
+nested owners/arrays/lists, independent decoded objects, default/null/omitted
+arrays, invalid envelopes and numbers, shape mismatches, invalid/duplicate
+indices (including different generations), oversized object headers and every
+truncated prefix of the 50-byte binary record. Same-length mutable incoming
+payloads exercise structural and truncated by-ref failure. The previous owner,
+associations, raw arrays and ordinary payload objects remain unchanged on the
+covered failures. Successful binary replacement constructs a new owner.
+
+The generated decoder's distinctions are tested rather than normalized away:
+null owner replaces with null; zero-member owner reconstructs the prior logical
+state into a new owner when a destination exists; an explicit empty/null nested
+binary state produces an empty owner. Raw state header zero normalizes arrays,
+whereas a null raw state header yields default null fields. Both are valid empty
+inputs to the owner. JSON State:null rejects. Omitted nonempty parallel state
+arrays fail owner validation. Custom callback effects, reader position and
+partial writer output remain outside replacement atomicity.
+
+A four-owner DTO captures the real issuer and independently ordered
+Position/Velocity/Health stores after scenario step 3. Raw, ordinary JSON,
+closed generated JSON and Standard MemoryPack restore the aggregate before
+publication and replay teardown, ticket reuse, stale removal and two joined
+ticks against the exact golden orders/values above. A deliberately incoherent
+but individually valid aggregate is rejected by the caller's issuer cross-check
+before replacing the published world. Numeric aliases still cannot prove a
+common issuer or capture boundary; no runtime ECS coordination is implied.
+
+Independent first-boundary and completed-test reviews found no source defect
+requiring a runtime change. The serialization guide now documents the store's
+schema, shared closed-metadata recipe, decoder distinctions, failure limits and
+coordinated capture/restore responsibilities. Review corrected wording that
+could imply a canonical dense-order constraint; arbitrary valid dense order is
+preserved. No confirmed defect or new benchmark signal requires a tracker item.
+
+### Builds, tests and strict coverage
+
+The initial Release source build and all 172 focused SwiftTicketStore cases
+passed. Final fresh full solution builds, both test projects and the unchanged
+repository coverage gate then passed in all seven lanes:
+
+| Executed lane | Core tests | Companion tests | Core covered/total lines, branches, executable methods | Companion covered/total lines, branches, executable methods |
+| --- | ---: | ---: | --- | --- |
+| Debug net10.0, local source dependencies | 2420 | 100 | 8674/8674, 3112/3112, 1468/1468 | 257/257, 86/86, 67/67 |
+| Release net10.0, package and source separately | 2422 each | 100 each | 6607/6607, 3104/3104, 1468/1468 | 205/205, 86/86, 67/67 |
+| ReleaseLean net10.0, package and source separately | 2270 each | 100 each | 6409/6409, 3028/3028, 1425/1425 | 205/205, 86/86, 67/67 |
+| Actual netstandard2.1 Release DLLs, package dependencies | 2421 | 100 | 6607/6607, 3104/3104, 1468/1468 | 205/205, 86/86, 67/67 |
+| Actual netstandard2.1 ReleaseLean DLLs, package dependencies | 2269 | 100 | 6409/6409, 3028/3028, 1425/1425 | 205/205, 86/86, 67/67 |
+
+Both runtime assemblies also build as C# 11/netstandard2.1 in Standard/Lean
+source mode. Actual netstandard tests use the same managed-host technique and
+BCL overlays recorded in Phase 1, compiling maintained tests with the selected
+target defines. The existing hash-comparer test-helper dispatch adaptation is
+unchanged. The one NET10-only and two release-only existing test differences
+remain as documented. Canonical commands and each project's coverlet settings
+are those recorded in Phase 1; source restore/build/test consistently pass
+UseLocalLsfStack=true and global DisableTransitiveProjectReferences=true, with
+serial -m:1 builds and separate source/package caches. Package mode explicitly
+selects false for both properties. No coverage exclusions or gate changes were
+added. Existing xUnit2013/Lean xUnit1026 warnings remain; no baseline or introduced
+build/test/coverage failure remains.
+
+### Closed metadata and cross-target exchange
+
+Four disposable hosts bind the actual package-mode Standard/Lean runtime graphs
+for net10.0/netstandard2.1, executing under .NET 10.0.10 on Windows x64 with SDK
+10.0.302. Every process disables JSON reflection before first use and asserts
+that it is disabled. Options register closed store/state converters for int,
+nullable int, string, reference and reference-containing payloads, plus the
+integer issuer. Generated metadata is the complete resolver chain. Nested
+payload/array/list round trips also execute through this closure in every
+process; no reflecting converter fallback is installed.
+
+All four writer processes and twelve reader processes passed: four self reads
+and eight directed exchanges covering net10.0 <-> netstandard2.1 within each
+variant, and Standard <-> Lean at each target. Both directions verify control
+record fields/order and the complete issuer/Position/Velocity/Health replay,
+not merely separate same-host round trips. Standard cross-target directions
+also exchange binary records; Lean directions exchange JSON only. Each selected
+DLL hash and framework binding is checked. Selected control/world JSON bytes
+agree across all four graphs, and Standard binary bytes agree across targets;
+this is evidence for these records, not a universal byte-identity promise. Host
+BCL overlays are the same five
+assemblies documented in Phase 1; LSF and MemoryPack target assets remain those
+of the selected graph. Explicit MemoryPack bootstrap exercises provider
+registration on net10.0 and the generated public RegisterFormatter methods on
+netstandard2.1, including nested payloads and the aggregate.
+
+These executions validate the managed metadata/formatter closures and actual
+netstandard assets, not native AOT, Mono or IL2CPP. Those actual Unity checks
+remain Phase 3. There is no new hot-path runtime work to time in this phase;
+Phase 1's performance/storage evidence remains the baseline, and its maintained
+zero-allocation behavior tests pass in every full lane. Broader timings and the
+inconclusive default-tiered netstandard signal remain Phase 3 work.
+
+### Reference checks and handoff
+
+Fresh DocFX 2.78.5 generation from both Standard Release/net10.0 DLL/XML pairs
+passed with zero warnings/errors. Both runtime assemblies' DLL/XML outputs were
+checked for Release/ReleaseLean and net10.0/netstandard2.1 (eight pairs, covering
+all four package identities). The store's authored API remains the same 32
+fully tagged XML declarations in every target/variant, with 29 rendered and
+three hidden explicit-interface declarations. The generated serializer API
+and synthesized-member exclusions remain exactly those recorded in Phase 1.
+The existing CI reference/branding and local file-link checks pass. The changed
+persistence guide was previewed in the published theme at desktop and 390-pixel
+widths: prose wraps, the literal JSON uses its own code-block scrollbar, and the
+format/omission/failure distinctions remain readable. The exact shared closed-converter Markdown recipe was additionally extracted,
+compiled and executed against all four graphs with JSON reflection disabled.
+
+This phase started clean at 2dabe4ec3f808feb1f222ae3352074194489a19d, index tree
+c3fc02e03e08111a9900c96ce6d96029ac951457. Providers remain unchanged:
+Chronicler 0281469ecc40e65a05867f473bc10f030e7f69f8 and FixedMathSharp
+8fdf889322f1bb82501c2afec63d6bb2f304ace2. The CI pin comparison is unchanged
+from Phase 1: FixedMathSharp matches and Chronicler uses the distinct recorded
+pin; local results do not claim hosted validation of that different revision.
+No upstream change or dependency-pin update is required by this phase. All
+changes remain unstaged/uncommitted. Phase 2 is complete; Phase 3 final
+hardening, broader performance/guide review and actual Unity verification are
+next. Physical maximum arrays and forced OOM remain untested as planned.

@@ -39,13 +39,14 @@ without an agreed scope or concrete evidence gate.
 ### SwiftTicketStore
 
 [Externally keyed dense ticket store plan](swift-ticket-store-plan.md) - packed
-values attached to tickets issued by another owner; Phases 0 and 1 are complete. The
+values attached to tickets issued by another owner; Phases 0 through 2 are complete. The
 accepted name distinguishes local membership from an issuing map's lifetime authority. Dense
 live iteration and a contiguous Values span remain explicit contracts. The
 frozen contracts and measured storage decision select sparse positions, dense
 tickets and packed values, with a narrow shared cold growth policy. The store,
-validated raw state and paired scenarios pass full Standard/Lean managed-target
-coverage; Phase 2 persistence hardening is next.
+validated state and persistence paths pass full Standard/Lean managed-target
+coverage, including closed JSON metadata and cross-target replay. Phase 3 final
+hardening, documentation and supported-host checks are next.
 
 The plan covers optional components, exact ticket matching, explicit teardown
 and coordinated restore, with Standard/Lean, both target frameworks, strict

@@ -21,7 +21,8 @@ Package variants:
 State-backed collection types expose explicit state structs such as
 `SwiftArrayState<T>`, `SwiftSlotMapState<T>`,
 `SwiftDictionaryState<TKey, TValue>`, `SwiftTicketMapState<T>`,
-`SwiftDenseTicketMapState<T>`, and `SwiftSparseMapState<T>`.
+`SwiftDenseTicketMapState<T>`, `SwiftTicketStoreState<T>`, and
+`SwiftSparseMapState<T>`.
 
 State-backed owners implement `Chronicler.IStateBacked<TState>`. Most use
 `Chronicler.Serialization.StateJsonConverterFactory` for JSON: it writes a
@@ -131,11 +132,16 @@ var options = new JsonSerializerOptions {
 options.Converters.Add(
     new StateJsonConverter<SwiftDenseTicketMap<int>, SwiftDenseTicketMapState<int>>(
         static state => new SwiftDenseTicketMap<int>(state)));
+options.Converters.Add(
+    new StateJsonConverter<SwiftTicketStore<int>, SwiftTicketStoreState<int>>(
+        static state => new SwiftTicketStore<int>(state)));
 string denseJson = JsonSerializer.Serialize(source, options);
 
 [JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Metadata)]
 [JsonSerializable(typeof(SwiftDenseTicketMap<int>))]
 [JsonSerializable(typeof(SwiftDenseTicketMapState<int>))]
+[JsonSerializable(typeof(SwiftTicketStore<int>))]
+[JsonSerializable(typeof(SwiftTicketStoreState<int>))]
 internal partial class DenseTicketJsonContext : JsonSerializerContext { }
 ```
 
@@ -169,6 +175,57 @@ DTO is still passive: decode it first, then construct an owner to validate it.
 Failures may advance the reader or leave partial writer output. Custom payload
 serializer side effects are not rolled back. Use matching Standard/Lean
 dependency graphs and verify closed types on the target AOT host.
+
+### Persist externally issued ticket entries
+
+`SwiftTicketStore<T>` saves entries attached to another owner's tickets. Its
+state has three parallel arrays in exact dense order: `DenseValues`,
+`DenseSlots` (external ticket indices), and `DenseGenerations`. Every UInt32
+generation, including zero, is key data. It saves no issuer, liveness information,
+spare capacity or generation history. Ordinary JSON uses the same strict
+one-property `State` envelope as the dense issuing map:
+
+```json
+{"State":{"DenseValues":[101,202,303],"DenseSlots":[0,7,3],"DenseGenerations":[0,4294967295,9]}}
+```
+
+Raw state retains supplied arrays. The owner validates equal lengths, supported
+index bounds and unique indices, then owns shallow copies and rebuilt lookup.
+Duplicate indices fail even when their generations differ. Structural rejection
+throws `ArgumentException` with parameter `state`; JSON shape and numeric
+failures throw `JsonException`. Default/null arrays normalize to empty when
+constructing an owner. Raw snapshots share referenced payload objects; ordinary
+serialization rebuilds payload values without promising object identity or
+alias preservation.
+
+For closed JSON, register the store and state converter/metadata alongside the
+issuer as shown above. Include actual payloads and nested store/aggregate types;
+register closed converters before requesting metadata. Verify the closure with
+JSON reflection disabled before first use. Supported payloads remain the chosen
+serializer's responsibility.
+
+Standard MemoryPack writes one owner member containing the three-member state,
+followed by the arrays. Bootstrap each closed store and state with the same
+net10.0 provider registration or netstandard2.1 generated RegisterFormatter
+pattern described above. Lean retains JSON/raw state and has no MemoryPack
+runtime. The generated binary reader's replacement and failure rules above
+apply to the store too. An explicit empty or null *nested binary state* creates
+an empty store, whereas JSON `"State": null` rejects. A zero-member binary
+*owner* read into an existing destination instead reconstructs its prior logical
+state in a new owner. These are distinct records; normal writers emit all fields.
+Failed binary replacement preserves the previous owner, associations and
+ordinary mutable payloads; reader position, writer output and custom payload
+callback side effects are not transactional.
+
+Capture issuer plus component stores at one caller-controlled structural
+boundary. Restore every participant into locals, check each component ticket
+with the restored issuer, then publish the candidate aggregate. Stores do not
+coordinate capture, remove orphans, or validate issuer liveness themselves.
+An IsValid cross-check catches dead generations but cannot establish a shared
+world or snapshot boundary when numeric tickets alias. Keep that boundary
+explicit and discard commands from abandoned future timelines. The
+[collection guide](collections.md#who-issues-the-identity) explains identity
+ownership and joining stores whose dense orders differ.
 
 ### Preserve sorted-list ordering during serialization
 
@@ -419,6 +476,7 @@ persisted identity.
 | `SwiftSparseSet`, `SwiftSparseMap<T>`                                      | Rebuild sparse membership from dense IDs, rejecting duplicates and invalid IDs; map key/value lengths must agree. Equality is integer identity.                                                                                                                                              |
 | `SwiftSlotMap<T>`, `SwiftTicketMap<T>`                                     | Copy slot/free-index metadata and normalize the high-water mark. Free indices must be unique and disjoint from live entries; these two invariants are not validated. Ticket state also retains generation history. There is no stored comparer.                                              |
 | `SwiftDenseTicketMap<T>`                                                   | Strictly validate dense/slot lengths, ID ranges, uniqueness and live/free/retired ownership; copy arrays and rebuild lookup. Preserve dense order, every issued generation and exact free order. Default/null arrays normalize to empty; reference payloads remain shared through raw state. |
+| `SwiftTicketStore<T>` | Validate parallel value/index/generation lengths and supported unique indices; preserve dense order, copy arrays and rebuild private lookup. All generations are key data. Default/null arrays normalize to empty. Restore does not consult an issuer or restore spare capacity. |
 
 Dimensional array shape checks are described above. `SwiftList<T>.SortInPlace`
 uses a comparer only for that call; a list does not retain it or acquire a
