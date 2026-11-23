@@ -36,20 +36,20 @@ without an agreed scope or concrete evidence gate.
 
 ## Active Feature Work
 
-No active feature plans.
+### SwiftTicketStore
 
-## Deferred Design
+[Externally keyed dense ticket store plan](swift-ticket-store-plan.md) - planned
+packed values attached to tickets issued by another owner. The accepted name
+distinguishes local membership from an issuing map's lifetime authority. Dense
+live iteration and a contiguous Values span remain explicit contracts. Phase 0
+freezes remaining API/conflict rules and measures reuse/storage choices,
+including reducing lookup indirection; implementation has not started.
 
-### Externally keyed dense ticket store
-
-The
-[dense-ticket ownership checkpoint](done/2026-11-23-swift-dense-ticket-map-plan.md#paired-ownership-direction)
-records a complementary store accepting tickets issued elsewhere, with local
-membership separate from issuer liveness. Its name/API and implementation need a
-focused follow-on plan and real paired-store scenarios. A component store must
-not issue agent tickets or advance their generations when removing data; issuer
-validation, teardown and coherent rollback remain explicit ownership boundaries.
-No ECS scheduler or automatic coordination is implied.
+The plan covers optional components, exact ticket matching, explicit teardown
+and coordinated restore, with Standard/Lean, both target frameworks, strict
+coverage and actual Unity verification. It prioritizes shared sparse mechanics
+where contracts agree, while preserving existing collection behavior. Automatic
+ECS coordination, issuer callbacks and consumer migrations remain outside scope.
 
 ## Recently Completed
 
