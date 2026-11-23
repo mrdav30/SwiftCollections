@@ -38,12 +38,13 @@ without an agreed scope or concrete evidence gate.
 
 ### SwiftTicketStore
 
-[Externally keyed dense ticket store plan](swift-ticket-store-plan.md) - planned
-packed values attached to tickets issued by another owner. The accepted name
-distinguishes local membership from an issuing map's lifetime authority. Dense
-live iteration and a contiguous Values span remain explicit contracts. Phase 0
-freezes remaining API/conflict rules and measures reuse/storage choices,
-including reducing lookup indirection; implementation has not started.
+[Externally keyed dense ticket store plan](swift-ticket-store-plan.md) - packed
+values attached to tickets issued by another owner; Phase 0 is complete. The
+accepted name distinguishes local membership from an issuing map's lifetime authority. Dense
+live iteration and a contiguous Values span remain explicit contracts. The
+frozen contracts and measured storage decision select sparse positions, dense
+tickets and packed values, with a narrow shared cold growth policy. Phase 1
+production implementation is next; the store API is not yet implemented.
 
 The plan covers optional components, exact ticket matching, explicit teardown
 and coordinated restore, with Standard/Lean, both target frameworks, strict
