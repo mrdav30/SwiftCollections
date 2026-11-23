@@ -159,6 +159,7 @@ Use the right container for the ownership model:
 | Stable integer slots owned by the container                          | `SwiftSlotMap<T>`                                |
 | Stable handles with stale-reference protection                       | `SwiftTicketMap<T>`                              |
 | Owned generation-checked handles with packed live-value iteration    | `SwiftDenseTicketMap<T>`                         |
+| Packed values keyed by another owner's index/generation tickets      | `SwiftTicketStore<T>`                            |
 | Membership for compact externally owned non-negative integer IDs     | `SwiftSparseSet`                                 |
 | Values attached to compact externally owned non-negative integer IDs | `SwiftSparseMap<T>`                              |
 | Dense unique-value iteration with hash-backed membership             | `SwiftPackedSet<T>`                              |
@@ -170,6 +171,12 @@ issuer: SwiftTicketMap permits matching default tokens and finite generation
 wrap, while SwiftDenseTicketMap rejects default tokens and retires exhausted
 slots. Passing only ticket.Index to a sparse collection drops generation
 validation. Stable identity never promises stable borrowed storage.
+
+SwiftTicketStore owns local entries, not issuer lifetime. It accepts generation
+zero, rejects any occupied-index attachment and never advances generations.
+Validate tickets with the issuer and coordinate attachment/teardown externally.
+SwiftDenseTicketMap and SwiftTicketStore share the bounded cold growth policy
+in `SwiftDenseCapacity`; keep issuer history and store membership separate.
 
 Sparse containers allocate lookup storage based on the highest stored ID. Do not
 use them for arbitrary large IDs unless a benchmark and memory budget justify

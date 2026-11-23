@@ -42,8 +42,8 @@ public sealed partial class SwiftDenseTicketMap<T> : IStateBacked<SwiftDenseTick
     }
 
     /// <summary>The initial live capacity used by the parameterless constructor.</summary>
-    public const int DefaultCapacity = 8;
-    private const int MaxCapacity = 1 << 30;
+    public const int DefaultCapacity = SwiftDenseCapacity.Minimum;
+    private const int MaxCapacity = SwiftDenseCapacity.Maximum;
     private const int Unassigned = int.MinValue;
     private static readonly bool s_clearReleasedValues = RuntimeHelpers.IsReferenceOrContainsReferences<T>();
 
@@ -322,8 +322,8 @@ public sealed partial class SwiftDenseTicketMap<T> : IStateBacked<SwiftDenseTick
     private void Reserve(int capacity)
     {
         int requiredSlots = GetRequiredSlots(_issued, _retired, capacity);
-        int denseCapacity = GetGrowthCapacity(_values.Length, capacity);
-        int slotCapacity = GetGrowthCapacity(_slots.Length, requiredSlots);
+        int denseCapacity = SwiftDenseCapacity.Grow(_values.Length, capacity);
+        int slotCapacity = SwiftDenseCapacity.Grow(_slots.Length, requiredSlots);
         if (denseCapacity == _values.Length && slotCapacity == _slots.Length) return;
 
         T[] values = _values;
@@ -352,14 +352,6 @@ public sealed partial class SwiftDenseTicketMap<T> : IStateBacked<SwiftDenseTick
         long required = Math.Max(issued, retired + requestedLive);
         ChronicleGuard.ThrowIfTrue(required > MaxCapacity, message: "The supported identity budget is exhausted.");
         return (int)required;
-    }
-
-    private static int GetGrowthCapacity(int current, int required)
-    {
-        if (required <= current) return current;
-        long target = Math.Min(MaxCapacity, Math.Max(required, Math.Max(DefaultCapacity, (long)current * 2)));
-        // NextPowerOfTwo uses Int32.MaxValue as its sentinel at the exact supported limit.
-        return Math.Min(MaxCapacity, SwiftHashTools.NextPowerOfTwo((int)target));
     }
 
     /// <summary>Copies live values into a destination after clearing it.</summary>

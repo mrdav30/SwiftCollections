@@ -54,6 +54,8 @@ For reusable registrations or agent records, start with
 [delayed-work and dense-update examples](collections.md#delayed-work-and-dense-agent-updates).
 The guide distinguishes slots, generation-checked tickets, dense ticket owners,
 external IDs and value-based membership, including storage and borrowing costs.
+`SwiftTicketStore<T>` attaches packed values to external tickets with exact
+generation checks; its local membership does not establish issuer liveness.
 
 For planar broad-phase queries, use `SwiftBVH2D<TKey>`,
 `SwiftSpatialHash2D<TKey>`, or `SwiftQuadtree<TKey>` with `BoundVolume2D`. The

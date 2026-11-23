@@ -23,7 +23,8 @@ spatial indexing, deterministic runtimes, and allocation-sensitive tooling.
 - Dense iteration and stable or generation-checked handles for entity-style
   workloads.
 - `SwiftDenseTicketMap<T>` combines owner-issued tickets with packed live
-  values; see the
+  values. `SwiftTicketStore<T>` attaches packed values to externally issued
+  tickets while the caller coordinates issuer lifetime; see the
   [collection selection guide](https://mrdav30.github.io/SwiftCollections/guides/collections.html#tickets-with-dense-iteration)
   for identity ownership, delayed work, dense agent updates and layout
   tradeoffs.

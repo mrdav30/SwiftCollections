@@ -15,7 +15,7 @@ namespace SwiftCollections;
 /// <remarks>
 /// A <see cref="T:SwiftCollections.SwiftTicket" /> consists of an integer index and an unsigned generation value.
 /// This combination helps detect stale references when slots are reused. Tickets carry no collection identity;
-/// use them with their issuing owner or stores explicitly bound to that owner. Generation policy belongs to
+/// use them with their issuing owner or stores the caller explicitly associates with that owner. Generation policy belongs to
 /// the owner: SwiftTicketMap increments with finite wrap, while SwiftDenseTicketMap retires terminal slots.
 /// Reconstructing an older state can revive numeric tickets; tickets do not identify a world or timeline.
 /// </remarks>
