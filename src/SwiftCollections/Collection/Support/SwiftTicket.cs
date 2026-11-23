@@ -10,12 +10,14 @@ using System;
 namespace SwiftCollections;
 
 /// <summary>
-/// Identifies an allocation in its originating ticket map by index and generation.
+/// Identifies an allocation in its issuing owner by index and generation.
 /// </summary>
 /// <remarks>
 /// A <see cref="T:SwiftCollections.SwiftTicket" /> consists of an integer index and an unsigned generation value.
 /// This combination helps detect stale references when slots are reused. Tickets carry no collection identity;
-/// use them only with their originating map. Generation counters are finite.
+/// use them with their issuing owner or stores explicitly bound to that owner. Generation policy belongs to
+/// the owner: SwiftTicketMap increments with finite wrap, while SwiftDenseTicketMap retires terminal slots.
+/// Reconstructing an older state can revive numeric tickets; tickets do not identify a world or timeline.
 /// </remarks>
 public readonly struct SwiftTicket : IEquatable<SwiftTicket>
 {
@@ -33,8 +35,8 @@ public readonly struct SwiftTicket : IEquatable<SwiftTicket>
     /// Creates a ticket containing the supplied index and generation.
     /// </summary>
     /// <param name="index">The signed index stored verbatim; construction performs no validation.</param>
-    /// <param name="generation">The generation stored verbatim. No validation is performed; counters wrap modulo
-    /// 2^32.</param>
+    /// <param name="generation">The generation stored verbatim without validation. Issuance, invalidation and
+    /// terminal-generation behavior belong to the issuing owner.</param>
     public SwiftTicket(int index, uint generation)
     {
         Index = index;

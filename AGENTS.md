@@ -158,6 +158,7 @@ Use the right container for the ownership model:
 | General unique values                                                | `SwiftHashSet<T>`                                |
 | Stable integer slots owned by the container                          | `SwiftSlotMap<T>`                                |
 | Stable handles with stale-reference protection                       | `SwiftTicketMap<T>`                              |
+| Owned generation-checked handles with packed live-value iteration    | `SwiftDenseTicketMap<T>`                         |
 | Membership for compact externally owned non-negative integer IDs     | `SwiftSparseSet`                                 |
 | Values attached to compact externally owned non-negative integer IDs | `SwiftSparseMap<T>`                              |
 | Dense unique-value iteration with hash-backed membership             | `SwiftPackedSet<T>`                              |

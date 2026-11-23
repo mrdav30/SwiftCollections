@@ -1,10 +1,10 @@
 # SwiftDenseTicketMap Plan
 
-- **Status:** Phase 0 complete. Contracts and the intrusive free-slot layout are
-  frozen for implementation, with disposable-prototype evidence recorded below.
-  Phases 1–3 have not started; no new shipped API or production performance
-  result is claimed. Owning and externally keyed collections remain
-  complementary; implement the owning map first.
+- **Status:** Phases 0–1 complete. The direct dense owner, enumerator and
+  minimum validated state are implemented and verified in Standard/Lean and both
+  target frameworks. Full serializer/AOT hardening and final
+  optimization/documentation review remain in Phases 2–3. External-store
+  implementation remains separate.
 - **Created:** 2026-11-22.
 - **Owner:** SwiftCollections core.
 - **Tracking:**
@@ -252,13 +252,14 @@ An above-limit result throws InvalidOperationException before allocation. Add
 passes `(long)Count + 1`, without a separate exhausted-capacity guard. Test the
 shared limit branch with one retired slot and EnsureCapacity(1 << 30), rather
 than a billion-element allocation. After that check, round growth from at least
-eight with doubling, clamped at the limit; handle exact `1 << 30` explicitly
-before using SwiftHashTools.NextPowerOfTwo (which returns Int32.MaxValue there).
-State construction may allocate exact logical lengths; future growth uses this
-rounding policy. Practical allocation can fail below the supported limit. Test
-negative, zero, overflowing and sentinel requests without allocating enormous
-arrays. Do not retain unreachable maximum guards as coverage gaps or add
-test-only public seams.
+eight with doubling, clamped at the limit. Normalize
+SwiftHashTools.NextPowerOfTwo's Int32.MaxValue sentinel with
+Math.Min(MaxCapacity, result) at the exact limit; reuse its arithmetic without a
+separate maximum-only guard. State construction may allocate exact logical
+lengths; future growth uses this rounding policy. Practical allocation can fail
+below the supported limit. Test negative, zero, overflowing and sentinel
+requests without allocating enormous arrays. Do not retain unreachable maximum
+guards as coverage gaps or add test-only public seams.
 
 EnsureCapacity's live reservation must account for retired slots. For example,
 an allocated slot table of length 16 with eight retired slots cannot guarantee
@@ -592,7 +593,8 @@ subsequent experiments. Only this plan and the feature overview are updated in
 Phase 0.
 
 - Phase 0: complete; evidence below.
-- Phases 1–3: not started.
+- Phase 1: complete; evidence below.
+- Phases 2–3: not started.
 
 ## Phase 0 results — 2026-11-22
 
@@ -797,3 +799,225 @@ coordination is carried into runtime code. The collection-selection guide step
 remains required in Phase 3, and the follow-on store extends that same guide
 only when implemented. Runtime growth so far: zero files/lines; maintained
 regression/benchmark additions: zero; production callers migrated: zero.
+
+## Phase 1 results — 2026-11-22
+
+### Implementation and reviewed contracts
+
+Started clean at SwiftCollections `5124138c7986b42c45ec17e39635d14457c8c2fe`
+(index tree `d2fb2bea9ceac021f8a17ecc4ea2415bb7f720d5`). Chronicler
+`0281469ecc40e65a05867f473bc10f030e7f69f8` and FixedMathSharp
+`8fdf889322f1bb82501c2afec63d6bb2f304ace2` remain unchanged. Host/tool versions
+match Phase 0. All changes remain unstaged/uncommitted; existing CI and coverage
+policy are unchanged. No downstream migration or dependency change was needed.
+
+Implemented SwiftDenseTicketMap<T>, its companion nested enumerator and readonly
+four-array State DTO. One direct owner holds values, reverse slot IDs and 8-byte
+generation/position metadata; inactive positions hold free links. Reuses
+SwiftTicket, ChronicleGuard, SwiftHashTools, IStateBacked/clone contracts and
+existing serializer/shim conventions. No allocator framework, runtime stack
+alternative, extra helper package or public restore/setter is introduced.
+
+The first registration → delayed lookup → moved ref update → reuse slice was
+compiled and tested before independent source review and full verification.
+Raw-state validation, all-or-nothing capacity publication, terminal retirement,
+Clear free order, versioning, borrowed views and reference-containing cleanup
+match the frozen contracts. Snapshot/restore arrays are independent while raw
+reference payloads remain shared. The finite mutation version is distinct from
+nonwrapping ticket generation retirement.
+
+Two implementation details were simplified during review: state validation
+checks its budget then allocates metadata for the issued length, so absent
+metadata cannot cause an incidental IndexOutOfRangeException; growth clamps the
+existing helper's exact-limit sentinel without a new untestable maximum branch.
+The same budget validator serves reservation, Add and state construction. The
+state constructor remains cohesive (reviewed complexity10), so it needs no
+complexity exception or coverage waiver.
+
+Three maintained test files exercise the public runtime: focused API and
+lifetime tests, strict state/continuation tests, and realistic registration and
+integer-agent scenarios with the Phase 0 oracles. Churn uses an independent
+membership/value model with a complete ticket bijection; it does not duplicate
+the allocator. Tests cover null/default/duplicate/mutable payloads, value/ref
+updates, moved survivors, invalid and foreign tickets, free order, retired-only
+and near-terminal states, malformed partitions, capacity-only changes, concrete
+and boxed enumeration, destination callback failures and reference release. The
+warmed typed allocation test includes lookup, ref update, dense ticket
+projection, concrete/span traversal, removal/reinsertion and Clear/refill. JSON
+smoke runs in both variants, outside MemoryPack guards; standard owner and
+raw-state MemoryPack smoke compares exact continuation. This is not the full
+Phase 2 serializer/AOT hardening pass.
+
+### Verification results
+
+All five lanes below pass the unchanged assert-full-coverage script over fresh,
+assembly-specific Coverlet reports. Counts are covered/valid; executable methods
+are all covered. There are no skipped tests or excluded new source branches.
+
+| Lane / executed runtime asset                     | Core tests | Companion tests | Core lines | Core branches | Core executable methods | Companion lines / branches / methods |
+| ------------------------------------------------- | ---------- | --------------- | ---------- | ------------- | ----------------------- | ------------------------------------ |
+| Release, net10.0                                  | 2,188      | 100             | 6453/6453  | 3022/3022     | 1434                    | 205/205 / 86/86 / 67                 |
+| ReleaseLean, net10.0                              | 2,079      | 100             | 6257/6257  | 2946/2946     | 1392                    | 205/205 / 86/86 / 67                 |
+| Debug, net10.0                                    | 2,186      | 100             | 8479/8479  | 3032/3032     | 1434                    | 257/257 / 86/86 / 67                 |
+| Release, actual netstandard2.1 DLLs on .NET10     | 2,187      | 100             | 6453/6453  | 3022/3022     | 1434                    | 205/205 / 86/86 / 67                 |
+| ReleaseLean, actual netstandard2.1 DLLs on .NET10 | 2,078      | 100             | 6257/6257  | 2946/2946     | 1392                    | 205/205 / 86/86 / 67                 |
+
+- Full solution builds pass Debug, Release and ReleaseLean, compiling both
+  runtime assemblies for netstandard2.1 (C#11) and net10.0. All four package
+  variants build; all eight runtime DLL/XML pairs are present. Core package
+  build fixtures retain the Lean shim/reference distinction; no package was
+  published.
+- For actual netstandard execution, disposable .NET10 test hosts compile the
+  maintained test sources against snapshot DLL references, not runtime project
+  references. Target-framework attributes, runtime invocation and SHA256 checks
+  verify both runtime assemblies and LSF/MemoryPack inputs in both variants. The
+  host supplies compatible BCL/test dependencies (Json, Encodings.Web,
+  Pipelines, Unsafe, and Immutable in Standard); this is supported-host
+  netstandard execution, not a Unity or an exact netstandard BCL deployment
+  claim. A pre-existing direct-static MemoryPack test helper uses delegates to
+  the same public Serialize/Deserialize methods because the older target
+  interface lacks static abstract dispatch; assertions are unchanged. The
+  one-test target count difference is the existing SwiftTicketMap JSON test
+  guarded by NET10_0_OR_GREATER; new dense-map JSON tests execute in both target
+  lanes.
+- No baseline runtime or test failures were observed. Existing xUnit2013 warning
+  in SwiftSlotMap.Tests.cs:138 remains; Lean additionally reports the existing
+  xUnit1026 warning in SwiftObservableDictionary.Tests.cs:279. No new analyzer
+  warnings remain. A formatter initially loaded an incomplete workspace and
+  removed required imports, causing a transient Lean compile failure; imports
+  were restored and formatting verification rerun with Configuration=Release,
+  TargetFramework=net10.0 and explicit local-source environment flags. All final
+  builds/tests above use the corrected source.
+- Fresh DocFX2.78.5 metadata/site builds with warnings-as-errors: zero warnings
+  or errors. All local links across121 generated HTML pages resolve. Owner,
+  enumerator, State and collection-guide HTML checks confirm parameter names,
+  return/value text, exceptions, borrowed-view contracts and links.
+- All34 new authored XML inventory entries (including partial/nested types and
+  hidden explicit interface members) have their applicable summary/param/
+  typeparam/returns/value tags in each of the four core target/variant XML
+  files. No new operators or indexers exist. Default struct construction is
+  synthesized; standard generated MemoryPack plumbing is outside the authored
+  inventory and existing generated-code coverage policy. Lean exposes the
+  authored API with shim annotations. Full serializer and reference-pattern
+  review remains in the later phases.
+- Targeted dotnet-format verification, Prettier, whitespace and local Markdown
+  links pass. Collection guidance now includes dense-ticket selection, a tested
+  moved-ticket example and its parameterless-Clear behavior. Shared SwiftTicket
+  comments describe owner-specific wrap/retirement policies. Phase 3 still owns
+  the complete selection/documentation hardening step and visual layout checks.
+
+Repository reproduction: for C=Debug/Release/ReleaseLean, build the solution
+with the existing coordinated-source flags, run each maintained test project
+with its own coverlet.runsettings into a fresh shared coverage directory, then
+run the unchanged strict gate. For example:
+
+```powershell
+dotnet build SwiftCollections.slnx -c $C -p:UseLocalLsfStack=true -p:DisableTransitiveProjectReferences=true -m:1
+dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c $C --no-build --no-restore -p:UseLocalLsfStack=true -p:DisableTransitiveProjectReferences=true -m:1 --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.Tests/coverlet.runsettings --results-directory $coverageDirectory/core
+dotnet test tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMathSharp.Tests.csproj -c $C --no-build --no-restore -p:UseLocalLsfStack=true -p:DisableTransitiveProjectReferences=true -m:1 --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.FixedMathSharp.Tests/coverlet.runsettings --results-directory $coverageDirectory/companion
+./.assets/scripts/assert-full-coverage.ps1 -CoverageDirectory $coverageDirectory
+```
+
+To reconstruct the netstandard lane, reference the actual built netstandard DLLs
+from isolated .NET10 test-host projects; compile the same maintained tests with
+NETSTANDARD2_1/OR_GREATER and the appropriate Lean constant, use the original
+runsettings and source-root mapping, then run the same two-assembly gate. Verify
+hashes and framework metadata before claiming target execution. Do not add a
+maintained alternate test harness or change CI policy for this disposable check.
+
+### First-slice performance and storage
+
+A reviewed disposable runner compares the actual new owner with the existing
+ticket map, the Phase 0 composed owner and the BCL external-key control. N=128/
+4096 and peak/live1/4/10 use the same reserved fill/remove trace and checksums
+as Phase 0. Concrete by-value enumeration is now used for all owner comparisons;
+the new Values span is a separate control. Lookup and remove/reinsert cover
+131,072 live values/pairs per batch. A mixed tick performs16 sparse updates at
+index `(tick*17 + k*29) & (N-1)`, one remove/reinsert at `(tick*13) & (N-1)`,
+then a complete concrete value scan. Batch ticks=131072/N. The independent sum
+increases16 per tick, and final per-logical-ticket equality checks distribution,
+including one correctness batch,12 warmups and8 measured batches.
+
+Eight balanced forward/reverse samples per candidate, four fresh processes in
+Standard/Lean/Lean/Standard order, fixed JIT (DOTNET_TieredCompilation=0),
+blocking GC, no competing builds/tests/profilers. Loaded core hashes match the
+assemblies below. Every process completed102 cells and12,901 checks; all408
+cells and **3,264 measured batches** report **0 allocated bytes**. BCL keys are
+preissued and churn reuses the same external key; no ticket-issuance equivalence
+is claimed. This is bounded first-slice evidence, not publication-grade
+universal throughput or a production frame-latency claim.
+
+Ranges below are min–max process medians: scan/lookup ns per live value,
+remove-add ns per pair, mixed ns per tick. Adverse ranges are retained.
+
+| Live N | Peak/live | Kernel     | Existing ticket map | Dense owner     | Composition     | BCL external keys |
+| ------ | --------- | ---------- | ------------------- | --------------- | --------------- | ----------------- |
+| 128    | 1         | scan       | 2.31–2.33           | 0.92–0.92       | 1.17–1.17       | 2.22–2.23         |
+| 128    | 1         | lookup     | 1.17–1.18           | 1.54–1.57       | 2.15–2.27       | 9.19–12.54        |
+| 128    | 1         | remove-add | 8.33–9.30           | 14.19–15.75     | 35.70–39.58     | 27.47–29.84       |
+| 128    | 1         | mixed      | 333.79–348.39       | 173.00–187.55   | 237.45–241.02   | 698.63–752.69     |
+| 128    | 4         | scan       | 5.75–6.10           | 0.92–0.94       | 1.17–1.18       | 2.22–2.25         |
+| 128    | 4         | lookup     | 1.17–1.21           | 1.54–1.56       | 2.15–2.17       | 8.93–9.59         |
+| 128    | 4         | remove-add | 8.41–9.17           | 14.33–16.99     | 36.40–42.38     | 28.92–30.26       |
+| 128    | 4         | mixed      | 767.09–795.46       | 174.07–182.91   | 236.77–241.02   | 691.70–708.98     |
+| 128    | 10        | scan       | 12.54–13.58         | 0.92–0.92       | 1.17–1.19       | 2.22–2.24         |
+| 128    | 10        | lookup     | 1.17–1.18           | 1.54–1.55       | 2.16–2.35       | 9.12–10.19        |
+| 128    | 10        | remove-add | 8.47–8.95           | 13.96–14.48     | 37.16–39.61     | 26.15–28.33       |
+| 128    | 10        | mixed      | 1621.14–1723.29     | 173.63–225.19   | 240.14–242.63   | 680.27–790.53     |
+| 4,096  | 1         | scan       | 2.25–2.38           | 0.86–0.89       | 1.11–1.12       | 2.20–2.56         |
+| 4,096  | 1         | lookup     | 1.17–1.18           | 1.51–1.77       | 2.15–2.22       | 14.43–15.77       |
+| 4,096  | 1         | remove-add | 8.31–8.79           | 14.15–14.95     | 36.03–41.63     | 34.87–36.03       |
+| 4,096  | 1         | mixed      | 9356.25–9846.88     | 3642.19–3701.56 | 4762.50–4942.19 | 9651.56–15839.06  |
+| 4,096  | 4         | scan       | 5.70–6.01           | 0.86–0.87       | 1.12–1.13       | 2.20–3.10         |
+| 4,096  | 4         | lookup     | 1.18–1.22           | 1.52–1.55       | 2.16–2.26       | 14.46–15.66       |
+| 4,096  | 4         | remove-add | 8.34–8.84           | 14.37–15.50     | 38.10–47.58     | 34.24–36.70       |
+| 4,096  | 4         | mixed      | 23634.38–24764.06   | 3639.06–3682.81 | 4778.12–4817.19 | 9607.81–10325.00  |
+| 4,096  | 10        | scan       | 12.61–13.29         | 0.86–1.07       | 1.12–1.13       | 2.23–2.28         |
+| 4,096  | 10        | lookup     | 1.17–1.23           | 1.51–1.53       | 2.16–2.23       | 14.84–15.30       |
+| 4,096  | 10        | remove-add | 8.33–8.55           | 14.64–16.01     | 36.63–39.11     | 34.90–37.22       |
+| 4,096  | 10        | mixed      | 53871.88–56229.69   | 3646.88–3690.62 | 4804.69–4862.50 | 9668.75–10059.38  |
+
+Separate dense-span traversal measures0.27–0.28ns/value at N128 and0.22–0.24ns
+at N4096 across these workloads. The real enumerator includes version checks; it
+must not be compared to the Phase 0 prototype's span as though both measured
+only packing. Lookup and churn remain slower than the existing slot-backed map,
+while concrete iteration and this iteration-heavy mixed lifecycle are faster.
+Existing owners retain their runtime behavior; this new choice is not a blanket
+replacement or universal memory/speed win.
+
+The new Int32 owner retains three arrays: values4*DenseCapacity, reverse IDs
+4*DenseCapacity and metadata8*SlotCapacity bytes, excluding headers. At N4096,
+peak/live1/4/10 yields capacities4096/16384/65536 and payload65,536/262,144/
+1,048,576 bytes. Reference-bearing removed/cleared slots release references;
+capacity does not shrink. Cold construction, snapshot/serialization allocation,
+large payloads, alternate CPU/runtime configurations and broader benchmarks
+remain later-phase work.
+
+| Variant / target             | Core SHA256                                                      | Companion SHA256                                                 |
+| ---------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Release / net10.0            | E7CFE5B2C62231B7C9D0E70C18402646BC4A7C0E9DCB2C8235F66887D5B0FAF7 | 538BAE3662C23DF7F72A657D51004908FFB53A6E5D6CC1D8B5966337DDFE9368 |
+| Release / netstandard2.1     | 76BB529884EDA4068A89A06D2EBA7E6B237824B7BBD291250C8029D44E9B6AC7 | C3502E55B6EA0D6E9DB3BED7AFCD0517ED311F286D8A2B131F46B8FCCE6FFBF3 |
+| ReleaseLean / net10.0        | 348E683D7118D5883C15D327B9AEF81309FB5DD3A683F071A69604FF9CF4B17B | D8EF025B243B89234663E6EC932F9FFD75F9E7D3A5DAAF1F1DF9566459CEDEF4 |
+| ReleaseLean / netstandard2.1 | FAA08654795F70283761A63BD046DD932FCCD8DAB331C3FC5B24D794C54295DB | 14E1DB75C4668B830BCAB497C46B8245F3AFD02B9ADF6F104FC0F875C6F028EC |
+
+### Review disposition and remaining phases
+
+Independent contract/persistence/test work and ponytail source review found no
+remaining actionable issue after the constructor-length correction. The first
+working slice was reviewed before full verification; final review included
+connected source/tests, caller guidance and measurement-oracle fairness. No new
+out-of-scope defect or attributable benchmark signal was established.
+
+Runtime growth: three new source files,553 total lines including143 XML comment
+lines;339 nonblank noncomment lines. The existing SwiftTicket edit is comments
+only. Three maintained test files were added; no maintained benchmark/harness,
+legacy path, allocator abstraction or migrated production caller was added. No
+duplication required uplifting into a global helper with only a future user.
+
+Phase 1 exits with the selected direct owner and validated raw state fully
+covered in the required lanes. Phase 2 completes serializer/state hardening,
+closed generated metadata and actual AOT-host verification. Phase 3 performs the
+full optimization/hardening review, broader performance work and final
+collection-selection/reference/Unity verification. Those later results, the
+external store and any full ECS coordination are not claimed here. The feature
+remains active; no release or distribution gate is added.

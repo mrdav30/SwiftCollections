@@ -11,7 +11,9 @@ choosing a specialized container.
 ```mermaid
 flowchart TD
     Key{What identifies an item?} -->|Container-owned slot| Stale{Detect stale references?}
-    Stale -->|Yes| Generation[SwiftTicketMap]
+    Stale -->|Yes| Packing{Need packed live iteration?}
+    Packing -->|Yes| Dense[SwiftDenseTicketMap]
+    Packing -->|No| Generation[SwiftTicketMap]
     Stale -->|No| Slot[SwiftSlotMap]
     Key -->|Compact external integer ID| Payload{Attach a value?}
     Payload -->|Yes| Map[SwiftSparseMap]
@@ -37,22 +39,23 @@ intended as blind drop-in replacements. Benchmark the workload you care about,
 especially when custom comparers, string keys, collision behavior, or
 trim/resize patterns are important.
 
-For deterministic work accounting, `SwiftHashSet<T>.EnumerationSlotCount`
-bounds physical slots visited by a full enumeration, including removed
-entries. `SwiftDictionary<TKey, TValue>.LookupProbeLimit` bounds entry probes
-for one key lookup. Sample the bounds from the collection state used by the
-operation and account for the key comparer's work separately.
+For deterministic work accounting, `SwiftHashSet<T>.EnumerationSlotCount` bounds
+physical slots visited by a full enumeration, including removed entries.
+`SwiftDictionary<TKey, TValue>.LookupProbeLimit` bounds entry probes for one key
+lookup. Sample the bounds from the collection state used by the operation and
+account for the key comparer's work separately.
 
 ## Specialized Containers
 
-| Use case                                                        | Better fit                                      | Why                                                                             |
-| --------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------- |
-| Store this object and give me a stable slot                     | `SwiftSlotMap<T>`                               | The container owns integer slot assignment and can reuse freed slots.           |
-| Store this object and protect against stale references          | `SwiftTicketMap<T>`                             | Tickets include index plus generation, so reused slots invalidate old tickets.  |
-| I already have a compact non-negative int ID; track membership  | `SwiftSparseSet`                                | Sparse lookup plus dense key storage gives O(1) membership and dense iteration. |
-| I already have a compact non-negative int ID; attach a value    | `SwiftSparseMap<T>`                             | Sparse lookup maps external IDs to densely stored values.                       |
-| I need dense unique-value iteration with hash-backed membership | `SwiftPackedSet<T>`                             | Values are packed for iteration while membership remains hash-backed.           |
-| IDs are arbitrary, huge, or widely sparse                       | `SwiftHashSet<int>` / `SwiftDictionary<int, T>` | Hash tables avoid allocating sparse arrays up to the highest ID.                |
+| Use case                                                         | Better fit                                      | Why                                                                             |
+| ---------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------- |
+| Store this object and give me a stable slot                      | `SwiftSlotMap<T>`                               | The container owns integer slot assignment and can reuse freed slots.           |
+| Store this object and protect against stale references           | `SwiftTicketMap<T>`                             | Tickets include index plus generation, so reused slots invalidate old tickets.  |
+| Own generation-checked identities and iterate packed live values | `SwiftDenseTicketMap<T>`                        | Surviving tickets remain valid when removal moves the last value into a gap.    |
+| I already have a compact non-negative int ID; track membership   | `SwiftSparseSet`                                | Sparse lookup plus dense key storage gives O(1) membership and dense iteration. |
+| I already have a compact non-negative int ID; attach a value     | `SwiftSparseMap<T>`                             | Sparse lookup maps external IDs to densely stored values.                       |
+| I need dense unique-value iteration with hash-backed membership  | `SwiftPackedSet<T>`                             | Values are packed for iteration while membership remains hash-backed.           |
+| IDs are arbitrary, huge, or widely sparse                        | `SwiftHashSet<int>` / `SwiftDictionary<int, T>` | Hash tables avoid allocating sparse arrays up to the highest ID.                |
 
 Sparse containers are strongest when IDs are compact, non-negative, and
 externally owned by a simulation, ECS, partition, or ticket system. Their memory
@@ -60,15 +63,16 @@ usage scales with the highest stored ID, not only with the number of live IDs.
 
 ## Who issues the identity?
 
-Both map types issue an identity when you call `Add`. Later lookup and removal
-operations take that identity back. The difference is whether it identifies only
-a slot or also the particular allocation occupying that slot.
+Slot and ticket owners issue an identity when you call `Add`. Later lookup and
+removal operations take that identity back. The difference is whether it
+identifies only a slot or also the particular allocation occupying that slot.
 
-| Container           | Identity supplied to `Add`       | Identity returned by `Add`                      | After removal and slot reuse                            |
-| ------------------- | -------------------------------- | ----------------------------------------------- | ------------------------------------------------------- |
-| `SwiftSlotMap<T>`   | None                             | An integer slot index                           | The old index can refer to the replacement value        |
-| `SwiftTicketMap<T>` | None                             | A `SwiftTicket` containing index and generation | The old ticket is rejected while its generation differs |
-| `SwiftSparseMap<T>` | Your externally owned integer ID | None; `TryAdd` reports success                  | The container does not track generations of your ID     |
+| Container                | Identity supplied to `Add`       | Identity returned by `Add`                      | After removal and slot reuse                                                    |
+| ------------------------ | -------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------- |
+| `SwiftSlotMap<T>`        | None                             | An integer slot index                           | The old index can refer to the replacement value                                |
+| `SwiftTicketMap<T>`      | None                             | A `SwiftTicket` containing index and generation | The old ticket is rejected while its generation differs                         |
+| `SwiftDenseTicketMap<T>` | None                             | A `SwiftTicket` containing index and generation | Old tickets fail after removal; terminal generations retire instead of wrapping |
+| `SwiftSparseMap<T>`      | Your externally owned integer ID | None; `TryAdd` reports success                  | The container does not track generations of your ID                             |
 
 ### Stable slots under your ownership
 
@@ -92,8 +96,8 @@ bool found = registrations.TryGetValue(firstSlot, out string value);
 This fits a tightly owned registry whose removal path also clears its callers'
 stored IDs. `InsertAt` can explicitly choose or replace a slot, but adds no
 generation validation. Reinserting a freed slot removes it from free ownership
-in constant time and preserves the reuse order of other freed slots. Use a sparse
-map when attaching values to existing external IDs is the main job.
+in constant time and preserves the reuse order of other freed slots. Use a
+sparse map when attaching values to existing external IDs is the main job.
 
 ### A ticket for one allocation
 
@@ -118,9 +122,47 @@ A ticket identifies one allocation: its index chooses the slot and its
 generation distinguishes allocations of that slot. Preserve both fields when
 storing a ticket. Tickets belong to their originating collection; they carry no
 collection identity and are not globally unique IDs. Generations are finite
-`uint` counters, so this is not an unlimited uniqueness guarantee. Neither
-bucket compacts live values on removal; iteration can scan holes in the
-allocated slot range instead of visiting only live values.
+`uint` counters, so this is not an unlimited uniqueness guarantee. These
+slot-backed maps do not compact live values on removal; iteration can scan holes
+in the allocated slot range instead of visiting only live values.
+
+### Tickets with dense iteration
+
+Use `SwiftDenseTicketMap<T>` when you own registration lifetimes and frequently
+iterate live values after churn. Values can be mutable, duplicate, null or
+default; membership depends on tickets rather than value equality. Removal moves
+the last value into the gap and repairs its lookup, preserving surviving
+tickets:
+
+```csharp
+var registrations = new SwiftDenseTicketMap<int>();
+SwiftTicket removed = registrations.Add(10);
+SwiftTicket survivor = registrations.Add(20);
+registrations.Remove(removed);
+registrations.GetRef(survivor) = 25; // Still identifies the moved value.
+bool staleFound = registrations.TryGet(removed, out _); // false
+SwiftTicket current = registrations.GetTicketAt(0); // survivor
+```
+
+Concrete enumeration and `Values` visit the live dense prefix. Dense positions
+and borrowed refs/spans must be reacquired after structural changes; stable
+tickets do not imply stable addresses or insertion order. Lookup adds a mapping
+hop and swap-back adds removal work, so the slot-backed ticket map remains a
+useful choice for lookup-heavy workloads.
+
+This owner starts generations at one, rejects default tickets, and retires a
+slot at the terminal generation. `Clear` preserves generation history and
+existing free order; newly freed slots follow increasing old dense order and are
+reused from the resulting LIFO. Capacity is retained. The getter-only `State`
+snapshots dense order, all issued generations and free order; construct a new
+owner from it to restore. Snapshots copy arrays shallowly, and reference payload
+objects remain shared. Rewinding state can revive numeric tickets, so discard
+handles from abandoned future states. Tickets carry no owner identity.
+
+`DenseCapacity` counts value storage; `SlotCapacity` also includes retired and
+unissued storage. `EnsureCapacity` reserves for a live population accounting for
+currently retired slots. Later retirement can consume that budget and require
+growth without increasing the peak live count.
 
 ### Values attached to existing IDs
 
@@ -157,8 +199,8 @@ enumerators valid.
 
 ## Clearing And Retained References
 
-Core collections expose `Clear(bool clearRetainedReferences)` alongside their
-existing parameterless clearing operations. Use the explicit option at an
+Many core collections expose `Clear(bool clearRetainedReferences)` alongside
+their existing parameterless clearing operations. Use the explicit option at an
 ownership boundary when old backing slots must release their references:
 
 ```csharp
@@ -179,12 +221,14 @@ scratch.Clear(clearRetainedReferences: true); // Release retained references; ke
 - `FastClear()` remains a count-only operation on the types that support it. It
   does not release stored references.
 
-The explicit option is available on all core collection types. Bidirectional and
-observable collections inherit it through their existing virtual clearing
-behavior. Reference-containing structs receive the same cleanup as reference
-types. Numeric-only payloads require no extra reference scan; `SwiftSparseSet`
-therefore accepts the option without additional work. Full reference cleanup
-does not promise to zero unused numeric storage.
+`SwiftDenseTicketMap<T>` always releases discarded references in Remove and
+Clear and exposes no writable spare range or FastClear path, so it needs only
+parameterless Clear. The other core collection types provide the explicit
+option. Bidirectional and observable collections inherit it through their
+existing virtual clearing behavior. Reference-containing structs receive the
+same cleanup as reference types. Numeric-only payloads require no extra
+reference scan; `SwiftSparseSet` therefore accepts the option without additional
+work. Full reference cleanup does not promise to zero unused numeric storage.
 
 `SwiftTicketMap<T>.Clear()` invalidates live tickets while preserving generation
 history. Both clearing modes preserve subsequent ticket allocation when the

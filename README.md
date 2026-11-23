@@ -22,6 +22,10 @@ spatial indexing, deterministic runtimes, and allocation-sensitive tooling.
   packed sets, sparse sets, and sparse maps.
 - Dense iteration and stable or generation-checked handles for entity-style
   workloads.
+- `SwiftDenseTicketMap<T>` combines owner-issued tickets with packed live
+  values; see the
+  [collection selection guide](https://mrdav30.github.io/SwiftCollections/guides/collections.html#tickets-with-dense-iteration)
+  for the ownership, ordering and lookup tradeoffs.
 - 2D/3D BVH and spatial hash, plus quadtree/octree queries over
   `System.Numerics` bounds.
 - Fixed-point query companions powered by
