@@ -49,6 +49,12 @@ and
 | Rent collections and manage host notifications                                            | [Pools and observable collections](pools-and-observables.md)      |
 | Save explicit state and configure diagnostic output                                       | [Serialization and diagnostics](serialization-and-diagnostics.md) |
 
+For reusable registrations or agent records, start with
+[identity ownership](collections.md#who-issues-the-identity) and the
+[delayed-work and dense-update examples](collections.md#delayed-work-and-dense-agent-updates).
+The guide distinguishes slots, generation-checked tickets, dense ticket owners,
+external IDs and value-based membership, including storage and borrowing costs.
+
 For planar broad-phase queries, use `SwiftBVH2D<TKey>`,
 `SwiftSpatialHash2D<TKey>`, or `SwiftQuadtree<TKey>` with `BoundVolume2D`. The
 companion offers `SwiftFixedBVH2D<TKey>`, `SwiftFixedSpatialHash2D<TKey>`, and

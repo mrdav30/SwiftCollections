@@ -8,18 +8,22 @@ Start with the ownership of IDs and the iteration pattern your workload needs.
 The BCL remains a useful baseline; benchmark representative inputs before
 choosing a specialized container.
 
+When the collection should issue reusable identities, start with this choice.
+The [comparison table](#specialized-containers) also covers externally owned IDs
+and value-based membership. On narrow screens, scroll the diagram horizontally.
+
+<div class="sc-collection-choice" role="region" aria-label="Choose a collection that issues identities" tabindex="0">
+
 ```mermaid
 flowchart TD
-    Key{What identifies an item?} -->|Container-owned slot| Stale{Detect stale references?}
+    Stale{Detect stale references?}
     Stale -->|Yes| Packing{Need packed live iteration?}
     Packing -->|Yes| Dense[SwiftDenseTicketMap]
     Packing -->|No| Generation[SwiftTicketMap]
     Stale -->|No| Slot[SwiftSlotMap]
-    Key -->|Compact external integer ID| Payload{Attach a value?}
-    Payload -->|Yes| Map[SwiftSparseMap]
-    Payload -->|No| Set[SwiftSparseSet]
-    Key -->|Arbitrary key| Hash[SwiftDictionary or SwiftHashSet]
 ```
+
+</div>
 
 ## Core Collections
 
@@ -47,32 +51,42 @@ account for the key comparer's work separately.
 
 ## Specialized Containers
 
-| Use case                                                         | Better fit                                      | Why                                                                             |
-| ---------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------- |
-| Store this object and give me a stable slot                      | `SwiftSlotMap<T>`                               | The container owns integer slot assignment and can reuse freed slots.           |
-| Store this object and protect against stale references           | `SwiftTicketMap<T>`                             | Tickets include index plus generation, so reused slots invalidate old tickets.  |
-| Own generation-checked identities and iterate packed live values | `SwiftDenseTicketMap<T>`                        | Surviving tickets remain valid when removal moves the last value into a gap.    |
-| I already have a compact non-negative int ID; track membership   | `SwiftSparseSet`                                | Sparse lookup plus dense key storage gives O(1) membership and dense iteration. |
-| I already have a compact non-negative int ID; attach a value     | `SwiftSparseMap<T>`                             | Sparse lookup maps external IDs to densely stored values.                       |
-| I need dense unique-value iteration with hash-backed membership  | `SwiftPackedSet<T>`                             | Values are packed for iteration while membership remains hash-backed.           |
-| IDs are arbitrary, huge, or widely sparse                        | `SwiftHashSet<int>` / `SwiftDictionary<int, T>` | Hash tables avoid allocating sparse arrays up to the highest ID.                |
+| Container                                                                                                                                      | Identity and stale-reference policy                                         | Lookup and iteration                                                                 | Storage follows                                                            |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| [SwiftSlotMap&lt;T&gt;](xref:SwiftCollections.SwiftSlotMap`1)                                                                                  | Issues reusable integer slots; callers discard removed indices              | Direct slot lookup; increasing slot order, scanning holes                            | Allocated slot range, including holes and spare capacity                   |
+| [SwiftTicketMap&lt;T&gt;](xref:SwiftCollections.SwiftTicketMap`1)                                                                              | Issues index/generation tickets; finite generations wrap; default can match | Direct slot lookup plus generation check; increasing slot order, scanning holes      | Slot range, values in both live and unused entries, plus free stack        |
+| [SwiftDenseTicketMap&lt;T&gt;](xref:SwiftCollections.SwiftDenseTicketMap`1)                                                                    | Issues index/generation tickets; default is invalid; terminal slots retire  | Slot-to-dense lookup plus generation check; packed live iteration, swap-back removal | Dense value/ID capacity plus issued-slot metadata, including retired slots |
+| [SwiftSparseSet](xref:SwiftCollections.SwiftSparseSet) / [SwiftSparseMap&lt;T&gt;](xref:SwiftCollections.SwiftSparseMap`1)                     | Accept your non-negative integer IDs; no generation checks                  | Sparse-to-dense lookup; packed iteration, swap-back removal                          | Highest ID plus dense capacity                                             |
+| [SwiftPackedSet&lt;T&gt;](xref:SwiftCollections.SwiftPackedSet`1)                                                                              | Uses value equality; equal duplicates rejected                              | Hash-backed membership; packed iteration, swap-back removal                          | Dense capacity plus hash table                                             |
+| [SwiftDictionary&lt;TKey, TValue&gt;](xref:SwiftCollections.SwiftDictionary`2) / [SwiftHashSet&lt;T&gt;](xref:SwiftCollections.SwiftHashSet`1) | Accept arbitrary keys/values under their comparer                           | Hash lookup; no canonical sorted iteration order                                     | Hash table capacity, rather than highest integer key                       |
 
-Sparse containers are strongest when IDs are compact, non-negative, and
-externally owned by a simulation, ECS, partition, or ticket system. Their memory
-usage scales with the highest stored ID, not only with the number of live IDs.
+Slot and sparse lookup is O(1); dense iteration visits Count live entries.
+Hash-table lookup is expected O(1), with comparer and collision costs. In the
+owned slot/ticket maps, Add is amortized O(1); sparse growth also depends on the
+highest ID. Reserve outside a hot loop when allocations are unacceptable. Dense
+removal moves a value, which costs more for a large struct. A slot-backed map
+avoids that move and the extra lookup hop; the dense map avoids scanning holes
+during iteration. Benchmark the actual churn, payload size and
+lookup-to-iteration ratio rather than assuming one layout always wins.
+
+Sparse containers are strongest when IDs are compact and externally owned. Their
+lookup storage grows to the highest ID, so use a dictionary or hash set for huge
+or widely scattered IDs. Use `SwiftList<T>` when ordinary dense indices are
+sufficient and no stable identity is needed.
 
 ## Who issues the identity?
 
-Slot and ticket owners issue an identity when you call `Add`. Later lookup and
-removal operations take that identity back. The difference is whether it
-identifies only a slot or also the particular allocation occupying that slot.
+Slot and ticket owners issue an identity when you call `Add`. Lookup and removal
+take that identity back. `SwiftSparseMap<T>.Add(id, value)` instead accepts an
+ID issued elsewhere; `TryAdd` reports whether that ID was absent. These are
+different ownership models even when the stored payloads look alike.
 
-| Container                | Identity supplied to `Add`       | Identity returned by `Add`                      | After removal and slot reuse                                                    |
-| ------------------------ | -------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------- |
-| `SwiftSlotMap<T>`        | None                             | An integer slot index                           | The old index can refer to the replacement value                                |
-| `SwiftTicketMap<T>`      | None                             | A `SwiftTicket` containing index and generation | The old ticket is rejected while its generation differs                         |
-| `SwiftDenseTicketMap<T>` | None                             | A `SwiftTicket` containing index and generation | Old tickets fail after removal; terminal generations retire instead of wrapping |
-| `SwiftSparseMap<T>`      | Your externally owned integer ID | None; `TryAdd` reports success                  | The container does not track generations of your ID                             |
+Tickets identify allocations, while packed-set membership identifies equal
+values. Dense ticket maps accept duplicate, null, default and mutable payloads
+without hashing them. `SwiftPackedSet<T>` requires non-null unique values whose
+equality/hash identity stays stable while stored. Remove a value before changing
+fields used for set membership, then re-add it; writing its exposed Dense array
+bypasses the lookup and can corrupt membership.
 
 ### Stable slots under your ownership
 
@@ -122,9 +136,14 @@ A ticket identifies one allocation: its index chooses the slot and its
 generation distinguishes allocations of that slot. Preserve both fields when
 storing a ticket. Tickets belong to their originating collection; they carry no
 collection identity and are not globally unique IDs. Generations are finite
-`uint` counters, so this is not an unlimited uniqueness guarantee. These
-slot-backed maps do not compact live values on removal; iteration can scan holes
-in the allocated slot range instead of visiting only live values.
+`uint` counters, so this is not an unlimited uniqueness guarantee.
+`SwiftTicketMap<T>` starts fresh slots at generation zero:
+`default(SwiftTicket)` can match the first live allocation. Removal/Clear
+advances generations, which can wrap back to an older value. Do not use a
+default ticket as an absence marker without a separate presence flag. This
+differs from the dense owner's rules below. Slot-backed maps do not compact live
+values on removal; enumeration scans holes below the slot high-water boundary
+instead of visiting only live values.
 
 ### Tickets with dense iteration
 
@@ -164,6 +183,100 @@ unissued storage. `EnsureCapacity` reserves for a live population accounting for
 currently retired slots. Later retirement can consume that budget and require
 growth without increasing the peak live count.
 
+### Delayed work and dense agent updates
+
+For a tool registry, keep a registration ticket with each queued command.
+Resolve that ticket when the command executes. This scenario follows the
+registration churn tests: removing registration 202 moves 303 in dense storage,
+then a new registration reuses the freed slot with a new generation.
+
+```csharp
+var registrations = new SwiftDenseTicketMap<int>();
+registrations.Add(101);
+SwiftTicket queued = registrations.Add(202);
+SwiftTicket moved = registrations.Add(303);
+registrations.Remove(queued);
+SwiftTicket replacement = registrations.Add(404);
+
+bool applyOldCommand = registrations.TryGet(queued, out _); // false
+int survivor = registrations.GetRef(moved); // 303, despite the dense move
+int next = registrations.GetRef(replacement); // 404, ticket (1, 2)
+// Dense values are now [101, 303, 404].
+```
+
+The ticket protects one registration's lifetime. A physics body, navigation
+request and editor selection can each have their own owner because they start
+and end at different times. Store an application's shared agent ID in each
+record if those registrations need to refer back to the same agent. Do not pass
+a ticket issued by one map to another: matching numeric fields can alias.
+
+An **entity** is an identity for a simulated agent. A **component** is one kind
+of data attached to it, such as position or health; a **component store** holds
+that kind of data for many entities. A single combined agent record is enough
+when those values share a lifetime and are commonly updated together. For
+example, the agent-tick tests update a packed population through `Values`:
+
+```csharp
+using System;
+using SwiftCollections;
+
+var agents = new SwiftDenseTicketMap<(int Id, int Position, int Velocity)>();
+agents.Add((101, 0, 2));
+SwiftTicket removed = agents.Add((202, 10, -1));
+agents.Add((303, 100, 3));
+Advance(agents);
+agents.Remove(removed);
+agents.Add((404, -5, 4));
+Advance(agents);
+Advance(agents);
+// Dense IDs: [101, 303, 404]; positions: [6, 109, 3].
+
+static void Advance(SwiftDenseTicketMap<(int Id, int Position, int Velocity)> agents)
+{
+    Span<(int Id, int Position, int Velocity)> values = agents.Values;
+    for (int i = 0; i < values.Length; i++)
+        values[i].Position += values[i].Velocity;
+}
+```
+
+Apply additions and removals between these loops, then reacquire the span. The
+same initial state and ordered mutations produce the same dense order; that
+order is not sorted, insertion-stable, or independent of mutation order.
+
+Separate optional components become useful when, for example, only some agents
+have health and health can be removed without destroying the agent. Those stores
+need the same externally issued identity. Independently issuing a ticket from
+each dense map does not establish that relationship. The currently implemented
+external-ID choices are sparse containers and dictionaries; the application
+still owns issuer validation, component cleanup and coordinated rollback. These
+collections provide storage primitives rather than an ECS scheduler or automatic
+lifetime coordination.
+
+### Borrowed storage is temporary
+
+Keep tickets or IDs across operations, not dense positions or borrowed
+addresses. For the dense ticket map, reacquire `GetRef`, `Values` and
+`GetTicketAt` positions after structural mutation; a moved value can occupy
+another value's former address. Actual `EnsureCapacity` growth also invalidates
+borrows and enumeration; a no-op reservation preserves them. Writes through a
+ref/span change payloads without advancing the enumerator version.
+
+Slot-backed values are not moved by ordinary removal of another slot, but
+removal, reuse, Clear, resize and restore can invalidate the relevant storage or
+identity. Sparse-map spans also need reacquiring after structural changes, and
+key arrays must never be modified directly. Packed-set spans are read-only
+views; referenced objects still must preserve equality/hash identity. No
+collection's stable handle promises a stable memory address or thread safety.
+Synchronize owner access externally and avoid structural mutation while
+enumerating.
+
+For snapshots, validation, ownership and closed AOT serializer registration, see
+[dense-ticket persistence](serialization-and-diagnostics.md#preserve-dense-ticket-identity-and-reuse).
+The dense owner validates a complete live/free/retired partition and
+reconstructs capacity from logical state. Existing slot/ticket owner state
+constructors have more permissive contracts; do not treat them as equivalent
+validators.
+
 ### Values attached to existing IDs
 
 Use `SwiftSparseMap<T>` when another system already owns compact integer IDs:
@@ -177,6 +290,11 @@ labels.Add(actorId, "player");
 bool found = labels.TryGetValue(actorId, out string label);
 // found is true and label is "player"; the map did not issue actorId.
 ```
+
+Passing only `ticket.Index` as the ID discards its generation. If an agent dies
+and that slot is reused, stale component data can be mistaken for the new
+allocation unless the application removes it and validates the full identity. A
+sparse map is not a generation-aware component store.
 
 Choose `SwiftSparseSet` for membership without a payload. If IDs can be very
 large or widely scattered, use a hash-based collection instead of allocating

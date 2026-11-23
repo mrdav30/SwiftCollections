@@ -111,3 +111,20 @@ body {
 .sc-card p {
   margin-bottom: 0;
 }
+
+.sc-collection-choice {
+  overflow-x: auto;
+}
+
+.sc-collection-choice pre {
+  overflow: visible;
+}
+
+.sc-collection-choice svg {
+  min-width: 40rem;
+}
+
+.sc-collection-choice:focus-visible {
+  outline: 2px solid rgb(var(--sc-violet-rgb));
+  outline-offset: -2px;
+}

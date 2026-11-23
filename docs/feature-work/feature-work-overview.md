@@ -36,29 +36,36 @@ without an agreed scope or concrete evidence gate.
 
 ## Active Feature Work
 
-### SwiftDenseTicketMap
+No active feature plans.
 
-[SwiftDenseTicketMap plan](swift-dense-ticket-map-plan.md) — dense value storage
-with collection-owned generational tickets. Combine compact iteration, swap-back
-removal and stale-ticket checks while retaining existing collection contracts
-and each consumer's domain identity/order rules. Explore a complementary
-externally keyed dense store for optional data sharing an owner's tickets;
-implement the owning map first.
+## Deferred Design
 
-Phases 0–1 are complete: the direct dense owner, value enumerator and validated
-raw state use intrusive free-slot links. Standard/Lean, both target assets and
-Debug pass the strict full-coverage gate, with realistic lifecycle scenarios and
-bounded first-slice performance evidence. Phases 2–3 complete serializer/AOT
-hardening, broader optimization and final documentation/host verification. The
-plan covers determinism, code reuse, Standard/Lean, both target frameworks,
-serialization, full coverage, realistic usage scenarios and isolated Unity
-verification. An explicit documentation hardening step clarifies when to choose
-slot, ticket, dense-ticket, sparse and packed containers in the existing
-collection guide. External-store implementation and paired-store tests require a
-focused follow-on plan; consumer migrations and ECS coordination remain outside
-this feature.
+### Externally keyed dense ticket store
+
+The
+[dense-ticket ownership checkpoint](done/2026-11-23-swift-dense-ticket-map-plan.md#paired-ownership-direction)
+records a complementary store accepting tickets issued elsewhere, with local
+membership separate from issuer liveness. Its name/API and implementation need a
+focused follow-on plan and real paired-store scenarios. A component store must
+not issue agent tickets or advance their generations when removing data; issuer
+validation, teardown and coherent rollback remain explicit ownership boundaries.
+No ECS scheduler or automatic coordination is implied.
 
 ## Recently Completed
+
+### SwiftDenseTicketMap
+
+[Completed SwiftDenseTicketMap plan](done/2026-11-23-swift-dense-ticket-map-plan.md)
+— collection-owned generation-checked tickets with packed live values, swap-back
+removal, terminal-generation retirement and validated state preserving future
+reuse. Standard/Lean and both target assets pass strict full coverage; selected
+JSON/MemoryPack closures also pass Mono and High-stripping IL2CPP.
+
+The [collection guide](../api/guides/collections.md#who-issues-the-identity)
+compares identity ownership, slot-backed lookup, dense iteration, equality,
+borrowing and externally owned IDs. The completed plan retains hardening,
+performance/storage controls and verification limits. Consumer migrations and
+the separate external store remain outside this completed feature.
 
 ### 2D Query Parity
 

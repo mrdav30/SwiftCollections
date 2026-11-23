@@ -25,7 +25,8 @@ spatial indexing, deterministic runtimes, and allocation-sensitive tooling.
 - `SwiftDenseTicketMap<T>` combines owner-issued tickets with packed live
   values; see the
   [collection selection guide](https://mrdav30.github.io/SwiftCollections/guides/collections.html#tickets-with-dense-iteration)
-  for the ownership, ordering and lookup tradeoffs.
+  for identity ownership, delayed work, dense agent updates and layout
+  tradeoffs.
 - 2D/3D BVH and spatial hash, plus quadtree/octree queries over
   `System.Numerics` bounds.
 - Fixed-point query companions powered by
@@ -87,10 +88,15 @@ actors.Remove(player);
 ```
 
 For externally owned compact integer IDs, start with `SwiftSparseSet` or
-`SwiftSparseMap<T>`. For broad-phase queries, start with `SwiftBVH<TKey>`,
-`SwiftSpatialHash<TKey>`, or `SwiftOctree<TKey>`. For a planar world, use
-`SwiftBVH2D<TKey>`, `SwiftSpatialHash2D<TKey>`, or `SwiftQuadtree<TKey>` with
-native XY bounds; matching fixed-point wrappers live in the companion package.
+`SwiftSparseMap<T>`. Choose `SwiftDenseTicketMap<T>` for owned tickets with
+frequent packed live-value updates, or keep `SwiftTicketMap<T>` for direct
+slot-backed lookup. See
+[which collection fits your identity model](https://mrdav30.github.io/SwiftCollections/guides/collections.html#specialized-containers)
+for stale-ticket, storage and borrowing differences. For broad-phase queries,
+start with `SwiftBVH<TKey>`, `SwiftSpatialHash<TKey>`, or `SwiftOctree<TKey>`.
+For a planar world, use `SwiftBVH2D<TKey>`, `SwiftSpatialHash2D<TKey>`, or
+`SwiftQuadtree<TKey>` with native XY bounds; matching fixed-point wrappers live
+in the companion package.
 
 Shared logging and exception guards come from the independent
 `Chronicler.Diagnostics` package. See the

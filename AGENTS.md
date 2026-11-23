@@ -164,6 +164,13 @@ Use the right container for the ownership model:
 | Dense unique-value iteration with hash-backed membership             | `SwiftPackedSet<T>`                              |
 | Arbitrary, huge, or widely sparse integer IDs                        | `SwiftHashSet<int>` or `SwiftDictionary<int, T>` |
 
+Keep the [collection-selection guide](docs/api/guides/collections.md) as the
+canonical explanation of these choices. A ticket's meaning belongs to its
+issuer: SwiftTicketMap permits matching default tokens and finite generation
+wrap, while SwiftDenseTicketMap rejects default tokens and retires exhausted
+slots. Passing only ticket.Index to a sparse collection drops generation
+validation. Stable identity never promises stable borrowed storage.
+
 Sparse containers allocate lookup storage based on the highest stored ID. Do not
 use them for arbitrary large IDs unless a benchmark and memory budget justify
 it.

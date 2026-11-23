@@ -184,7 +184,9 @@ public sealed partial class SwiftDenseTicketMap<T> : IStateBacked<SwiftDenseTick
     /// failure preserves storage, tickets, values and reuse order. Success invalidates enumeration and borrows.</remarks>
     public SwiftTicket Add(T value)
     {
-        Reserve(_count + 1);
+        // Retirement can exhaust slots while dense storage still has room.
+        if (_count == _values.Length || (_freeHead < 0 && _issued == _slots.Length))
+            Reserve(_count + 1);
         int slot;
         if (_freeHead >= 0)
         {

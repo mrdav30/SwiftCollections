@@ -217,6 +217,44 @@ public class SwiftDenseTicketMapStateTests
     }
 
     [Fact]
+    public void Add_RestoredFullDenseStorageGrowsWithoutGrowingReusableSlotStorage()
+    {
+        var map = new SwiftDenseTicketMap<int>(new SwiftDenseTicketMapState<int>([10], [0], [1, 2], [1]));
+        var enumerator = map.GetEnumerator();
+        Assert.Equal(1, map.DenseCapacity);
+        Assert.Equal(2, map.SlotCapacity);
+
+        Assert.Equal(new SwiftTicket(1, 2), map.Add(20));
+
+        Assert.Equal([10, 20], map.Values.ToArray());
+        Assert.Equal(8, map.DenseCapacity);
+        Assert.Equal(2, map.SlotCapacity);
+        Assert.Equal(10, map.GetRef(new SwiftTicket(0, 1)));
+        Assert.Throws<InvalidOperationException>(() => enumerator.MoveNext());
+        Assert.Throws<InvalidOperationException>(() => enumerator.Reset());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Add_ReservedUnissuedOrFreeSlotPreservesBothCapacities(bool reuse)
+    {
+        var map = new SwiftDenseTicketMap<int>(8);
+        for (int i = 0; i < (reuse ? 8 : 7); i++) map.Add(i);
+        if (reuse) Assert.True(map.Remove(new SwiftTicket(3, 1)));
+        var enumerator = map.GetEnumerator();
+
+        Assert.Equal(reuse ? new SwiftTicket(3, 2) : new SwiftTicket(7, 1), map.Add(99));
+
+        int[] expected = reuse ? [0, 1, 2, 7, 4, 5, 6, 99] : [0, 1, 2, 3, 4, 5, 6, 99];
+        Assert.Equal(expected, map.Values.ToArray());
+        Assert.Equal(8, map.DenseCapacity);
+        Assert.Equal(8, map.SlotCapacity);
+        Assert.Throws<InvalidOperationException>(() => enumerator.MoveNext());
+        Assert.Throws<InvalidOperationException>(() => enumerator.Reset());
+    }
+
+    [Fact]
     public void Retirement_ConsumesUsableReservationEvenWhenLiveCountReturnsToSameSize()
     {
         var state = new SwiftDenseTicketMapState<int>(Enumerable.Range(0, 16).ToArray(), Enumerable.Range(0, 16).ToArray(), Enumerable.Repeat(uint.MaxValue, 16).ToArray(), []);
@@ -225,9 +263,15 @@ public class SwiftDenseTicketMapStateTests
         int initialSlotCapacity = map.SlotCapacity;
 
         Assert.True(map.Remove(new SwiftTicket(0, uint.MaxValue)));
+        var enumerator = map.GetEnumerator();
         Assert.Equal(new SwiftTicket(16, 1), map.Add(101));
         Assert.Equal(16, map.Count);
-        Assert.True(map.SlotCapacity > initialSlotCapacity);
+        Assert.Equal(16, initialSlotCapacity);
+        Assert.Equal(16, map.DenseCapacity);
+        Assert.Equal(32, map.SlotCapacity);
+        Assert.Equal([15, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 101], map.Values.ToArray());
+        Assert.Throws<InvalidOperationException>(() => enumerator.MoveNext());
+        Assert.Throws<InvalidOperationException>(() => enumerator.Reset());
         for (int slot = 1; slot < 16; slot++)
             Assert.Equal(slot, map.GetRef(new SwiftTicket(slot, uint.MaxValue)));
     }
