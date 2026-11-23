@@ -1,10 +1,10 @@
 # SwiftDenseTicketMap Plan
 
-- **Status:** Planned. Owning and externally keyed collections are
-  complementary; implement the owning map first. Detailed contracts and layout
-  are proposals to freeze in Phase 0, including the external-store design
-  checkpoint below. No implementation or performance result is claimed by this
-  planning pass.
+- **Status:** Phase 0 complete. Contracts and the intrusive free-slot layout are
+  frozen for implementation, with disposable-prototype evidence recorded below.
+  Phases 1–3 have not started; no new shipped API or production performance
+  result is claimed. Owning and externally keyed collections remain
+  complementary; implement the owning map first.
 - **Created:** 2026-11-22.
 - **Owner:** SwiftCollections core.
 - **Tracking:**
@@ -64,8 +64,8 @@ neither collection requires an ECS or a shared allocator across unrelated
 physics, navigation and grid owners. The owning map can serve internal
 registries or an agent authority.
 
-Phase 0 records the following boundaries and open API choices before freezing
-the owning surface:
+The Phase 0 checkpoint confirmed the following boundaries. External-store API
+choices remain for its follow-on plan:
 
 - Membership is not authoritative liveness. A leftover component still matches
   its old ticket after the issuer destroys that agent. Local generation checks
@@ -122,7 +122,7 @@ production consumers in the same change and evidence that it improves reuse
 without obscuring invariants or adding hot-path cost. Reuse existing utilities
 first; keep collection-specific mechanics private.
 
-## Proposed storage and invariants
+## Storage and invariants
 
 ```text
 ticket.Index -> slot metadata { Generation, DenseIndex/status }
@@ -138,7 +138,7 @@ values without testing holes or loading per-element generations. Removal repairs
 the reverse mapping for the moved last value before returning. Ticket lookup has
 an additional mapping hop compared with the current slot-backed ticket map.
 
-Phase 0 compares two complete owner-local representations:
+Phase 0 compared two complete owner-local representations:
 
 1. Slot metadata, `T[]`, reverse `int[]` and the existing `SwiftIntStack`, with
    free storage reserved during construction/growth.
@@ -146,9 +146,16 @@ Phase 0 compares two complete owner-local representations:
    links encoded in inactive slot metadata. This can avoid a stack object and
    array; prove sentinel arithmetic and measure the benefit before selecting it.
 
-Use the simpler complete representation supported by measurements. A compact
-freelist does not justify a new generic framework. State must not expose this
-runtime representation choice.
+Selected: the intrusive representation. Slot metadata is eight bytes: UInt32
+generation and Int32 position/status. Live positions are nonnegative; free
+positions encode `-2 - nextFreeSlot`, with head/end `-1`. Generation zero marks
+a retired issued slot, distinct from unissued storage beyond the preserved
+issued boundary. At the supported limit the encoding cannot overflow. Pop
+decodes the link; release advances the generation and pushes, or retires a
+maximum-generation slot. Maintain owner-local head, free count and retired
+count. This removes one array and the stack object without introducing a generic
+allocator. State exports free IDs in bottom-to-top order independently of this
+representation. See the Phase 0 evidence for costs and limits.
 
 The invariant set is:
 
@@ -162,26 +169,29 @@ The invariant set is:
   dense-capacity changes. Unissued spare capacity is a separate concept.
 - Failed ticket checks do not mutate values, order, generations or reuse state.
 
-## Proposed caller contract
+## Frozen caller contract
 
-Freeze exact signatures, exception types/parameter names, limits and synthesized
-versus authored APIs in Phase 0. Avoid adding convenience APIs without a caller
-or parity need.
+The new owner is `public sealed partial class SwiftDenseTicketMap<T>` with
+unconstrained T, implementing `IStateBacked<SwiftDenseTicketMapState<T>>`,
+`ISwiftCloneable<T>` and `IEnumerable<T>`. Do not add
+collection/value-membership interfaces or convenience APIs without a caller or
+parity need.
 
-| Surface                                        | Proposed behavior                                                                                                                                                                                                                                           |
-| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Default/capacity constructors                  | Empty owner; nonnegative capacity, with zero and default allocation policy frozen in Phase 0.                                                                                                                                                               |
-| State constructor; `State`                     | Explicit shallow snapshot/restore through `IStateBacked<SwiftDenseTicketMapState<T>>`; strict structural validation below. Minimum validated DTO/constructor lands with Phase 1; internal setter only if required by the established serialization pattern. |
-| `Count`, `DenseCapacity`, `SlotCapacity`       | Live count and separate allocated storage capacities; slot history can outlive the live population.                                                                                                                                                         |
-| `Add(T value)`                                 | Retain/copy the value without cloning; issue a ticket for a free slot or a new slot and append the value.                                                                                                                                                   |
-| `TryGet(ticket, out value)`, `IsValid(ticket)` | Invalid, negative, out-of-range, removed and retired tickets return false; TryGet writes default on failure.                                                                                                                                                |
-| `GetRef(ticket)`                               | Writable borrowed ref for a validated live ticket; freeze checked/throwing distinction and exceptions together.                                                                                                                                             |
-| `Remove(ticket)`                               | False and no mutation for invalid tickets; otherwise invalidate that allocation, swap back and return true.                                                                                                                                                 |
-| `Values`                                       | Writable `Span<T>` over the live dense prefix, without allocating or exposing writable slot metadata.                                                                                                                                                       |
-| `GetTicketAt(int denseIndex)`                  | Construct the current live ticket for a valid dense position without an allocating ticket projection. Invalid dense indices throw.                                                                                                                          |
-| `EnsureCapacity(int capacity)`                 | Reserve for a requested live population, accounting for retired slots and available reusable IDs; distinguish dense and slot capacities.                                                                                                                    |
-| `Clear()`                                      | Invalidate live tickets, retain identity history and reusable capacity; define reuse order below.                                                                                                                                                           |
-| Struct enumeration; `CloneTo(ICollection<T>)`  | Enumerate/copy values in dense order. CloneTo follows the existing clear-destination convention and is not a ticket-preserving map clone.                                                                                                                   |
+| Surface                                                                                     | Frozen behavior                                                                                                                                                                                                                                                                                        |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `public const int DefaultCapacity = 8`; parameterless / `SwiftDenseTicketMap(int capacity)` | Default reserves eight; explicit zero uses empty arrays. Negative or above `2^30` throws `ArgumentOutOfRangeException` (parameter `capacity`). Positive capacity rounds up to a power of two, minimum eight.                                                                                           |
+| `SwiftDenseTicketMap(SwiftDenseTicketMapState<T> state)`; getter-only `State`               | Public state constructor; no in-place restore/setter. Shallow-copy arrays and strictly validate. Structural malformation within the supported size budget throws `ArgumentException` (parameter `state`); unsupported size budget throws `InvalidOperationException`. Snapshot arrays are independent. |
+| `int Count`, `int DenseCapacity`, `int SlotCapacity`                                        | Live count and allocated value/slot capacities. Slot history outlives live population; no public history/retirement counters.                                                                                                                                                                          |
+| `SwiftTicket Add(T value)`                                                                  | Copy/retain without cloning, reserve before publication, issue from free LIFO or next unissued slot, append live value. Identity-budget exhaustion throws `InvalidOperationException`; allocation can fail separately.                                                                                 |
+| `bool TryGet(SwiftTicket ticket, out T value)`, `bool IsValid(SwiftTicket ticket)`          | Validate issued boundary, live status and generation. All invalid/default/negative/unissued/stale/retired tickets fail; TryGet writes default. No mutation. Foreign numeric aliases remain possible.                                                                                                   |
+| `ref T GetRef(SwiftTicket ticket)`                                                          | Writable borrowed ref. Every invalid ticket throws exactly `ArgumentException` (parameter `ticket`) via ChronicleGuard.ThrowIfArgument; reservation cannot change that classification.                                                                                                                 |
+| `bool Remove(SwiftTicket ticket)`                                                           | Invalid tickets return false without mutation. Success invalidates that allocation, repairs swap-back and returns true; no allocation.                                                                                                                                                                 |
+| `Span<T> Values`                                                                            | Writable live dense prefix, no slot metadata or allocating projection.                                                                                                                                                                                                                                 |
+| `SwiftTicket GetTicketAt(int denseIndex)`                                                   | Current ticket for live dense position; otherwise `ArgumentOutOfRangeException` (parameter `denseIndex`).                                                                                                                                                                                              |
+| `void EnsureCapacity(int capacity)`                                                         | Nonnegative requested live capacity within `2^30`; same range errors as constructor. Account for current retired slots. Remaining identity budget insufficient: `InvalidOperationException`. No-op preserves storage/version.                                                                          |
+| `void Clear()`                                                                              | Invalidate live tickets in increasing old dense order; preserve prior free order and historical generations/retirement. Empty Clear is a no-op.                                                                                                                                                        |
+| `SwiftDenseTicketMapEnumerator GetEnumerator()`; explicit generic/non-generic enumeration   | Public nested value-type IEnumerator<T> following dense order; concrete enumeration does not box, interface enumeration boxes. Authored Current, MoveNext, Reset and Dispose contracts below; default enum is not initialized.                                                                         |
+| `void CloneTo(ICollection<T> output)`                                                       | Null throws `ArgumentNullException` (parameter `output`); clear destination then shallow-copy values in dense order. No tickets/identity history copied. Destination callback failures can leave partial output; callbacks must not mutate source.                                                     |
 
 Do not expose mutable slot/reverse arrays, value-membership interfaces,
 arbitrary ID insertion, an allocating Tickets property, sorting, a full-capacity
@@ -190,7 +200,7 @@ cannot discard issued-slot history and then reissue those IDs as fresh slots.
 
 ### Tickets, ordering and lifetime
 
-Recommended new-owner rules, without changing existing `SwiftTicketMap` rules:
+Frozen new-owner rules, without changing existing `SwiftTicketMap` rules:
 
 - Reserve generation zero. Fresh issued slots start at one; default tickets are
   invalid in this collection.
@@ -220,13 +230,32 @@ replay identity or ordering oracle.
 All access requires caller synchronization. Structural mutations invalidate
 borrowed dense indices, refs and spans; growth can detach backing storage and
 swap-back can make an address refer to another entry. Stable tickets do not
-promise stable addresses. Structural enumerator version checks follow existing
-patterns; direct value writes through refs/spans bypass those checks.
+promise stable addresses. Successful Add/Remove, nonempty Clear and actual
+storage growth advance an unchecked UInt32 structural version. Failed
+operations, no-op reservation and empty Clear preserve it. MoveNext/Reset throw
+InvalidOperationException after a version change; Current is valid only after a
+successful MoveNext. Generic Current caches a value without position/version
+checks; non-generic Current throws InvalidOperationException before/after
+enumeration. Reset clears Current; Dispose clears the cached value and ends this
+enumerator. Version wrap is not an unlimited mutation-detection guarantee.
+Direct value writes through refs/spans bypass version checks. Constructing a new
+owner from State creates a separate instance; there is no in-place
+restore/version reset.
 
 ### Capacity and failure mutation
 
-Freeze maximum supported capacity and checked arithmetic before implementation.
-Share a reachable validation/growth path between Add and EnsureCapacity; test
+The supported count/slot-array limit is `1 << 30`; usable indices are below it.
+Public capacity arguments outside `[0, 1 << 30]` fail before allocation. Share
+one private reservation calculation between Add and EnsureCapacity:
+`requiredSlots = max(issuedSlots, (long)retiredSlots + requestedLiveCapacity)`.
+An above-limit result throws InvalidOperationException before allocation. Add
+passes `(long)Count + 1`, without a separate exhausted-capacity guard. Test the
+shared limit branch with one retired slot and EnsureCapacity(1 << 30), rather
+than a billion-element allocation. After that check, round growth from at least
+eight with doubling, clamped at the limit; handle exact `1 << 30` explicitly
+before using SwiftHashTools.NextPowerOfTwo (which returns Int32.MaxValue there).
+State construction may allocate exact logical lengths; future growth uses this
+rounding policy. Practical allocation can fail below the supported limit. Test
 negative, zero, overflowing and sentinel requests without allocating enormous
 arrays. Do not retain unreachable maximum guards as coverage gaps or add
 test-only public seams.
@@ -245,8 +274,11 @@ an unlimited retirement/churn budget.
 Finish needed value, reverse, slot and freelist allocation before consuming an
 ID or publishing an entry. Invalid input or failed Add/reservation must preserve
 logical contents, ticket validity, dense order and the next ticket sequence.
-Phase 0 must specify whether successful preliminary capacity growth can remain
-after an allocation failure and consequently invalidate borrowed storage.
+Allocate/copy every required replacement array into locals before publishing any
+replacement. Failure preserves capacities, backing arrays/borrows, logical
+contents, reuse sequence and version; successful growth invalidates borrows. No
+separately published preliminary growth is allowed. This publication order is
+auditable without an injectable allocator; forced OOM is not a unit test.
 
 Remove and Clear must not need allocation after mutation starts. Pre-reserve
 freelist capacity or use the validated intrusive representation. Clear/remove
@@ -256,7 +288,7 @@ retention path before it is added. Values are copied shallowly.
 
 ## Persistence and restore
 
-Proposed `SwiftDenseTicketMapState<T>` logical schema:
+Frozen `SwiftDenseTicketMapState<T>` logical schema:
 
 | Field                    | Meaning                                                                                            |
 | ------------------------ | -------------------------------------------------------------------------------------------------- |
@@ -269,24 +301,50 @@ Rebuild slot-to-dense positions. Avoid redundant serialized allocation flags,
 slot positions or runtime capacities. Spare capacities need not survive restore;
 logical order, identity history and subsequent issuance sequence must survive.
 
-Recommended default-state policy: normalize null arrays to empty, then validate
-all invariants, making all-default state a valid empty state consistently with
-the existing ticket map. Missing metadata for nonempty contents is invalid.
-Freeze DTO field/constructor names, null behavior and serialization order before
-shipping the first schema. DTOs retain input arrays; owner snapshots and restore
-copy their array storage. Referenced payload objects remain shared.
+Frozen default-state policy: normalize null arrays to empty, then validate all
+invariants, making all-default state a valid empty state consistently with the
+existing ticket map. Missing metadata for nonempty contents is invalid. Use a
+public readonly partial struct with public readonly fields in the table's order,
+JsonInclude/MemoryPackInclude, and JsonConstructor/MemoryPackConstructor
+parameters `T[]? denseValues`, `int[]? denseSlots`, `uint[]? slotGenerations`,
+`int[]? freeSlots`. Its constructor normalizes null arrays to empty and retains
+arrays without validating/copying; default(struct) bypasses it and can contain
+null fields. The owner normalizes again, validates and copies. Referenced
+payload objects remain shared through raw snapshots/restores; serializer round
+trips promise values/continuation, not identity with the original object graph.
+Do not mutate input DTO arrays concurrently with construction. A retired-only
+history, generations=[0] with no live/free IDs, is valid; generations=[1]
+without live/free ownership is invalid. This initial four-field format adds no
+version field or general version-tolerance promise; future schema changes
+require an explicit compatibility decision.
 
 Reject mismatched dense lengths, duplicate/out-of-range dense or free IDs,
 live/free overlap, zero-generation live/free IDs and any nonzero-generation slot
 that is neither live nor free. Every zero-generation issued slot is retired and
-appears in neither list. Validate arithmetic before allocation. Structural
-validation cannot authenticate caller-forged generation history.
+appears in neither list. Use the common slot-budget validator for state lengths
+before allocation: requiredSlots=max(issuedLength, requestedDenseLength), with
+the same above-limit InvalidOperationException branch used by reservation. Do
+not add separate large-array-length guards requiring huge test fixtures.
+Dense-length equality and partition checks reject structural malformation with
+ArgumentException (parameter state); the supported budget is a distinct failure
+condition. Structural validation cannot authenticate caller-forged generation
+history.
 
-Validate, allocate/copy and reconstruct in local storage before publishing a
-restore. Validation/allocation failure leaves an existing owner's arrays,
-contents, generations, tickets and reuse state intact. This does not roll back
-mutations performed by arbitrary payload serializers or shared reference
-objects.
+Validate, allocate/copy and reconstruct before completing the state constructor.
+Rollback reconstructs a new owner, then the caller can replace its reference.
+Failed construction never replaces an existing owner; no public/internal State
+setter or separate Restore API is required by the current serializer contract.
+This does not roll back mutations performed by arbitrary payload serializers or
+shared reference objects.
+
+JSON's existing converter emits exactly one case-sensitive outer State property.
+The nested DTO uses ordinary System.Text.Json handling; structural validation of
+the decoded state does not promise rejection of every unknown/duplicate JSON
+field. ArgumentException (parameter `state`) and size-budget
+InvalidOperationException from owner construction propagate through the
+converter; do not promise JsonException for every invalid state. Keep JSON tests
+active in Lean, outside MemoryPack conditionals (the existing ticket-map fixture
+is not a sufficient template for that separation).
 
 Reuse the established state-backed JSON converter and MemoryPack partial/
 constructor/ignore conventions. Ensure only the state is serialized, not Span,
@@ -331,10 +389,11 @@ issuance, values and dense order. Explicitly test foreign-map numeric aliasing
 and rollback rewind behavior without claiming it is prevented.
 
 Exercise mismatched/null/duplicate/overlapping state arrays and each partition
-failure; invalid restore must preserve an existing owner. Verify snapshot array
-independence, shared reference payload semantics, values-only CloneTo clearing
-its destination and exact map reconstruction through state. Test reference
-cleanup for reference types and structs containing references.
+failure; failed state construction must leave any existing owner unaffected.
+Verify snapshot array independence, shared reference payload semantics,
+values-only CloneTo clearing its destination and exact map reconstruction
+through state. Test reference cleanup for reference types and structs containing
+references.
 
 Check bounds and alias/lifetime rules for refs, Values, GetTicketAt and both
 concrete and interface enumeration. Enumerators must detect supported structural
@@ -368,14 +427,15 @@ claims that Gravitas or another consumer has migrated.
 | Optional component lifetime        | One agent owner issues tickets used by Position/Velocity/Health stores with differing membership. Remove/re-add Health without retiring the agent; verify the other entries and agent ticket remain valid. Despawn with coordinated cleanup, reuse the slot and reject stale attachment at the issuer boundary; store-level stale removal must not remove the replacement.     | Follow-on implementation using the actual external store |
 | Authority and coordinated rollback | Deliberately leave an entry after destroying its agent to show that local membership can remain true while issuer validation fails. Restore a coherent owner/stores snapshot and replay the same structural changes; verify consistent membership/values and discard abandoned-future work. Include foreign-owner numeric aliasing as a documented limitation.                 | Follow-on implementation using the actual external store |
 
-Freeze exact inputs and expected outcomes in Phase 0 for the owning scenarios;
-record the external scenarios as follow-on acceptance requirements. Do not add a
-fake external collection, ECS framework, scheduler or maintained prototype to
-make future scenarios executable now. When that store is implemented, exercise
-both real collections together. Carry a small representative owner lifecycle and
-serializer continuation into the actual netstandard/Unity smoke lanes and
-compare it across Standard/Lean as applicable; timing/allocation measurements
-remain separate from assertion-heavy scenario tests.
+Use the Phase 0 exact inputs and expected outcomes below for the owning
+scenarios; retain the external scenarios as follow-on acceptance requirements.
+Do not add a fake external collection, ECS framework, scheduler or maintained
+prototype to make future scenarios executable now. When that store is
+implemented, exercise both real collections together. Carry a small
+representative owner lifecycle and serializer continuation into the actual
+netstandard/Unity smoke lanes and compare it across Standard/Lean as applicable;
+timing/allocation measurements remain separate from assertion-heavy scenario
+tests.
 
 ## Performance and storage evidence
 
@@ -383,7 +443,7 @@ First use N=128 and 4,096 with deterministic mutation streams and 4-byte values.
 Include full occupancy and a peak four times the final live population (75%
 holes in the slot-backed baseline), plus a high-water ten-times-live control
 where 90% holes are relevant. Freeze seed, actual capacities, operation counts,
-removal/reuse order and checksums in Phase 0.
+removal/reuse order and checksums from the Phase 0 results below.
 
 Fair baselines are the current SwiftTicketMap and an equivalent composition:
 SwiftTicketMap<int> owns ticket-to-dense-index mappings, SwiftList<T> stores
@@ -512,22 +572,228 @@ evergreen; this plan owns design decisions and historical verification results.
 
 ## Decision register and progress
 
-| Decision                | Disposition                                                                                                      | Reopening / completion criterion                                                                                                                                                            |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Ownership               | Agreed: complementary owning and externally keyed dense collections; implement collection-issued tickets first.  | Phase 0 records issuer/membership/teardown/rollback boundaries and owner API compatibility. External-store implementation follows in its own concrete caller/acceptance plan.               |
-| Scenario evidence       | Named registration, delayed-work, agent-update and snapshot scenarios complement focused tests.                  | Owning scenarios land in Phases 1–2; actual paired-store scenarios belong to the follow-on implementation, without a substitute store or ECS framework.                                     |
-| Documentation hardening | Agreed: explicit Phase 3 collection-selection and usage-guide deliverable, beyond XML coverage.                  | One canonical guide distinguishes slot/ticket/dense/sparse/packed choices; examples match tests and rendered checks pass. The external-store follow-on extends that guide when implemented. |
-| Token policy            | Proposed: existing SwiftTicket shape, fresh generation one, zero invalid/retired, retire rather than wrap.       | Freeze in Phase 0 with default, retirement, Clear and rollback/foreign-token tests; preserve existing map behavior.                                                                         |
-| Layout                  | Compare reserved SwiftIntStack with owner-local intrusive free links.                                            | Select from the complete first lifecycle's correctness, memory and timing evidence; no parallel runtime engines remain.                                                                     |
-| State                   | Proposed four-array logical schema, null-to-empty then strict partition validation; transactional owner restore. | Freeze in Phase 0 and verify exact continuation plus actual serializer/AOT paths.                                                                                                           |
-| Ordering and borrowing  | Dense swap-back order; borrowed storage invalidates on structural changes.                                       | Verify/document consumers' separate domain ordering and enumerate/ref/span contracts.                                                                                                       |
-| Capacity and failure    | Separate dense/slot capacity, retirement-aware live reservation and checked growth before publication.           | Freeze exact limits/exceptions and failure capacity/borrowing effects in Phase 0.                                                                                                           |
-| Optional APIs           | Sorting, arbitrary-ID insertion on the owning map, owner IDs and trimming deferred.                              | Reopen only for an actual caller contract with measured benefit; external ticket acceptance belongs to the separately planned store.                                                        |
+| Decision                | Disposition                                                                                                           | Reopening / completion criterion                                                                                                                                                            |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ownership               | Agreed: complementary owning and externally keyed dense collections; implement collection-issued tickets first.       | Phase 0 records issuer/membership/teardown/rollback boundaries and owner API compatibility. External-store implementation follows in its own concrete caller/acceptance plan.               |
+| Scenario evidence       | Named registration, delayed-work, agent-update and snapshot scenarios complement focused tests.                       | Owning scenarios land in Phases 1–2; actual paired-store scenarios belong to the follow-on implementation, without a substitute store or ECS framework.                                     |
+| Documentation hardening | Agreed: explicit Phase 3 collection-selection and usage-guide deliverable, beyond XML coverage.                       | One canonical guide distinguishes slot/ticket/dense/sparse/packed choices; examples match tests and rendered checks pass. The external-store follow-on extends that guide when implemented. |
+| Token policy            | Frozen: existing SwiftTicket shape, fresh generation one, zero invalid/retired, retire rather than wrap.              | Phase 0 small-state controls pass; repeat against production with full coverage, preserving existing map behavior.                                                                          |
+| Layout                  | Frozen: owner-local intrusive links in eight-byte slot metadata.                                                      | Selected by Phase 0 correctness, retained storage and bounded timing evidence; production gates remain in Phases 1–3. No parallel runtime engines.                                          |
+| State                   | Frozen four-array schema, null-to-empty, strict partition validation and getter-only State; restore into a new owner. | Raw reconstruction and explicit closed JSON route checked; actual new-type MemoryPack/netstandard/AOT paths remain implementation gates.                                                    |
+| Ordering and borrowing  | Dense swap-back order; borrowed storage invalidates on structural changes.                                            | Verify/document consumers' separate domain ordering and enumerate/ref/span contracts.                                                                                                       |
+| Capacity and failure    | Separate dense/slot capacity, retirement-aware live reservation and checked growth before publication.                | Phase 0 freezes 2^30 limit, shared identity-budget check and all-or-nothing storage publication. Phase 1 verifies against production.                                                       |
+| Optional APIs           | Sorting, arbitrary-ID insertion on the owning map, owner IDs and trimming deferred.                                   | Reopen only for an actual caller contract with measured benefit; external ticket acceptance belongs to the separately planned store.                                                        |
 
-Planning review used independent contract, persistence and evidence/performance
-subagents against current source. It identified the lifetime, capacity and AOT
-risks above; it did not execute a prototype or establish performance budgets.
-Only this plan and the feature overview are added/updated in this pass.
+Initial planning review used independent contract, persistence and
+evidence/performance subagents against current source. It identified the
+lifetime, capacity and AOT risks above; that initial review did not execute a
+prototype or establish performance budgets. Phase 0 results below record the
+subsequent experiments. Only this plan and the feature overview are updated in
+Phase 0.
 
-- Phase 0: not started.
+- Phase 0: complete; evidence below.
 - Phases 1–3: not started.
+
+## Phase 0 results — 2026-11-22
+
+### Baseline and scope
+
+Started clean at SwiftCollections `18097eebe5426e90e54cc7194129cff69193b68c`
+(index tree `b7d7482a403d07a0f44ca862396b3dfc2bbbb622`). Sibling source inputs:
+Chronicler `0281469ecc40e65a05867f473bc10f030e7f69f8`, FixedMathSharp
+`8fdf889322f1bb82501c2afec63d6bb2f304ace2`, both clean. No runtime, maintained
+test/benchmark, dependency, CI or installed-skill changes were made. The plan
+and feature overview own this phase's durable decisions/evidence; disposable
+prototypes are not shipped APIs or maintained fixtures.
+
+Host: Windows 10.0.26300 x64, Intel i7-9700K (8 cores), SDK 10.0.302 / MSBuild
+18.6.11, .NET 10.0.10. MemoryPack 1.21.4; System.Text.Json 10.0.9 on
+netstandard. Source mode used UseLocalLsfStack=true and global
+DisableTransitiveProjectReferences=true, serial builds with -m:1.
+
+Inspected actual collection/state/enumerator/capacity code and focused tests,
+Chronicler's IStateBacked and JSON converters, and Gravitas ColliderRegistry.
+The latter confirms separate registration identity and dense traversal, plus a
+stronger replay-order requirement which swap-back does not replace. No consumer
+migration is implied.
+
+### Frozen scenarios and compatibility checkpoint
+
+Tickets below are written `(Index, Generation)`; all arrays show logical order.
+
+| Control                     | Exact inputs and oracle                                                                                                                                                                                                                 | Evidence                                                                                                                                                       |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Registration / delayed work | Scalar payloads101/202/303 -> (0,1)/(1,1)/(2,1). Remove202; update moved303->333 through (2,1); add404 -> (1,2). Final dense values[101,333,404]. Old(1,1) fails/default without touching404.                                           | Both layouts pass with the update after the dense move, including invalid-ticket exact exceptions. Domain-record IDs remain a separate Phase 1 scenario field. |
+| Agent ticks                 | Initial (ID,position,velocity): (101,0,2),(202,10,-1),(303,100,3). Tick1 positions[2,9,103]; despawn202, spawn(404,-5,4), run ticks2–3. Final IDs[101,303,404], positions[6,109,3], tickets[(0,1),(2,1),(1,2)].                         | Scalar-position projection passes both prototypes; full AgentRecord payload/scenario lands in Phase 1.                                                         |
+| Clear ordering              | Issue0..3; remove1 then3 -> dense slots[0,2], free[1,3]. Clear -> free[1,3,0,2], all generations2. Next tickets(2,2),(0,2),(3,2),(1,2).                                                                                                 | Both layouts pass; no free-history reset.                                                                                                                      |
+| Every state partition       | Values[101,303], dense slots[0,2], generations[1,2,1,0,3], free[1,4]. Add404 -> (4,3); add202 -> (1,2); remove(0,1); add505 -> (0,2). Final values[202,303,404,505], slots[1,2,4,0].                                                    | Exact raw-state reconstruction/continuation passes both; the actual closed Chronicler JSON converter also passes on a getter-only prototype envelope.          |
+| Retirement / reservation    | Restore16 live slots0..15, all generationMaxValue; reserve16, remove(0,MaxValue), add replacement -> (16,1), slot storage grows. A one-retired-slot state plus EnsureCapacity(2^30) throws InvalidOperationException before allocation. | Both layouts pass; zero-generation retired slots never return to free ownership.                                                                               |
+
+The proposed Add/IsValid/Values/GetTicketAt/State surface supplies everything
+needed at an external-store boundary without exposing metadata. Agreed caller
+sequence: validate an attachment with the issuer; attach only within the
+structural phase; remove associated entries before issuer.Remove; reuse only
+after cleanup. A delayed old ticket fails at the issuer before attachment. Local
+store membership alone cannot authenticate it, especially after missed cleanup
+or while an empty store accepts a token. Health-only removal leaves the agent
+generation unchanged. Matching foreign tokens and coherent rollback remain
+caller responsibilities. External duplicate-ticket versus same-index/
+different-generation insertion policy and name are deliberately deferred to the
+follow-on plan; reopen when that API and real paired-store tests are designed.
+No owner API addition, automatic teardown, world registry or generic allocator
+was needed by this checkpoint.
+
+### Correctness, build and test results
+
+Two direct Int32 prototypes used identical live/reverse/8-byte metadata arrays;
+one linked the actual SwiftIntStack and reserved its full slot capacity, the
+other used intrusive links. They cover the complete first lifecycle, growth, raw
+snapshot/restore, terminal retirement, malformed state, default state, foreign
+numeric aliasing and failure non-mutation. An independent dictionary tracks
+membership/values for 10,000 mutations per layout: xorshift32 seed 0x051C4B5D,
+shifts13/17/5; operation r%11<5 adds nextRandom&65535, ==10 clears, otherwise
+removes a historical ticket selected by nextRandom%history.Count. After every
+step assert Count, unique dense tickets, exact set equality and value/ref
+association; reconstruct from State every97 steps.
+
+- Final correctness-only processes pass **154,144 assertions each** in Release
+  and ReleaseLean, under ordinary tiering and fixed-JIT controls. Exact
+  exception types and ParamName are checked. Snapshot/restore arrays are
+  independent.
+- A fully warmed 100,000-iteration lookup/ref/IsValid/Values/GetTicketAt loop
+  reports **0 allocated bytes** for each layout in both variants. Timing batches
+  below also report zero allocation. These results concern the tested Int32
+  operations, not interface enumeration, snapshots or generic reference cleanup.
+- Core builds pass Release and ReleaseLean, each for **netstandard2.1 and
+  net10.0**, emitting the four DLL/XML pairs. No build warnings/errors in those
+  core lanes. The prototypes execute on net10.0; this does not execute a new
+  owner compiled for netstandard or establish Unity compatibility.
+- Existing focused SwiftTicketMap/SwiftSlotMap/SwiftSparseMap tests pass: **134
+  Release**, **129 ReleaseLean**, no failures/skips. Pre-existing analyzer
+  warnings: xUnit2013 at SwiftSlotMap.Tests.cs:138 in both; xUnit1026 at
+  SwiftObservableDictionary.Tests.cs:279 in Lean. Those committed files are
+  unchanged. No baseline runtime/test failure was observed in these lanes.
+- Early disposable-probe setup needed explicit Chronicler references under the
+  no-transitive-reference build policy. Review corrected the model's missing
+  bijection assertion and overly broad exception assertion. An incomplete warmup
+  initially tripped the access-allocation assertion; warming the complete same
+  access kernel fixed it in ordinary and fixed tiering. These were probe issues,
+  not library defects or runtime fixes.
+
+Repeatable repository controls, for each configuration C=Release/ReleaseLean:
+
+```powershell
+dotnet build src/SwiftCollections/SwiftCollections.csproj -c $C -p:UseLocalLsfStack=true -p:DisableTransitiveProjectReferences=true -m:1
+dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c $C -p:UseLocalLsfStack=true -p:DisableTransitiveProjectReferences=true -m:1 --filter "FullyQualifiedName~SwiftTicketMapTests|FullyQualifiedName~SwiftSlotMapTests|FullyQualifiedName~SwiftSparseMapTests"
+```
+
+### Storage and timing comparison
+
+Portable workload recipe: Int32 payloads, live N=128/4096; initial peak=N*factor
+for factors1/4/10. Reserve peak in each ticket owner and dense composition;
+append values0..peak-1, remove tickets0..peak-N-1 in increasing order. Surviving
+values are peak-N..peak-1, with checksum N*(2*peak-N-1)/2. The composition uses
+SwiftTicketMap<int> for dense indices, SwiftList<int> for values and
+SwiftList<SwiftTicket> for reverse tickets; repair the moved ticket via GetRef.
+BCL Dictionary<SwiftTicket,int> holds preissued live tickets, reserved for N;
+its churn removes/readds the same external key and excludes ticket issuance. Its
+hashing is not used as a deterministic trace oracle.
+
+Each batch has131,072 element operations: passes=131072/N. Scan sums each value
+by copy through the available public traversal (old map's struct enumerator;
+dense prototypes/composition's spans; dictionary's pair enumerator). Lookup
+walks surviving tickets; checksum matches scan. Churn removes/readds every live
+ticket, preserving its payload and replacing the saved issued ticket; check
+lookup checksums afterwards. Measure Stopwatch ticks and per-thread allocation
+around the batch only, consume results outside it, and keep setup/assertion
+allocation outside measurement. Warm each kernel12 batches, then collect8
+samples with forward/reverse candidate order alternated each round. Four fresh
+processes run Standard/Lean/Lean/Standard, no competing build/test/profiler,
+DOTNET_TieredCompilation=0 and blocking GC. All four processes complete all90
+cells (six workloads × three kernels × five candidates), **2,880 measured
+batches total**, with exact checksum controls and **0 B per measured batch**.
+
+Ranges below are min–max of the four process medians, **ns per visited/live
+value** for scan/lookup and **ns per remove+add pair** for churn. They retain
+adverse results and do not isolate packing from traversal/version-check overhead
+or establish a production performance gate.
+
+| Live N | Peak/live | Kernel     | Existing ticket map | Stack layout | Intrusive layout | Composition | BCL external keys |
+| ------ | --------- | ---------- | ------------------- | ------------ | ---------------- | ----------- | ----------------- |
+| 128    | 1         | scan       | 2.33–2.89           | 0.27–0.28    | 0.27–0.28        | 0.28–0.29   | 2.23–2.69         |
+| 128    | 1         | lookup     | 1.17–1.25           | 2.39–2.46    | 2.39–2.45        | 2.15–2.19   | 9.06–12.18        |
+| 128    | 1         | remove-add | 8.27–11.45          | 15.70–17.20  | 14.86–16.03      | 35.63–37.48 | 28.28–29.94       |
+| 128    | 4         | scan       | 5.70–5.94           | 0.27–0.28    | 0.27–0.28        | 0.28–0.29   | 2.22–2.24         |
+| 128    | 4         | lookup     | 1.18–1.35           | 2.39–2.40    | 2.39–2.44        | 2.17–2.18   | 8.64–10.68        |
+| 128    | 4         | remove-add | 8.24–9.44           | 16.86–18.07  | 15.11–15.72      | 35.59–37.40 | 25.11–28.27       |
+| 128    | 10        | scan       | 12.42–12.97         | 0.27–0.28    | 0.27–0.28        | 0.28–0.29   | 2.22–2.28         |
+| 128    | 10        | lookup     | 1.17–1.20           | 2.39–2.54    | 2.39–2.40        | 2.16–2.18   | 8.42–9.98         |
+| 128    | 10        | remove-add | 8.22–9.71           | 15.76–17.54  | 15.04–16.26      | 35.27–40.14 | 24.94–31.52       |
+| 4,096  | 1         | scan       | 2.25–2.39           | 0.22–0.23    | 0.22–0.23        | 0.27–0.27   | 2.20–2.37         |
+| 4,096  | 1         | lookup     | 1.17–1.19           | 2.36–2.49    | 2.36–2.41        | 2.17–2.43   | 14.36–16.68       |
+| 4,096  | 1         | remove-add | 8.37–9.90           | 16.49–17.31  | 15.23–16.33      | 36.13–37.83 | 32.60–36.47       |
+| 4,096  | 4         | scan       | 5.71–6.67           | 0.22–0.23    | 0.22–0.22        | 0.27–0.27   | 2.20–2.91         |
+| 4,096  | 4         | lookup     | 1.18–1.19           | 2.39–2.53    | 2.37–2.42        | 2.15–2.22   | 14.90–15.99       |
+| 4,096  | 4         | remove-add | 8.41–10.04          | 16.48–19.50  | 15.31–16.02      | 37.20–39.63 | 34.39–35.93       |
+| 4,096  | 10        | scan       | 12.46–12.98         | 0.22–0.23    | 0.22–0.23        | 0.27–0.27   | 2.18–2.20         |
+| 4,096  | 10        | lookup     | 1.17–1.19           | 2.36–2.42    | 2.39–2.43        | 2.15–2.21   | 15.18–16.86       |
+| 4,096  | 10        | remove-add | 8.29–8.41           | 17.00–18.36  | 15.09–18.27      | 36.39–38.10 | 34.06–39.28       |
+
+Retained array payload at equal allocated capacity C is **20\*C bytes** for the
+stack prototype, **16\*C** for intrusive (Int32 values4C + reverse4C +
+metadata8C). Both retain peak dense capacity after removals. At N=4096,
+factors1/4/10 produce C=4096/16384/65536: stack81,920/327,680/1,310,720 bytes
+versus intrusive65,536/262,144/1,048,576 bytes. At N=128 the same factors
+produce C=128/512/2048: stack2,560/10,240/40,960 versus
+intrusive2,048/8,192/32,768. The saving is **4 bytes per allocated slot**, one
+array and the stack object; 20% of these prototype array payloads, not 20% of
+every generic owner's heap. Counts/bytes exclude object and array headers. No
+retained-memory advantage over existing SwiftTicketMap is claimed: its Int32
+entry layout packs differently, and generic payload width/alignment changes the
+comparison.
+
+Intrusive is selected for the same logical invariants with fewer owned objects
+and no free-stack reservation machinery. Scan/lookup costs between candidates
+are similar in these controls; churn generally favors intrusive, with an adverse
+18.27ns process median in the large ten-times-peak case. Do not discard that run
+or promise a universal timing win. An earlier probe revision also recorded a
+19.85ns intrusive median in that case; it is retained as an adverse observation,
+not substituted for the final common-budget-validator results above. Compared
+with the existing map, both dense layouts intentionally trade slower
+lookup/churn for cheap dense traversal. Keep the existing map for suitable
+lookup-heavy workloads. This additive design choice changes no existing hot
+path; Phase 1 must measure the real owner before claiming production budgets or
+deciding any additional optimization.
+
+Loaded core SHA256 controls (source revision above):
+
+| Variant / target                    | SHA256                                                           |
+| ----------------------------------- | ---------------------------------------------------------------- |
+| Standard net10.0, used by probe     | FC90D22913AA2E2A013B7613171CEA9D0558F466642FA274AD0AEA3FFA7A31CB |
+| Lean net10.0, used by probe         | 0D97320C3CB1E9D6707D02DA3A29A0E60FBF52E4CF1F1582A955F3692F506FFB |
+| Standard netstandard2.1, build only | C0FC2B41819D76E3ED3076D22505A321A18A2B50AC82884C8633DDCC43A99313 |
+| Lean netstandard2.1, build only     | CCDC2FADD3FEB270F50E5ADF73A87E8C41F0E653FFCF0B30E5A618375612B737 |
+
+### Review, exclusions and next phase
+
+Independent contract/persistence reviews and ponytail code review checked the
+first disposable slice before expansion. Oracle/exception assertions and the
+registration sequence were corrected; large-state budget validation was
+consolidated with reservation to avoid impractical coverage-only guards.
+Correctness and timings were rerun. The full generic owner, production
+enumerator, reference-bearing cleanup, emitted new-member XML, actual new-type
+MemoryPack, netstandard execution, strict full-solution coverage and
+Mono/High-stripping IL2CPP are deliberately **not claimed** by Phase 0. They
+remain the specified implementation gates. The closed JSON envelope probe is not
+an AOT or generated serializer result. No separately scoped bug or benchmark
+signal was established.
+
+Phase 0 exits with frozen
+owner/state/default/retirement/Clear/capacity/borrowing contracts, exact
+scenario oracles, a reviewed external-store boundary and a bounded layout
+decision. Phase 1 implements only the selected direct owner and minimum
+validated state; no stack alternative, prototype framework or automatic ECS
+coordination is carried into runtime code. The collection-selection guide step
+remains required in Phase 3, and the follow-on store extends that same guide
+only when implemented. Runtime growth so far: zero files/lines; maintained
+regression/benchmark additions: zero; production callers migrated: zero.

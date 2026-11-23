@@ -45,16 +45,16 @@ contracts and each consumer's domain identity/order rules. Explore a
 complementary externally keyed dense store for optional data sharing an owner's
 tickets; implement the owning map first.
 
-Phase 0 will freeze lifetime, state, capacity and borrowing contracts and
-compare complete storage layouts against existing ticket-map and composed
-baselines. It also records the paired ownership/lifetime checkpoint. The plan
-covers determinism, code reuse, Standard/Lean, both target frameworks,
-serialization, full coverage, realistic usage scenarios and isolated Unity
-verification. An explicit documentation hardening step clarifies when to choose
-slot, ticket, dense-ticket, sparse and packed containers in the existing
-collection guide. External-store implementation and paired-store tests require a
-focused follow-on plan; consumer migrations and ECS coordination remain outside
-this feature.
+Phase 0 is complete: lifetime, state, capacity and borrowing contracts are
+frozen, the paired ownership boundary is reviewed, and intrusive free-slot links
+are selected from disposable layout comparisons. Phase 1 implements the dense
+owner and minimum validated state. The plan covers determinism, code reuse,
+Standard/Lean, both target frameworks, serialization, full coverage, realistic
+usage scenarios and isolated Unity verification. An explicit documentation
+hardening step clarifies when to choose slot, ticket, dense-ticket, sparse and
+packed containers in the existing collection guide. External-store
+implementation and paired-store tests require a focused follow-on plan; consumer
+migrations and ECS coordination remain outside this feature.
 
 ## Recently Completed
 
