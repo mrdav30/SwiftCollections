@@ -83,15 +83,15 @@ expectations change:
 
 | Path                                          | Purpose                                                       | Notes                                                                                                            |
 | --------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `src/SwiftCollections/Collection`             | Core collection types                                         | Includes dictionary, hash set, list, queue, stack, slot map, ticket map, packed set, sparse set, and sparse map. |
+| `src/SwiftCollections/Collection`             | Core collection types grouped by owner                        | Each family keeps its main implementation, nested types, enumerators and persistence partials together; shared contracts and capacity policy live in `Support`. |
 | `src/SwiftCollections/Dimension`              | Flat 2D/3D arrays and typed array helpers                     | Preserve index math and bounds behavior.                                                                         |
-| `src/SwiftCollections/EqualityComparer`       | SwiftCollections comparers                                    | String default comparers are deterministic-oriented.                                                             |
+| `src/SwiftCollections/Comparer`               | Equality and ordering comparer implementations                | Includes deterministic string comparers and the integer ordering comparer; persistence registration belongs in `Serialization/Comparers`. |
 | `src/SwiftCollections/Observable`             | Observable collection variants                                | Prefer for tooling/host-facing notifications, not simulation hot paths without evidence.                         |
-| `src/SwiftCollections/Pool`                   | Object, array, and collection pools                           | Watch ownership and dispose/release contracts.                                                                   |
-| `src/SwiftCollections/Query`                  | BVH, spatial hash, quadtree/octree, bounds, and query helpers | Compiled in the core package. Keep mutable indexes single-owner unless synchronized externally.                  |
+| `src/SwiftCollections/Pool`                   | Object, array, and collection pools                           | Collection pools and their lifecycle helper live in `Collection`; independent array/object pools stay at the root. |
+| `src/SwiftCollections/Query`                  | Spatial indexes, bounds, and shared query machinery             | `BVH`, `SpatialHash`, `Quadtree` and `Octree` group index families; `Bounds` holds public volume contracts/backends, and `Shared` holds internal index machinery. |
 | `src/SwiftCollections/Serialization`          | State structs and JSON/state converter support                | Build after changing state shape or serialization constructors.                                                  |
-| `src/SwiftCollections/Utility`                | Shared helpers, hashing, diagnostics, extensions              | Preserve helper exception contracts.                                                                             |
-| `src/SwiftCollections.FixedMathSharp`         | Fixed-point spatial query companion                           | Depends on FixedMathSharp or FixedMathSharp.Lean based on package variant.                                       |
+| `src/SwiftCollections/Utility`                | Shared hashing and array-sorting algorithms                    | Preserve helper exception contracts.                                                                             |
+| `src/SwiftCollections.FixedMathSharp`         | Fixed-point spatial query companion                           | Mirrors the core query family and `Bounds` folders; depends on FixedMathSharp or FixedMathSharp.Lean. |
 | `tests/SwiftCollections.Tests`                | Core xUnit v3 tests                                           | References only the core runtime assembly and mirrors its source areas.                                          |
 | `tests/SwiftCollections.FixedMathSharp.Tests` | Companion xUnit v3 tests                                      | References the FixedMathSharp companion and can validate it against a published core package.                    |
 | `tests/SwiftCollections.Benchmarks`           | BenchmarkDotNet benchmarks                                    | Alias-based runner supports `list`, `dictionary`, `query`, `all`, and other selections.                          |
@@ -267,6 +267,9 @@ C# 14 is the default language version; runtime projects override it to C# 11 for
 - Larger collection types often use `#region` blocks; preserve local style.
 - Avoid unrelated namespace or style changes. Keep cleanup explicit through the
   commands in `CONTRIBUTING.md`, excluding generated output.
+- Group source files by owner or responsibility. Keep all partial files for an
+  owner together, retain shared state DTOs under `Serialization/State`, and
+  preserve namespace/type identities when reorganizing folders.
 - Every internal type under `src` needs a concise XML summary describing its
   purpose. Keep internal member documentation selective.
 - Give each namespace-level type or delegate its own file. Public/internal

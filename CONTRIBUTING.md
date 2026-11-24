@@ -36,6 +36,26 @@ the [issue tracker](docs/feature-work/issue-tracker.md). Preserve issue IDs, sou
 revisions and verification evidence; track each concern in its owning
 repository.
 
+## Finding source
+
+Collection families live under
+[`src/SwiftCollections/Collection`](src/SwiftCollections/Collection), with each
+owner's implementation, enumerators, nested types and persistence partials in
+one folder. Shared contracts and capacity policy live in `Collection/Support`.
+State DTOs stay together in `Serialization/State`.
+
+[`Comparer`](src/SwiftCollections/Comparer) groups runtime equality and ordering
+implementations. `Serialization/Comparers` holds persistence registrations and
+descriptors. `Utility` holds shared hashing and sorting algorithms.
+
+Both query projects group indexes under `BVH`, `SpatialHash`, `Quadtree` and
+`Octree`, public volume types under `Bounds`, and shared internal machinery
+under `Shared`. Collection pools live in `Pool/Collection`; array and object
+pools live directly in `Pool`.
+
+Folder organization does not define public namespaces. Preserve type identities
+and serialized contracts when moving files, and update current source links.
+
 ## Pull request checklist
 
 1. Keep the change focused and preserve public contracts unless the proposal

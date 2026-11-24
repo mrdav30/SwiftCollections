@@ -59,7 +59,7 @@ replaced. Candidate plugin graphs are staged in isolated CI-template projects.
 
 Source owners are under [Collection](../../../src/SwiftCollections/Collection),
 [Observable](../../../src/SwiftCollections/Observable),
-[EqualityComparer](../../../src/SwiftCollections/EqualityComparer), and
+[EqualityComparer](../../../src/SwiftCollections/Comparer), and
 [Serialization/State](../../../src/SwiftCollections/Serialization/State).
 [SwiftHashTools](../../../src/SwiftCollections/Utility/SwiftHashTools.cs) owns Swift
 default selection and fallback comparer creation. Existing coverage includes
