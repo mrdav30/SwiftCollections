@@ -26,7 +26,7 @@ companions with standard dependencies, and Lean companions with Lean
 dependencies. The companion brings the matching core collection and
 FixedMathSharp dependencies. The current companion requires core `9.0.0` or
 newer and FixedMathSharp `9.0.0`; see the
-[migration guide](https://github.com/mrdav30/SwiftCollections/blob/main/docs/MIGRATION.md#fixedmathsharp-v9-dependency-alignment-unreleased)
+[migration guide](https://github.com/mrdav30/SwiftCollections/blob/main/docs/MIGRATION.md#fixedmathsharp-v9-dependency-alignment)
 when updating an existing dependency graph.
 
 ## 2. Use generation-checked handles

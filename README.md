@@ -9,36 +9,49 @@
 [![API](https://img.shields.io/badge/docs-API-f4511e)](https://mrdav30.github.io/SwiftCollections/)
 [![Discord](https://img.shields.io/badge/discord-join%20community-5865F2?logo=discord&logoColor=white)](https://discord.gg/mhwK2QFNBA)
 
-**Specialized .NET collections for hot paths that need tighter control over
-storage, allocation, iteration, and spatial queries.**
+**Specialized .NET collections for games, simulations, and tools where data
+layout and predictable performance matter.**
 
-The BCL collections are excellent defaults. SwiftCollections is for the code
-where profiling says the default is no longer enough: simulation loops, games,
-spatial indexing, deterministic runtimes, and allocation-sensitive tooling.
+Iterate packed agent data, keep generation-checked references to live objects,
+query a 2D or 3D world, and reuse storage between updates. SwiftCollections gives
+you control over allocation, identity, and iteration in an engine-agnostic
+library built for demanding runtime workloads.
+
+[Get started](https://mrdav30.github.io/SwiftCollections/guides/getting-started.html)
+· [Choose a collection](https://mrdav30.github.io/SwiftCollections/guides/collections.html)
+· [Explore the API](https://mrdav30.github.io/SwiftCollections/api/SwiftCollections.html)
 
 ## Why SwiftCollections?
 
-- Low-allocation lists, queues, stacks, hash tables, slot maps, ticket maps,
-  packed sets, sparse sets, and sparse maps.
-- Dense iteration and stable or generation-checked handles for entity-style
-  workloads.
-- 2D/3D BVH and spatial hash, plus quadtree/octree queries over
-  `System.Numerics` bounds.
-- Fixed-point query companions powered by
-  [FixedMathSharp](https://github.com/mrdav30/FixedMathSharp).
-- Explicit state-backed serialization, with Standard and Lean package variants.
-- [Comparer persistence](https://mrdav30.github.io/SwiftCollections/guides/serialization-and-diagnostics.html#preserve-hash-equality-during-serialization)
-  for sorted lists, dictionaries, hash sets, bidictionaries and observable
-  dictionaries through built-in rules or registered custom factories. Their
-  versioned format rejects old state-only owner records.
-- [Explicit retained-reference cleanup](https://mrdav30.github.io/SwiftCollections/guides/collections.html#clearing-and-retained-references)
-  at ownership boundaries, while preserving reusable capacity.
-- Benchmarks and full reachable coverage enforced as part of the repository
-  workflow.
+- **Keep hot data close.** Lists, hash tables, dense sets, sparse maps, and
+  ticket-based containers offer storage choices for lookup and packed iteration.
+- **Give identities a clear owner.** Stable slots, generation-checked tickets,
+  and externally keyed stores support registrations, agent records, and optional
+  component data.
+- **Find nearby objects.** BVH, spatial hash, quadtree, and octree indexes cover
+  2D and 3D broad-phase queries with caller-owned result buffers.
+- **Build deterministic worlds.** Fixed-point spatial queries powered by
+  [FixedMathSharp](https://github.com/mrdav30/FixedMathSharp) complement the
+  core `System.Numerics` backends.
+- **Reuse storage deliberately.** Collection pools and explicit clearing
+  controls help manage allocations, retained references, and ownership boundaries.
+- **Persist the rules with the data.** State-backed JSON and MemoryPack
+  serialization include comparer persistence for supported collection owners;
+  Lean packages keep JSON support without the MemoryPack runtime.
+
+Benchmarks and enforced 100% line, branch, and executable-method coverage support
+the implementation. Use the BCL collections for general-purpose code, and choose
+SwiftCollections when its storage or ownership model fits your workload.
 
 ## Install
 
-Choose one package family:
+Start with the core package:
+
+```bash
+dotnet add package SwiftCollections
+```
+
+Choose the package family that fits your application:
 
 | Need                                                          | Package                                |
 | ------------------------------------------------------------- | -------------------------------------- |
@@ -47,11 +60,7 @@ Choose one package family:
 | FixedMathSharp spatial queries with MemoryPack                | `SwiftCollections.FixedMathSharp`      |
 | FixedMathSharp spatial queries without the MemoryPack runtime | `SwiftCollections.FixedMathSharp.Lean` |
 
-```bash
-dotnet add package SwiftCollections
-```
-
-Or install a companion package when you need fixed-point query volumes. NuGet
+For deterministic fixed-point spatial queries, install the companion. NuGet
 brings in the matching SwiftCollections and FixedMathSharp packages:
 
 ```bash
@@ -81,36 +90,31 @@ if (actors.TryGet(player, out string actor))
 }
 
 actors.Remove(player);
+bool stillRegistered = actors.TryGet(player, out _); // false
 ```
 
-For externally owned compact integer IDs, start with `SwiftSparseSet` or
-`SwiftSparseMap<T>`. Choose `SwiftDenseTicketMap<T>` for owned tickets with
-frequent packed live-value updates, or keep `SwiftTicketMap<T>` for direct
-slot-backed lookup. Use `SwiftTicketStore<T>` to attach packed values to
-externally issued tickets while coordinating their issuer's lifetime. See
-[which collection fits your identity model](https://mrdav30.github.io/SwiftCollections/guides/collections.html#specialized-containers)
-for stale-ticket, storage and borrowing differences. For broad-phase queries,
-start with `SwiftBVH<TKey>`, `SwiftSpatialHash<TKey>`, or `SwiftOctree<TKey>`.
-For a planar world, use `SwiftBVH2D<TKey>`, `SwiftSpatialHash2D<TKey>`, or
-`SwiftQuadtree<TKey>` with native XY bounds; matching fixed-point wrappers live
-in the companion package.
-
-Shared logging and exception guards come from the independent
-`Chronicler.Diagnostics` package. See the
-[migration guide](https://github.com/mrdav30/SwiftCollections/blob/main/docs/MIGRATION.md)
-for the updated imports and guard names.
+Explore packed updates and optional components in the
+[collection guide](https://mrdav30.github.io/SwiftCollections/guides/collections.html#who-issues-the-identity).
+It shows how dense ticket maps and externally keyed stores fit those workloads,
+with examples and the ownership, storage, and lifetime contracts for each choice.
 
 ## Learn more
 
-- [Getting started](https://mrdav30.github.io/SwiftCollections/guides/getting-started.html)
-- [Collections and clearing](https://mrdav30.github.io/SwiftCollections/guides/collections.html)
-- [Spatial queries](https://mrdav30.github.io/SwiftCollections/guides/spatial-queries.html)
+The [documentation site](https://mrdav30.github.io/SwiftCollections/) brings
+together working examples, collection tradeoffs, and the full API reference:
 
-- [Library overview and container guide](https://mrdav30.github.io/SwiftCollections/guides/OVERVIEW.html)
-- [Core API reference](https://mrdav30.github.io/SwiftCollections/api/SwiftCollections.html)
-- [Spatial query API](https://mrdav30.github.io/SwiftCollections/api/SwiftCollections.Query.html)
-- [Coverage report](https://mrdav30.github.io/SwiftCollections/coverage/)
-- [Contributing and local validation](CONTRIBUTING.md)
+| Explore | Start here |
+| --- | --- |
+| Storage, identity, dense iteration, and clearing | [Collections guide](https://mrdav30.github.io/SwiftCollections/guides/collections.html) |
+| 2D/3D indexing and deterministic fixed-point queries | [Spatial queries](https://mrdav30.github.io/SwiftCollections/guides/spatial-queries.html) |
+| Rentals, reuse, and change notifications | [Pools and observables](https://mrdav30.github.io/SwiftCollections/guides/pools-and-observables.html) |
+| State, comparer persistence, and host diagnostics | [Serialization and diagnostics](https://mrdav30.github.io/SwiftCollections/guides/serialization-and-diagnostics.html) |
+
+For existing projects, see the
+[migration guide](https://github.com/mrdav30/SwiftCollections/blob/main/docs/MIGRATION.md).
+For benchmarks, coverage, and local development, see
+[Contributing](CONTRIBUTING.md) and the
+[coverage report](https://mrdav30.github.io/SwiftCollections/coverage/).
 
 Using Unity? The maintained
 [SwiftCollections-Unity packages](https://github.com/mrdav30/SwiftCollections-Unity)

@@ -1,6 +1,8 @@
 # SwiftCollections Migration Guide
 
-## FixedMathSharp v9 dependency alignment (unreleased)
+## Migrating from v8 to v9
+
+### FixedMathSharp v9 dependency alignment
 
 The companion also requires the matching Standard or Lean SwiftCollections core
 package at `9.0.0` or newer. Publish the required core packages before releasing
@@ -25,7 +27,7 @@ dependency alignment does not change SwiftCollections collection state schemas
 or imply a downstream release. Update CI source pins after the reviewed consumer
 commits land.
 
-## BVH key ownership (unreleased)
+### BVH key ownership
 
 `SwiftBVH<TKey, TVolume>`, `SwiftBVH<TKey>` and `SwiftFixedBVH<TKey>` now match
 spatial hash and octree key ownership. `Insert` returns `true` only for a new
@@ -38,7 +40,7 @@ lookup, update and removal. Callers relying on duplicate leaves or an
 always-true return must adapt. No signatures or persistence formats change; no
 release is implied by this entry.
 
-## Collection comparison metadata (unreleased)
+### Collection comparison metadata
 
 <a id="sorted-list-comparison-metadata-unreleased"></a>
 
