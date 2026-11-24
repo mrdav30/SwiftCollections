@@ -25,7 +25,7 @@ spatial indexing, deterministic runtimes, and allocation-sensitive tooling.
 - `SwiftDenseTicketMap<T>` combines owner-issued tickets with packed live
   values. `SwiftTicketStore<T>` attaches packed values to externally issued
   tickets while the caller coordinates issuer lifetime; see the
-  [collection selection guide](https://mrdav30.github.io/SwiftCollections/guides/collections.html#tickets-with-dense-iteration)
+  [collection selection guide](https://mrdav30.github.io/SwiftCollections/guides/collections.html#who-issues-the-identity)
   for identity ownership, delayed work, dense agent updates and layout
   tradeoffs.
 - 2D/3D BVH and spatial hash, plus quadtree/octree queries over

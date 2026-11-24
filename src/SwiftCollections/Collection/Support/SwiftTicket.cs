@@ -22,12 +22,12 @@ namespace SwiftCollections;
 public readonly struct SwiftTicket : IEquatable<SwiftTicket>
 {
     /// <summary>
-    /// Gets the zero-based index associated with this instance.
+    /// Stores the signed index supplied for this ticket.
     /// </summary>
     public readonly int Index;
 
     /// <summary>
-    /// Gets the generation number associated with this instance.
+    /// Stores the generation supplied for this ticket.
     /// </summary>
     public readonly uint Generation;
 
@@ -46,10 +46,10 @@ public readonly struct SwiftTicket : IEquatable<SwiftTicket>
     /// <summary>
     /// Compares the stored value components for equality.
     /// </summary>
-    /// <param name="other">The ticket to compare by Index and Generation; an object of another type or null
-    /// compares unequal.</param>
-    /// <returns>true if the compared stored components are equal; false for null, other runtime types, or
-    /// different components.</returns>
+    /// <param name="other">The ticket whose Index and Generation are compared; issuer liveness and identity
+    /// are not checked.</param>
+    /// <returns>true if both stored components are equal; otherwise false. Matching fields do not establish
+    /// a common issuer or live allocation.</returns>
     public bool Equals(SwiftTicket other)
         => Index == other.Index && Generation == other.Generation;
 

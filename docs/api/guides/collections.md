@@ -10,7 +10,9 @@ choosing a specialized container.
 
 When the collection should issue reusable identities, start with this choice.
 The [comparison table](#specialized-containers) also covers externally owned IDs
-and value-based membership. On narrow screens, scroll the diagram horizontally.
+and value-based membership. If another owner already issues tickets, start
+with [optional components under one issuer](#optional-components-under-one-issuer).
+On narrow screens, scroll the diagram horizontally.
 
 <div class="sc-collection-choice" role="region" aria-label="Choose a collection that issues identities" tabindex="0">
 
@@ -244,6 +246,8 @@ Apply additions and removals between these loops, then reacquire the span. The
 same initial state and ordered mutations produce the same dense order; that
 order is not sorted, insertion-stable, or independent of mutation order.
 
+### Optional components under one issuer
+
 Separate optional components become useful when, for example, only some agents
 have health and health can be removed without destroying the agent. Those stores
 need the same externally issued identity. Independently issuing a ticket from
@@ -255,6 +259,68 @@ Use `SwiftTicketStore<T>` for these external-ticket values. For example,
 `SwiftTicketStore<Health>` instances attach optional records. Iterate Position's
 Values and use GetTicketAt to look up Velocity; separate dense stores can have
 different orders and must not be zipped by position.
+
+
+<div class="sc-collection-choice" role="region" aria-label="One issuer with independent component stores" tabindex="0">
+
+```mermaid
+flowchart LR
+    Owner[Agent issuer<br/>SwiftDenseTicketMap]
+    Owner -->|same ticket| Position[SwiftTicketStore<br/>Position]
+    Owner -->|same ticket| Velocity[SwiftTicketStore<br/>Velocity]
+    Owner -->|same ticket| Health[SwiftTicketStore<br/>optional Health]
+```
+
+</div>
+
+The issuer owns agent lifetimes. Each store owns only its attached records;
+removing Health leaves the agent, Position and Velocity alive. The following
+integer example deliberately attaches Velocity in another order:
+
+```csharp
+using System;
+using SwiftCollections;
+
+var agents = new SwiftDenseTicketMap<int>();
+SwiftTicket a = agents.Add(101);
+SwiftTicket b = agents.Add(202);
+SwiftTicket c = agents.Add(303);
+var positions = new SwiftTicketStore<int>();
+positions.Add(a, 0);
+positions.Add(b, 10);
+positions.Add(c, 100);
+var velocities = new SwiftTicketStore<int>();
+velocities.Add(c, 3);
+velocities.Add(a, 2);
+velocities.Add(b, -1);
+Advance(positions, velocities); // Positions [2, 9, 103], joined by ticket.
+
+positions.Remove(b); // Remove components before ending their agent lifetime.
+velocities.Remove(b);
+agents.Remove(b);
+SwiftTicket d = agents.Add(404); // (1, 2); b was (1, 1).
+positions.Add(d, -5);
+velocities.Add(d, 4);
+bool removedReplacement = positions.Remove(b); // false: the old key is stale.
+Advance(positions, velocities);
+Advance(positions, velocities);
+// Position tickets [a, c, d], values [6, 109, 3].
+// Velocity tickets [c, a, d], values [3, 2, 4].
+
+static void Advance(SwiftTicketStore<int> positions, SwiftTicketStore<int> velocities)
+{
+    Span<int> values = positions.Values;
+    for (int i = 0; i < values.Length; i++)
+        if (velocities.TryGet(positions.GetTicketAt(i), out int velocity))
+            values[i] += velocity;
+}
+```
+
+Reserve both stores before a hot loop when growth is undesirable. Perform
+structural changes between loops, reacquire borrowed spans, and validate the
+issuer at the caller's attachment boundary. Passing only ticket.Index to a
+SwiftSparseMap would discard generation checks; using independent issuing maps
+for Position and Velocity would create independent identities.
 
 A store accepts every generation, including a legacy issuer's `(0,0)`, and keeps
 one entry per index. TryAdd returns false for both exact duplicates and another
@@ -275,10 +341,18 @@ never advance issuer generations or automatically remove orphaned components.
 These collections provide storage primitives, not an ECS scheduler, global
 identity domain or aggregate transaction.
 
+
+With sparse capacity S and dense capacity D, the current three arrays carry
+`4*S + 8*D + managedWidth(T)*D` bytes, before object/array headers and referenced
+payload objects. Attaching 4,096 components across 16,384 possible indices can
+keep D at 4,096. Filling 16,384 entries and removing down to 4,096 retains D at
+16,384 instead. Remove and Clear retain both capacities; budget sparse storage
+for the highest index and dense storage for the peak live population.
+
 ### Borrowed storage is temporary
 
 Keep tickets or IDs across operations, not dense positions or borrowed
-addresses. For the dense ticket map, reacquire `GetRef`, `Values` and
+addresses. For the dense ticket map and external ticket store, reacquire `GetRef`, `Values` and
 `GetTicketAt` positions after structural mutation; a moved value can occupy
 another value's former address. Actual `EnsureCapacity` growth also invalidates
 borrows and enumeration; a no-op reservation preserves them. Writes through a
@@ -294,7 +368,8 @@ Synchronize owner access externally and avoid structural mutation while
 enumerating.
 
 For snapshots, validation, ownership and closed AOT serializer registration, see
-[dense-ticket persistence](serialization-and-diagnostics.md#preserve-dense-ticket-identity-and-reuse).
+[dense-ticket persistence](serialization-and-diagnostics.md#preserve-dense-ticket-identity-and-reuse)
+and [external ticket persistence](serialization-and-diagnostics.md#persist-externally-issued-ticket-entries).
 The dense owner validates a complete live/free/retired partition and
 reconstructs capacity from logical state. Existing slot/ticket owner state
 constructors have more permissive contracts; do not treat them as equivalent

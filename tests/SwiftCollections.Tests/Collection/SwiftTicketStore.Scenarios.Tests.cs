@@ -310,7 +310,11 @@ public class SwiftTicketStoreScenarioTests
         Assert.True(checksum > 0);
         Assert.Equal(keys.Length, store.Count);
         for (int i = 0; i < keys.Length; i++)
+        {
             Assert.True(store.ContainsKey(keys[i]));
+            Assert.Equal(keys[i], store.GetTicketAt(i));
+            Assert.Equal(i, store.GetRef(keys[i]));
+        }
     }
 
     [Fact]

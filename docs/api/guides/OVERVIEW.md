@@ -55,7 +55,9 @@ For reusable registrations or agent records, start with
 The guide distinguishes slots, generation-checked tickets, dense ticket owners,
 external IDs and value-based membership, including storage and borrowing costs.
 `SwiftTicketStore<T>` attaches packed values to external tickets with exact
-generation checks; its local membership does not establish issuer liveness.
+generation checks; its local membership does not establish issuer liveness. See
+[optional components under one issuer](collections.md#optional-components-under-one-issuer)
+for the paired-store example and teardown boundary.
 
 For planar broad-phase queries, use `SwiftBVH2D<TKey>`,
 `SwiftSpatialHash2D<TKey>`, or `SwiftQuadtree<TKey>` with `BoundVolume2D`. The

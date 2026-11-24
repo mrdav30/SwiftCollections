@@ -36,25 +36,29 @@ without an agreed scope or concrete evidence gate.
 
 ## Active Feature Work
 
-### SwiftTicketStore
-
-[Externally keyed dense ticket store plan](swift-ticket-store-plan.md) - packed
-values attached to tickets issued by another owner; Phases 0 through 2 are complete. The
-accepted name distinguishes local membership from an issuing map's lifetime authority. Dense
-live iteration and a contiguous Values span remain explicit contracts. The
-frozen contracts and measured storage decision select sparse positions, dense
-tickets and packed values, with a narrow shared cold growth policy. The store,
-validated state and persistence paths pass full Standard/Lean managed-target
-coverage, including closed JSON metadata and cross-target replay. Phase 3 final
-hardening, documentation and supported-host checks are next.
-
-The plan covers optional components, exact ticket matching, explicit teardown
-and coordinated restore, with Standard/Lean, both target frameworks, strict
-coverage and actual Unity verification. It prioritizes shared sparse mechanics
-where contracts agree, while preserving existing collection behavior. Automatic
-ECS coordination, issuer callbacks and consumer migrations remain outside scope.
+No active feature plans. Completed implementations and their verification
+records are listed below.
 
 ## Recently Completed
+
+### SwiftTicketStore
+
+[Completed SwiftTicketStore plan](done/2026-11-23-swift-ticket-store-plan.md) -
+packed values attached to tickets issued by another owner, with local exact
+membership, independent optional components and explicit teardown/restore.
+Dense iteration and a contiguous Values span remain contracts. Sparse positions,
+dense tickets and packed values reuse the shared cold growth policy without
+merging issuer authority into the store.
+
+Standard/Lean and both target assets pass strict full coverage, closed JSON
+metadata and cross-target replay. Actual Unity Mono and High-stripping IL2CPP
+checks pass for both variants. The completed plan retains storage measurements,
+bounded timing evidence and verification limits. The
+[collection guide](../api/guides/collections.md#optional-components-under-one-issuer)
+explains the joined update, ownership boundary and storage budget; the
+[serialization guide](../api/guides/serialization-and-diagnostics.md#persist-externally-issued-ticket-entries)
+owns persistence guidance. Automatic ECS coordination, issuer callbacks and
+consumer migrations remain outside scope.
 
 ### SwiftDenseTicketMap
 

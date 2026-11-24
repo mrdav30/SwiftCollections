@@ -38,6 +38,7 @@ namespace SwiftCollections;
 public sealed partial class SwiftTicketStore<T> : IStateBacked<SwiftTicketStoreState<T>>, IEnumerable<T>
 {
     private int[] _sparse;
+    // Only the live prefix owns tickets; insertion overwrites unused numeric entries before publication.
     private SwiftTicket[] _tickets;
     private T[] _values;
     private int _count;
@@ -270,7 +271,6 @@ public sealed partial class SwiftTicketStore<T> : IStateBacked<SwiftTicketStoreS
             _values[at] = _values[last];
             _sparse[moved.Index] = at + 1;
         }
-        _tickets[last] = default;
         if (s_clearReleasedValues) _values[last] = default!;
         unchecked { _version++; }
         return true;
@@ -283,7 +283,6 @@ public sealed partial class SwiftTicketStore<T> : IStateBacked<SwiftTicketStoreS
     {
         if (_count == 0) return;
         for (int i = 0; i < _count; i++) _sparse[_tickets[i].Index] = 0;
-        Array.Clear(_tickets, 0, _count);
         if (s_clearReleasedValues) Array.Clear(_values, 0, _count);
         _count = 0;
         unchecked { _version++; }
