@@ -14,16 +14,16 @@ SwiftCollections package still has no FixedMathSharp dependency.
 
 Update the matching Standard or Lean family and rebuild consumers against the
 resolved package graph. `UseLocalLsfStack=true` selects sibling source projects;
-a passing source build does not validate the released-package references.
-Keep source and package validation separate, including netstandard2.1 assets.
+a passing source build does not validate the released-package references. Keep
+source and package validation separate, including netstandard2.1 assets.
 
 FixedMathSharp v9 removes `ToDirection`, rejects zero rotation inputs and
 corrects geometry/numeric edge cases. Review its
 [migration guide](https://github.com/mrdav30/FixedMathSharp/blob/v9.0.0/docs/MIGRATION.md#migrating-from-v8x-to-v9x)
 and verify saved-state/replay expectations at the owning consumer. This
 dependency alignment does not change SwiftCollections collection state schemas
-or imply a downstream release. Update CI source pins after the reviewed
-consumer commits land.
+or imply a downstream release. Update CI source pins after the reviewed consumer
+commits land.
 
 ## BVH key ownership (unreleased)
 
@@ -34,9 +34,9 @@ the original key object and leaf index and leaves `Count` unchanged. Queries no
 longer emit multiple leaves for that key, and one successful removal removes it.
 Use distinct stable keys when you need multiple independently indexed entries.
 Null insertion throws `ArgumentNullException` before changing the tree, matching
-lookup, update and removal. Callers relying on duplicate leaves or an always-true
-return must adapt. No signatures or persistence formats change; no release is
-implied by this entry.
+lookup, update and removal. Callers relying on duplicate leaves or an
+always-true return must adapt. No signatures or persistence formats change; no
+release is implied by this entry.
 
 ## Collection comparison metadata (unreleased)
 
@@ -46,32 +46,35 @@ implied by this entry.
 `SwiftBiDictionary<T1, T2>` and `SwiftObservableDictionary<TKey, TValue>` now
 write a version-one comparison envelope through normal JSON and standard
 MemoryPack serialization. Old state-only payloads are rejected by the new normal
-readers; old readers also reject the new envelope. Upgrade
-writers and readers together. The library supports only the new owner format;
-there is no legacy reader, fallback or migration helper.
-No package release is implied by this entry.
+readers; old readers also reject the new envelope. Upgrade writers and readers
+together. The library supports only the new owner format; there is no legacy
+reader, fallback or migration helper. No package release is implied by this
+entry.
 
 Eligible runtime-default ordering, runtime equality, ordinal string and known
 Swift seeded/randomized equality rules need no host registration. Custom
-comparers, including lambdas, require a stable typed codec
-and reconstruction factory. Saving an unsupported rule now fails instead of
-silently losing it. Supply the registry through JSON options or MemoryPack's
-per-operation service provider, including for nested collections. Lean supports
-the same JSON contract and registry without MemoryPack.
+comparers, including lambdas, require a stable typed codec and reconstruction
+factory. Saving an unsupported rule now fails instead of silently losing it.
+Supply the registry through JSON options or MemoryPack's per-operation service
+provider, including for nested collections. Lean supports the same JSON contract
+and registry without MemoryPack.
 
 Previously saved state-only owner records cannot be passed to the new collection
-serializers. The raw `SwiftArrayState<T>` and `SwiftDictionaryState<TKey, TValue>`
-schemas and explicit state constructors remain unchanged trusted-state APIs;
-they are not compatibility readers for old owner records. Comparerless owners
-keep their existing formats. Persist a bidictionary through its concrete
-contract: a Dictionary base contract rejects it rather than losing reverse
-comparison rules. New hash-owner reads reject duplicate equal keys/items/reverse
-values under restored rules; HashSet retains its state-path behavior of skipping
-null items.
+serializers. The raw `SwiftArrayState<T>` and
+`SwiftDictionaryState<TKey, TValue>` schemas and explicit state constructors
+remain unchanged trusted-state APIs; they are not compatibility readers for old
+owner records. Comparerless owners keep their existing formats. Persist a
+bidictionary through its concrete contract: a Dictionary base contract rejects
+it rather than losing reverse comparison rules. New hash-owner reads reject
+duplicate equal keys/items/reverse values under restored rules; HashSet retains
+its state-path behavior of skipping null items.
 
-See [hash equality persistence](api/guides/serialization-and-diagnostics.md#preserve-hash-equality-during-serialization)
-and [sorted-list persistence](api/guides/serialization-and-diagnostics.md#preserve-sorted-list-ordering-during-serialization)
-for registration, closed JSON metadata, formatter bootstrap and failure contracts.
+See
+[hash equality persistence](api/guides/serialization-and-diagnostics.md#preserve-hash-equality-during-serialization)
+and
+[sorted-list persistence](api/guides/serialization-and-diagnostics.md#preserve-sorted-list-ordering-during-serialization)
+for registration, closed JSON metadata, formatter bootstrap and failure
+contracts.
 
 ## Migrating from v7 to v8
 

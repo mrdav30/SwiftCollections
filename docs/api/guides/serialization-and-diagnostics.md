@@ -153,18 +153,18 @@ compatibility.
 
 #### Dense-ticket MemoryPack behavior
 
-Standard builds use the Object format: one owner State field and the four
-state fields above. Explicit bootstrap for closed types uses
+Standard builds use the Object format: one owner State field and the four state
+fields above. Explicit bootstrap for closed types uses
 `MemoryPackFormatterProvider.Register<SwiftDenseTicketMap<int>>()` and the
-corresponding state type on net10.0. The netstandard2.1 APIs instead
-expose `SwiftDenseTicketMap<int>.RegisterFormatter()` and
+corresponding state type on net10.0. The netstandard2.1 APIs instead expose
+`SwiftDenseTicketMap<int>.RegisterFormatter()` and
 `SwiftDenseTicketMapState<int>.RegisterFormatter()`. Root payload formatters as
 required; Lean has no MemoryPack runtime or generated entry points.
 
-The decoder accepts omitted fields; this is not a strict versioned
-envelope. In particular, a zero-member owner header creates an empty owner when
-the destination is null, but reconstructs the prior logical state when reading
-into an existing destination. A null owner header sets the destination to null.
+The decoder accepts omitted fields; this is not a strict versioned envelope. In
+particular, a zero-member owner header creates an empty owner when the
+destination is null, but reconstructs the prior logical state when reading into
+an existing destination. A null owner header sets the destination to null.
 Normal writers emit the complete schema; future schema changes require an
 explicit compatibility decision.
 
@@ -181,9 +181,9 @@ dependency graphs and verify closed types on the target AOT host.
 `SwiftTicketStore<T>` saves entries attached to another owner's tickets. Its
 state has three parallel arrays in exact dense order: `DenseValues`,
 `DenseSlots` (external ticket indices), and `DenseGenerations`. Every UInt32
-generation, including zero, is key data. It saves no issuer, liveness information,
-spare capacity or generation history. Ordinary JSON uses the same strict
-one-property `State` envelope as the dense issuing map:
+generation, including zero, is key data. It saves no issuer, liveness
+information, spare capacity or generation history. Ordinary JSON uses the same
+strict one-property `State` envelope as the dense issuing map:
 
 ```json
 {"State":{"DenseValues":[101,202,303],"DenseSlots":[0,7,3],"DenseGenerations":[0,4294967295,9]}}
@@ -195,8 +195,8 @@ Duplicate indices fail even when their generations differ. Structural rejection
 throws `ArgumentException` with parameter `state`; JSON shape and numeric
 failures throw `JsonException`. Default/null arrays normalize to empty when
 constructing an owner. Raw snapshots share referenced payload objects; ordinary
-serialization rebuilds payload values without promising object identity or
-alias preservation.
+serialization rebuilds payload values without promising object identity or alias
+preservation.
 
 For closed JSON, register the store and state converter/metadata alongside the
 issuer as shown above. Include actual payloads and nested store/aggregate types;
@@ -206,24 +206,24 @@ serializer's responsibility.
 
 Standard MemoryPack writes one owner member containing the three-member state,
 followed by the arrays. Bootstrap each closed store and state with the same
-net10.0 provider registration or netstandard2.1 public RegisterFormatter
-pattern described above. Lean retains JSON/raw state and has no MemoryPack
-runtime. The binary reader's replacement and failure rules above
-apply to the store too. An explicit empty or null *nested binary state* creates
-an empty store, whereas JSON `"State": null` rejects. A zero-member binary
-*owner* read into an existing destination instead reconstructs its prior logical
-state in a new owner. These are distinct records; normal writers emit all fields.
-Failed binary replacement preserves the previous owner, associations and
-ordinary mutable payloads; reader position, writer output and custom payload
-callback side effects are not transactional.
+net10.0 provider registration or netstandard2.1 public RegisterFormatter pattern
+described above. Lean retains JSON/raw state and has no MemoryPack runtime. The
+binary reader's replacement and failure rules above apply to the store too. An
+explicit empty or null _nested binary state_ creates an empty store, whereas
+JSON `"State": null` rejects. A zero-member binary _owner_ read into an existing
+destination instead reconstructs its prior logical state in a new owner. These
+are distinct records; normal writers emit all fields. Failed binary replacement
+preserves the previous owner, associations and ordinary mutable payloads; reader
+position, writer output and custom payload callback side effects are not
+transactional.
 
 Capture issuer plus component stores at one caller-controlled structural
 boundary. Restore every participant into locals, check each component ticket
 with the restored issuer, then publish the candidate aggregate. Stores do not
-coordinate capture, remove orphans, or validate issuer liveness themselves.
-An IsValid cross-check catches dead generations but cannot establish a shared
-world or snapshot boundary when numeric tickets alias. Keep that boundary
-explicit and discard commands from abandoned future timelines. The
+coordinate capture, remove orphans, or validate issuer liveness themselves. An
+IsValid cross-check catches dead generations but cannot establish a shared world
+or snapshot boundary when numeric tickets alias. Keep that boundary explicit and
+discard commands from abandoned future timelines. The
 [collection guide](collections.md#who-issues-the-identity) explains identity
 ownership and joining stores whose dense orders differ.
 
@@ -476,7 +476,7 @@ persisted identity.
 | `SwiftSparseSet`, `SwiftSparseMap<T>`                                      | Rebuild sparse membership from dense IDs, rejecting duplicates and invalid IDs; map key/value lengths must agree. Equality is integer identity.                                                                                                                                              |
 | `SwiftSlotMap<T>`, `SwiftTicketMap<T>`                                     | Copy slot/free-index metadata and normalize the high-water mark. Free indices must be unique and disjoint from live entries; these two invariants are not validated. Ticket state also retains generation history. There is no stored comparer.                                              |
 | `SwiftDenseTicketMap<T>`                                                   | Strictly validate dense/slot lengths, ID ranges, uniqueness and live/free/retired ownership; copy arrays and rebuild lookup. Preserve dense order, every issued generation and exact free order. Default/null arrays normalize to empty; reference payloads remain shared through raw state. |
-| `SwiftTicketStore<T>` | Validate parallel value/index/generation lengths and supported unique indices; preserve dense order, copy arrays and rebuild private lookup. All generations are key data. Default/null arrays normalize to empty. Restore does not consult an issuer or restore spare capacity. |
+| `SwiftTicketStore<T>`                                                      | Validate parallel value/index/generation lengths and supported unique indices; preserve dense order, copy arrays and rebuild private lookup. All generations are key data. Default/null arrays normalize to empty. Restore does not consult an issuer or restore spare capacity.             |
 
 Dimensional array shape checks are described above. `SwiftList<T>.SortInPlace`
 uses a comparer only for that call; a list does not retain it or acquire a

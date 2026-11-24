@@ -94,53 +94,54 @@ decision, not a package release or a broader performance guarantee.
 ### SC-Benchmark-008 - Discarded old-state snapshots during ticket-owner replacement
 
 - **Discovered:** 2026-11-23, final SwiftDenseTicketMap/SwiftTicketStore review.
-- **Closed:** 2026-11-23; removed the old-owner-dependent allocation from complete
-  MemoryPack replacement. Null, omitted-state and failed-replacement contracts
-  remain unchanged. No release claim or new completion gate.
-- **Owners:** Standard MemoryPack readers for SwiftDenseTicketMap<T>
-  and SwiftTicketStore<T>, together with their State getters. Lean is unaffected.
+- **Closed:** 2026-11-23; removed the old-owner-dependent allocation from
+  complete MemoryPack replacement. Null, omitted-state and failed-replacement
+  contracts remain unchanged. No release claim or new completion gate.
+- **Owners:** Standard MemoryPack readers for SwiftDenseTicketMap<T> and
+  SwiftTicketStore<T>, together with their State getters. Lean is unaffected.
 - **Revision/environment:** SwiftCollections
-  989a4272754c02f42f86719625db68cd92af8569, clean before review; released-package
-  dependencies, MemoryPack 1.21.4 / Chronicler.Core 1.0.0. Windows x64,
-  Core i7-9700K, SDK 10.0.302 / .NET 10.0.10, optimized Release. The same results
-  occur with actual net10.0 and netstandard2.1 runtime assemblies in a .NET 10
-  host, with selected DLL hashes and target-framework attributes checked.
-- **Baseline cause:** For a complete one-member owner record and a non-null destination,
-  the generated reader evaluates `__State = value.State`, then reads into that
-  local. The readonly state reader allocates fresh arrays and replaces the DTO,
-  discarding the old snapshot. The owner constructor creates a replacement.
-  State snapshots cost three arrays for a store and four for the issuer; issuer
-  generation history is copied even when all historical slots are retired.
-  Baseline generated output confirmed this path for both owners, not only an
-  inferred generator pattern.
+  989a4272754c02f42f86719625db68cd92af8569, clean before review;
+  released-package dependencies, MemoryPack 1.21.4 / Chronicler.Core 1.0.0.
+  Windows x64, Core i7-9700K, SDK 10.0.302 / .NET 10.0.10, optimized Release.
+  The same results occur with actual net10.0 and netstandard2.1 runtime
+  assemblies in a .NET 10 host, with selected DLL hashes and target-framework
+  attributes checked.
+- **Baseline cause:** For a complete one-member owner record and a non-null
+  destination, the generated reader evaluates `__State = value.State`, then
+  reads into that local. The readonly state reader allocates fresh arrays and
+  replaces the DTO, discarding the old snapshot. The owner constructor creates a
+  replacement. State snapshots cost three arrays for a store and four for the
+  issuer; issuer generation history is copied even when all historical slots are
+  retired. Baseline generated output confirmed this path for both owners, not
+  only an inferred generator pattern.
 
-The following measured bytes per complete decode replace the destination with
-an **empty** snapshot. The old owner remains unchanged. Construction, wire
+The following measured bytes per complete decode replace the destination with an
+**empty** snapshot. The old owner remains unchanged. Construction, wire
 encoding, formatter warmup and old-owner validation are outside measurement.
 Each case warms 32 calls and measures 128 calls using
 GC.GetAllocatedBytesForCurrentThread with background GC disabled. No timing or
 universal throughput claim is made.
 
 | Old live int entries | Issuer: null destination | Issuer: existing destination | Store: null destination | Store: existing destination |
-| ---: | ---: | ---: | ---: | ---: |
-| 0 | 136 B | 232 B | 48 B | 120 B |
-| 128 | 136 B | 1768 B | 48 B | 1656 B |
-| 4096 | 136 B | 49384 B | 48 B | 49272 B |
-| 16384 | 136 B | 196840 B | 48 B | 196728 B |
+| -------------------: | -----------------------: | ---------------------------: | ----------------------: | --------------------------: |
+|                    0 |                    136 B |                        232 B |                    48 B |                       120 B |
+|                  128 |                    136 B |                       1768 B |                    48 B |                      1656 B |
+|                 4096 |                    136 B |                      49384 B |                    48 B |                     49272 B |
+|                16384 |                    136 B |                     196840 B |                    48 B |                    196728 B |
 
 At 4096 entries, the discarded snapshot alone adds 49248 B for the issuer or
 49224 B for the store. An issuer with Count=0 and 4096 retired generations still
 uses 16616 B/decode versus 136 B into null (16480 B extra). This tracks logical
 state/history, not retained physical capacity. Both target assets give the same
 values. Complete incoming empty records are respectively hex
-`010400000000000000000000000000000000` and
-`0103000000000000000000000000`.
+`010400000000000000000000000000000000` and `0103000000000000000000000000`.
 
 **Portable baseline reproducer:** from the recorded baseline checkout, create an
-external net10.0 console project and reference
-the core project, using the commands below from the repository root. Set
-`<ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>` in the console
-project. Replace Program.cs with this program; no maintained fixture is required.
+external net10.0 console project and reference the core project, using the
+commands below from the repository root. Set
+`<ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>` in the
+console project. Replace Program.cs with this program; no maintained fixture is
+required.
 
 ```powershell
 dotnet new console --framework net10.0 --output ../SwiftTicketDecodeRepro
@@ -188,21 +189,22 @@ static long Bytes<T>(T? previous, byte[] bytes) where T : class
 }
 ```
 
-To check actual netstandard2.1 assets, build the core with `-c Release -f
-netstandard2.1` and the same package-mode properties. Bind a separate .NET 10
-host directly to that core DLL and its target dependency assets, not a
-multi-target ProjectReference that selects net10.0. Register the four closed
-owner/state types with their generated RegisterFormatter methods before use.
-The input records and expected allocations above remain the oracle.
+To check actual netstandard2.1 assets, build the core with
+`-c Release -f netstandard2.1` and the same package-mode properties. Bind a
+separate .NET 10 host directly to that core DLL and its target dependency
+assets, not a multi-target ProjectReference that selects net10.0. Register the
+four closed owner/state types with their generated RegisterFormatter methods
+before use. The input records and expected allocations above remain the oracle.
 
 **Resolution:** use authored one-State owner readers through the existing
 GenerateType.NoGenerate pattern. Both reuse the internal SwiftStateMemoryPack
 envelope reader; readonly state DTOs and their generated codecs are unchanged.
 The shared reader captures previous.State only for a zero-member owner. Complete
-records read fresh state, then each owner validates and constructs its replacement
-before assigning the caller's reference. Null and invalid headers retain their
-existing behavior. This removes the cause inside the library; callers can keep
-using by-reference decoding. The public guide's workaround paragraph was removed.
+records read fresh state, then each owner validates and constructs its
+replacement before assigning the caller's reference. Null and invalid headers
+retain their existing behavior. This removes the cause inside the library;
+callers can keep using by-reference decoding. The public guide's workaround
+paragraph was removed.
 
 MemoryPack 1.21.4's
 [tagged emitter](https://github.com/Cysharp/MemoryPack/blob/1.21.4/src/MemoryPack.Generator/MemoryPackGenerator.Emitter.cs)
@@ -217,11 +219,11 @@ owner plumbing. Lean excludes those files through its existing build policy.
 
 Three maintained regressions compare 64 warmed replacements into null versus a
 4096-entry prior owner (or 4096 retired issuer generations), resetting the old
-destination before every call. They check exact old state, empty replacement
-and independent future insertion without hardcoded object sizes. All three
-failed on the unfixed implementation for the expected allocation difference,
-then passed. Existing literal-wire, null/omitted/partial-state, mutable-payload,
-truncation and replacement-failure tests remain intact.
+destination before every call. They check exact old state, empty replacement and
+independent future insertion without hardcoded object sizes. All three failed on
+the unfixed implementation for the expected allocation difference, then passed.
+Existing literal-wire, null/omitted/partial-state, mutable-payload, truncation
+and replacement-failure tests remain intact.
 
 ### Allocation and bounded timing verification
 
@@ -231,13 +233,13 @@ targets, with identical selected dependencies and verified core hashes. Incoming
 counts 0/128 and old counts 0/4096/16384 have exact ticket/value oracles; old
 owners remain unchanged. The complete replacement results are:
 
-| Prior int state | Issuer before / final | Store before / final |
-| --- | ---: | ---: |
-| Empty owner | 232 / 136 B | 120 / 48 B |
-| 4096 live entries, incoming empty | 49384 / 136 B | 49272 / 48 B |
-| 16384 live entries, incoming empty | 196840 / 136 B | 196728 / 48 B |
-| 4096 live entries, incoming 128 | 53040 / 3792 B | 54536 / 5312 B |
-| 4096 retired generations, incoming empty | 16616 / 136 B | Not applicable |
+| Prior int state                          | Issuer before / final | Store before / final |
+| ---------------------------------------- | --------------------: | -------------------: |
+| Empty owner                              |           232 / 136 B |           120 / 48 B |
+| 4096 live entries, incoming empty        |         49384 / 136 B |         49272 / 48 B |
+| 16384 live entries, incoming empty       |        196840 / 136 B |        196728 / 48 B |
+| 4096 live entries, incoming 128          |        53040 / 3792 B |       54536 / 5312 B |
+| 4096 retired generations, incoming empty |         16616 / 136 B |       Not applicable |
 
 Null-destination allocations are unchanged. Zero-member-owner controls also
 retain their intentional snapshot/reconstruction cost: 114920 B for the issuer
@@ -251,58 +253,60 @@ Timing uses independent ABBA-ordered processes, 32 initial warm calls, seven
 processes per target cover 19 rows each. Default-tiered 4096-entry-to-empty
 medians improve from issuer 12.99-14.24 to 0.356-0.370 microseconds and store
 11.74-14.48 to 0.206-0.308 on net10.0. Corresponding netstandard ranges are
-13.09-15.17 to 0.355-0.391 and 13.71-14.55 to 0.219-0.227. All allocation
-counts agree across processes and targets. Construction, encoding, registration
-warmup and validation are outside measurement; decoding allocations/GC are inside.
+13.09-15.17 to 0.355-0.391 and 13.71-14.55 to 0.219-0.227. All allocation counts
+agree across processes and targets. Construction, encoding, registration warmup
+and validation are outside measurement; decoding allocations/GC are inside.
 
 Retain the adverse controls: short fresh-destination issuer/128-entry captures
-were slower after the change on both targets: default tiering about
-3.95-4.39 to 5.75-14.45 microseconds on net10.0 and 4.12-4.65 to 5.49-5.89 on
-netstandard. Short tiering-disabled captures also showed the same direction
-(0.895-1.287 to 2.263-2.883 and 0.787-0.964 to 2.002-2.697). These are not
-discarded as outliers or attributed to tiering alone.
+were slower after the change on both targets: default tiering about 3.95-4.39 to
+5.75-14.45 microseconds on net10.0 and 4.12-4.65 to 5.49-5.89 on netstandard.
+Short tiering-disabled captures also showed the same direction (0.895-1.287 to
+2.263-2.883 and 0.787-0.964 to 2.002-2.697). These are not discarded as outliers
+or attributed to tiering alone.
 
 A bounded isolated control removes preceding large-state cases, warms each
-fresh-destination 128-entry case for 200 ms, and measures seven 2048-call batches.
-Four balanced before/final processes per target with DOTNET_TieredCompilation=0
-give issuer 1.043-1.132 / 1.027-1.081 microseconds (net10.0) and
-1.043-1.128 / 1.008-1.052 (netstandard); store 0.957-1.127 / 0.962-1.035 and
-0.905-0.985 / 0.935-1.050. Default tiering/PGO-on controls with the same isolated
-warmup remain variable: issuer 1.09-3.70 / 0.78-3.46 and 3.34-3.80 / 3.49-3.71;
-store 2.44-3.00 / 2.37-2.75 and 2.97-3.01 / 2.71-3.11. Allocations remain equal.
-The short-case direction is not a consistent fully warmed issuer regression;
-its timing attribution remains unresolved. These checks establish neither
-universal timing parity nor an accepted new cost budget. No additional source
-tuning was justified by these warmup/order-sensitive controls.
+fresh-destination 128-entry case for 200 ms, and measures seven 2048-call
+batches. Four balanced before/final processes per target with
+DOTNET_TieredCompilation=0 give issuer 1.043-1.132 / 1.027-1.081 microseconds
+(net10.0) and 1.043-1.128 / 1.008-1.052 (netstandard); store 0.957-1.127 /
+0.962-1.035 and 0.905-0.985 / 0.935-1.050. Default tiering/PGO-on controls with
+the same isolated warmup remain variable: issuer 1.09-3.70 / 0.78-3.46 and
+3.34-3.80 / 3.49-3.71; store 2.44-3.00 / 2.37-2.75 and 2.97-3.01 / 2.71-3.11.
+Allocations remain equal. The short-case direction is not a consistent fully
+warmed issuer regression; its timing attribution remains unresolved. These
+checks establish neither universal timing parity nor an accepted new cost
+budget. No additional source tuning was justified by these
+warmup/order-sensitive controls.
 
 The complete measurements contain 672 verified rows: 304 initial default-tiered,
 304 short tiering-disabled, 32 isolated default-tiered and 32 isolated
-tiering-disabled. No build, test, profiler or Unity run overlapped timings.
-The allocation fix, rather than an unqualified timing claim, closes this signal.
+tiering-disabled. No build, test, profiler or Unity run overlapped timings. The
+allocation fix, rather than an unqualified timing claim, closes this signal.
 
 ### Compatibility, coverage and host verification
 
 All seven final lanes pass the unchanged full line/branch/executable-method gate
 for both runtime assemblies, with no failures or skips:
 
-| Executed lane | Core / companion tests | Core lines, branches, methods | Companion lines, branches, methods |
-| --- | ---: | --- | --- |
-| Debug net10.0, source | 2423 / 100 | 8710/8710, 3136/3136, 1475/1475 | 257/257, 86/86, 67/67 |
-| Release net10.0, package and source separately | 2425 / 100 each | 6634/6634, 3128/3128, 1475/1475 | 205/205, 86/86, 67/67 |
-| ReleaseLean net10.0, package and source separately | 2270 / 100 each | 6407/6407, 3028/3028, 1425/1425 | 205/205, 86/86, 67/67 |
-| Actual netstandard2.1 Release, package | 2424 / 100 | 6638/6638, 3128/3128, 1479/1479 | 205/205, 86/86, 67/67 |
-| Actual netstandard2.1 ReleaseLean, package | 2269 / 100 | 6407/6407, 3028/3028, 1425/1425 | 205/205, 86/86, 67/67 |
+| Executed lane                                      | Core / companion tests | Core lines, branches, methods   | Companion lines, branches, methods |
+| -------------------------------------------------- | ---------------------: | ------------------------------- | ---------------------------------- |
+| Debug net10.0, source                              |             2423 / 100 | 8710/8710, 3136/3136, 1475/1475 | 257/257, 86/86, 67/67              |
+| Release net10.0, package and source separately     |        2425 / 100 each | 6634/6634, 3128/3128, 1475/1475 | 205/205, 86/86, 67/67              |
+| ReleaseLean net10.0, package and source separately |        2270 / 100 each | 6407/6407, 3028/3028, 1425/1425 | 205/205, 86/86, 67/67              |
+| Actual netstandard2.1 Release, package             |             2424 / 100 | 6638/6638, 3128/3128, 1479/1479 | 205/205, 86/86, 67/67              |
+| Actual netstandard2.1 ReleaseLean, package         |             2269 / 100 | 6407/6407, 3028/3028, 1425/1425 | 205/205, 86/86, 67/67              |
 
 Commands are the existing CONTRIBUTING build/test/coverlet commands and
 assert-full-coverage.ps1. Source restore/build/test passes UseLocalLsfStack=true
 and global DisableTransitiveProjectReferences=true with serial -m:1 builds;
 package mode sets both false and uses a separate cache. Actual netstandard tests
 bind frozen target DLLs in a .NET 10 host, with the existing five BCL overlays
-and narrow hash-comparer test dispatch adaptation. Existing release-only/NET10-only
-cases explain count differences. New authored serializers are covered, including
-registration and compatibility paths; no exclusion, threshold or complexity
-exception changed. Existing xUnit2013 / Lean xUnit1026 warnings remain. The only
-expected failing tests were the three new regressions before correction.
+and narrow hash-comparer test dispatch adaptation. Existing
+release-only/NET10-only cases explain count differences. New authored
+serializers are covered, including registration and compatibility paths; no
+exclusion, threshold or complexity exception changed. Existing xUnit2013 / Lean
+xUnit1026 warnings remain. The only expected failing tests were the three new
+regressions before correction.
 
 Four closed-JSON writer hosts and twelve readers pass target/variant exchanges,
 five payload families, nested arrays/lists and the issuer/component replay with
@@ -316,15 +320,15 @@ SwiftCollections.FixedMathSharp and SwiftCollections.FixedMathSharp.Lean.
 
 Unity 6000.3.9f1 Windows x64 passes Mono (236 Standard / 149 Lean checks) and
 nondevelopment High-stripping, Release-compiler IL2CPP players (221 / 137).
-Actual netstandard2.1/C# 11 helpers cover closed payload codecs, by-ref complete,
-omitted, null and truncated records, unchanged old owners, exact tickets/orders
-and continuation. No authored link.xml or blanket preservation is used. Mono
-verifies loaded managed-file hashes; Editor validates every input before build;
-native results report the verified compiled-input manifest and assert IL2CPP.
-Standard core SHA-256 is
-A040679B7EE3A8B1D4F0841366EC994120F911E50A07ABA1BF91F22BAE314481;
-Lean is F4B19888735BEF7A0B4E089CB06F25D4FD2123206259490B7FEE7AC566EDB572.
-Both backends produce the same explicit continuation:
+Actual netstandard2.1/C# 11 helpers cover closed payload codecs, by-ref
+complete, omitted, null and truncated records, unchanged old owners, exact
+tickets/orders and continuation. No authored link.xml or blanket preservation is
+used. Mono verifies loaded managed-file hashes; Editor validates every input
+before build; native results report the verified compiled-input manifest and
+assert IL2CPP. Standard core SHA-256 is
+A040679B7EE3A8B1D4F0841366EC994120F911E50A07ABA1BF91F22BAE314481; Lean is
+F4B19888735BEF7A0B4E089CB06F25D4FD2123206259490B7FEE7AC566EDB572. Both backends
+produce the same explicit continuation:
 
 ```text
 agents=0:1=101,2:1=303,1:2=404
@@ -333,30 +337,32 @@ velocities=2:1=3,0:1=2,1:2=4
 health=2:1=50,0:1=80,1:2=25
 ```
 
-Fresh DocFX 2.78.5 generation and local file links pass with zero warnings/errors.
-Source/metadata/XML audit accounts for 82 authored APIs in Standard, including
-six owner serializer methods replacing generated methods, six remaining
-generated state serializer methods and five synthesized struct constructors.
-Lean remains 76 authored APIs, no generated serializers and five synthesized
-constructors. Both internal helpers have summaries. Before/final metadata
-comparisons preserve public/protected signatures, generic constraints and explicit-interface contracts in
-both targets; no net10 public serializer API was added. The site's selected
-net10 target continues to hide explicit methods; netstandard public bootstrap/
-serializer methods remain documented in emitted XML.
+Fresh DocFX 2.78.5 generation and local file links pass with zero
+warnings/errors. Source/metadata/XML audit accounts for 82 authored APIs in
+Standard, including six owner serializer methods replacing generated methods,
+six remaining generated state serializer methods and five synthesized struct
+constructors. Lean remains 76 authored APIs, no generated serializers and five
+synthesized constructors. Both internal helpers have summaries. Before/final
+metadata comparisons preserve public/protected signatures, generic constraints
+and explicit-interface contracts in both targets; no net10 public serializer API
+was added. The site's selected net10 target continues to hide explicit methods;
+netstandard public bootstrap/ serializer methods remain documented in emitted
+XML.
 
-Implementation started clean at e4835b0c66d082c7921f85ddb2decf26fdd97dd6,
-index af940027315836005b4126fb9d55b03248859f9a. Source providers remain unchanged:
+Implementation started clean at e4835b0c66d082c7921f85ddb2decf26fdd97dd6, index
+af940027315836005b4126fb9d55b03248859f9a. Source providers remain unchanged:
 Chronicler 0281469ecc40e65a05867f473bc10f030e7f69f8 and FixedMathSharp
 8fdf889322f1bb82501c2afec63d6bb2f304ace2. Local source results do not claim a
-hosted CI run against a different Chronicler pin. No provider, adapter, dependency
-pin, CI policy or package version changed. Physical maximum arrays, forced OOM,
-other host platforms and universal timing/codec guarantees remain untested.
-Independent source/test and evidence reviews found no remaining correctness
-issue.
+hosted CI run against a different Chronicler pin. No provider, adapter,
+dependency pin, CI policy or package version changed. Physical maximum arrays,
+forced OOM, other host platforms and universal timing/codec guarantees remain
+untested. Independent source/test and evidence reviews found no remaining
+correctness issue.
 
-**Reopen when:** previous-owner-dependent allocation returns, a consuming restore
-budget shows a repeatable attributable regression, or wire/zero-member/failure/
-AOT compatibility changes. No issue-tracker bug ID is assigned.
+**Reopen when:** previous-owner-dependent allocation returns, a consuming
+restore budget shows a repeatable attributable regression, or
+wire/zero-member/failure/ AOT compatibility changes. No issue-tracker bug ID is
+assigned.
 
 ### SC-Benchmark-007 - Value-key spatial hash insertion boxing
 
@@ -394,13 +400,12 @@ AOT compatibility changes. No issue-tracker bug ID is assigned.
   no attributable source defect. This is not a crash fix, exoneration of earlier
   IO or a reopened SC-Benchmark-005 timing gate. Closure evidence and reopening
   criteria follow the historical checkpoints below.
-- **Source / environment:** Phase 2 working tree over
-  `4fedfa1` before replacing the shared JSON descriptor arrays with a fixed
-  tuple. Standard net10.0 core SHA256
-  `EDB71A257E5097496762F1BF9225A6DE8405C1069AA4A2F3445738419EA1DCEC`;
+- **Source / environment:** Phase 2 working tree over `4fedfa1` before replacing
+  the shared JSON descriptor arrays with a fixed tuple. Standard net10.0 core
+  SHA256 `EDB71A257E5097496762F1BF9225A6DE8405C1069AA4A2F3445738419EA1DCEC`;
   caller `A567E0C95959E24C40F731EEB2B85C2B3BB66077F71811F621E92095D6685A1F`.
-  Published Chronicler 1.0.0 / MemoryPack 1.21.4, SDK 10.0.302, runtime
-  10.0.10, Windows x64 build 26300, i7-9700K, CPU2, normal priority,
+  Published Chronicler 1.0.0 / MemoryPack 1.21.4, SDK 10.0.302, runtime 10.0.10,
+  Windows x64 build 26300, i7-9700K, CPU2, normal priority,
   `DOTNET_TieredCompilation=0`.
 - **Portable reproducer / observed result:** Use the four-family default-int
   boundary protocol in the
@@ -409,8 +414,8 @@ AOT compatibility changes. No issue-tracker bug ID is assigned.
   replace only the core DLL; launch `dotnet <caller.dll> <fresh-output.json>`.
   One current-core process in the initial ABBA attempt printed
   `Fatal error. 0xC0000005` and produced no completed matrix. Expected: normal
-  exit and 288 checked rows. Rows/provenance are written only at completion,
-  so this does not localize failure to serialization, validation or final IO.
+  exit and 288 checked rows. Rows/provenance are written only at completion, so
+  this does not localize failure to serialization, validation or final IO.
 - **Bounded controls:** The exact same pre-optimization current core completed
   four other 288-row processes, including a CDB replay with first-chance AV
   logging configured. Three baseline processes also completed. The final
@@ -427,9 +432,9 @@ AOT compatibility changes. No issue-tracker bug ID is assigned.
 - **Phase 3 controls — 2026-11-20:** A larger decode-only batch also failed on
   the committed Phase 2 baseline `b6c1953d2a81570bae8f97ab9c53a64e0edb5d0a`,
   before executing the candidate optimization. Core SHA256
-  `BAE679CB7276D410900758CF4362119D8C9376685231BDAD0B3A1B1697445AFD`,
-  optimized caller `64D160A5CE8ED6639D386FA8FE6AC68419EAAA42ADB3CF1FB1561897EB2267ED`.
-  Use the same default-int dictionary/bidictionary inputs, fix count at 65536,
+  `BAE679CB7276D410900758CF4362119D8C9376685231BDAD0B3A1B1697445AFD`, optimized
+  caller `64D160A5CE8ED6639D386FA8FE6AC68419EAAA42ADB3CF1FB1561897EB2267ED`. Use
+  the same default-int dictionary/bidictionary inputs, fix count at 65536,
   measure decode only, warm eight calls after each forced full GC, and perform
   five samples of 32 calls. Validate every mapping outside timing, retain the
   decoded owner, and keep the original JSON array captured by the decode
@@ -440,35 +445,35 @@ AOT compatibility changes. No issue-tracker bug ID is assigned.
   `JsonSerializer.Deserialize<TState>(ref reader, options)` call, through the
   parameterized key/value constructor, before collection population. Correction:
   its frozen caller's `Program.Main` line 51 calls BiDictionary, after the
-  Dictionary JSON and binary sequence. Earlier binary IO cannot be excluded as
-  a contributor. The first short fatal trace alone does not identify its family.
-  This is not evidence that both incidents share a
-  root cause, or that the allocation optimization fixes either failure.
-  A CDB replay completed all 20 batch rows without capturing an AV. Separate
-  plain-BCL pair-array, raw-state and baseline-owner drivers each completed 200
-  decodes with full-content checks and GC boundaries every 40 operations.
-  Two additional framework-only nested-reader controls, using the same ref-reader
-  delegation with no Swift/Chronicler/MemoryPack references, completed 200 decodes
-  each. These controls do not reliably reproduce or attribute the fault.
-  ClrMD 3.1 with the matching DAC could not resolve the original small dump's
-  code address. Exclude failures and diagnostic runs from timings; passing
-  controls do not establish a fix. The final balanced binary-only comparison
-  completed eight processes/80 rows, and the final full boundary matrix
-  completed eight processes/1728 rows. The focused JSON batch remains an
-  unresolved reliability limit rather than an accepted performance sample.
-- **Calibrated closeout capture — 2026-11-20:** After installing MSVC/SDK,
-  pin the original caller to runtime 10.0.10 (`dotnet --fx-version 10.0.10`),
+  Dictionary JSON and binary sequence. Earlier binary IO cannot be excluded as a
+  contributor. The first short fatal trace alone does not identify its family.
+  This is not evidence that both incidents share a root cause, or that the
+  allocation optimization fixes either failure. A CDB replay completed all 20
+  batch rows without capturing an AV. Separate plain-BCL pair-array, raw-state
+  and baseline-owner drivers each completed 200 decodes with full-content checks
+  and GC boundaries every 40 operations. Two additional framework-only
+  nested-reader controls, using the same ref-reader delegation with no
+  Swift/Chronicler/MemoryPack references, completed 200 decodes each. These
+  controls do not reliably reproduce or attribute the fault. ClrMD 3.1 with the
+  matching DAC could not resolve the original small dump's code address. Exclude
+  failures and diagnostic runs from timings; passing controls do not establish a
+  fix. The final balanced binary-only comparison completed eight processes/80
+  rows, and the final full boundary matrix completed eight processes/1728 rows.
+  The focused JSON batch remains an unresolved reliability limit rather than an
+  accepted performance sample.
+- **Calibrated closeout capture — 2026-11-20:** After installing MSVC/SDK, pin
+  the original caller to runtime 10.0.10 (`dotnet --fx-version 10.0.10`),
   tiering disabled, CPU2, normal priority, workstation/nonconcurrent GC. The
   collector first captured a native read at address 0x8 in a non-inlined null
   field read, saved full memory, then allowed the CLR to catch NRE and complete.
   Use `sxe av` with `.exr -1; .ecxr; kb; .dump /ma /u <fresh-name>; gn` and an
-  unhandled CLR/AV capture; parent debugger success is insufficient.
-  Two frozen baseline processes completed 20/20 rows each; the third reproduced
-  an AV and supplied a full first-chance snapshot. Replay stopped there rather
-  than completing the fourth planned baseline. Two selected-current processes
+  unhandled CLR/AV capture; parent debugger success is insufficient. Two frozen
+  baseline processes completed 20/20 rows each; the third reproduced an AV and
+  supplied a full first-chance snapshot. Replay stopped there rather than
+  completing the fourth planned baseline. Two selected-current processes
   completed 20/20 rows each with the same caller and no AV or unhandled CLR
-  event; current
-  core hash `807CDB2EAB4B463B2BF9924A2AB224509E28495500DF695249343856DAC2529E`.
+  event; current core hash
+  `807CDB2EAB4B463B2BF9924A2AB224509E28495500DF695249343856DAC2529E`.
 - **Operation and native evidence:** The full snapshot has twelve completed
   samples and a 65536-entry BiDictionary in the retained sink: BiDictionary JSON
   sample three, after all five Dictionary JSON and five Dictionary binary
@@ -477,42 +482,43 @@ AOT compatibility changes. No issue-tracker bug ID is assigned.
   `0xa69d77de28` is writable stack below heap-low `0x1e4a1400000`, yet the
   helper's not-in-heap flag is zero. The fault address `0x1e4583f873b` equals
   card-table base `0x1e4436bd840` plus `(destination >> 11)` and is unallocated.
-  Offline exception/default contexts agree; 576 captured helper-code bytes
-  match the installed runtime and the call target is its proper entry.
-  ReadStack has a valid four-frame array/count two; Current differs from its
-  expected source frame and contains an invalid `PolymorphicJsonTypeInfo=0x1`.
-  These observations do not distinguish earlier corruption, context/control-flow
+  Offline exception/default contexts agree; 576 captured helper-code bytes match
+  the installed runtime and the call target is its proper entry. ReadStack has a
+  valid four-frame array/count two; Current differs from its expected source
+  frame and contains an invalid `PolymorphicJsonTypeInfo=0x1`. These
+  observations do not distinguish earlier corruption, context/control-flow
   trouble or a runtime defect, and do not establish one cause for all incidents.
 - **Independent copy control:** Three fresh framework-only processes completed
-  ten million 112-byte managed-reference frame copies each, checking all fourteen
-  fields. Use a heap `Frame[]`, local stack Frame, and
-  `array.AsSpan(index,1).CopyTo(MemoryMarshal.CreateSpan(ref local,1))`; allocate
-  64 KiB every 4096 iterations and force full GC every 200000. JIT output confirms
-  the same BCL bulk-write-barrier helper with length 112. No SwiftCollections,
-  Chronicler or MemoryPack is loaded; all thirty million copies pass. This
-  bounds the investigation but does not reproduce or exonerate the earlier IO.
+  ten million 112-byte managed-reference frame copies each, checking all
+  fourteen fields. Use a heap `Frame[]`, local stack Frame, and
+  `array.AsSpan(index,1).CopyTo(MemoryMarshal.CreateSpan(ref local,1))`;
+  allocate 64 KiB every 4096 iterations and force full GC every 200000. JIT
+  output confirms the same BCL bulk-write-barrier helper with length 112. No
+  SwiftCollections, Chronicler or MemoryPack is loaded; all thirty million
+  copies pass. This bounds the investigation but does not reproduce or exonerate
+  the earlier IO.
 - **Initial Phase 3 disposition (superseded below):** The user delegated final
-  judgment on the Phase 3 reliability
-  gate. Close feature implementation acceptance after its required checks, and
-  retain SC-Benchmark-006 as this separate open release-reliability follow-up.
-  No crash fix or confirmed runtime/environment defect is claimed. No production
-  workaround, unsafe-code suppression, maintained probe tests or profiler-policy
-  changes were added. Reopen feature acceptance for a confirmed attributable
-  defect; review this open risk before release promotion.
+  judgment on the Phase 3 reliability gate. Close feature implementation
+  acceptance after its required checks, and retain SC-Benchmark-006 as this
+  separate open release-reliability follow-up. No crash fix or confirmed
+  runtime/environment defect is claimed. No production workaround, unsafe-code
+  suppression, maintained probe tests or profiler-policy changes were added.
+  Reopen feature acceptance for a confirmed attributable defect; review this
+  open risk before release promotion.
 - **Initial attribution / planned isolation:** No concrete driver/owner memory
-  misuse was found in independent review. The synchronous managed-array driver uses no
-  manual readers, unsafe pointers or borrowed buffers. Do not attribute this
-  to the tuple allocation improvement, infer that the original Phase 2 incident
-  was a known baseline failure from the later Phase 3 controls, or add
+  misuse was found in independent review. The synchronous managed-array driver
+  uses no manual readers, unsafe pointers or borrowed buffers. Do not attribute
+  this to the tuple allocation improvement, infer that the original Phase 2
+  incident was a known baseline failure from the later Phase 3 controls, or add
   speculative runtime changes. On recurrence collect first-chance context and
   operation/progress before assigning ownership or promoting a confirmed
   implementation defect. The next discriminating slice is BiDictionary JSON
-  without preceding binary IO, followed by a matching first-chance capture if
-  it fails. Keep this unresolved risk in release review; passing selected-current
+  without preceding binary IO, followed by a matching first-chance capture if it
+  fails. Keep this unresolved risk in release review; passing selected-current
   and independent controls do not prove a fix.
 
-- **Signal closeout — 2026-11-20:** The user requested a source-focused,
-  bounded investigation. Starting checkout was clean at
+- **Signal closeout — 2026-11-20:** The user requested a source-focused, bounded
+  investigation. Starting checkout was clean at
   `21b85acdd19edaa7b2ab9e3a3958cdc6e7deb3fb`; runtime/test source is unchanged
   from `cab616d0b741afae56ed207261683881254fcc23`. Reuse the 65536-entry
   protocol above in a disposable optimized net10.0 caller, limiting construction
@@ -522,44 +528,43 @@ AOT compatibility changes. No issue-tracker bug ID is assigned.
   initial decode, then run five samples of eight warmups and 32 decodes with the
   same forced-GC boundaries and forward/reverse checks. Expected: five completed
   rows and normal exit per process, 201 decodes per completed process. Check
-  each warmup count and each measured batch's count checksum; check all key/value
-  mappings and reverse lookups on the retained warmup/sample result and
-  unchanged source. This is a modified
-  isolation caller, not the identical historical replay.
+  each warmup count and each measured batch's count checksum; check all
+  key/value mappings and reverse lookups on the retained warmup/sample result
+  and unchanged source. This is a modified isolation caller, not the identical
+  historical replay.
 - **Recreation / identities:** Build that caller against the frozen `b6c1953`
   Standard core, then copy the entire execution graph and replace only the core
   DLL with selected-current Standard. Build Lean separately with
   `SWIFTCOLLECTIONS_DISABLE_MEMORYPACK` and the matching Lean dependencies.
-  Commands are `dotnet build <probe.csproj> -c Release -p:UseLocalLsfStack=false
-  -p:CoreAssemblyPath=<frozen-core.dll> -o <baseline-graph>` and the corresponding
-  `ReleaseLean` build against current Lean. Run each fresh process with
-  `$env:DOTNET_TieredCompilation='0'` and
-  `cdb -logo <fresh-log> -cf <collector-commands> dotnet --fx-version 10.0.10
-  <caller.dll> <fresh-result.json>`. Use the calibrated AV/CLR commands above;
-  add `sxe -c ".echo PROCESS_EXIT; .lastevent; q" epr` before `g` to capture the
+  Commands are
+  `dotnet build <probe.csproj> -c Release -p:UseLocalLsfStack=false -p:CoreAssemblyPath=<frozen-core.dll> -o <baseline-graph>`
+  and the corresponding `ReleaseLean` build against current Lean. Run each fresh
+  process with `$env:DOTNET_TieredCompilation='0'` and
+  `cdb -logo <fresh-log> -cf <collector-commands> dotnet --fx-version 10.0.10 <caller.dll> <fresh-result.json>`.
+  Use the calibrated AV/CLR commands above; add
+  `sxe -c ".echo PROCESS_EXIT; .lastevent; q" epr` before `g` to capture the
   target exit code. Retain CPU2, normal priority and workstation/nonconcurrent
   GC. SDK/runtime, Windows build and published dependency versions match the
   recorded environment above. Standard caller SHA256 is
-  `6F8AFE96BDE6BD71B5A163CAC429667AC88E0623FF03B6C97F0AD29B7AA05025`;
-  Lean caller is
-  `C8728641E399027CD272D9E878A22EB825E8897614DB48C18792A623150F87F9`.
-  Standard baseline/current core hashes remain `BAE679CB…5AFD` /
-  `807CDB2E…529E` as recorded in full above; current Lean core is
-  `B634802D6B0847A2095F8B67F212EA2711B58981293F3CC440F91642CBEFB75D`.
-  Inspect loaded caller/core hashes, runtime, complete results and target exits;
+  `6F8AFE96BDE6BD71B5A163CAC429667AC88E0623FF03B6C97F0AD29B7AA05025`; Lean
+  caller is `C8728641E399027CD272D9E878A22EB825E8897614DB48C18792A623150F87F9`.
+  Standard baseline/current core hashes remain `BAE679CB…5AFD` / `807CDB2E…529E`
+  as recorded in full above; current Lean core is
+  `B634802D6B0847A2095F8B67F212EA2711B58981293F3CC440F91642CBEFB75D`. Inspect
+  loaded caller/core hashes, runtime, complete results and target exits;
   debugger success alone is insufficient. Lean must not load MemoryPack.Core.
-- **Bounded results:** Execute two frozen-baseline, two current Standard and
-  two current Lean processes, stopping baseline repetition on the useful
-  second-run failure. Baseline first run passes five rows; second captures a
-  first-chance native AV and exits `0x80131506` (internal CLR error), with no
-  completed result. Both current Standard and both current Lean processes exit
-  zero and pass five rows each: 20 current rows / 804 current decodes. Across
-  all completed processes, 25 rows pass; the failed baseline's partial work is
-  not accepted. All six target exits and collector output were inspected, with
-  no AV or unhandled CLR event in the passing processes. Both disposable caller
-  builds finish with zero warnings/errors. No diagnostic timing is used as
-  performance evidence. No additional replay, runtime/CPU sweep or stress loop
-  is needed for this disposition.
+- **Bounded results:** Execute two frozen-baseline, two current Standard and two
+  current Lean processes, stopping baseline repetition on the useful second-run
+  failure. Baseline first run passes five rows; second captures a first-chance
+  native AV and exits `0x80131506` (internal CLR error), with no completed
+  result. Both current Standard and both current Lean processes exit zero and
+  pass five rows each: 20 current rows / 804 current decodes. Across all
+  completed processes, 25 rows pass; the failed baseline's partial work is not
+  accepted. All six target exits and collector output were inspected, with no AV
+  or unhandled CLR event in the passing processes. Both disposable caller builds
+  finish with zero warnings/errors. No diagnostic timing is used as performance
+  evidence. No additional replay, runtime/CPU sweep or stress loop is needed for
+  this disposition.
 - **New capture / limits:** This recurrence needs no preceding Dictionary or
   MemoryPack serialization/deserialization. The Standard graph still contains
   MemoryPack; this does not prove its initialization or earlier historical IO
@@ -572,25 +577,25 @@ AOT compatibility changes. No issue-tracker bug ID is assigned.
   card-table base `0x1eb4283d040` plus `(destination >> 11)`. Offline exception
   and default contexts agree. These inconsistent native facts do not identify
   the cause or prove a runtime/environment defect.
-- **Source review / decision:** Independent review plus coordinator checks
-  find no concrete misuse in synchronous ref-reader delegation, bounded JSON
-  metadata stack buffers, managed-array forward/reverse reconstruction or
-  authored MemoryPack state IO. The eight-byte comparer header view is consumed
+- **Source review / decision:** Independent review plus coordinator checks find
+  no concrete misuse in synchronous ref-reader delegation, bounded JSON metadata
+  stack buffers, managed-array forward/reverse reconstruction or authored
+  MemoryPack state IO. The eight-byte comparer header view is consumed
   immediately after `GetSpanReference(8)` and is not retained or written; the
   [MemoryPack 1.21.4 reader](https://github.com/Cysharp/MemoryPack/blob/1.21.4/src/MemoryPack.Core/MemoryPackReader.cs#L68-L137)
-  supplies the requested contiguous bytes or throws. This fixture
-  does not use unsafe string hashing. The review does not audit the entire CLR
-  or provider implementation or exclude an intermittent defect. Close as a
-  documented no-source-change decision under the user's bounded scope. No
-  production workaround, API/dependency/CI change, maintained probe or regression
-  test is justified without a source defect. Current controlled executions pass;
-  they do not establish that the historical failure is fixed.
-- **Reopening / next action:** No further investigation or implementation
-  work is queued. Reopen for a supported current-code recurrence with exact
-  input, loaded identities and useful original context, a concrete source
+  supplies the requested contiguous bytes or throws. This fixture does not use
+  unsafe string hashing. The review does not audit the entire CLR or provider
+  implementation or exclude an intermittent defect. Close as a documented
+  no-source-change decision under the user's bounded scope. No production
+  workaround, API/dependency/CI change, maintained probe or regression test is
+  justified without a source defect. Current controlled executions pass; they do
+  not establish that the historical failure is fixed.
+- **Reopening / next action:** No further investigation or implementation work
+  is queued. Reopen for a supported current-code recurrence with exact input,
+  loaded identities and useful original context, a concrete source
   memory/lifetime defect, or evidence that changes release-risk assessment.
-  Promote a confirmed collection/provider defect to its owning issue tracker
-  and add a failing production-behavior regression before fixing it. Keep the
+  Promote a confirmed collection/provider defect to its owning issue tracker and
+  add a failing production-behavior regression before fixing it. Keep the
   unexplained historical failure visible in release review; closure ends this
   investigation, not the underlying uncertainty.
 
@@ -614,15 +619,15 @@ AOT compatibility changes. No issue-tracker bug ID is assigned.
 - **Portable workload:** Build a caller once per package flavor against the
   baseline, then use the exact same caller and dependency graph with only the
   candidate core DLL substituted. Verify actual loaded hashes against the
-  intended source output before interpreting results. Measure an Add/Remove
-  pair for an empty default-int list (temporary 1), an ordinal string list of
-  128 preallocated `k00000000` through `k00000127` values (temporary
-  `z-temporary`), and 4096 noncomparable reference tokens with integer keys
-  0–4095 and a capturing descending comparer (temporary key 4097). Construct
-  through the real enumerable constructor, then reserve Count+1 capacity.
-  A control performs Contains(32768)+Contains(-1) on integers 0–65535.
-  Assert unchanged full contents/order/count after every interval and successful
-  operation results. No setup, growth or correctness assertion is timed.
+  intended source output before interpreting results. Measure an Add/Remove pair
+  for an empty default-int list (temporary 1), an ordinal string list of 128
+  preallocated `k00000000` through `k00000127` values (temporary `z-temporary`),
+  and 4096 noncomparable reference tokens with integer keys 0–4095 and a
+  capturing descending comparer (temporary key 4097). Construct through the real
+  enumerable constructor, then reserve Count+1 capacity. A control performs
+  Contains(32768)+Contains(-1) on integers 0–65535. Assert unchanged full
+  contents/order/count after every interval and successful operation results. No
+  setup, growth or correctness assertion is timed.
 - **Controls / completeness:** Each flavor's four-process A/B/B/A comparison
   uses five balanced samples, 100000 warmup pairs and 2000000 measured pairs per
   interval: 80 intervals. Additional same-process controls load baseline and
@@ -664,6 +669,7 @@ AOT compatibility changes. No issue-tracker bug ID is assigned.
   rule out added algorithmic instructions in those methods; they do not prove
   identical cycle cost or establish the timing cause. Range overlap alone is
   insufficient to close the signal.
+
 #### Isolation pass — 2026-11-19
 
 **Result:** Reproduced the timing sensitivity with direct callers. A controlled
@@ -698,12 +704,12 @@ DLL graph. The maintained benchmark project already enables optimization.
 The corrected disposable caller uses direct concrete typed loops, explicit
 `Optimize=true`, explicit compile/reference inputs, no assembly-load contexts or
 per-operation `Action` wrapper, and provenance IO only after all timing. It
-performs one setup GC, then warmup, and no scheduled GC between intervals. Read-only
-owners keep natural Count/Capacity 65536/Offset 0 for integers and 4096/4096/0 for
-strings/tokens; mutation owners reserve Count+1 before warmup. The first draft
-unnecessarily doubled read-only capacity and is excluded from the corrected
-storage-shape comparison. The token mutation shape is unchanged between drafts:
-4096 items, Capacity 8192, Offset 2048.
+performs one setup GC, then warmup, and no scheduled GC between intervals.
+Read-only owners keep natural Count/Capacity 65536/Offset 0 for integers and
+4096/4096/0 for strings/tokens; mutation owners reserve Count+1 before warmup.
+The first draft unnecessarily doubled read-only capacity and is excluded from
+the corrected storage-shape comparison. The token mutation shape is unchanged
+between drafts: 4096 items, Capacity 8192, Offset 2048.
 
 **Portable experiment.** Build one net10.0 optimized caller per flavor against
 the exact baseline DLL, using matching published dependencies. Copy its whole
@@ -775,15 +781,15 @@ remain evidence of context sensitivity.
 Separate FullOpts captures set `DOTNET_JitDisasm='*RunTokenPair* *Search*'`,
 `DOTNET_JitDisasmWithCodeBytes=1`, `DOTNET_JitDisasmWithAlignmentBoundaries=1`
 and `DOTNET_JitStdOutFile=<file>`, once under each policy and graph. Within each
-graph, normalized instructions and method-relative offsets are unchanged:
-caller 143 bytes, Standard Search 193 baseline/186 current, Lean Search 186 both.
-The Standard generic-dictionary displacement is now 0x88 -> 0x68, again
-shortening the initial branch. Boundary annotations move by 16 modulo 32 for the
-Standard baseline caller, Standard current Search, and both Lean Search
-captures. This verifies different native placement in those diagnostic
-executions. Other methods can move too; separate diagnostic/timing launches do
-not establish a particular responsible branch, cache conflict or Intel
-JCC-erratum mechanism. No runtime alignment option is proposed for consumers.
+graph, normalized instructions and method-relative offsets are unchanged: caller
+143 bytes, Standard Search 193 baseline/186 current, Lean Search 186 both. The
+Standard generic-dictionary displacement is now 0x88 -> 0x68, again shortening
+the initial branch. Boundary annotations move by 16 modulo 32 for the Standard
+baseline caller, Standard current Search, and both Lean Search captures. This
+verifies different native placement in those diagnostic executions. Other
+methods can move too; separate diagnostic/timing launches do not establish a
+particular responsible branch, cache conflict or Intel JCC-erratum mechanism. No
+runtime alignment option is proposed for consumers.
 
 **Observer counterfactual.** Hold one current core and optimized caller fixed,
 then vary only a touched startup byte array, retained through construction of
@@ -792,12 +798,12 @@ baseline DLL length and current DLL length, then reverse size order; seven
 2M-pair intervals per process. Standard repeats with and without 100000-pair
 post-GC rewarming (12 processes/84 intervals); optimized Lean uses rewarming
 (6/42). All rows pass behavior/zero-allocation/no-GC/CPU/address checks.
-Standard zero allocation usually costs about 327 cycles/pair (one rewarm
-process 346), either DLL-sized allocation about 300–305. Lean is about 326
-versus 298–301. Thus setup allocation affects this fixed-binary experiment, but
-the two actual DLL sizes behave similarly: **their size difference is not
-established as the original regression cause**. Virtual addresses do not prove
-physical cache sets.
+Standard zero allocation usually costs about 327 cycles/pair (one rewarm process
+346), either DLL-sized allocation about 300–305. Lean is about 326 versus
+298–301. Thus setup allocation affects this fixed-binary experiment, but the two
+actual DLL sizes behave similarly: **their size difference is not established as
+the original regression cause**. Virtual addresses do not prove physical cache
+sets.
 
 **Verification and limits.** Fresh package-mode solution builds and tests run
 serially with
@@ -815,32 +821,33 @@ There is no branch/cache trace, settled default-tiered-PGO, other CPU/OS or
 Unity timing claim.
 
 `git diff --check` passes. Whole-file Prettier checks fail for all four changed
-documentation files at both committed HEAD and the working tree; broad historical
-reflow is outside this change. No introduced build or test failure remains.
+documentation files at both committed HEAD and the working tree; broad
+historical reflow is outside this change. No introduced build or test failure
+remains.
 
 **Closure disposition — 2026-11-20:** The user explicitly accepts the remaining
-native-context timing uncertainty and closes the Phase 1 performance gate.
-The fixed persistence-boundary cost was already accepted; this additional
-disposition covers the retained adverse hot-control observations, including
-the Standard token-pair reversal and +3.4% string-churn cycles despite -1.3%
-wall time. No stable, meaningful caller elapsed-time regression attributable
-to the implementation was established. No added algorithmic work in inspected
-lookup/mutation methods, warm allocation or behavioral failure was found.
-The complete evidence and exclusions remain above; this decision does not
-establish equal cycles, a hardware cause or a universal speedup.
+native-context timing uncertainty and closes the Phase 1 performance gate. The
+fixed persistence-boundary cost was already accepted; this additional
+disposition covers the retained adverse hot-control observations, including the
+Standard token-pair reversal and +3.4% string-churn cycles despite -1.3% wall
+time. No stable, meaningful caller elapsed-time regression attributable to the
+implementation was established. No added algorithmic work in inspected
+lookup/mutation methods, warm allocation or behavioral failure was found. The
+complete evidence and exclusions remain above; this decision does not establish
+equal cycles, a hardware cause or a universal speedup.
 
 Stop hardware-counter escalation and broad microbenchmark reruns for this
 signal. No source padding, forced alignment, comparer replacement or Search
-restructuring is justified. Further optimization should target reproducible
-cost in the implemented persistence boundary or representative callers.
-See the [Phase 1 closeout](done/2026-11-20-comparer-persistence-plan.md#phase-1-closeout--2026-11-20).
+restructuring is justified. Further optimization should target reproducible cost
+in the implemented persistence boundary or representative callers. See the
+[Phase 1 closeout](done/2026-11-20-comparer-persistence-plan.md#phase-1-closeout--2026-11-20).
 
 **Reopening criteria:** Reopen for a repeatable, meaningful regression in a
 representative caller under recorded runtime settings, equivalent inputs and
 verified package graphs, attributable to this implementation; or a newly
-demonstrated hot allocation, behavioral defect or added algorithmic work.
-A changed runtime/package/comparison implementation warrants fresh validation,
-but a different isolated timing or native layout alone does not invalidate this
+demonstrated hot allocation, behavioral defect or added algorithmic work. A
+changed runtime/package/comparison implementation warrants fresh validation, but
+a different isolated timing or native layout alone does not invalidate this
 decision.
 
 If callers or libraries are rebuilt, first reproduce the adverse signal in a
@@ -854,9 +861,10 @@ binaries.
   sorting rejected by contract decision for
   [SC-Issue-010](issue-tracker.md#resolved-issues).
 - **Owner / environment:** `SwiftSortedList<int>.State`; baseline
-  `31cd3eec80dff86b95f8cab621cc7ca281b4e7cc` versus the rejected SC-Issue-010 prototypes.
-  Published dependencies (`UseLocalLsfStack=false`), Release/net10.0, SDK 10.0.302,
-  runtime 10.0.10, Windows x64, Intel Core i7-9700K.
+  `31cd3eec80dff86b95f8cab621cc7ca281b4e7cc` versus the rejected SC-Issue-010
+  prototypes. Published dependencies (`UseLocalLsfStack=false`),
+  Release/net10.0, SDK 10.0.302, runtime 10.0.10, Windows x64, Intel Core
+  i7-9700K.
 - **Workload:** Construct a sorted list from an ascending item state containing
   integers 0..Count-1. Compared payloads are the original unchecked copy,
   unconditional sorting of the copied live segment, and the proposed adjacent
@@ -873,28 +881,29 @@ binaries.
   default-ordered output required by the sorting controls.
 
 | Ordered item count | Old unchecked median (range), ns | Unconditional sort median (range), ns | Proposed check median (range), ns | Bytes/call, all |
-| --- | --- | --- | --- | --- |
-| 8 | 40.37 (39.24–42.37) | 52.36 (51.86–64.62) | 35.78 (30.95–36.70) | 112 |
-| 128 | 63.34 (62.99–70.77) | 324.06 (320.19–356.54) | 102.08 (95.64–103.17) | 592 |
-| 4,096 | 827.00 (817.70–834.60) | 17,976.53 (17,770.85–18,689.55) | 2,256.15 (2,171.35–2,277.50) | 16,464 |
+| ------------------ | -------------------------------- | ------------------------------------- | --------------------------------- | --------------- |
+| 8                  | 40.37 (39.24–42.37)              | 52.36 (51.86–64.62)                   | 35.78 (30.95–36.70)               | 112             |
+| 128                | 63.34 (62.99–70.77)              | 324.06 (320.19–356.54)                | 102.08 (95.64–103.17)             | 592             |
+| 4,096              | 827.00 (817.70–834.60)           | 17,976.53 (17,770.85–18,689.55)       | 2,256.15 (2,171.35–2,277.50)      | 16,464          |
 
-- **Rejected behavior / cost:** The validation prototype performs Count-1 adjacent
-  comparisons on ordered nonempty state and sorts on inversion. It avoids an
-  unconditional full sort, but retains about
-  1.43 microseconds of validation cost for 4,096 integers compared with the old
-  unchecked copy. Allocation is unchanged. Reversed 4,096-item prototype restore
-  measured median 34,990.05 ns (34,177.90–35,116.00), versus 35,063.70 ns
-  (34,466.00–35,208.65) for the existing correct enumerable constructor in the
-  same payload. Both allocate 16,464 bytes and produce ascending values.
+- **Rejected behavior / cost:** The validation prototype performs Count-1
+  adjacent comparisons on ordered nonempty state and sorts on inversion. It
+  avoids an unconditional full sort, but retains about 1.43 microseconds of
+  validation cost for 4,096 integers compared with the old unchecked copy.
+  Allocation is unchanged. Reversed 4,096-item prototype restore measured median
+  34,990.05 ns (34,177.90–35,116.00), versus 35,063.70 ns (34,466.00–35,208.65)
+  for the existing correct enumerable constructor in the same payload. Both
+  allocate 16,464 bytes and produce ascending values.
 - **Decision / limits:** Preserve the original copy-only trusted-state restore;
   neither prototype is part of the final change. The original reversed payload
   is incompatible with default binary lookup, rather than an input restore must
-  normalize. Callers choose `new SwiftSortedList<T>(state.Items, desiredComparer)`
-  when ordering must be established. The prototype's comparison-failure
-  atomicity and validation promises are also withdrawn. Measurements describe
-  local integer microbenchmarks, not other types, comparer costs, JITs,
-  architectures or full deserialization pipelines. No new timing claim is made
-  for the documentation-only disposition.
+  normalize. Callers choose
+  `new SwiftSortedList<T>(state.Items, desiredComparer)` when ordering must be
+  established. The prototype's comparison-failure atomicity and validation
+  promises are also withdrawn. Measurements describe local integer
+  microbenchmarks, not other types, comparer costs, JITs, architectures or full
+  deserialization pipelines. No new timing claim is made for the
+  documentation-only disposition.
 - **Reopen:** An agreed requirement to accept unordered state, persist comparer
   identity, or validate an external trust boundary warrants separately scoped
   API and performance work. There is no pending acceptance of validation cost.
@@ -916,32 +925,33 @@ dotnet run --project ../SwiftCollectionsRepro/SwiftCollectionsRepro.csproj -c Re
   dependencies (`UseLocalLsfStack=false`), Release/net10.0, SDK 10.0.302,
   runtime 10.0.10, Windows x64, Intel Core i7-9700K.
 - **Measured controls:** Sources contain ascending integers from zero. Reuse a
-  target at Capacity 128 for Count 100, or an exact Capacity 20 target for Count
-  17. The growth control creates a Capacity 64 target and copies Count 100 on
-  every invocation, retaining the resulting object in a static sink. It times
+  target at Capacity 128 for Count 100, or an exact Capacity 20 target for
+  Count 17. The growth control creates a Capacity 64 target and copies Count 100
+  on every invocation, retaining the resulting object in a static sink. It times
   both target construction and copying. All final counts, capacities and values
   were checked. These inputs complete correctly in both versions; the broken
-  Count 100 to Capacity 0 case is a correctness regression, not a latency baseline.
+  Count 100 to Capacity 0 case is a correctness regression, not a latency
+  baseline.
 - **Procedure:** Warm all three controls for 20,000 calls each; measure reuse
   controls for 1,000,000 calls and growth for 100,000. Setup and forced GC are
   outside the timer. Use Stopwatch and current-thread allocated bytes. Four
   complete processes per version ran in ABBAABBA order, with loaded assembly
   hashes distinguishing the payloads.
 
-| Control | Baseline median (range), ns/call | Fixed median (range), ns/call | Bytes/call, both |
-| --- | --- | --- | --- |
-| Reuse Count 100 / Capacity 128 | 18.70 (18.66–18.94) | 18.96 (18.71–19.15) | 0 |
-| Reuse Count 17 / Capacity 20 | 10.08 (9.93–10.88) | 10.12 (9.75–10.37) | 0 |
-| Construct Capacity 64 + copy Count 100 | 95.02 (86.92–100.47) | 98.16 (93.59–101.31) | 856 |
+| Control                                | Baseline median (range), ns/call | Fixed median (range), ns/call | Bytes/call, both |
+| -------------------------------------- | -------------------------------- | ----------------------------- | ---------------- |
+| Reuse Count 100 / Capacity 128         | 18.70 (18.66–18.94)              | 18.96 (18.71–19.15)           | 0                |
+| Reuse Count 17 / Capacity 20           | 10.08 (9.93–10.88)               | 10.12 (9.75–10.37)            | 0                |
+| Construct Capacity 64 + copy Count 100 | 95.02 (86.92–100.47)             | 98.16 (93.59–101.31)          | 856              |
 
 - **Disposition / limits:** Guard insufficient capacity before requesting the
-  full source count through EnsureCapacity. This obtains sufficient capacity
-  in one growth and preserves fitting non-power-of-two buffers. Exact-fit,
+  full source count through EnsureCapacity. This obtains sufficient capacity in
+  one growth and preserves fitting non-power-of-two buffers. Exact-fit,
   self-copy and empty-to-empty regressions also verify storage reuse. These
-  local timings show close control medians and unchanged allocation; they do
-  not prove zero instruction cost or cross-platform throughput equivalence.
-  Reopen for a repeatable material regression on representative copies or a
-  supported JIT/architecture. No new runtime helper or dependency was added.
+  local timings show close control medians and unchanged allocation; they do not
+  prove zero instruction cost or cross-platform throughput equivalence. Reopen
+  for a repeatable material regression on representative copies or a supported
+  JIT/architecture. No new runtime helper or dependency was added.
 
 For a focused rerun, use the console setup in the
 [issue tracker](issue-tracker.md#reproducing-active-issues) against each source
@@ -957,34 +967,36 @@ dotnet run --project ../SwiftCollectionsRepro/SwiftCollectionsRepro.csproj -c Re
   [SC-Issue-007](issue-tracker.md#resolved-issues).
 - **Owner / revisions:** `SwiftShortArray2D.Normalize`; baseline
   `0ffc9d76dc0ed3bfbf485cc7491c4cd66f01501e` versus the SC-Issue-007 integer
-  interpolation. Published dependencies (`UseLocalLsfStack=false`), Release/net10.0,
-  SDK 10.0.302, runtime 10.0.10, Windows x64, Intel Core i7-9700K.
+  interpolation. Published dependencies (`UseLocalLsfStack=false`),
+  Release/net10.0, SDK 10.0.302, runtime 10.0.10, Windows x64, Intel Core
+  i7-9700K.
 - **Workload:** Normalize 32 retained square arrays per timed batch. Varying
-  inputs repeat `[-1024,-512,0,512,1024]` and map to `[-100,100]`; constant inputs
-  contain 5 and map to `[0,100]`. These are equal-output controls on this host;
-  all output cells were checked against the five exact values or zero. The
+  inputs repeat `[-1024,-512,0,512,1024]` and map to `[-100,100]`; constant
+  inputs contain 5 and map to `[0,100]`. These are equal-output controls on this
+  host; all output cells were checked against the five exact values or zero. The
   constant control uses min=0 so the old NaN conversion happens to agree with
   the corrected policy on the recorded runtime. It does not validate the old
   policy on other platforms.
-- **Measurement:** Four complete processes per payload in ABBAABBA order,
-  with loaded assembly hashes checked. Before cases, warm 100,000 alternating
-  normalizations of the five-value identity map and a constant 8x8 array.
-  Each case then warms 32 batches. Copy the original input into each backing
-  array before each batch, outside the timer. Time only the 32 Normalize calls
-  using Stopwatch. Timed batches are 20,000 for empty input; otherwise
-  `Clamp(4000000 / (32 * cellCount), 32, 20000)`. Forced GC occurs before timing.
-  `GC.GetAllocatedBytesForCurrentThread` reported **0 B/call** for every case.
+- **Measurement:** Four complete processes per payload in ABBAABBA order, with
+  loaded assembly hashes checked. Before cases, warm 100,000 alternating
+  normalizations of the five-value identity map and a constant 8x8 array. Each
+  case then warms 32 batches. Copy the original input into each backing array
+  before each batch, outside the timer. Time only the 32 Normalize calls using
+  Stopwatch. Timed batches are 20,000 for empty input; otherwise
+  `Clamp(4000000 / (32 * cellCount), 32, 20000)`. Forced GC occurs before
+  timing. `GC.GetAllocatedBytesForCurrentThread` reported **0 B/call** for every
+  case.
 
-| Side / input | Baseline median (range), ns/call | Integer median (range), ns/call |
-| --- | --- | --- |
-| 0 / target `[-100,100]` | 12.12 (12.11–12.17) | 13.73 (13.62–13.84) |
-| 0 / target `[0,100]` | 11.34 (11.31–11.36) | 12.80 (12.74–12.91) |
-| 8 / varying | 941.63 (938.50–944.45) | 667.82 (667.14–675.36) |
-| 8 / constant | 929.36 (925.68–932.18) | 470.48 (469.80–489.82) |
-| 64 / varying | 12,739.89 (12,685.55–12,780.08) | 12,422.41 (12,389.84–12,474.80) |
-| 64 / constant | 12,704.06 (10,620.61–12,768.36) | 10,003.91 (5,844.63–10,082.71) |
-| 256 / varying | 155,058.25 (144,043.75–155,569.63) | 155,213.38 (154,727.05–169,129.10) |
-| 256 / constant | 155,024.60 (143,949.22–155,663.18) | 63,102.00 (63,001.95–63,416.21) |
+| Side / input            | Baseline median (range), ns/call   | Integer median (range), ns/call    |
+| ----------------------- | ---------------------------------- | ---------------------------------- |
+| 0 / target `[-100,100]` | 12.12 (12.11–12.17)                | 13.73 (13.62–13.84)                |
+| 0 / target `[0,100]`    | 11.34 (11.31–11.36)                | 12.80 (12.74–12.91)                |
+| 8 / varying             | 941.63 (938.50–944.45)             | 667.82 (667.14–675.36)             |
+| 8 / constant            | 929.36 (925.68–932.18)             | 470.48 (469.80–489.82)             |
+| 64 / varying            | 12,739.89 (12,685.55–12,780.08)    | 12,422.41 (12,389.84–12,474.80)    |
+| 64 / constant           | 12,704.06 (10,620.61–12,768.36)    | 10,003.91 (5,844.63–10,082.71)     |
+| 256 / varying           | 155,058.25 (144,043.75–155,569.63) | 155,213.38 (154,727.05–169,129.10) |
+| 256 / constant          | 155,024.60 (143,949.22–155,663.18) | 63,102.00 (63,001.95–63,416.21)    |
 
 - **Disposition:** Keep the Int32 weighted interpolation and existing in-place
   Fill for constant input. It removes floating-point errors without Int64
@@ -1015,41 +1027,41 @@ dotnet run --project ../SwiftCollectionsRepro/SwiftCollectionsRepro.csproj -c Re
   [SC-Issue-006](issue-tracker.md#resolved-issues).
 - **Owner / revisions:** `SwiftArray3D<T>.Resize`; unfixed source
   `9ccb87724652516232322f3fe5ab0b173b493c4b` versus the SC-Issue-006 changes.
-  Published dependency mode (`UseLocalLsfStack=false`), Release/net10.0,
-  SDK 10.0.302, runtime 10.0.10, Windows x64, Intel Core i7-9700K.
-- **Workload:** A pair of resizes, from `(s,s,4)` to `(s,s+1,4)` and back.
-  Each process first warmed 100,000 mixed small/empty resize cycles, then each
-  timed case had 20,000 warmup pairs. Empty/small cases timed 1,000,000 pairs;
-  the larger case timed 20,000. Stopwatch elapsed time and
+  Published dependency mode (`UseLocalLsfStack=false`), Release/net10.0, SDK
+  10.0.302, runtime 10.0.10, Windows x64, Intel Core i7-9700K.
+- **Workload:** A pair of resizes, from `(s,s,4)` to `(s,s+1,4)` and back. Each
+  process first warmed 100,000 mixed small/empty resize cycles, then each timed
+  case had 20,000 warmup pairs. Empty/small cases timed 1,000,000 pairs; the
+  larger case timed 20,000. Stopwatch elapsed time and
   `GC.GetAllocatedBytesForCurrentThread` excluded setup, warmup and forced GC.
   Four complete processes per version ran in balanced order
   baseline/minimal/final/final/minimal/baseline, repeated twice. The surrounding
-  probe also exercised 2D/3D construction and state restore at sides 0, 8 and 32;
-  constructed/restored objects escaped to a static sink. Loaded assembly hashes
-  distinguished all three payloads.
+  probe also exercised 2D/3D construction and state restore at sides 0, 8 and
+  32; constructed/restored objects escaped to a static sink. Loaded assembly
+  hashes distinguished all three payloads.
 
-| Resize pair | Unfixed median (range), ns | Initial validation median (range), ns | Final median (range), ns | Bytes/pair, all versions |
-| --- | --- | --- | --- | --- |
-| `s=0` | 39.42 (37.78–40.02) | 47.51 (47.32–47.94) | 48.83 (46.56–53.40) | 48 |
-| `s=8` | 595.82 (587.47–604.58) | 733.38 (707.27–741.65) | 595.97 (588.05–600.67) | 2,224 |
-| `s=32` | 9,361.13 (9,302.24–9,678.95) | 10,832.10 (10,754.15–10,901.15) | 9,127.72 (9,036.97–9,157.62) | 33,328 |
+| Resize pair | Unfixed median (range), ns   | Initial validation median (range), ns | Final median (range), ns     | Bytes/pair, all versions |
+| ----------- | ---------------------------- | ------------------------------------- | ---------------------------- | ------------------------ |
+| `s=0`       | 39.42 (37.78–40.02)          | 47.51 (47.32–47.94)                   | 48.83 (46.56–53.40)          | 48                       |
+| `s=8`       | 595.82 (587.47–604.58)       | 733.38 (707.27–741.65)                | 595.97 (588.05–600.67)       | 2,224                    |
+| `s=32`      | 9,361.13 (9,302.24–9,678.95) | 10,832.10 (10,754.15–10,901.15)       | 9,127.72 (9,036.97–9,157.62) | 33,328                   |
 
 - **Diagnosis / disposition:** Inlining the new guards into Resize changed JIT
   register allocation and destination-length loads in the per-cell loop. Warmed
-  Tier1 disassembly retained the same guarded `GetIndex` devirtualization;
-  lost devirtualization was ruled out. A separate non-inlined validation helper
+  Tier1 disassembly retained the same guarded `GetIndex` devirtualization; lost
+  devirtualization was ruled out. A separate non-inlined validation helper
   recovered nonempty copy throughput while retaining the original allocation
   expression and copy semantics. The unchecked allocation product is safe only
   after exact checked validation: a zero axis gives zero despite intermediate
   wrap; otherwise every positive intermediate fits Int32. Keep validation before
   allocation. No span or aggressive-inlining experiment remains in production.
 - **Correctness control:** The dimensional regression suite verifies overflow,
-  negative and zero axes, coordinate layout, serialization, ownership and failure
-  atomicity. Timed resize fixtures used default-initialized data and returned to
-  their original shape; allocation matched across the constructor, restore and
-  resize cases. Empty constructor, restore and resize calls still pay constant
-  validation costs; the empty resize
-  pair above adds about 9 ns. This is not a zero-overhead claim.
+  negative and zero axes, coordinate layout, serialization, ownership and
+  failure atomicity. Timed resize fixtures used default-initialized data and
+  returned to their original shape; allocation matched across the constructor,
+  restore and resize cases. Empty constructor, restore and resize calls still
+  pay constant validation costs; the empty resize pair above adds about 9 ns.
+  This is not a zero-overhead claim.
 - **Limits / reopen:** Earlier probes that primed tiering only on empty shapes
   and did not force constructed objects to escape gave inconsistent timing and
   allocation results; they were not accepted as equivalence evidence. The
@@ -1061,19 +1073,20 @@ dotnet run --project ../SwiftCollectionsRepro/SwiftCollectionsRepro.csproj -c Re
   their existing nested-coordinate traversal remains outside SC-Issue-006.
 
 For a focused rerun, use the console setup in the
-[issue tracker](issue-tracker.md#reproducing-active-issues), reference each source
-version in turn, and run with the same published-dependency command:
+[issue tracker](issue-tracker.md#reproducing-active-issues), reference each
+source version in turn, and run with the same published-dependency command:
 
 ```powershell
 dotnet run --project ../SwiftCollectionsRepro/SwiftCollectionsRepro.csproj -c Release -p:UseLocalLsfStack=false
 ```
 
 Use `SwiftArray3D<int>` with the shapes, iteration counts and warmup above;
-measure both resizes together, retain the instance, and check its final shape and
-cell values outside the timed loop. Preserve every run and reverse version order.
-Warm both nonempty and empty paths before timing so the first empty case does
-not define the entire tiered profile. For exact-type JIT inspection, the runtime's
-`DOTNET_JitDisasm=*Resize` setting captures Tier0 and warmed Tier1 code.
+measure both resizes together, retain the instance, and check its final shape
+and cell values outside the timed loop. Preserve every run and reverse version
+order. Warm both nonempty and empty paths before timing so the first empty case
+does not define the entire tiered profile. For exact-type JIT inspection, the
+runtime's `DOTNET_JitDisasm=*Resize` setting captures Tier0 and warmed Tier1
+code.
 
 ## Entry Template
 

@@ -22,7 +22,8 @@ performance signals belong in the
   from unverified concerns.
 - Keep active bug entries focused and self-contained. Do not create feature
   entries or assign features bug IDs. Link an owning feature plan when it
-  supplies context for a defect; keep feature progress in that plan and overview.
+  supplies context for a defect; keep feature progress in that plan and
+  overview.
 - After verification, replace the active entry with a compact `Resolved Issues`
   row: the same ID, resolution/closure date, brief outcome and an evidence link.
   Keep detailed root causes, decisions and validation in an existing completion
@@ -38,8 +39,9 @@ performance signals belong in the
 - Use repository-relative links and portable commands. Ignored artifacts are
   supporting evidence; continuing an issue must not require their survival.
 - Require full reported line, branch and executable-method coverage. Verify and
-  remove unreachable branches; do not waive gaps through the complexity register,
-  exclusions, weaker assertions or retries until a flaky result passes.
+  remove unreachable branches; do not waive gaps through the complexity
+  register, exclusions, weaker assertions or retries until a flaky result
+  passes.
 - Use `UseLocalLsfStack=true` for coordinated unreleased source validation;
   released packages remain the promotion/release gate. Validate Release and
   ReleaseLean and the affected core or companion assembly independently.
@@ -48,9 +50,9 @@ performance signals belong in the
 
 ## Reproducing active issues
 
-The snippets are independent console programs. At the repository root, create
-a console project outside the checkout, reference the core project, replace
-its `Program.cs` with one snippet, and run it:
+The snippets are independent console programs. At the repository root, create a
+console project outside the checkout, reference the core project, replace its
+`Program.cs` with one snippet, and run it:
 
 ```bash
 dotnet new console --framework net10.0 --output ../SwiftCollectionsRepro
@@ -69,10 +71,10 @@ using SwiftCollections.Dimensions;
 using SwiftCollections.Utility;
 ```
 
-Each entry records the revision and environment of its observed result. Use
-that revision when reproducing historical behavior; a passing run after a fix
-must be distinguished from the original failure. Reproducer inputs, output,
-diagnosis, decisions and reopening criteria stay with their owning issue.
+Each entry records the revision and environment of its observed result. Use that
+revision when reproducing historical behavior; a passing run after a fix must be
+distinguished from the original failure. Reproducer inputs, output, diagnosis,
+decisions and reopening criteria stay with their owning issue.
 
 ## Active Issues
 
@@ -84,39 +86,38 @@ Dates reflect recorded resolution/closure, which can precede the commit date.
 Evidence links retain the committed root causes, regressions and validation;
 they do not claim a fresh rerun or package release.
 
-| Issue                                                                                          | Resolved/closed | Outcome                                                                                                                                                                                                                                                              | Evidence                                                                                                                                                                                                       |
-| ---------------------------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SC-Issue-026 | 2026-11-24 | **Verified fix:** the release helper rejects inherited source mode before version/build/output work, preserving published release identities. Baseline identity evaluation and actual uppercase-value guard rejection verified. | [Root cause and verification](#sc-issue-026---release-helper-accepts-inherited-source-mode-identities) |
-| SC-Issue-025 | 2026-11-24 | **Verified fix:** companion core minimum is 9.0.0 for both variants. Scoped Standard/Lean tests pass against packed candidate packages with full coverage; both target dependency groups and selected core assets agree. | [Baseline failure, decision and verification](#sc-issue-025---companion-package-minimum-omits-required-2d-core-apis) |
-| SC-Issue-023 | 2026-11-21 | **Verified fix:** five list object adapters isolate conversion from virtual mutation/equality, preserving original user exceptions and existing type/null/index/reentrant-return contracts. | [Resolution, regressions and verification](#sc-issue-023---list-object-adapters-misclassify-callback-invalid-casts) |
-| SC-Issue-022 | 2026-11-21 | **Verified fix:** dictionary object adapters share conversion-only catches and invoke virtual mutation afterward, preserving original comparer/override/subscriber exceptions and existing conversion contracts. | [Resolution and verification](#sc-issue-022---object-dictionary-adapters-misclassify-callback-invalid-casts) |
-| SC-Issue-020 | 2026-11-21 | **Verified fix:** the Numerics octree shares widened midpoint arithmetic for child creation/selection and checks both rounded child spans before subdivision, preventing overflowing and nonshrinking children. | [Root cause, regressions and verification](#sc-issue-020---numerics-octree-subdivision-overflows-finite-midpoints) |
-| SC-Issue-019 | 2026-11-21 | **Verified fix; upsert policy approved:** BVH now owns one leaf per non-null key; repeated Insert updates bounds and returns false. Null is rejected before mutation. Generic, Numerics and fixed-point paths share the fix. | [Resolution and compatibility evidence](#sc-issue-019---bvh-duplicate-and-null-key-policy-differs-from-peer-indexes) |
-| SC-Issue-018 | 2026-11-21 | **Verified fix:** observable Add emits CollectionChanged/Add and PropertyChanged/Entries[] only after successful insertion across all six dispatch forms. Duplicate mappings remain intact; existing resize and subscriber-failure semantics are preserved. Standard/Lean/Debug pass strict 100% reported coverage on verified package/runtime inputs. | [Resolution and verification](#sc-issue-018---duplicate-dictionary-add-emits-a-false-change-notification), [regressions](../../tests/SwiftCollections.Tests/Observable/SwiftObservableDictionary.Tests.cs) |
-| SC-Issue-017 | 2026-11-21 | **Verified fix and consolidation:** one embedded lifecycle owner guards all rental/backing-access routes across six inherited collection pools and the sparse-map pool. Flush stays reusable; Dispose is terminal. Duplicate lifecycle code is removed while named Release parameters remain compatible. Standard/Lean/Debug pass strict 100% reported coverage; constructor/disposal allocation improves in the tested workloads. | [Resolution, compatibility and lifecycle decisions](#sc-issue-017---disposed-collection-wrappers-still-rent-through-get), [regressions](../../tests/SwiftCollections.Tests/Pool/SwiftPoolLifecycle.Tests.cs) |
-| SC-Issue-016 | 2026-11-21 | **Verified fix:** object-pool Clear deducts only popped inactive objects before destruction, retaining outstanding rentals and correct partial-failure accounting. Shared wrapper contracts agree. Standard/Lean/Debug tests and strict 100% reported line/branch/executable-method coverage pass; the unchanged slot-map analyzer warning is recorded separately. | [Resolution, verification and contract dispositions](#sc-issue-016---pool-clear-loses-outstanding-rental-counts), [regressions](../../tests/SwiftCollections.Tests/Pool/SwiftObjectPool.Tests.cs) |
-| SC-Issue-015 | 2026-11-21 | **Verified fix; storage tradeoff accepted:** slot-linked free ownership keeps reinsertion O(1), preserves remaining reuse order and eliminates stale metadata growth. The user accepted the measured extra storage for small value types; state schemas remain unchanged. Standard/Lean/Debug tests and strict 100% reported line/branch/executable-method coverage pass. Trusted-state validation policy remains separately deferred. | [Resolution, measurements and reopening criteria](#sc-issue-015---slot-reinsertion-leaves-an-allocated-slot-on-the-free-stack), [regressions](../../tests/SwiftCollections.Tests/Collection/SwiftSlotMap.Tests.cs) |
-| <a id="sc-issue-014---packed-set-duplicate-state-breaks-membership-invariants"></a>SC-Issue-014 | 2026-11-21 | **Verified fix; rejection policy:** packed-set restoration rejects equal duplicate items with `ArgumentException` and null arrays/items with `ArgumentNullException`. It preserves dense order rather than compacting or discarding entries; this enforces the existing unique/non-null input contract. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `10b5f5c685cf9e58bca6086894a547326a514f47`, Windows x64, SDK 10.0.302/runtime 10.0.10, Release/published dependencies (`UseLocalLsfStack=false`). Portable reproducer: `var s = new SwiftPackedSet<int>(new SwiftArrayState<int>(new[] { 1, 1 })); s.Remove(1); Console.WriteLine($"{s.Count}; {s.Contains(1)}");` previously printed `1; False`; construction now throws before publishing an owner. **Root cause:** restoration ignored failed lookup insertion while counting every copied dense item. It now checks the existing insertion result, builds replacement storage locally and publishes storage/count/version only after success. Indexing the copied dense snapshot also prevents element hash callbacks that replace input-array entries from making lookup disagree with dense storage. Failed replacement preserves owned fields and live enumerators; references remain shallow and element callback side effects are not rolled back. Raw DTOs remain passive; schemas and normal Add/Contains/Remove paths are unchanged. The 15-case regression group produced 10 behavioral failures and five passing controls before correction; all 15 Standard/13 Lean cases now pass. Coverage includes duplicates/equal references, zero/default/null input, failure preservation, throwing hash callbacks, input-array mutation, valid order/ownership/continuation, JSON and direct/ref-existing MemoryPack. Release/ReleaseLean/Debug solution builds pass with zero warnings/errors; core tests 1849/1743/1847 and companion 43 each pass without skips. The existing strict gate passes with **100% reported lines/branches/executable methods**: core lines 6078/6078, 5884/5884, 8024/8024; branches 2880/2880, 2804/2804, 2888/2888; methods 1261/1261, 1220/1220, 1261/1261. Companion lines 121/121, 121/121, 155/155; branches 62/62 and methods 35/35 in each configuration. Both assemblies build for `netstandard2.1` and `net10.0` in Standard/Lean; all four packages' eight DLL/XML pairs match build output and XML contracts parse. Clean DocFX reports zero warnings/errors; rendered constructor exceptions, state/property lifetime contracts and guide pass inspection, along with CI site smoke checks (104 pages, 1320 local href targets). Hash-checked final Standard/Lean probes each allocate 371712 bytes for 128 restores of 32 integers (2904 bytes/restore), matching the measured pre-fix Standard baseline; 10000 warm remove/add/contains cycles allocate zero bytes before and after. No latency claim. No introduced build/test/reference failure; hosted CI and Unity were not rerun. Reopen for a supported restore violating membership, count, order or storage ownership, or an explicit requirement to normalize duplicates instead of rejecting them. | [Regressions](../../tests/SwiftCollections.Tests/Collection/SwiftPackedSet.Tests.cs), [restore contracts and implementation](../../src/SwiftCollections/Collection/PackedSet/SwiftPackedSet.cs), [serialization guide](../api/guides/serialization-and-diagnostics.md#trusted-state-and-comparers) |
-| <a id="sc-issue-013---base-indexer-writes-bypass-bidirectional-bookkeeping"></a>SC-Issue-013 | 2026-11-21 | **Verified fix:** the dictionary indexer is virtual and BiDictionary/ObservableDictionary override the shared slot, so base, generic and non-generic assignments honor reverse-map and notification contracts. BiDictionary validates null values before mutation, retains the stored forward key in reverse mappings after equivalent-key updates, and leaves reverse insertion with its existing insertion override rather than attempting it twice. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `e4f784ce623aa7e6777f11aef9fac394af6812aa`, Windows x64, SDK 10.0.302/runtime 10.0.10, Release/published dependencies. Portable reproducer: add `(1,10)` to `SwiftBiDictionary<int,int>`, assign `((SwiftDictionary<int,int>)d)[1]=20`, then print `d[1]`, `ContainsValue(10)` and `ContainsValue(20)`. Previously `20; True; False`; corrected `20; False; True`. Related concrete null assignments changed forward/reverse state before throwing; equivalent-key updates stored the alias rather than the stored key. Final 16-case group has 14 behavioral failures and two passing validation controls before correction, all passing afterward. It covers replacement/insertion, duplicate/null/type rejection, both comparers, canonical key ownership, enumeration, notification payload/order/no-op and Add/Remove/Clear continuation. Release/ReleaseLean/Debug solution builds pass with zero warnings/errors; core tests 1834/1730/1832 and companion 43 each pass without skips. Strict coverage is 100% of reported lines/branches/executable methods: core lines 6076/6076, 5882/5882, 8022/8022; branches 2880/2880, 2804/2804, 2888/2888. Both target frameworks and all four packages are checked; all eight DLL/XML pairs match. Metadata verifies the virtual base slot and both overrides. A .NET caller compiled against the old assembly works with only the fixed core substituted. Hash-checked Standard/Lean integer indexer/interface-update probes allocate zero bytes over 10000 warm iterations; no latency claim. Clean DocFX, rendered contracts and reference/link checks pass. **Comparer-replacement disposition:** preserve the precondition that replacement equality keeps stored keys/values distinct; no merge/deduplication or general exception-atomicity policy is added. Reopen that decision for an explicit reject/merge policy with failure-state tests. Arbitrary application-comparer exceptions can still leave partial changes, as documented. No introduced build/test/reference failure; hosted CI and Unity were not rerun. Reopen for a supported assignment path that bypasses either mapping or notification contract. | [Bidirectional regressions](../../tests/SwiftCollections.Tests/Collection/SwiftBiDictionary.Tests.cs), [observable regressions](../../tests/SwiftCollections.Tests/Observable/SwiftObservableDictionary.Tests.cs), [indexer contracts](../../src/SwiftCollections/Collection/BiDictionary/SwiftBiDictionary.cs), [trusted-state decision](#sc-issue-010---sorted-list-restore-loses-its-ordering-invariant) |
-| <a id="sc-issue-012---dictionary-views-retain-detached-entry-arrays"></a>SC-Issue-012 | 2026-11-20 | **Verified fix:** key/value views retain only their owner and resolve its current entry array once per copy/membership call. Removed both cached arrays; preserved copy guards/order, default value equality and enumerator version semantics. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `3bf654f1e10e9b73e449706cb866002f0e419cdd`, Windows x64, SDK 10.0.302/runtime 10.0.10, Release/published dependencies. Portable reproducer: create `SwiftDictionary<int,int>`, add `(1,10)`, retain Keys/Values, call EnsureCapacity(64), add `(2,20)`, then copy each view into a two-element array. Previously `2; 1,0; 10,0`; corrected `2; 1,2; 10,20`. A value at key 40 after growth also reproduced IndexOutOfRangeException. Final ten-case regression group: nine failures and one clear/reuse control against the frozen unfixed core (`2C3469FCA6320196EEF85F6E658C7EA8C478A39BD5DFE6433236DBF5E1A0EF55`), all pass with the fix. Covers explicit/automatic growth, removal after growth, trim, comparer rehash, clear/reuse, empty internal state replacement, inherited BiDictionary/ObservableDictionary, typed/non-generic copies, live membership/order/identity and existing enumerator rules. Package-mode Release/ReleaseLean/Debug solution builds pass with zero warnings/errors; core tests 1815/1712/1813 and companion 43 each pass without skips. Both views retain full line/branch coverage. Initial core reports retained two unreachable persistence guards (lines 6084/6086, 5890/5892, 8030/8032; branches 2886/2888, 2810/2812, 2894/2896); this did not meet the full coverage gate. The [2026-11-21 correction](done/2026-11-20-comparer-persistence-plan.md#full-coverage-correction--2026-11-21) removes them after proof and restores 100% reported coverage in all three configurations. Hash-checked Standard/Lean probes each allocate zero bytes for 10000 warm typed-copy/membership iterations over two integer pairs; no latency claim. An initial disposable probe selected a frozen DLL from generated output; its results were discarded and reference selection corrected before the accepted runs. Eight assembly/XML pairs and all four package IDs match both target frameworks; clean DocFX, rendered view contracts and CI reference/local-link checks pass. No introduced source/build/test/reference failure; hosted CI and Unity were not rerun. Reopen for a valid owner mutation leaving retained views stale or a copy/equality contract regression. | [Regressions](../../tests/SwiftCollections.Tests/Collection/SwiftDictionary.Tests.cs), [key view](../../src/SwiftCollections/Collection/Dictionary/SwiftDictionary.KeyCollection.cs), [value view](../../src/SwiftCollections/Collection/Dictionary/SwiftDictionary.ValueCollection.cs) |
-| <a id="sc-issue-011---power-of-two-recognition-accepts-a-negative-input"></a>SC-Issue-011 | 2026-11-20 | **Verified fix:** require `x > 0` before the single-bit test; all non-positive inputs now return false. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `8099dd71d08311fee8cdf8d337ad6c59143624d3` on Windows x64, SDK 10.0.302/runtime 10.0.10, Release with published dependencies. Portable reproducer: `SwiftHashTools.IsPowerOfTwo(int.MinValue)` returned True; expected and corrected result is False. The 14-case theory fails only that case before the fix (13 controls pass); afterward all 23 utility cases pass. Existing `NextPowerOfTwo(1 << 30) == int.MaxValue` sentinel policy and its test remain unchanged; reopen that decision only for an agreed capacity-domain contract and validation of bit-mask consumers. No production caller of IsPowerOfTwo exists in this checkout. Package-mode Release/ReleaseLean/Debug solution builds pass with zero warnings/errors; core tests 1805/1702/1803 and companion 43 each pass with no skips. At this checkpoint the helper had full line/branch coverage, but two uncovered persistence guards remained. The subsequent 2026-11-21 correction removes those proven-unreachable branches and restores full reported coverage; see the linked proof. Checked both runtime assemblies' eight DLL/XML pairs and all four package IDs at both TFMs; clean DocFX, rendered contract and CI reference/local-link checks pass. No introduced build/test/reference failure; no hosted CI, Unity or timing rerun is claimed. Reopen for incorrect positive-power classification or a confirmed caller regression. | [Regression and sentinel control](../../tests/SwiftCollections.Tests/Utility/SwiftHashTools.Tests.cs), [helper and contracts](../../src/SwiftCollections/Utility/SwiftHashTools.cs), [coverage correction and proof](done/2026-11-20-comparer-persistence-plan.md#full-coverage-correction--2026-11-21) |
-| <a id="sc-issue-010---sorted-list-restore-loses-its-ordering-invariant"></a>SC-Issue-010 | 2026-11-19 | **Closed by contract decision; no runtime fix.** Preserve copy-only trusted-state restoration, the items-only schema and default comparer. No scan, comparison, validation, re-sort or comparison-failure atomicity promise is added. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `31cd3eec80dff86b95f8cab621cc7ca281b4e7cc` on Windows x64, SDK 10.0.302/runtime 10.0.10, Release with published dependencies. Portable reproducer (console setup above): construct `a = new SwiftSortedList<int>(new[] { 1, 2, 3 }, Comparer<int>.Create((x, y) => y.CompareTo(x)))`, then `b = new SwiftSortedList<int>(a.State)`. Enumeration is `3,2,1`; `b.Contains(1)` is False. This remains the consequence of using a custom-ordered snapshot with default binary lookup. Callers must provide state compatible with the restored default comparer before ordering-dependent use, or explicitly copy and sort once with `new SwiftSortedList<int>(a.State.Items, a.Comparer)`. A different comparer can be installed immediately after restore before lookup/mutation; setting the existing comparer is a no-op, and assigning State resets a comparer configured beforehand. Dictionary/set restore instead reinserts with default equality and can irreversibly merge entries: choose a comparer-aware constructor before insertion when custom identity matters. Rejected automatic normalization and its measured costs are preserved in SC-Benchmark-004. **Verification:** Runtime source matches the reproduced revision after removing XML comments. Added 18 standard /17 Lean contract cases (14/13 sorted-state cases plus four equality-loss cases); all are controls for the approved behavior, not a runtime-fix red/green claim. Sorted-list suites pass 98/96 cases. `dotnet build SwiftCollections.slnx` and `dotnet test SwiftCollections.slnx --no-build`, with `-c Release`, `ReleaseLean`, and `Debug` and `-p:UseLocalLsfStack=false`, pass: core 1578/1543/1576 and companion 43 each, zero build warnings/errors. Existing core coverlet settings report lines 5368/5368, 5354/5354, 7150/7150 and branches 2406/2406, 2406/2406, 2414/2414 respectively; sorted-list methods 59/59 in each. Both `SwiftCollections.dll`/`SwiftCollections.xml` and `SwiftCollections.FixedMathSharp.dll`/`SwiftCollections.FixedMathSharp.xml` checked at `netstandard2.1` and `net10.0` in Release/ReleaseLean; matching package contents checked for SwiftCollections, SwiftCollections.Lean, SwiftCollections.FixedMathSharp and SwiftCollections.FixedMathSharp.Lean. Clean-generated DocFX passes with warnings as errors; rendered constructors, state/property values, comparer contracts, inherited State link and DTO remarks checked, plus CI reference/local-link smoke checks and desktop/phone guide preview. No baseline or introduced build/test/reference failures observed. Hosted CI, other OS/architectures and a new timing comparison were not run; the rejected prototype timings are historical evidence only. Reopen only for a valid-state continuation or ownership defect, or an explicit new requirement for unordered-state validation or comparer persistence. No release is claimed. | [Trusted-state and comparer contracts](../api/guides/serialization-and-diagnostics.md#serialization), [sorted-state tests](../../tests/SwiftCollections.Tests/Collection/SwiftSortedList.Tests.cs), [rejected experiment](benchmark-signal-hardening-backlog.md#sc-benchmark-004---sorted-state-order-validation) |
-| <a id="sc-issue-009---list-to-list-copy-grows-the-destination-only-once"></a>SC-Issue-009 | 2026-11-18 | List-to-list CopyTo now guards insufficient capacity and requests the entire source Count through EnsureCapacity. Large copies obtain sufficient storage in one growth; fitting buffers, including non-power-of-two, exact-fit, self-copy and empty-to-empty targets, are reused. Policy disposition: only insufficient capacity causes growth; the old empty-to-empty allocation of eight slots is removed. Count replacement, shallow ownership, retained unused slots, target enumerator invalidation and null-target NullReferenceException remain implemented contracts. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `63c6124572b703680e797770ed0d93e0eb88bea0`: copying 100 items into an empty target threw ArgumentException and left target Count 0/Capacity 8; fixed output is Count 100/Capacity 128 with items 0..99. New group: baseline 13 failures/11 controls, all 24 pass after correction; existing JSON/MemoryPack continuation also reproduced the defect. Full list suite passed 113 cases. Release/ReleaseLean built both assemblies at netstandard2.1/net10.0 and all four package IDs; tests passed at net10.0 (core 1560/1526; companion 43 each). Debug passed 1558/43; all core lines/branches and authored list methods remained covered in all three configurations. Emitted XML and rendered CopyTo contracts checked; DocFX passed with warnings as errors. Reopen for valid-copy failure, unexpected allocation with sufficient storage, or an intentional null/capacity policy change. No release is claimed. | [Copy regressions](../../tests/SwiftCollections.Tests/Collection/SwiftList.Tests.cs), [copy owner and contract](../../src/SwiftCollections/Collection/List/SwiftList.cs), [performance evidence and limits](benchmark-signal-hardening-backlog.md#sc-benchmark-003---list-to-list-copy-capacity) |
-| <a id="sc-issue-008---exactly-full-queue-state-restores-an-invalid-tail"></a>SC-Issue-008 | 2026-11-18 | State restore now installs the new capacity mask before assigning `tail = count & mask`, matching known-count construction, Resize and TrimExcessCapacity. Exactly full queues can dequeue/refill or drain/reuse without growth; FIFO order, ownership, capacity reconstruction and serialization schema are preserved. Enqueue/Dequeue hot paths are unchanged. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `7ce79b7376b586df5455e4aa9d04a513d7f95338`: restoring items 0..7, dequeuing 0, then enqueueing 99 threw IndexOutOfRangeException instead of retaining [1,2,3,4,5,6,7,99]. New regressions: baseline 14 failures/11 passing controls; fixed 25 cases (23 Lean), covering boundary counts, stale-mask overwrite, wrapped snapshots, views, growth controls and JSON/MemoryPack continuation. Release/ReleaseLean built both assemblies at netstandard2.1/net10.0 and all four package IDs; tests passed at net10.0 (core 1536/1502; companion 43 each). Debug passed 1534/43; all core lines/branches and authored queue methods remained covered in all three configurations. DocFX passed with warnings as errors. Existing `queue-workload --filter '*SwiftQueue_WrapAroundChurn*' --job Dry` smoke completed four cases and four successful child exits; this is not a throughput comparison. Reopen for any valid snapshot that fails FIFO continuation or restores out-of-range ring indices. No release is claimed. | [Restore regressions](../../tests/SwiftCollections.Tests/Collection/SwiftQueue.Tests.cs), [queue owner](../../src/SwiftCollections/Collection/Queue/SwiftQueue.cs) |
-| <a id="sc-issue-007---int16-normalization-fails-on-constant-input"></a>SC-Issue-007 | 2026-11-18 | Replaced floating interpolation/NaN narrowing with exact, overflow-safe Int32 arithmetic. Constant input maps to the requested min (extending the existing min=0 test); reversed endpoints retain descending mapping; the final signed rational truncates toward zero. Storage and shape are preserved. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `0ffc9d76dc0ed3bfbf485cc7491c4cd66f01501e`: constant 5 mapped to [10,20] yielded 0, and identity mapping [0,53,100] yielded 52 for the middle cell. Focused suite: baseline 13 failures/21 passing controls; fixed 34 passes (33 Lean), including four full Int16 sweeps and JSON/MemoryPack continuation. Release/ReleaseLean built both runtime assemblies at netstandard2.1/net10.0 and all four package IDs; tests passed at net10.0 (core 1511/1479; companion 43 each). Debug passed 1509/43; core line/branch coverage remains complete in all three configurations. DocFX passed with warnings as errors. Policy disposition: resolved; reopen for a demonstrated arithmetic/ownership defect or an intentional change to constant/reversed-range semantics. No release is claimed. | [Regressions](../../tests/SwiftCollections.Tests/Dimension/SwiftShortArray2D.Tests.cs), [API contract](../../src/SwiftCollections/Dimension/SwiftShortArray2D.cs), [performance evidence and limits](benchmark-signal-hardening-backlog.md#sc-benchmark-002---exact-int16-normalization) |
-| <a id="sc-issue-006---dimensional-arrays-accept-inconsistent-shapes"></a>SC-Issue-006 | 2026-11-18 | Enforced non-negative dimensions and exact Int32 products at construction, Resize and restore; restored data must match the shape, and owner validation/copy failures preserve existing storage and stored values. Preserved 2D constructor clamping, passive state DTOs and null exception distinctions; reconsider those policies only through an intentional API change. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `9ccb87724652516232322f3fe5ab0b173b493c4b`: `(65536,65536)` produced an empty 2D array, `(-1,-1,1)` produced a one-cell 3D array, and a 2x2 state with one item was accepted. Final regression suite: 45 failures and 20 passing controls on that baseline, all 65 passing after the fix (63 in Lean). Release/ReleaseLean builds checked both runtime assemblies at netstandard2.1 and net10.0 and all four package IDs; unit tests passed at net10.0 (core 1485/1453, companion 43 each). Debug build/tests passed (1483/43); core coverage retained all reachable lines/branches/methods in all three configurations. DocFX passed with warnings as errors. No release is claimed. | [Regressions](../../tests/SwiftCollections.Tests/Dimension/SwiftDimensionalArrayValidation.Tests.cs), [restore contracts](../api/guides/serialization-and-diagnostics.md#serialization), [performance evidence and reopening criteria](benchmark-signal-hardening-backlog.md#sc-benchmark-001---dimensional-resize-validation-code-generation) |
-| <a id="sc-issue-005---cold-value-key-lookup-boxes-a-default-key"></a>SC-Issue-005              | 2026-10-30      | Replaced dictionary/set nullability initializers with cached type metadata, removing the 24-byte first integer/enum lookup allocation exposed by Gravitas pair teardown. Reference, nullable and generic-struct semantics are preserved without a warmup workaround. | [Cold lookup and removal regressions](../../tests/SwiftCollections.Tests/Collection/SwiftFirstLookupAllocation.Tests.cs)                                                                                       |
-| <a id="sc-issue-004---non-generic-list-enumeration-rejects-the-final-item"></a>SC-Issue-004    | 2026-10-28      | Corrected list/queue final-item guards and reproduced position-contract defects across the other affected collections and dictionary views; preserved generic iteration and full reachable coverage.                                                                 | [Closeout and regressions](done/2026-10-28-enumerator-contract-closeout.md)                                                                                                                                    |
-| <a id="sc-issue-003---hash-set-lookup-boxes-value-keys-in-unoptimized-builds"></a>SC-Issue-003 | 2026-10-26      | Removed value-key boxing from all three hash-set lookup APIs, including Debug; retained null/error contracts and added warmed allocation regressions.                                                                                                                | [Closeout](https://github.com/mrdav30/SwiftCollections/blob/2b4894f87980147934b1eb74603029e04fb84ec8/docs/feature-work/issue-tracker.md#sc-issue-003---hash-set-lookup-boxes-value-keys-in-unoptimized-builds) |
-| <a id="sc-issue-002---collision-probes-stop-before-reaching-stored-entries"></a>SC-Issue-002   | 2026-10-07      | Completed dictionary/set collision-probe periods for insertion, lookup and removal; deterministic wrapped-chain and trimmed-table regressions passed.                                                                                                                | [Closeout](https://github.com/mrdav30/SwiftCollections/blob/5e0c4e0830342508c3fb87c2fe43cf7c30167522/docs/feature-work/issue-tracker.md#sc-issue-002---collision-probes-stop-before-reaching-stored-entries)   |
-| <a id="sc-issue-001---pool-finalizer-coverage-depends-on-incidental-gc"></a>SC-Issue-001       | 2026-10-07      | Replaced incidental-GC coverage with isolated real-GC, mutation-checked pool-finalizer regressions; closed a test reliability gap without a production cleanup change.                                                                                               | [Closeout](https://github.com/mrdav30/SwiftCollections/blob/5e0c4e0830342508c3fb87c2fe43cf7c30167522/docs/feature-work/issue-tracker.md#sc-issue-001---pool-finalizer-coverage-depends-on-incidental-gc)       |
+| Issue                                                                                           | Resolved/closed | Outcome                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Evidence                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ----------------------------------------------------------------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SC-Issue-026                                                                                    | 2026-11-24      | **Verified fix:** the release helper rejects inherited source mode before version/build/output work, preserving published release identities. Baseline identity evaluation and actual uppercase-value guard rejection verified.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | [Root cause and verification](#sc-issue-026---release-helper-accepts-inherited-source-mode-identities)                                                                                                                                                                                                                                                                                                      |
+| SC-Issue-025                                                                                    | 2026-11-24      | **Verified fix:** companion core minimum is 9.0.0 for both variants. Scoped Standard/Lean tests pass against packed candidate packages with full coverage; both target dependency groups and selected core assets agree.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | [Baseline failure, decision and verification](#sc-issue-025---companion-package-minimum-omits-required-2d-core-apis)                                                                                                                                                                                                                                                                                        |
+| SC-Issue-023                                                                                    | 2026-11-21      | **Verified fix:** five list object adapters isolate conversion from virtual mutation/equality, preserving original user exceptions and existing type/null/index/reentrant-return contracts.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | [Resolution, regressions and verification](#sc-issue-023---list-object-adapters-misclassify-callback-invalid-casts)                                                                                                                                                                                                                                                                                         |
+| SC-Issue-022                                                                                    | 2026-11-21      | **Verified fix:** dictionary object adapters share conversion-only catches and invoke virtual mutation afterward, preserving original comparer/override/subscriber exceptions and existing conversion contracts.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | [Resolution and verification](#sc-issue-022---object-dictionary-adapters-misclassify-callback-invalid-casts)                                                                                                                                                                                                                                                                                                |
+| SC-Issue-020                                                                                    | 2026-11-21      | **Verified fix:** the Numerics octree shares widened midpoint arithmetic for child creation/selection and checks both rounded child spans before subdivision, preventing overflowing and nonshrinking children.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | [Root cause, regressions and verification](#sc-issue-020---numerics-octree-subdivision-overflows-finite-midpoints)                                                                                                                                                                                                                                                                                          |
+| SC-Issue-019                                                                                    | 2026-11-21      | **Verified fix; upsert policy approved:** BVH now owns one leaf per non-null key; repeated Insert updates bounds and returns false. Null is rejected before mutation. Generic, Numerics and fixed-point paths share the fix.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | [Resolution and compatibility evidence](#sc-issue-019---bvh-duplicate-and-null-key-policy-differs-from-peer-indexes)                                                                                                                                                                                                                                                                                        |
+| SC-Issue-018                                                                                    | 2026-11-21      | **Verified fix:** observable Add emits CollectionChanged/Add and PropertyChanged/Entries[] only after successful insertion across all six dispatch forms. Duplicate mappings remain intact; existing resize and subscriber-failure semantics are preserved. Standard/Lean/Debug pass strict 100% reported coverage on verified package/runtime inputs.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | [Resolution and verification](#sc-issue-018---duplicate-dictionary-add-emits-a-false-change-notification), [regressions](../../tests/SwiftCollections.Tests/Observable/SwiftObservableDictionary.Tests.cs)                                                                                                                                                                                                  |
+| SC-Issue-017                                                                                    | 2026-11-21      | **Verified fix and consolidation:** one embedded lifecycle owner guards all rental/backing-access routes across six inherited collection pools and the sparse-map pool. Flush stays reusable; Dispose is terminal. Duplicate lifecycle code is removed while named Release parameters remain compatible. Standard/Lean/Debug pass strict 100% reported coverage; constructor/disposal allocation improves in the tested workloads.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | [Resolution, compatibility and lifecycle decisions](#sc-issue-017---disposed-collection-wrappers-still-rent-through-get), [regressions](../../tests/SwiftCollections.Tests/Pool/SwiftPoolLifecycle.Tests.cs)                                                                                                                                                                                                |
+| SC-Issue-016                                                                                    | 2026-11-21      | **Verified fix:** object-pool Clear deducts only popped inactive objects before destruction, retaining outstanding rentals and correct partial-failure accounting. Shared wrapper contracts agree. Standard/Lean/Debug tests and strict 100% reported line/branch/executable-method coverage pass; the unchanged slot-map analyzer warning is recorded separately.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | [Resolution, verification and contract dispositions](#sc-issue-016---pool-clear-loses-outstanding-rental-counts), [regressions](../../tests/SwiftCollections.Tests/Pool/SwiftObjectPool.Tests.cs)                                                                                                                                                                                                           |
+| SC-Issue-015                                                                                    | 2026-11-21      | **Verified fix; storage tradeoff accepted:** slot-linked free ownership keeps reinsertion O(1), preserves remaining reuse order and eliminates stale metadata growth. The user accepted the measured extra storage for small value types; state schemas remain unchanged. Standard/Lean/Debug tests and strict 100% reported line/branch/executable-method coverage pass. Trusted-state validation policy remains separately deferred.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | [Resolution, measurements and reopening criteria](#sc-issue-015---slot-reinsertion-leaves-an-allocated-slot-on-the-free-stack), [regressions](../../tests/SwiftCollections.Tests/Collection/SwiftSlotMap.Tests.cs)                                                                                                                                                                                          |
+| <a id="sc-issue-014---packed-set-duplicate-state-breaks-membership-invariants"></a>SC-Issue-014 | 2026-11-21      | **Verified fix; rejection policy:** packed-set restoration rejects equal duplicate items with `ArgumentException` and null arrays/items with `ArgumentNullException`. It preserves dense order rather than compacting or discarding entries; this enforces the existing unique/non-null input contract. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `10b5f5c685cf9e58bca6086894a547326a514f47`, Windows x64, SDK 10.0.302/runtime 10.0.10, Release/published dependencies (`UseLocalLsfStack=false`). Portable reproducer: `var s = new SwiftPackedSet<int>(new SwiftArrayState<int>(new[] { 1, 1 })); s.Remove(1); Console.WriteLine($"{s.Count}; {s.Contains(1)}");` previously printed `1; False`; construction now throws before publishing an owner. **Root cause:** restoration ignored failed lookup insertion while counting every copied dense item. It now checks the existing insertion result, builds replacement storage locally and publishes storage/count/version only after success. Indexing the copied dense snapshot also prevents element hash callbacks that replace input-array entries from making lookup disagree with dense storage. Failed replacement preserves owned fields and live enumerators; references remain shallow and element callback side effects are not rolled back. Raw DTOs remain passive; schemas and normal Add/Contains/Remove paths are unchanged. The 15-case regression group produced 10 behavioral failures and five passing controls before correction; all 15 Standard/13 Lean cases now pass. Coverage includes duplicates/equal references, zero/default/null input, failure preservation, throwing hash callbacks, input-array mutation, valid order/ownership/continuation, JSON and direct/ref-existing MemoryPack. Release/ReleaseLean/Debug solution builds pass with zero warnings/errors; core tests 1849/1743/1847 and companion 43 each pass without skips. The existing strict gate passes with **100% reported lines/branches/executable methods**: core lines 6078/6078, 5884/5884, 8024/8024; branches 2880/2880, 2804/2804, 2888/2888; methods 1261/1261, 1220/1220, 1261/1261. Companion lines 121/121, 121/121, 155/155; branches 62/62 and methods 35/35 in each configuration. Both assemblies build for `netstandard2.1` and `net10.0` in Standard/Lean; all four packages' eight DLL/XML pairs match build output and XML contracts parse. Clean DocFX reports zero warnings/errors; rendered constructor exceptions, state/property lifetime contracts and guide pass inspection, along with CI site smoke checks (104 pages, 1320 local href targets). Hash-checked final Standard/Lean probes each allocate 371712 bytes for 128 restores of 32 integers (2904 bytes/restore), matching the measured pre-fix Standard baseline; 10000 warm remove/add/contains cycles allocate zero bytes before and after. No latency claim. No introduced build/test/reference failure; hosted CI and Unity were not rerun. Reopen for a supported restore violating membership, count, order or storage ownership, or an explicit requirement to normalize duplicates instead of rejecting them.                                                   | [Regressions](../../tests/SwiftCollections.Tests/Collection/SwiftPackedSet.Tests.cs), [restore contracts and implementation](../../src/SwiftCollections/Collection/PackedSet/SwiftPackedSet.cs), [serialization guide](../api/guides/serialization-and-diagnostics.md#trusted-state-and-comparers)                                                                                                          |
+| <a id="sc-issue-013---base-indexer-writes-bypass-bidirectional-bookkeeping"></a>SC-Issue-013    | 2026-11-21      | **Verified fix:** the dictionary indexer is virtual and BiDictionary/ObservableDictionary override the shared slot, so base, generic and non-generic assignments honor reverse-map and notification contracts. BiDictionary validates null values before mutation, retains the stored forward key in reverse mappings after equivalent-key updates, and leaves reverse insertion with its existing insertion override rather than attempting it twice. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `e4f784ce623aa7e6777f11aef9fac394af6812aa`, Windows x64, SDK 10.0.302/runtime 10.0.10, Release/published dependencies. Portable reproducer: add `(1,10)` to `SwiftBiDictionary<int,int>`, assign `((SwiftDictionary<int,int>)d)[1]=20`, then print `d[1]`, `ContainsValue(10)` and `ContainsValue(20)`. Previously `20; True; False`; corrected `20; False; True`. Related concrete null assignments changed forward/reverse state before throwing; equivalent-key updates stored the alias rather than the stored key. Final 16-case group has 14 behavioral failures and two passing validation controls before correction, all passing afterward. It covers replacement/insertion, duplicate/null/type rejection, both comparers, canonical key ownership, enumeration, notification payload/order/no-op and Add/Remove/Clear continuation. Release/ReleaseLean/Debug solution builds pass with zero warnings/errors; core tests 1834/1730/1832 and companion 43 each pass without skips. Strict coverage is 100% of reported lines/branches/executable methods: core lines 6076/6076, 5882/5882, 8022/8022; branches 2880/2880, 2804/2804, 2888/2888. Both target frameworks and all four packages are checked; all eight DLL/XML pairs match. Metadata verifies the virtual base slot and both overrides. A .NET caller compiled against the old assembly works with only the fixed core substituted. Hash-checked Standard/Lean integer indexer/interface-update probes allocate zero bytes over 10000 warm iterations; no latency claim. Clean DocFX, rendered contracts and reference/link checks pass. **Comparer-replacement disposition:** preserve the precondition that replacement equality keeps stored keys/values distinct; no merge/deduplication or general exception-atomicity policy is added. Reopen that decision for an explicit reject/merge policy with failure-state tests. Arbitrary application-comparer exceptions can still leave partial changes, as documented. No introduced build/test/reference failure; hosted CI and Unity were not rerun. Reopen for a supported assignment path that bypasses either mapping or notification contract.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | [Bidirectional regressions](../../tests/SwiftCollections.Tests/Collection/SwiftBiDictionary.Tests.cs), [observable regressions](../../tests/SwiftCollections.Tests/Observable/SwiftObservableDictionary.Tests.cs), [indexer contracts](../../src/SwiftCollections/Collection/BiDictionary/SwiftBiDictionary.cs), [trusted-state decision](#sc-issue-010---sorted-list-restore-loses-its-ordering-invariant) |
+| <a id="sc-issue-012---dictionary-views-retain-detached-entry-arrays"></a>SC-Issue-012           | 2026-11-20      | **Verified fix:** key/value views retain only their owner and resolve its current entry array once per copy/membership call. Removed both cached arrays; preserved copy guards/order, default value equality and enumerator version semantics. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `3bf654f1e10e9b73e449706cb866002f0e419cdd`, Windows x64, SDK 10.0.302/runtime 10.0.10, Release/published dependencies. Portable reproducer: create `SwiftDictionary<int,int>`, add `(1,10)`, retain Keys/Values, call EnsureCapacity(64), add `(2,20)`, then copy each view into a two-element array. Previously `2; 1,0; 10,0`; corrected `2; 1,2; 10,20`. A value at key 40 after growth also reproduced IndexOutOfRangeException. Final ten-case regression group: nine failures and one clear/reuse control against the frozen unfixed core (`2C3469FCA6320196EEF85F6E658C7EA8C478A39BD5DFE6433236DBF5E1A0EF55`), all pass with the fix. Covers explicit/automatic growth, removal after growth, trim, comparer rehash, clear/reuse, empty internal state replacement, inherited BiDictionary/ObservableDictionary, typed/non-generic copies, live membership/order/identity and existing enumerator rules. Package-mode Release/ReleaseLean/Debug solution builds pass with zero warnings/errors; core tests 1815/1712/1813 and companion 43 each pass without skips. Both views retain full line/branch coverage. Initial core reports retained two unreachable persistence guards (lines 6084/6086, 5890/5892, 8030/8032; branches 2886/2888, 2810/2812, 2894/2896); this did not meet the full coverage gate. The [2026-11-21 correction](done/2026-11-20-comparer-persistence-plan.md#full-coverage-correction--2026-11-21) removes them after proof and restores 100% reported coverage in all three configurations. Hash-checked Standard/Lean probes each allocate zero bytes for 10000 warm typed-copy/membership iterations over two integer pairs; no latency claim. An initial disposable probe selected a frozen DLL from generated output; its results were discarded and reference selection corrected before the accepted runs. Eight assembly/XML pairs and all four package IDs match both target frameworks; clean DocFX, rendered view contracts and CI reference/local-link checks pass. No introduced source/build/test/reference failure; hosted CI and Unity were not rerun. Reopen for a valid owner mutation leaving retained views stale or a copy/equality contract regression.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | [Regressions](../../tests/SwiftCollections.Tests/Collection/SwiftDictionary.Tests.cs), [key view](../../src/SwiftCollections/Collection/Dictionary/SwiftDictionary.KeyCollection.cs), [value view](../../src/SwiftCollections/Collection/Dictionary/SwiftDictionary.ValueCollection.cs)                                                                                                                     |
+| <a id="sc-issue-011---power-of-two-recognition-accepts-a-negative-input"></a>SC-Issue-011       | 2026-11-20      | **Verified fix:** require `x > 0` before the single-bit test; all non-positive inputs now return false. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `8099dd71d08311fee8cdf8d337ad6c59143624d3` on Windows x64, SDK 10.0.302/runtime 10.0.10, Release with published dependencies. Portable reproducer: `SwiftHashTools.IsPowerOfTwo(int.MinValue)` returned True; expected and corrected result is False. The 14-case theory fails only that case before the fix (13 controls pass); afterward all 23 utility cases pass. Existing `NextPowerOfTwo(1 << 30) == int.MaxValue` sentinel policy and its test remain unchanged; reopen that decision only for an agreed capacity-domain contract and validation of bit-mask consumers. No production caller of IsPowerOfTwo exists in this checkout. Package-mode Release/ReleaseLean/Debug solution builds pass with zero warnings/errors; core tests 1805/1702/1803 and companion 43 each pass with no skips. At this checkpoint the helper had full line/branch coverage, but two uncovered persistence guards remained. The subsequent 2026-11-21 correction removes those proven-unreachable branches and restores full reported coverage; see the linked proof. Checked both runtime assemblies' eight DLL/XML pairs and all four package IDs at both TFMs; clean DocFX, rendered contract and CI reference/local-link checks pass. No introduced build/test/reference failure; no hosted CI, Unity or timing rerun is claimed. Reopen for incorrect positive-power classification or a confirmed caller regression.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | [Regression and sentinel control](../../tests/SwiftCollections.Tests/Utility/SwiftHashTools.Tests.cs), [helper and contracts](../../src/SwiftCollections/Utility/SwiftHashTools.cs), [coverage correction and proof](done/2026-11-20-comparer-persistence-plan.md#full-coverage-correction--2026-11-21)                                                                                                     |
+| <a id="sc-issue-010---sorted-list-restore-loses-its-ordering-invariant"></a>SC-Issue-010        | 2026-11-19      | **Closed by contract decision; no runtime fix.** Preserve copy-only trusted-state restoration, the items-only schema and default comparer. No scan, comparison, validation, re-sort or comparison-failure atomicity promise is added. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `31cd3eec80dff86b95f8cab621cc7ca281b4e7cc` on Windows x64, SDK 10.0.302/runtime 10.0.10, Release with published dependencies. Portable reproducer (console setup above): construct `a = new SwiftSortedList<int>(new[] { 1, 2, 3 }, Comparer<int>.Create((x, y) => y.CompareTo(x)))`, then `b = new SwiftSortedList<int>(a.State)`. Enumeration is `3,2,1`; `b.Contains(1)` is False. This remains the consequence of using a custom-ordered snapshot with default binary lookup. Callers must provide state compatible with the restored default comparer before ordering-dependent use, or explicitly copy and sort once with `new SwiftSortedList<int>(a.State.Items, a.Comparer)`. A different comparer can be installed immediately after restore before lookup/mutation; setting the existing comparer is a no-op, and assigning State resets a comparer configured beforehand. Dictionary/set restore instead reinserts with default equality and can irreversibly merge entries: choose a comparer-aware constructor before insertion when custom identity matters. Rejected automatic normalization and its measured costs are preserved in SC-Benchmark-004. **Verification:** Runtime source matches the reproduced revision after removing XML comments. Added 18 standard /17 Lean contract cases (14/13 sorted-state cases plus four equality-loss cases); all are controls for the approved behavior, not a runtime-fix red/green claim. Sorted-list suites pass 98/96 cases. `dotnet build SwiftCollections.slnx` and `dotnet test SwiftCollections.slnx --no-build`, with `-c Release`, `ReleaseLean`, and `Debug` and `-p:UseLocalLsfStack=false`, pass: core 1578/1543/1576 and companion 43 each, zero build warnings/errors. Existing core coverlet settings report lines 5368/5368, 5354/5354, 7150/7150 and branches 2406/2406, 2406/2406, 2414/2414 respectively; sorted-list methods 59/59 in each. Both `SwiftCollections.dll`/`SwiftCollections.xml` and `SwiftCollections.FixedMathSharp.dll`/`SwiftCollections.FixedMathSharp.xml` checked at `netstandard2.1` and `net10.0` in Release/ReleaseLean; matching package contents checked for SwiftCollections, SwiftCollections.Lean, SwiftCollections.FixedMathSharp and SwiftCollections.FixedMathSharp.Lean. Clean-generated DocFX passes with warnings as errors; rendered constructors, state/property values, comparer contracts, inherited State link and DTO remarks checked, plus CI reference/local-link smoke checks and desktop/phone guide preview. No baseline or introduced build/test/reference failures observed. Hosted CI, other OS/architectures and a new timing comparison were not run; the rejected prototype timings are historical evidence only. Reopen only for a valid-state continuation or ownership defect, or an explicit new requirement for unordered-state validation or comparer persistence. No release is claimed. | [Trusted-state and comparer contracts](../api/guides/serialization-and-diagnostics.md#serialization), [sorted-state tests](../../tests/SwiftCollections.Tests/Collection/SwiftSortedList.Tests.cs), [rejected experiment](benchmark-signal-hardening-backlog.md#sc-benchmark-004---sorted-state-order-validation)                                                                                           |
+| <a id="sc-issue-009---list-to-list-copy-grows-the-destination-only-once"></a>SC-Issue-009       | 2026-11-18      | List-to-list CopyTo now guards insufficient capacity and requests the entire source Count through EnsureCapacity. Large copies obtain sufficient storage in one growth; fitting buffers, including non-power-of-two, exact-fit, self-copy and empty-to-empty targets, are reused. Policy disposition: only insufficient capacity causes growth; the old empty-to-empty allocation of eight slots is removed. Count replacement, shallow ownership, retained unused slots, target enumerator invalidation and null-target NullReferenceException remain implemented contracts. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `63c6124572b703680e797770ed0d93e0eb88bea0`: copying 100 items into an empty target threw ArgumentException and left target Count 0/Capacity 8; fixed output is Count 100/Capacity 128 with items 0..99. New group: baseline 13 failures/11 controls, all 24 pass after correction; existing JSON/MemoryPack continuation also reproduced the defect. Full list suite passed 113 cases. Release/ReleaseLean built both assemblies at netstandard2.1/net10.0 and all four package IDs; tests passed at net10.0 (core 1560/1526; companion 43 each). Debug passed 1558/43; all core lines/branches and authored list methods remained covered in all three configurations. Emitted XML and rendered CopyTo contracts checked; DocFX passed with warnings as errors. Reopen for valid-copy failure, unexpected allocation with sufficient storage, or an intentional null/capacity policy change. No release is claimed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | [Copy regressions](../../tests/SwiftCollections.Tests/Collection/SwiftList.Tests.cs), [copy owner and contract](../../src/SwiftCollections/Collection/List/SwiftList.cs), [performance evidence and limits](benchmark-signal-hardening-backlog.md#sc-benchmark-003---list-to-list-copy-capacity)                                                                                                            |
+| <a id="sc-issue-008---exactly-full-queue-state-restores-an-invalid-tail"></a>SC-Issue-008       | 2026-11-18      | State restore now installs the new capacity mask before assigning `tail = count & mask`, matching known-count construction, Resize and TrimExcessCapacity. Exactly full queues can dequeue/refill or drain/reuse without growth; FIFO order, ownership, capacity reconstruction and serialization schema are preserved. Enqueue/Dequeue hot paths are unchanged. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `7ce79b7376b586df5455e4aa9d04a513d7f95338`: restoring items 0..7, dequeuing 0, then enqueueing 99 threw IndexOutOfRangeException instead of retaining [1,2,3,4,5,6,7,99]. New regressions: baseline 14 failures/11 passing controls; fixed 25 cases (23 Lean), covering boundary counts, stale-mask overwrite, wrapped snapshots, views, growth controls and JSON/MemoryPack continuation. Release/ReleaseLean built both assemblies at netstandard2.1/net10.0 and all four package IDs; tests passed at net10.0 (core 1536/1502; companion 43 each). Debug passed 1534/43; all core lines/branches and authored queue methods remained covered in all three configurations. DocFX passed with warnings as errors. Existing `queue-workload --filter '*SwiftQueue_WrapAroundChurn*' --job Dry` smoke completed four cases and four successful child exits; this is not a throughput comparison. Reopen for any valid snapshot that fails FIFO continuation or restores out-of-range ring indices. No release is claimed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | [Restore regressions](../../tests/SwiftCollections.Tests/Collection/SwiftQueue.Tests.cs), [queue owner](../../src/SwiftCollections/Collection/Queue/SwiftQueue.cs)                                                                                                                                                                                                                                          |
+| <a id="sc-issue-007---int16-normalization-fails-on-constant-input"></a>SC-Issue-007             | 2026-11-18      | Replaced floating interpolation/NaN narrowing with exact, overflow-safe Int32 arithmetic. Constant input maps to the requested min (extending the existing min=0 test); reversed endpoints retain descending mapping; the final signed rational truncates toward zero. Storage and shape are preserved. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `0ffc9d76dc0ed3bfbf485cc7491c4cd66f01501e`: constant 5 mapped to [10,20] yielded 0, and identity mapping [0,53,100] yielded 52 for the middle cell. Focused suite: baseline 13 failures/21 passing controls; fixed 34 passes (33 Lean), including four full Int16 sweeps and JSON/MemoryPack continuation. Release/ReleaseLean built both runtime assemblies at netstandard2.1/net10.0 and all four package IDs; tests passed at net10.0 (core 1511/1479; companion 43 each). Debug passed 1509/43; core line/branch coverage remains complete in all three configurations. DocFX passed with warnings as errors. Policy disposition: resolved; reopen for a demonstrated arithmetic/ownership defect or an intentional change to constant/reversed-range semantics. No release is claimed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | [Regressions](../../tests/SwiftCollections.Tests/Dimension/SwiftShortArray2D.Tests.cs), [API contract](../../src/SwiftCollections/Dimension/SwiftShortArray2D.cs), [performance evidence and limits](benchmark-signal-hardening-backlog.md#sc-benchmark-002---exact-int16-normalization)                                                                                                                    |
+| <a id="sc-issue-006---dimensional-arrays-accept-inconsistent-shapes"></a>SC-Issue-006           | 2026-11-18      | Enforced non-negative dimensions and exact Int32 products at construction, Resize and restore; restored data must match the shape, and owner validation/copy failures preserve existing storage and stored values. Preserved 2D constructor clamping, passive state DTOs and null exception distinctions; reconsider those policies only through an intentional API change. Discovered 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`; reproduced at `9ccb87724652516232322f3fe5ab0b173b493c4b`: `(65536,65536)` produced an empty 2D array, `(-1,-1,1)` produced a one-cell 3D array, and a 2x2 state with one item was accepted. Final regression suite: 45 failures and 20 passing controls on that baseline, all 65 passing after the fix (63 in Lean). Release/ReleaseLean builds checked both runtime assemblies at netstandard2.1 and net10.0 and all four package IDs; unit tests passed at net10.0 (core 1485/1453, companion 43 each). Debug build/tests passed (1483/43); core coverage retained all reachable lines/branches/methods in all three configurations. DocFX passed with warnings as errors. No release is claimed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | [Regressions](../../tests/SwiftCollections.Tests/Dimension/SwiftDimensionalArrayValidation.Tests.cs), [restore contracts](../api/guides/serialization-and-diagnostics.md#serialization), [performance evidence and reopening criteria](benchmark-signal-hardening-backlog.md#sc-benchmark-001---dimensional-resize-validation-code-generation)                                                              |
+| <a id="sc-issue-005---cold-value-key-lookup-boxes-a-default-key"></a>SC-Issue-005               | 2026-10-30      | Replaced dictionary/set nullability initializers with cached type metadata, removing the 24-byte first integer/enum lookup allocation exposed by Gravitas pair teardown. Reference, nullable and generic-struct semantics are preserved without a warmup workaround.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | [Cold lookup and removal regressions](../../tests/SwiftCollections.Tests/Collection/SwiftFirstLookupAllocation.Tests.cs)                                                                                                                                                                                                                                                                                    |
+| <a id="sc-issue-004---non-generic-list-enumeration-rejects-the-final-item"></a>SC-Issue-004     | 2026-10-28      | Corrected list/queue final-item guards and reproduced position-contract defects across the other affected collections and dictionary views; preserved generic iteration and full reachable coverage.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | [Closeout and regressions](done/2026-10-28-enumerator-contract-closeout.md)                                                                                                                                                                                                                                                                                                                                 |
+| <a id="sc-issue-003---hash-set-lookup-boxes-value-keys-in-unoptimized-builds"></a>SC-Issue-003  | 2026-10-26      | Removed value-key boxing from all three hash-set lookup APIs, including Debug; retained null/error contracts and added warmed allocation regressions.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | [Closeout](https://github.com/mrdav30/SwiftCollections/blob/2b4894f87980147934b1eb74603029e04fb84ec8/docs/feature-work/issue-tracker.md#sc-issue-003---hash-set-lookup-boxes-value-keys-in-unoptimized-builds)                                                                                                                                                                                              |
+| <a id="sc-issue-002---collision-probes-stop-before-reaching-stored-entries"></a>SC-Issue-002    | 2026-10-07      | Completed dictionary/set collision-probe periods for insertion, lookup and removal; deterministic wrapped-chain and trimmed-table regressions passed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | [Closeout](https://github.com/mrdav30/SwiftCollections/blob/5e0c4e0830342508c3fb87c2fe43cf7c30167522/docs/feature-work/issue-tracker.md#sc-issue-002---collision-probes-stop-before-reaching-stored-entries)                                                                                                                                                                                                |
+| <a id="sc-issue-001---pool-finalizer-coverage-depends-on-incidental-gc"></a>SC-Issue-001        | 2026-10-07      | Replaced incidental-GC coverage with isolated real-GC, mutation-checked pool-finalizer regressions; closed a test reliability gap without a production cleanup change.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | [Closeout](https://github.com/mrdav30/SwiftCollections/blob/5e0c4e0830342508c3fb87c2fe43cf7c30167522/docs/feature-work/issue-tracker.md#sc-issue-001---pool-finalizer-coverage-depends-on-incidental-gc)                                                                                                                                                                                                    |
 
 ### SC-Issue-026 - Release helper accepts inherited source-mode identities
 
-- **Status / priority:** Resolved 2026-11-24 / P1; verified early rejection
-  of inherited source-mode configuration.
-- **Discovered:** 2026-11-23 at
-  `f1400cbed114d05485cb39d098715345db4c5d1c`.
+- **Status / priority:** Resolved 2026-11-24 / P1; verified early rejection of
+  inherited source-mode configuration.
+- **Discovered:** 2026-11-23 at `f1400cbed114d05485cb39d098715345db4c5d1c`.
 - **Affected owners:**
   [set-version-and-build.ps1](../../.assets/scripts/set-version-and-build.ps1)
   and its interaction with the source-mode identity settings in
@@ -138,17 +139,18 @@ version, or rejects source-mode configuration before any release work.
 `0.0.0-sc-local-lsf`. Before correction, the release helper inherited
 `UseLocalLsfStack=true` from its process environment while setting
 `GitVersion_FullSemVer=9.0.0`. The script's archive naming reads that requested
-version even though the build's source mode overrides its package identity.
-This identity conflict is confirmed by property evaluation and source review;
-no incorrectly labeled release archive was produced for the reproduction.
+version even though the build's source mode overrides its package identity. This
+identity conflict is confirmed by property evaluation and source review; no
+incorrectly labeled release archive was produced for the reproduction.
 
 **Root cause / correction:** Local source identities are intentional build
 fixtures. The release entry point did not reject an inherited source-mode
 selection before selecting versions and building. It now rejects an environment
-variable named `UseLocalLsfStack` whose value is `true`, comparing name and value
-case-insensitively, before loading release utilities or changing build/output
-state. Clearing that variable restores the existing published-package path.
-Local development behavior and CI policy remain unchanged.
+variable named `UseLocalLsfStack` whose value is `true`, comparing name and
+value case-insensitively, before loading release utilities or changing
+build/output state. Clearing that variable restores the existing
+published-package path. Local development behavior and CI policy remain
+unchanged.
 
 **Verification:** The baseline property check was also performed in a fresh
 PowerShell child process after dot-sourcing release utilities and calling
@@ -164,13 +166,15 @@ $env:UseLocalLsfStack = 'TRUE'
 & ./.assets/scripts/set-version-and-build.ps1 -PackageFamily SwiftCollections -Version 9.0.0
 ```
 
-It throws `Release packaging requires published dependencies. Clear UseLocalLsfStack before running this script.` before version selection, builds or
-output work. Ordinary package-mode candidate Release builds pass. The complete
-release helper was not run end to end; no publication, tag or archive is claimed
-by this check. Existing source-mode development is unchanged.
+It throws
+`Release packaging requires published dependencies. Clear UseLocalLsfStack before running this script.`
+before version selection, builds or output work. Ordinary package-mode candidate
+Release builds pass. The complete release helper was not run end to end; no
+publication, tag or archive is claimed by this check. Existing source-mode
+development is unchanged.
 
-**Disposition / reopening:** Close the confirmed entry-point configuration
-leak. Reopen for a supported release invocation that accepts source fixture
+**Disposition / reopening:** Close the confirmed entry-point configuration leak.
+Reopen for a supported release invocation that accepts source fixture
 identities, mislabels its selected package version or rejects a valid
 published-package selection.
 
@@ -178,8 +182,7 @@ published-package selection.
 
 - **Status / priority:** Resolved 2026-11-24 / P1; verified dependency minimum
   and scoped candidate-package compatibility.
-- **Discovered:** 2026-11-23 at
-  `f1400cbed114d05485cb39d098715345db4c5d1c`.
+- **Discovered:** 2026-11-23 at `f1400cbed114d05485cb39d098715345db4c5d1c`.
 - **Affected owners:** The `SwiftCollectionsPackageVersion` default in
   [the companion project](../../src/SwiftCollections.FixedMathSharp/SwiftCollections.FixedMathSharp.csproj),
   consumed by the scoped companion release lane, and its Standard/Lean core
@@ -187,8 +190,8 @@ published-package selection.
 - **Evidence environment:** Windows x64, SDK 10.0.302, runtime 10.0.10;
   published dependencies, without local sibling sources.
 
-**Portable reproducer** (run at the recorded revision, from the repository
-root; no console project is needed):
+**Portable reproducer** (run at the recorded revision, from the repository root;
+no console project is needed):
 
 ```bash
 dotnet build tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMathSharp.Tests.csproj -c Release -p:UsePublishedSwiftCollections=true -p:SwiftCollectionsPackageVersion=8.0.0 -p:UseLocalLsfStack=false -p:DisableTransitiveProjectReferences=false -p:GeneratePackageOnBuild=false -m:1
@@ -198,34 +201,34 @@ dotnet build tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedM
 core package, including its 2D wrappers. **Observed:** Build fails with eight
 CS0246 errors: `SwiftQuadtree<,>`, `SwiftQuadtreeOptions`,
 `IQuadtreeBoundsPartitioner<>`, `SwiftSpatialHash2D<,>`,
-`SwiftSpatialHashCellIndex2D` (three sites) and
-`ISpatialHashCellMapper2D<>` are unavailable. The failing owners are
+`SwiftSpatialHashCellIndex2D` (three sites) and `ISpatialHashCellMapper2D<>` are
+unavailable. The failing owners are
 [SwiftFixedQuadtree](../../src/SwiftCollections.FixedMathSharp/Query/Quadtree/SwiftFixedQuadtree.cs)
 and
 [SwiftFixedSpatialHash2D](../../src/SwiftCollections.FixedMathSharp/Query/SpatialHash/SwiftFixedSpatialHash2D.cs).
 
 **Root cause / caller impact:** At baseline, the companion still declared core
-minimum 8.0.0 after its new 2D wrappers began consuming newer core contracts. Ordinary
-solution/project-reference builds compile against the current core, masking the
-unsupported published-package combination. A scoped companion release cannot
-pass its configured package-mode build, and an insufficient dependency minimum
-would allow consumers to restore an incompatible core.
+minimum 8.0.0 after its new 2D wrappers began consuming newer core contracts.
+Ordinary solution/project-reference builds compile against the current core,
+masking the unsupported published-package combination. A scoped companion
+release cannot pass its configured package-mode build, and an insufficient
+dependency minimum would allow consumers to restore an incompatible core.
 
 **Version decision:** Use core minimum 9.0.0 for both companion variants;
 approved 2026-11-23. The project default is corrected. This is a dependency
 metadata correction; core 8.0.0 compatibility is not retained.
 
-**Candidate verification — 2026-11-24:** Pack the current core's Standard
-and Lean variants as 9.0.0 into a temporary local NuGet feed, isolate the NuGet
+**Candidate verification — 2026-11-24:** Pack the current core's Standard and
+Lean variants as 9.0.0 into a temporary local NuGet feed, isolate the NuGet
 cache and retain released external dependencies as fallback. Repeat the scoped
 build above with `SwiftCollectionsPackageVersion=9.0.0` in `Release` and
 `ReleaseLean`; keep `UsePublishedSwiftCollections=true`,
 `UseLocalLsfStack=false`, `DisableTransitiveProjectReferences=false` and
 `GeneratePackageOnBuild=false`. Run the companion test project in each
 configuration with `--no-build`, the same package-selection properties,
-`--collect:"XPlat Code Coverage"` and its existing `coverlet.runsettings`.
-These checks were executed against packages packed from the corrected working
-tree based on the discovery revision; they do not use a current-core project
+`--collect:"XPlat Code Coverage"` and its existing `coverlet.runsettings`. These
+checks were executed against packages packed from the corrected working tree
+based on the discovery revision; they do not use a current-core project
 reference in place of the stated package dependency.
 
 Both scoped configurations pass all 100 companion tests with no failures or
@@ -241,8 +244,8 @@ The broader corrected 9.0.0 cohort also passes Standard/Lean core tests
 lanes retain 100% reported line, branch and executable-method coverage for both
 runtime assemblies under the unchanged coverage gate.
 
-**Disposition / reopening:** Close the dependency metadata defect. No runtime
-or API change was required. Reopen if a companion's declared minimum lacks a
+**Disposition / reopening:** Close the dependency metadata defect. No runtime or
+API change was required. Reopen if a companion's declared minimum lacks a
 required core contract, its scoped package-mode verification fails or emitted
 dependency metadata diverges from the tested core minimum. Candidate testing
 does not establish public availability of core 9.0.0; publish the core
@@ -273,8 +276,8 @@ int j = s.Add(3);
 Console.WriteLine($"{i}; {j}; {s.Count}; {s[i]}");
 ```
 
-Before: `0; 0; 2; 3`; one live slot is counted twice and value 2 is lost.
-After: `0; 1; 2; 2`; slot zero retains its value and Add allocates slot one.
+Before: `0; 0; 2; 3`; one live slot is counted twice and value 2 is lost. After:
+`0; 1; 2; 2`; slot zero retains its value and Add allocates slot one.
 
 **Root cause and implementation:** The integer stack had no keyed removal, and
 InsertAt never relinquished the selected slot's free ownership. Free links now
@@ -286,9 +289,11 @@ their existing behavior. Resize copies links; trim rebuilds them. Explicit
 reference cleanup clears values without erasing retained empty-map free links.
 The state DTO and bottom-to-top `FreeIndices` wire order are unchanged.
 `SwiftTicketMap` has no explicit reinsertion counterpart and needs no runtime
-change for this valid-input defect. See [implementation and XML contracts](../../src/SwiftCollections/Collection/SlotMap/SwiftSlotMap.cs),
+change for this valid-input defect. See
+[implementation and XML contracts](../../src/SwiftCollections/Collection/SlotMap/SwiftSlotMap.cs),
 [regressions](../../tests/SwiftCollections.Tests/Collection/SwiftSlotMap.Tests.cs)
-and the [slot ownership guide](../api/guides/collections.md#stable-slots-under-your-ownership).
+and the
+[slot ownership guide](../api/guides/collections.md#stable-slots-under-your-ownership).
 
 **Verification:** The initial ten-case regression group produced nine behavioral
 failures and one passing gap control before correction. All final 14 Standard /
@@ -300,40 +305,41 @@ passed 62 tests; the complete final runs include the four later cleanup/growth
 cases. Independent source/test reviews pass.
 
 | Final configuration | Core tests | Companion tests | Core lines / branches / executable methods | Companion lines / branches / executable methods |
-| --- | ---: | ---: | --- | --- |
-| Release | 1863 | 43 | 6106/6106; 2894/2894; 1264/1264 | 121/121; 62/62; 35/35 |
-| ReleaseLean | 1756 | 43 | 5912/5912; 2818/2818; 1223/1223 | 121/121; 62/62; 35/35 |
-| Debug | 1861 | 43 | 8060/8060; 2902/2902; 1264/1264 | 155/155; 62/62; 35/35 |
+| ------------------- | ---------: | --------------: | ------------------------------------------ | ----------------------------------------------- |
+| Release             |       1863 |              43 | 6106/6106; 2894/2894; 1264/1264            | 121/121; 62/62; 35/35                           |
+| ReleaseLean         |       1756 |              43 | 5912/5912; 2818/2818; 1223/1223            | 121/121; 62/62; 35/35                           |
+| Debug               |       1861 |              43 | 8060/8060; 2902/2902; 1264/1264            | 155/155; 62/62; 35/35                           |
 
 All solution builds have zero warnings/errors; no tests are skipped. Each test
 project used its existing Coverlet settings, and the unchanged strict coverage
 gate passed against fresh results from both assemblies. The first Debug gate
-rejected an uncovered early-return sequence point despite the gap-control
-branch executing; the final helper expresses membership as a conditional unlink
-and all reported points pass without exclusions or gate changes. Both runtime
-assemblies build for `netstandard2.1` and `net10.0` in Standard/Lean; all four
-packages' eight DLL/XML pairs match build output. XML, clean DocFX (zero
-warnings/errors), rendered insertion/constructor/guide contracts and CI site
-smoke/link checks pass (104 HTML pages, 1320 local href targets). No outstanding
-introduced build/test/reference failure. Hosted CI and Unity were not rerun.
+rejected an uncovered early-return sequence point despite the gap-control branch
+executing; the final helper expresses membership as a conditional unlink and all
+reported points pass without exclusions or gate changes. Both runtime assemblies
+build for `netstandard2.1` and `net10.0` in Standard/Lean; all four packages'
+eight DLL/XML pairs match build output. XML, clean DocFX (zero warnings/errors),
+rendered insertion/constructor/guide contracts and CI site smoke/link checks
+pass (104 HTML pages, 1320 local href targets). No outstanding introduced
+build/test/reference failure. Hosted CI and Unity were not rerun.
 
 **Measured storage decision — accepted 2026-11-21:** Keep constant-time
-reinsertion and deterministic last-freed-first reuse, accepting the type-specific
-capacity cost below. The expected workload generally uses small maps (roughly
-below 5000 live slots); this is usage context, not a supported-capacity limit.
-Storage follows allocated capacity rather than current Count. Do not add a
-separate-array layout or narrower indices without a demonstrated workload need.
-Reopen this storage decision for measured small-value-heavy capacity pressure or
-a repeatable lookup/enumeration regression. Flat total allocation does not prove
-latency parity; that claim remains unverified. With requested capacity 100000
-(actual 131072), construction allocation measured as follows in hash-checked
-before/final Standard probes; final Lean matches Standard:
+reinsertion and deterministic last-freed-first reuse, accepting the
+type-specific capacity cost below. The expected workload generally uses small
+maps (roughly below 5000 live slots); this is usage context, not a
+supported-capacity limit. Storage follows allocated capacity rather than current
+Count. Do not add a separate-array layout or narrower indices without a
+demonstrated workload need. Reopen this storage decision for measured
+small-value-heavy capacity pressure or a repeatable lookup/enumeration
+regression. Flat total allocation does not prove latency parity; that claim
+remains unverified. With requested capacity 100000 (actual 131072), construction
+allocation measured as follows in hash-checked before/final Standard probes;
+final Lean matches Standard:
 
 | Value type | Before, bytes | Final, bytes |
-| --- | ---: | ---: |
-| byte | 786568 | 1572944 |
-| int | 1573000 | 1572944 |
-| string | 2621576 | 2097232 |
+| ---------- | ------------: | -----------: |
+| byte       |        786568 |      1572944 |
+| int        |       1573000 |      1572944 |
+| string     |       2621576 |      2097232 |
 
 For 100000 live integer slots, 1000 warmup remove/reinsert cycles at slot 50000
 followed by 300000 measured cycles previously allocated 3145776 bytes and left
@@ -349,23 +355,24 @@ zero-overhead claim follows. Portable selection:
 `dotnet run --project tests/SwiftCollections.Benchmarks/SwiftCollections.Benchmarks.csproj -c Release -f net10.0 -- all --filter '*SlotMapWorkloadBenchmarks.SlotMap_StableSlotChurn25*' --inProcess --iterationCount 10 --warmupCount 5`.
 
 - **Disposition / reopening:** Close the confirmed defect; no further runtime
-  change is required for this issue. Reopen for a supported sequence that loses a
-  live slot, corrupts counts or changes the remaining free-slot order. The
+  change is required for this issue. Reopen for a supported sequence that loses
+  a live slot, corrupts counts or changes the remaining free-slot order. The
   accepted storage decision and the separate deferred validation-policy decision
   retain their own reopening criteria.
 
 **Related API decision — trusted state and unchecked mutation:** Disposition
 remains deferred; preserve existing preconditions in this fix. Slot/ticket
 restore checks free-index range but trusts uniqueness and disjointness. For
-example, `new SwiftTicketMap<int>(new SwiftTicketMapState<int>(new[] { 1 },
-new[] { true }, new uint[] { 0 }, new[] { 0 }, 1)).Add(2)` overwrites a live slot
-and reports Count=2. Likewise, `new SwiftSlotMap<int>().RemoveAt(0)` reports
-Count=-1, whereas `TryRemoveAt(0)` returns false without mutation. These inputs
-violate required ownership invariants and are separate from the fixed valid
-sequence. Do not rely on a particular corruption trace for malformed state.
-Reopen the validation-policy decision when explicitly choosing whether public
-restore and unchecked forms reject duplicate/overlapping free slots or remain
-trusted operations; require checked/unchecked and failure-state regressions.
+example,
+`new SwiftTicketMap<int>(new SwiftTicketMapState<int>(new[] { 1 }, new[] { true }, new uint[] { 0 }, new[] { 0 }, 1)).Add(2)`
+overwrites a live slot and reports Count=2. Likewise,
+`new SwiftSlotMap<int>().RemoveAt(0)` reports Count=-1, whereas `TryRemoveAt(0)`
+returns false without mutation. These inputs violate required ownership
+invariants and are separate from the fixed valid sequence. Do not rely on a
+particular corruption trace for malformed state. Reopen the validation-policy
+decision when explicitly choosing whether public restore and unchecked forms
+reject duplicate/overlapping free slots or remain trusted operations; require
+checked/unchecked and failure-state regressions.
 
 ### SC-Issue-016 - Pool Clear loses outstanding-rental counts
 
@@ -392,15 +399,17 @@ can return to the same usable pool.
 
 **Root cause and resolution:** Clear removed only inactive objects but reset the
 entire creation counter. It now decrements CountAll immediately after each
-successful pop, before invoking the destroy callback, and has no final reset.
-If destruction throws, the popped object remains removed and deducted, remaining
-cached objects and active rentals remain counted, and a later Clear can continue.
-Rent/Release, storage, ownership checks, allocation behavior and concurrency
-policy are unchanged. No runtime helper, lock, field or type was added. The
-shared interface summary, eight collection-wrapper Clear comments, counter XML
-and [pool guide](../api/guides/pools-and-observables.md#scope-a-rental) agree with
-this behavior. See [implementation](../../src/SwiftCollections/Pool/SwiftObjectPool.cs)
-and [regressions](../../tests/SwiftCollections.Tests/Pool/SwiftObjectPool.Tests.cs).
+successful pop, before invoking the destroy callback, and has no final reset. If
+destruction throws, the popped object remains removed and deducted, remaining
+cached objects and active rentals remain counted, and a later Clear can
+continue. Rent/Release, storage, ownership checks, allocation behavior and
+concurrency policy are unchanged. No runtime helper, lock, field or type was
+added. The shared interface summary, eight collection-wrapper Clear comments,
+counter XML and
+[pool guide](../api/guides/pools-and-observables.md#scope-a-rental) agree with
+this behavior. See
+[implementation](../../src/SwiftCollections/Pool/SwiftObjectPool.cs) and
+[regressions](../../tests/SwiftCollections.Tests/Pool/SwiftObjectPool.Tests.cs).
 
 **Verification:** The final eleven-case group produced nine behavioral failures
 and two passing empty/fully-inactive controls before correction. All eleven now
@@ -411,10 +420,10 @@ destroy callbacks, partial failure and continuation, lease idempotence and a
 real collection-wrapper path. Independent source/test reviews pass.
 
 | Final configuration | Core tests | Companion tests | Core lines / branches / executable methods | Companion lines / branches / executable methods |
-| --- | ---: | ---: | --- | --- |
-| Release | 1874 | 43 | 6107/6107; 2894/2894; 1264/1264 | 121/121; 62/62; 35/35 |
-| ReleaseLean | 1767 | 43 | 5913/5913; 2818/2818; 1223/1223 | 121/121; 62/62; 35/35 |
-| Debug | 1872 | 43 | 8062/8062; 2902/2902; 1264/1264 | 155/155; 62/62; 35/35 |
+| ------------------- | ---------: | --------------: | ------------------------------------------ | ----------------------------------------------- |
+| Release             |       1874 |              43 | 6107/6107; 2894/2894; 1264/1264            | 121/121; 62/62; 35/35                           |
+| ReleaseLean         |       1767 |              43 | 5913/5913; 2818/2818; 1223/1223            | 121/121; 62/62; 35/35                           |
+| Debug               |       1872 |              43 | 8062/8062; 2902/2902; 1264/1264            | 155/155; 62/62; 35/35                           |
 
 All solution builds succeed with zero errors and no skipped tests. The unchanged
 strict coverage gate passes with 100% reported lines, branches and executable
@@ -423,14 +432,14 @@ settings. Both runtime assemblies build for `netstandard2.1` and `net10.0` in
 Standard/Lean; all four packages' eight DLL/XML pairs match build output. XML
 contracts are checked in each core output. Clean DocFX reports zero
 warnings/errors; rendered object-pool values/Clear, interface/eight-wrapper
-Clear and guide contracts pass inspection, as do CI site smoke/link checks
-(104 HTML pages, 1320 local href targets).
+Clear and guide contracts pass inspection, as do CI site smoke/link checks (104
+HTML pages, 1320 local href targets).
 
 **Baseline versus introduced results:** Release's final build reports zero
 warnings. Lean and Debug each report the pre-existing xUnit2013 warning at
 `SwiftSlotMap.Tests.cs:138`; an isolated rebuild of committed source at the
-reproducer revision confirms the same warning. The slot-map test is unchanged
-by this fix. No introduced build, test, coverage or reference failure remains.
+reproducer revision confirms the same warning. The slot-map test is unchanged by
+this fix. No introduced build, test, coverage or reference failure remains.
 Hosted CI and Unity were not rerun.
 
 **Allocation checks:** Hash-checked before/final Standard probes and final Lean
@@ -438,24 +447,25 @@ use 1000 warmups and 10000 measured cycles. Rent/Release of one reused object
 allocates 320000 bytes before and after (ConcurrentStack push nodes). A second
 workload retains one outstanding rental while repeatedly renting a fresh object,
 releasing it and clearing the inactive cache; allocation remains 560000 bytes.
-Its final all/inactive/active counts change from `0/0/0` to `1/0/1`. These checks
-show unchanged allocation for the tested workloads; they are not a zero-allocation
-or latency claim. There is no existing pool benchmark selection, and no maintained
-benchmark harness was added for this fix.
+Its final all/inactive/active counts change from `0/0/0` to `1/0/1`. These
+checks show unchanged allocation for the tested workloads; they are not a
+zero-allocation or latency claim. There is no existing pool benchmark selection,
+and no maintained benchmark harness was added for this fix.
 
-**Related contract dispositions:** Preserve externally synchronized lifecycle and
-counter access; concurrent storage does not make counters, callbacks or max-size
-checks atomic. Do not add synchronization or foreign/double-return tracking in
-this fix. Preserve existing terminal diagnostics: Dispose empties cached storage
-without adjusting CountAll, so post-disposal CountActive is arithmetic, not a
-live-rental guarantee. Rent/release callback failures retain their existing
-nontransactional behavior; the per-pop failure guarantee above is specific to
-Clear. Collection Clear retains the same backing pool; array-pool Clear discards
-length buckets, so finish array rentals before clearing and finish all rentals
-before Flush/disposal. SC-Issue-017's disposed-wrapper Get defect remains separate.
-Reopen these policy decisions for an explicit requirement for atomic concurrent
-accounting, terminal live counts, transactional callbacks or cross-clear array
-rental ownership, with corresponding lifecycle and failure-state tests.
+**Related contract dispositions:** Preserve externally synchronized lifecycle
+and counter access; concurrent storage does not make counters, callbacks or
+max-size checks atomic. Do not add synchronization or foreign/double-return
+tracking in this fix. Preserve existing terminal diagnostics: Dispose empties
+cached storage without adjusting CountAll, so post-disposal CountActive is
+arithmetic, not a live-rental guarantee. Rent/release callback failures retain
+their existing nontransactional behavior; the per-pop failure guarantee above is
+specific to Clear. Collection Clear retains the same backing pool; array-pool
+Clear discards length buckets, so finish array rentals before clearing and
+finish all rentals before Flush/disposal. SC-Issue-017's disposed-wrapper Get
+defect remains separate. Reopen these policy decisions for an explicit
+requirement for atomic concurrent accounting, terminal live counts,
+transactional callbacks or cross-clear array rental ownership, with
+corresponding lifecycle and failure-state tests.
 
 - **Disposition / reopening:** Close the confirmed Clear defect. Reopen for a
   supported, synchronized Clear/return sequence that loses outstanding counts,
@@ -463,7 +473,8 @@ rental ownership, with corresponding lifecycle and failure-state tests.
 
 ### SC-Issue-017 - Disposed collection wrappers still rent through Get
 
-- **Status / priority:** Resolved 2026-11-21 / P2; verified fix and lifecycle consolidation.
+- **Status / priority:** Resolved 2026-11-21 / P2; verified fix and lifecycle
+  consolidation.
 - **Discovered:** 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`;
   reproduced before this fix at `5c3a7f612eb140b23dbe74e64bbf409426123f7c`.
 - **Evidence environment:** Windows x64, SDK 10.0.302, runtime 10.0.10,
@@ -490,11 +501,11 @@ collection base and the standalone sparse-map pool now embed one mutable
 single lifecycle state: null is terminal. Each operation captures it once;
 disposal clears initialized cached objects, disposes the backing pool, then
 publishes null. Clear and Flush do nothing after disposal and never initialize
-unused backing storage. Flush remains reusable while the owner is alive.
-Static cached factories/reset callbacks do not capture wrappers or add helper
-objects. The existing real-GC tests verify finalization with retained backing
-pool references. SparseMap still does not implement ICollection and does not gain
-a Flush API; it shares lifecycle behavior without a new public base type.
+unused backing storage. Flush remains reusable while the owner is alive. Static
+cached factories/reset callbacks do not capture wrappers or add helper objects.
+The existing real-GC tests verify finalization with retained backing pool
+references. SparseMap still does not implement ICollection and does not gain a
+Flush API; it shares lifecycle behavior without a new public base type.
 
 Removed duplicated flags, Rent/Clear/Dispose/finalizers and the list's redundant
 direct Clear before the release callback. Thin Release overrides remain to
@@ -507,7 +518,8 @@ Queue/PackedSet expectations and correcting List's old `SwiftList` name to
 `SwiftListPool`. Authored pool source drops from 1229 to 712 lines including
 comments (net -517); one internal helper file and no public type were added.
 
-See [shared lifecycle](../../src/SwiftCollections/Pool/Collection/SwiftPoolLifecycle.cs),
+See
+[shared lifecycle](../../src/SwiftCollections/Pool/Collection/SwiftPoolLifecycle.cs),
 [collection base](../../src/SwiftCollections/Pool/Collection/SwiftCollectionPool.cs),
 [sparse-map owner](../../src/SwiftCollections/Pool/Collection/SwiftSparseMapPool.cs),
 [regressions](../../tests/SwiftCollections.Tests/Pool/SwiftPoolLifecycle.Tests.cs)
@@ -518,70 +530,75 @@ and [lifetime guidance](../api/guides/pools-and-observables.md#scope-a-rental).
 and Debug. They cover fresh/initialized disposal, all seven families, Get and
 backing access, base-reference dispatch, null handling, borrowed values across
 Clear, nonallocating unused cleanup, reusable Flush and prevention of revival,
-and custom generic subclasses with single-reset and diagnostic-name checks.
-The old reflection-dependent list test was replaced by public-behavior checks;
-the focused pool suite passes 122 tests. Independent source/test reviews pass.
+and custom generic subclasses with single-reset and diagnostic-name checks. The
+old reflection-dependent list test was replaced by public-behavior checks; the
+focused pool suite passes 122 tests. Independent source/test reviews pass.
 
 | Final configuration | Core tests | Companion tests | Core lines / branches / executable methods | Companion lines / branches / executable methods |
-| --- | ---: | ---: | --- | --- |
-| Release | 1931 | 43 | 6021/6021; 2858/2858; 1258/1258 | 121/121; 62/62; 35/35 |
-| ReleaseLean | 1824 | 43 | 5827/5827; 2782/2782; 1217/1217 | 121/121; 62/62; 35/35 |
-| Debug | 1929 | 43 | 7949/7949; 2866/2866; 1258/1258 | 155/155; 62/62; 35/35 |
+| ------------------- | ---------: | --------------: | ------------------------------------------ | ----------------------------------------------- |
+| Release             |       1931 |              43 | 6021/6021; 2858/2858; 1258/1258            | 121/121; 62/62; 35/35                           |
+| ReleaseLean         |       1824 |              43 | 5827/5827; 2782/2782; 1217/1217            | 121/121; 62/62; 35/35                           |
+| Debug               |       1929 |              43 | 7949/7949; 2866/2866; 1258/1258            | 155/155; 62/62; 35/35                           |
 
 The unchanged strict gate passes with 100% reported lines, branches and
 executable methods using fresh assembly-specific Coverlet reports. An earlier
-Debug gate caught an unreachable sequence point following a throwing guard;
-cold name formatting was separated from the guard without exclusions or gate
-changes. All builds succeed with zero errors and no skipped tests. Final Release
-reports zero warnings; Lean/Debug retain only the pre-existing xUnit2013 warning
-in unchanged `SwiftSlotMap.Tests.cs:138`, already confirmed against committed
+Debug gate caught an unreachable sequence point following a throwing guard; cold
+name formatting was separated from the guard without exclusions or gate changes.
+All builds succeed with zero errors and no skipped tests. Final Release reports
+zero warnings; Lean/Debug retain only the pre-existing xUnit2013 warning in
+unchanged `SwiftSlotMap.Tests.cs:138`, already confirmed against committed
 source under SC-Issue-016. No introduced failure remains.
 
-Both runtime assemblies build for `netstandard2.1` and `net10.0` in Standard/Lean;
-all four packages' eight DLL/XML pairs match build output. Emitted XML verifies
-the base constructor, lifecycle contracts, exceptions, property values and all
-six original Release parameter names. Clean DocFX reports zero warnings/errors;
-rendered base/sparse contracts, typed Release parameters and inherited lifecycle
-links pass inspection. CI site smoke/link checks pass (104 HTML pages, 1318 local
-href targets). Contributor guidance records mutable state, static callbacks and
-lifetime rules. CI policy is unchanged. Hosted CI and Unity were not rerun.
+Both runtime assemblies build for `netstandard2.1` and `net10.0` in
+Standard/Lean; all four packages' eight DLL/XML pairs match build output.
+Emitted XML verifies the base constructor, lifecycle contracts, exceptions,
+property values and all six original Release parameter names. Clean DocFX
+reports zero warnings/errors; rendered base/sparse contracts, typed Release
+parameters and inherited lifecycle links pass inspection. CI site smoke/link
+checks pass (104 HTML pages, 1318 local href targets). Contributor guidance
+records mutable state, static callbacks and lifetime rules. CI policy is
+unchanged. Hosted CI and Unity were not rerun.
 
-**Compatibility and allocation evidence:** A console caller compiled against
-the unfixed Standard assembly runs unchanged with only the fixed core DLL
-substituted. It exercises all six typed constructors/Rent/Get/Release/Clear/Flush/
-Dispose paths, named Release arguments and a custom generic subclass's protected
-construction, null rejection and Flush. It additionally detects the new inherited
-IDisposable contract and verifies terminal behavior. Hash checks confirm both
-the unchanged caller and loaded replacement DLL. Final Lean runs the same source
-against its own dependencies; it is not a claim about an old Lean binary.
+**Compatibility and allocation evidence:** A console caller compiled against the
+unfixed Standard assembly runs unchanged with only the fixed core DLL
+substituted. It exercises all six typed
+constructors/Rent/Get/Release/Clear/Flush/ Dispose paths, named Release
+arguments and a custom generic subclass's protected construction, null rejection
+and Flush. It additionally detects the new inherited IDisposable contract and
+verifies terminal behavior. Hash checks confirm both the unchanged caller and
+loaded replacement DLL. Final Lean runs the same source against its own
+dependencies; it is not a claim about an old Lean binary.
 
 Allocation controls use blocking GC, `DOTNET_TieredCompilation=0`, eight
 constructor/disposal warmups, 128 measured owners, and 1000 warmups plus 10000
-rent/return cycles. List and sparse-map owner construction drops from 112 to
-104 bytes each. Initialized list disposal drops from 80 to zero allocated bytes;
+rent/return cycles. List and sparse-map owner construction drops from 112 to 104
+bytes each. Initialized list disposal drops from 80 to zero allocated bytes;
 sparse-map disposal remains zero. Warm list and sparse-map rent/return each
 remain 320000 bytes per 10000 cycles (existing ConcurrentStack push allocation).
 Final Standard and Lean agree. An earlier tiered first-slice probe showed 24
 extra aggregate bytes; it was not used for acceptance, and controlled before/
-after workloads match. No latency, universal allocation parity or zero-allocation
-rental claim is made; no maintained pool benchmark harness was added.
+after workloads match. No latency, universal allocation parity or
+zero-allocation rental claim is made; no maintained pool benchmark harness was
+added.
 
-**API/lifecycle dispositions:** Keep existing collection constraints and sparse-map
-API shape, with shared internal state rather than a new public hierarchy. Typed
-returns ignore null; generic-base returns reject it. Keep Flush reusable and
-Dispose terminal, with no-op cleanup after disposal and guards before lazy
-access. Custom subclasses with their own disposal must chain `base.Dispose()`;
-adding IDisposable to the base does not retrofit an old custom disposal body.
-The frozen caller does not establish terminal behavior for such an old binary.
-Reopen that integration decision for a specific external cleanup compatibility
-requirement. Array-pool bucket clearing remains separate. Lifecycle operations
-and counters still require external synchronization; arbitrary custom overrides
-and callbacks own their contracts. Shared singleton identities are not recreated.
+**API/lifecycle dispositions:** Keep existing collection constraints and
+sparse-map API shape, with shared internal state rather than a new public
+hierarchy. Typed returns ignore null; generic-base returns reject it. Keep Flush
+reusable and Dispose terminal, with no-op cleanup after disposal and guards
+before lazy access. Custom subclasses with their own disposal must chain
+`base.Dispose()`; adding IDisposable to the base does not retrofit an old custom
+disposal body. The frozen caller does not establish terminal behavior for such
+an old binary. Reopen that integration decision for a specific external cleanup
+compatibility requirement. Array-pool bucket clearing remains separate.
+Lifecycle operations and counters still require external synchronization;
+arbitrary custom overrides and callbacks own their contracts. Shared singleton
+identities are not recreated.
 
-- **Disposition / reopening:** Close the confirmed defect. Reopen for a supported
-  rental/backing-access route that revives a disposed owner, unused cleanup that
-  initializes storage, lost finalizer cleanup, or a named-argument/binary
-  compatibility regression in the preserved built-in API surface.
+- **Disposition / reopening:** Close the confirmed defect. Reopen for a
+  supported rental/backing-access route that revives a disposed owner, unused
+  cleanup that initializes storage, lost finalizer cleanup, or a
+  named-argument/binary compatibility regression in the preserved built-in API
+  surface.
 
 ### SC-Issue-018 - Duplicate dictionary Add emits a false change notification
 
@@ -614,30 +631,32 @@ public pair Add, generic IDictionary, ICollection of pairs and non-generic
 IDictionary. Successful insertion still commits before CollectionChanged(Add),
 then PropertyChanged(Entries[]); subscriber failure can interrupt notification
 without rollback. Equal-key rejection preserves the stored key/value and Count,
-but base load-threshold checking may resize before lookup/validation and invalidate
-enumerators. The fix deliberately preserves that behavior. No helper, field,
-public API or persistence format was added or changed. Raw-state and versioned
-JSON/MemoryPack reconstruction retain their notification-free restore paths.
-See [implementation and contracts](../../src/SwiftCollections/Observable/SwiftObservableDictionary.cs),
+but base load-threshold checking may resize before lookup/validation and
+invalidate enumerators. The fix deliberately preserves that behavior. No helper,
+field, public API or persistence format was added or changed. Raw-state and
+versioned JSON/MemoryPack reconstruction retain their notification-free restore
+paths. See
+[implementation and contracts](../../src/SwiftCollections/Observable/SwiftObservableDictionary.cs),
 [regressions](../../tests/SwiftCollections.Tests/Observable/SwiftObservableDictionary.Tests.cs)
-and the [observable guide](../api/guides/pools-and-observables.md#observable-collections).
+and the
+[observable guide](../api/guides/pools-and-observables.md#observable-collections).
 
 **Verification:** The 21-case Standard regression group produced eleven
-behavioral failures and ten passing controls before correction. All 21 Standard /
-20 Lean cases now pass; the focused dictionary suite passes 43 tests. Cases cover
-all six dispatch forms, exact sender/payload/order and callback-visible storage,
-case-insensitive equal keys and canonical key retention, throwing subscribers
-that must not run on rejection, invalid keys/types and hash failures, subscriber
-failure after real insertion, spare-capacity enumeration, threshold resize/
-invalidation, and JSON/MemoryPack continuation. Independent source/test reviews
-pass. The old misleading duplicate-Add test was renamed: it actually tested an
-unchanged indexer assignment.
+behavioral failures and ten passing controls before correction. All 21 Standard
+/ 20 Lean cases now pass; the focused dictionary suite passes 43 tests. Cases
+cover all six dispatch forms, exact sender/payload/order and callback-visible
+storage, case-insensitive equal keys and canonical key retention, throwing
+subscribers that must not run on rejection, invalid keys/types and hash
+failures, subscriber failure after real insertion, spare-capacity enumeration,
+threshold resize/ invalidation, and JSON/MemoryPack continuation. Independent
+source/test reviews pass. The old misleading duplicate-Add test was renamed: it
+actually tested an unchanged indexer assignment.
 
 | Final configuration | Core tests | Companion tests | Core lines / branches / executable methods | Companion lines / branches / executable methods |
-| --- | ---: | ---: | --- | --- |
-| Release | 1952 | 43 | 6022/6022; 2860/2860; 1258/1258 | 121/121; 62/62; 35/35 |
-| ReleaseLean | 1844 | 43 | 5828/5828; 2784/2784; 1217/1217 | 121/121; 62/62; 35/35 |
-| Debug | 1950 | 43 | 7952/7952; 2868/2868; 1258/1258 | 155/155; 62/62; 35/35 |
+| ------------------- | ---------: | --------------: | ------------------------------------------ | ----------------------------------------------- |
+| Release             |       1952 |              43 | 6022/6022; 2860/2860; 1258/1258            | 121/121; 62/62; 35/35                           |
+| ReleaseLean         |       1844 |              43 | 5828/5828; 2784/2784; 1217/1217            | 121/121; 62/62; 35/35                           |
+| Debug               |       1950 |              43 | 7952/7952; 2868/2868; 1258/1258            | 155/155; 62/62; 35/35                           |
 
 All solution builds succeed with zero errors and no skipped tests. The unchanged
 strict gate passes with 100% reported lines, branches and executable methods,
@@ -648,24 +667,25 @@ restores those inputs unchanged. Initial auto-pack artifacts and earlier test
 copies differed from later build outputs; they were not used for final package
 acceptance. Explicit `dotnet pack --no-build --no-restore` produced four fresh
 packages, and both test projects were rerun without rebuilding against those
-payloads. This resolves the input-identity gap without changing CI or runtime code.
+payloads. This resolves the input-identity gap without changing CI or runtime
+code.
 
 Coverage is collected on net10.0 per the test projects. Both runtime assemblies
 also build for netstandard2.1 in Standard/Lean. All four packages' eight DLL/XML
 pairs match the final build outputs; core Add parameters/returns/exceptions/
 remarks are checked in all four core XML files. Additional netstandard2.1 core
 replays run on .NET 10 with matching framework-specific dependency DLLs; a first
-manual attempt mixing net10 MemoryPack with netstandard types was rejected as
-an invalid dependency combination and corrected before acceptance. These replays
+manual attempt mixing net10 MemoryPack with netstandard types was rejected as an
+invalid dependency combination and corrected before acceptance. These replays
 are not Unity execution or a claim about every consumer runtime.
 
 Clean DocFX reports zero warnings/errors. Rendered Add parameters, returns,
 exceptions, ordering/invalidation text and guide pass inspection; CI site smoke/
 link checks pass (104 HTML pages, 1318 local href targets). Release/Lean final
 build logs have zero warnings; Debug retains the pre-existing xUnit2013 warning
-in unchanged `SwiftSlotMap.Tests.cs:138`, confirmed previously under SC-Issue-016.
-No introduced build/test/coverage/reference failure remains. Hosted CI and Unity
-were not rerun.
+in unchanged `SwiftSlotMap.Tests.cs:138`, confirmed previously under
+SC-Issue-016. No introduced build/test/coverage/reference failure remains.
+Hosted CI and Unity were not rerun.
 
 **Allocation checks:** Hash-checked before/final probes use blocking GC,
 `DOTNET_TieredCompilation=0`, 1000 warmups and 10000 measured additions. Integer
@@ -673,11 +693,12 @@ keys/values and spare capacity isolate notification cost. Rejected additions
 without subscribers drop from 960000 to zero allocated bytes; with collection
 and property subscribers they drop from 1200000 to zero and from 20000 callback
 invocations to none. Successful additions retain 960000/1200000 bytes and
-0/20000 callbacks respectively. The success workload restores 16384 unique pairs,
-clears while retaining capacity, warms 1000 inserts then clears again before
-measurement, avoiding growth during 10000 measured inserts. Final Standard/Lean
-net10 and matching-dependency netstandard replays agree. No universal allocation
-or latency claim is made. No maintained benchmark harness was added.
+0/20000 callbacks respectively. The success workload restores 16384 unique
+pairs, clears while retaining capacity, warms 1000 inserts then clears again
+before measurement, avoiding growth during 10000 measured inserts. Final
+Standard/Lean net10 and matching-dependency netstandard replays agree. No
+universal allocation or latency claim is made. No maintained benchmark harness
+was added.
 
 - **Disposition / reopening:** Close the false-notification defect. Reopen for a
   supported Add route that emits on rejection, loses successful notification
@@ -690,21 +711,25 @@ or latency claim is made. No maintained benchmark harness was added.
 now dispatch through the observable override under
 [SC-Issue-013](#sc-issue-013---base-indexer-writes-bypass-bidirectional-bookkeeping),
 including base and dictionary-interface calls. The observable list indexer
-remains hidden; direct storage writes and inherited non-overridden mutations
-can still bypass notifications. Disposition: document the concrete notification
+remains hidden; direct storage writes and inherited non-overridden mutations can
+still bypass notifications. Disposition: document the concrete notification
 surface, as described in the
 [observable guide](../api/guides/pools-and-observables.md#observable-collections).
 Reopen if an API promises complete notifications; first verify base/interface
-dispatch and subscriber-exception behavior. This limitation is separate from
-the confirmed false Add notification above.
+dispatch and subscriber-exception behavior. This limitation is separate from the
+confirmed false Add notification above.
 
 ### SC-Issue-019 - BVH duplicate and null-key policy differs from peer indexes
 
-- **Status / priority:** Resolved 2026-11-21 / P2; user-approved upsert contract and verified fix.
+- **Status / priority:** Resolved 2026-11-21 / P2; user-approved upsert contract
+  and verified fix.
 - **Discovered:** 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`;
   reproduced before this fix at `b5234b3f67720f2d887e703f0ede396161f9adf1`.
-- **Affected owners / impact:** SwiftBVH inserts duplicate leaves and accepts null keys that guarded lookups cannot address; hash/octree duplicate insertion instead updates bounds.
-- **Evidence environment:** Windows x64, SDK 10.0.302, runtime 10.0.10, Release with published dependencies (`UseLocalLsfStack=false`).
+- **Affected owners / impact:** SwiftBVH inserts duplicate leaves and accepts
+  null keys that guarded lookups cannot address; hash/octree duplicate insertion
+  instead updates bounds.
+- **Evidence environment:** Windows x64, SDK 10.0.302, runtime 10.0.10, Release
+  with published dependencies (`UseLocalLsfStack=false`).
 
 **Reproducer** (use the console setup above):
 
@@ -725,31 +750,33 @@ Before: `2; 1,1` and 1. Both inserts return true and null insertion succeeds.
 After: `1; 1` and null insertion throws `ArgumentNullException` with parameter
 `value`, leaving Count zero. The first insert returns true, the second false.
 
-**Root cause and resolution:** Generic BVH Insert allocated a leaf before checking
-its shared key map. The map deliberately supplies low-level bucket storage, not
-uniqueness enforcement. BVH now guards null and looks up the key before mutation.
-An existing key uses the same private index-based bounds update as public
-UpdateEntryBounds, avoiding a second key lookup. The original stored key, leaf
-index, topology, node-array capacity and Count are retained; changed bounds
-refresh ancestors and equal bounds do nothing. New keys follow the existing
-allocation/insertion path. Numerics, typed backends and FixedMathSharp inherit
-the fix. No fields, helper types, public signatures or persistence formats changed.
-Volume/hash/allocation exceptions remain nontransactional; null rejection alone
-is guaranteed to precede mutation. BVH has no authored serialization/restore path.
+**Root cause and resolution:** Generic BVH Insert allocated a leaf before
+checking its shared key map. The map deliberately supplies low-level bucket
+storage, not uniqueness enforcement. BVH now guards null and looks up the key
+before mutation. An existing key uses the same private index-based bounds update
+as public UpdateEntryBounds, avoiding a second key lookup. The original stored
+key, leaf index, topology, node-array capacity and Count are retained; changed
+bounds refresh ancestors and equal bounds do nothing. New keys follow the
+existing allocation/insertion path. Numerics, typed backends and FixedMathSharp
+inherit the fix. No fields, helper types, public signatures or persistence
+formats changed. Volume/hash/allocation exceptions remain nontransactional; null
+rejection alone is guaranteed to precede mutation. BVH has no authored
+serialization/restore path.
 
 **Disposition and compatibility:** The user explicitly selected the same upsert
 contract as spatial hash and octree on 2026-11-21. This replaces the earlier
-deferred choice. Duplicate-key multi-entry ownership is intentionally unsupported;
-callers needing multiple leaves must supply distinct stable keys. False means an
-existing entry was updated, not that the call did nothing. Equal reference keys
-retain the original canonical stored key. The unreleased migration guide records
-this behavior change without claiming publication. Reopen only for an explicit
-multi-entry requirement, a supported consumer relying on the former policy, or
-an invariant/behavior regression under the selected contract.
+deferred choice. Duplicate-key multi-entry ownership is intentionally
+unsupported; callers needing multiple leaves must supply distinct stable keys.
+False means an existing entry was updated, not that the call did nothing. Equal
+reference keys retain the original canonical stored key. The unreleased
+migration guide records this behavior change without claiming publication.
+Reopen only for an explicit multi-entry requirement, a supported consumer
+relying on the former policy, or an invariant/behavior regression under the
+selected contract.
 
 **Regression evidence:** The old DuplicateKeyHandling_ReplacesOldEntry queried
-only the second non-overlapping region and passed with an orphaned old leaf.
-The strengthened test checks old/new/all regions, Count, result flags, stable
+only the second non-overlapping region and passed with an orphaned old leaf. The
+strengthened test checks old/new/all regions, Count, result flags, stable
 leaf/storage identity, ordinary/buffered query equivalence, repeated removal and
 reinsertion, both root-only and multi-leaf trees, and same/moved bounds. Further
 cases cover null snapshots before mutation, colliding equal reference keys,
@@ -762,26 +789,27 @@ focused suites passed 59 core and 7 companion tests.
 **Full validation:** Windows x64, SDK 10.0.302/runtime 10.0.10, package mode
 (`UseLocalLsfStack=false`, `DisableTransitiveProjectReferences=false`). From the
 repository root, run `dotnet build SwiftCollections.slnx -c CONFIG` with those
-properties, then each test project with `dotnet test tests/PROJECT/PROJECT.csproj
--c CONFIG --no-build --collect:"XPlat Code Coverage" --settings
-tests/PROJECT/coverlet.runsettings --results-directory FRESH_RESULTS` and the
-same properties. Run `.assets/scripts/assert-full-coverage.ps1 -CoverageDirectory
-FRESH_RESULTS` after both projects; use a separate fresh directory for each
-configuration. The unchanged strict gate passed, including every reported point.
+properties, then each test project with
+`dotnet test tests/PROJECT/PROJECT.csproj -c CONFIG --no-build --collect:"XPlat Code Coverage" --settings tests/PROJECT/coverlet.runsettings --results-directory FRESH_RESULTS`
+and the same properties. Run
+`.assets/scripts/assert-full-coverage.ps1 -CoverageDirectory FRESH_RESULTS`
+after both projects; use a separate fresh directory for each configuration. The
+unchanged strict gate passed, including every reported point.
 
 | Configuration | Core tests | Companion tests | Core lines | Core branches | Core executable methods | Companion lines / branches / methods |
-| --- | ---: | ---: | --- | --- | --- | --- |
-| Release | 1960 | 46 | 6029/6029 | 2862/2862 | 1259/1259 | 121/121; 62/62; 35/35 |
-| ReleaseLean | 1852 | 46 | 5835/5835 | 2786/2786 | 1218/1218 | 121/121; 62/62; 35/35 |
-| Debug | 1958 | 46 | 7961/7961 | 2870/2870 | 1259/1259 | 155/155; 62/62; 35/35 |
+| ------------- | ---------: | --------------: | ---------- | ------------- | ----------------------- | ------------------------------------ |
+| Release       |       1960 |              46 | 6029/6029  | 2862/2862     | 1259/1259               | 121/121; 62/62; 35/35                |
+| ReleaseLean   |       1852 |              46 | 5835/5835  | 2786/2786     | 1218/1218               | 121/121; 62/62; 35/35                |
+| Debug         |       1958 |              46 | 7961/7961  | 2870/2870     | 1259/1259               | 155/155; 62/62; 35/35                |
 
-No tests failed or were skipped, and no exclusions or coverage/CI policy changed.
-The focused red command uses `--filter FullyQualifiedName~KeyPolicy_` before the
-runtime fix; the green command uses `--filter FullyQualifiedName~SwiftBVH` after
-it. Build warnings are pre-existing in untouched committed test code:
-`xUnit2013` at SwiftSlotMap.Tests.cs:138 (all configurations) and `xUnit1026` for
-the unused `binary` theory parameter at SwiftObservableDictionary.Tests.cs:220
-(Lean only). No introduced build errors or warnings were observed.
+No tests failed or were skipped, and no exclusions or coverage/CI policy
+changed. The focused red command uses `--filter FullyQualifiedName~KeyPolicy_`
+before the runtime fix; the green command uses
+`--filter FullyQualifiedName~SwiftBVH` after it. Build warnings are pre-existing
+in untouched committed test code: `xUnit2013` at SwiftSlotMap.Tests.cs:138 (all
+configurations) and `xUnit1026` for the unused `binary` theory parameter at
+SwiftObservableDictionary.Tests.cs:220 (Lean only). No introduced build errors
+or warnings were observed.
 
 **Downstream compatibility:** Source review and focused coordinated-source runs
 cover the real BVH consumers. Gravitas PhysicsMesh clears each triangle tree and
@@ -798,10 +826,9 @@ the exact source-built core and companion DLLs before returning to package mode.
   `FullyQualifiedName~PhysicsMesh|FullyQualifiedName~MeshTriangleQueryAllocationTests|FullyQualifiedName~MeshAuthored`,
   268/268 Release and 267/267 ReleaseLean.
 
-For either consumer, run `dotnet test tests/OWNER.Tests/OWNER.Tests.csproj
--c CONFIG -f net10.0 -p:UseLocalLsfStack=true
--p:DisableTransitiveProjectReferences=true -m:1 --filter FILTER` from its checkout.
-Sibling source revisions were Chronicler
+For either consumer, run
+`dotnet test tests/OWNER.Tests/OWNER.Tests.csproj -c CONFIG -f net10.0 -p:UseLocalLsfStack=true -p:DisableTransitiveProjectReferences=true -m:1 --filter FILTER`
+from its checkout. Sibling source revisions were Chronicler
 `0281469ecc40e65a05867f473bc10f030e7f69f8` and FixedMathSharp
 `b501340558c6132484be2f40957233c1b3d29cab`. Existing consumer workflow/guidance
 edits and GridForge's staged AGENTS changes were preserved; no consumer runtime
@@ -809,9 +836,10 @@ source or test changes were needed. These are focused integration checks, not a
 claim of full consumer-suite coverage, hosted CI readiness or a package release.
 
 **Targets, packages and reference:** The full solution built both runtime
-assemblies for `netstandard2.1` and `net10.0` in Release/ReleaseLean (and Debug).
-Explicit `dotnet pack src/OWNER/OWNER.csproj -c CONFIG --no-build --no-restore`
-with package-mode properties produced SwiftCollections, SwiftCollections.Lean,
+assemblies for `netstandard2.1` and `net10.0` in Release/ReleaseLean (and
+Debug). Explicit
+`dotnet pack src/OWNER/OWNER.csproj -c CONFIG --no-build --no-restore` with
+package-mode properties produced SwiftCollections, SwiftCollections.Lean,
 SwiftCollections.FixedMathSharp and SwiftCollections.FixedMathSharp.Lean. All
 eight assembly/target/variant DLL and adjacent XML pairs matched the final build
 outputs byte-for-byte; the coverage test DLL inputs also matched those outputs.
@@ -825,23 +853,23 @@ href targets across 104 generated HTML pages resolved.
 **Allocation and bounded workload check:** The maintained custom-volume test
 warms 1,000 alternating duplicate-bound updates, then measures another 1,000
 actual Insert calls: zero thread allocations, no newly inserted leaf, Count two.
-It passes in all three configurations. Existing BvhWorkloadBenchmarks.SwiftBVH_Insert
-ran all three sizes (1,024 / 4,096 / 16,384 entries) under BenchmarkDotNet 0.15.8,
-one launch, one warmup and three measured iterations, Windows x64/.NET 10.0.10.
-Means were 511.2 us / 2.1681 ms / 11.4320 ms per newly constructed/populated tree,
-with 336.72 / 1,347.2 / 5,377.1 KiB allocated per tree. All three children exited
-zero and provided all nine expected measured results. This is current-workload
-evidence only; no baseline latency comparison or universal allocation claim is
-made. The new-key path adds the required key lookup; duplicate updates reuse its
-found index without a second lookup. No scan or additional per-entry storage
-was added.
+It passes in all three configurations. Existing
+BvhWorkloadBenchmarks.SwiftBVH_Insert ran all three sizes (1,024 / 4,096 /
+16,384 entries) under BenchmarkDotNet 0.15.8, one launch, one warmup and three
+measured iterations, Windows x64/.NET 10.0.10. Means were 511.2 us / 2.1681 ms /
+11.4320 ms per newly constructed/populated tree, with 336.72 / 1,347.2 / 5,377.1
+KiB allocated per tree. All three children exited zero and provided all nine
+expected measured results. This is current-workload evidence only; no baseline
+latency comparison or universal allocation claim is made. The new-key path adds
+the required key lookup; duplicate updates reuse its found index without a
+second lookup. No scan or additional per-entry storage was added.
 
 The first benchmark attempts could not generate a child because old ignored
 baseline snapshots supplied duplicate project names. Their two project files
 were temporarily hidden during the accepted run and restored afterward; no
-maintained benchmark/build infrastructure changed. Those incomplete attempts
-are excluded from performance evidence. No source defect was inferred from
-that local artifact collision. Hosted CI, Unity/IL2CPP, other OS/architectures and
+maintained benchmark/build infrastructure changed. Those incomplete attempts are
+excluded from performance evidence. No source defect was inferred from that
+local artifact collision. Hosted CI, Unity/IL2CPP, other OS/architectures and
 full downstream suites were not run. No release is claimed.
 
 ### SC-Issue-020 - Numerics octree subdivision overflows finite midpoints
@@ -849,8 +877,11 @@ full downstream suites were not run. No release is claimed.
 - **Status / priority:** Resolved 2026-11-21 / P2; verified fix.
 - **Discovered:** 2026-11-17 at `17307f1460313e64043da7995fbc4a4458da09a3`;
   reproduced before this fix at `948fca0f3791430c4da3b1bce317e4bc37d6ac0b`.
-- **Affected owners / impact:** SwiftOctree<TKey> built-in numerics partitioner creates infinite, nonshrinking children from ordered finite endpoints near 1e38f..3e38f.
-- **Evidence environment:** Windows x64, SDK 10.0.302, runtime 10.0.10, Release with published dependencies (`UseLocalLsfStack=false`).
+- **Affected owners / impact:** SwiftOctree<TKey> built-in numerics partitioner
+  creates infinite, nonshrinking children from ordered finite endpoints near
+  1e38f..3e38f.
+- **Evidence environment:** Windows x64, SDK 10.0.302, runtime 10.0.10, Release
+  with published dependencies (`UseLocalLsfStack=false`).
 
 **Reproducer** (use the console setup above):
 
@@ -878,11 +909,11 @@ remain inside their parents and strictly shrink. The reproducer is bounded to
 depth two and does not depend on exhausting memory or stack depth.
 
 **Root cause and resolution:** The built-in Numerics partitioner computed child
-size with `(Max-Min)/2` but constructed and selected children with `(Min+Max)/2`.
-Single-precision sums and differences can overflow despite finite endpoints.
-Parent half-size also ignores asymmetric rounding of the actual split plane:
-adjacent or unevenly spaced endpoints can produce an endpoint-equal midpoint or
-one child below the configured minimum edge length.
+size with `(Max-Min)/2` but constructed and selected children with
+`(Min+Max)/2`. Single-precision sums and differences can overflow despite finite
+endpoints. Parent half-size also ignores asymmetric rounding of the actual split
+plane: adjacent or unevenly spaced endpoints can produce an endpoint-equal
+midpoint or one child below the configured minimum edge length.
 
 One private midpoint helper now widens endpoints before addition and halves in
 double precision, then rounds the shared split plane to float. CanSubdivide,
@@ -891,7 +922,8 @@ private per-axis predicate checks both resulting child spans in double precision
 against the finite positive minimum size. Both halves must pass on every axis;
 zero-width and endpoint-equal splits are refused. No public signature, field,
 helper type or persistence format changed. Runtime growth is two private helper
-methods within the existing owner, reused by its production partition operations.
+methods within the existing owner, reused by its production partition
+operations.
 
 **Scope and numeric contract:** Ordered finite endpoints are still required;
 this does not add validation of malformed/nonfinite worlds. Split planes are
@@ -907,79 +939,82 @@ rounding/minimum-size behavior may change topology and traversal order for
 previously overflowing or undersized splits; no sorted query-order guarantee is
 introduced. Octrees have no authored serialization/restore contract.
 
-**Regression evidence:** 17 `Midpoint_` cases ran against the unfixed owner:
-12 failed for the intended invalid-child/minimum-size behavior and 5 controls
+**Regression evidence:** 17 `Midpoint_` cases ran against the unfixed owner: 12
+failed for the intended invalid-child/minimum-size behavior and 5 controls
 passed. Cases cover positive/negative same-sign extremes, the complete finite
-float range, all eight child octants at two levels, finite endpoints, containment,
-strict progress, actual split boundaries, query/update/removal/reinsertion,
-per-axis adjacent floats, odd-ULP spans, asymmetric subnormal rounding,
-zero-width axes, overflowing parent spans and a valid subnormal split. The
-independent containment/progress/hit checks supplement the expected split-plane
-oracle. After the fix, `FullyQualifiedName~SwiftOctree` passed 52 core tests and
-15 companion tests, including existing custom/fixed partitioner controls.
+float range, all eight child octants at two levels, finite endpoints,
+containment, strict progress, actual split boundaries,
+query/update/removal/reinsertion, per-axis adjacent floats, odd-ULP spans,
+asymmetric subnormal rounding, zero-width axes, overflowing parent spans and a
+valid subnormal split. The independent containment/progress/hit checks
+supplement the expected split-plane oracle. After the fix,
+`FullyQualifiedName~SwiftOctree` passed 52 core tests and 15 companion tests,
+including existing custom/fixed partitioner controls.
 
 **Full validation:** Windows x64, SDK 10.0.302/runtime 10.0.10, published
 package dependencies (`UseLocalLsfStack=false`,
-`DisableTransitiveProjectReferences=false`). Run `dotnet build
-SwiftCollections.slnx -c CONFIG` with those properties, then each test project
-with `dotnet test tests/PROJECT/PROJECT.csproj -c CONFIG --no-build
---collect:"XPlat Code Coverage" --settings tests/PROJECT/coverlet.runsettings
---results-directory FRESH_RESULTS` and the same properties. After both projects,
-run `.assets/scripts/assert-full-coverage.ps1 -CoverageDirectory FRESH_RESULTS`.
-Use fresh, distinct result directories per configuration. The unchanged strict
-gate passed every reported line, branch and executable method:
+`DisableTransitiveProjectReferences=false`). Run
+`dotnet build SwiftCollections.slnx -c CONFIG` with those properties, then each
+test project with
+`dotnet test tests/PROJECT/PROJECT.csproj -c CONFIG --no-build --collect:"XPlat Code Coverage" --settings tests/PROJECT/coverlet.runsettings --results-directory FRESH_RESULTS`
+and the same properties. After both projects, run
+`.assets/scripts/assert-full-coverage.ps1 -CoverageDirectory FRESH_RESULTS`. Use
+fresh, distinct result directories per configuration. The unchanged strict gate
+passed every reported line, branch and executable method:
 
 | Configuration | Core tests | Companion tests | Core lines | Core branches | Core executable methods | Companion lines / branches / methods |
-| --- | ---: | ---: | --- | --- | --- | --- |
-| Release | 1977 | 46 | 6035/6035 | 2858/2858 | 1261/1261 | 121/121; 62/62; 35/35 |
-| ReleaseLean | 1869 | 46 | 5841/5841 | 2782/2782 | 1220/1220 | 121/121; 62/62; 35/35 |
-| Debug | 1975 | 46 | 7971/7971 | 2866/2866 | 1261/1261 | 155/155; 62/62; 35/35 |
+| ------------- | ---------: | --------------: | ---------- | ------------- | ----------------------- | ------------------------------------ |
+| Release       |       1977 |              46 | 6035/6035  | 2858/2858     | 1261/1261               | 121/121; 62/62; 35/35                |
+| ReleaseLean   |       1869 |              46 | 5841/5841  | 2782/2782     | 1220/1220               | 121/121; 62/62; 35/35                |
+| Debug         |       1975 |              46 | 7971/7971  | 2866/2866     | 1261/1261               | 155/155; 62/62; 35/35                |
 
 No failed/skipped tests, coverage exclusions or gate/CI policy changes. The red
-command adds `--filter FullyQualifiedName~Midpoint_` before fixing runtime source;
-the green command uses `--filter FullyQualifiedName~SwiftOctree` after the fix.
-Release build reported no warnings. Lean reported the two pre-existing warnings
-in untouched committed tests: xUnit2013 at SwiftSlotMap.Tests.cs:138 and
-xUnit1026 for unused `binary` at SwiftObservableDictionary.Tests.cs:220. Debug
-reported the same slot-map warning. No introduced build warning/error was found.
+command adds `--filter FullyQualifiedName~Midpoint_` before fixing runtime
+source; the green command uses `--filter FullyQualifiedName~SwiftOctree` after
+the fix. Release build reported no warnings. Lean reported the two pre-existing
+warnings in untouched committed tests: xUnit2013 at SwiftSlotMap.Tests.cs:138
+and xUnit1026 for unused `binary` at SwiftObservableDictionary.Tests.cs:220.
+Debug reported the same slot-map warning. No introduced build warning/error was
+found.
 
-Both assemblies built `netstandard2.1` and `net10.0` in all three configurations.
-Explicit package-mode `dotnet pack src/OWNER/OWNER.csproj -c CONFIG --no-build
---no-restore` produced SwiftCollections, SwiftCollections.Lean,
-SwiftCollections.FixedMathSharp and SwiftCollections.FixedMathSharp.Lean. Each
-of the eight assembly/target/variant DLL and XML pairs matched final build
-outputs byte-for-byte, and the DLLs used by the coverage suites still matched
-those same outputs. All packaged XML parsed. Fresh DocFX metadata/site generation with `dotnet tool run docfx
-docs/api/docfx.json --warningsAsErrors` passed with zero warnings/errors. The
-rendered Numerics octree page shows widened subdivision, both child spans,
-constructor parameter names and the existing size exception. Emitted constructor
-XML was checked in all four core target/variant combinations; the guide also
-renders the corrected contract. All 1,624 local href targets across 104 generated
-HTML pages resolved.
+Both assemblies built `netstandard2.1` and `net10.0` in all three
+configurations. Explicit package-mode
+`dotnet pack src/OWNER/OWNER.csproj -c CONFIG --no-build --no-restore` produced
+SwiftCollections, SwiftCollections.Lean, SwiftCollections.FixedMathSharp and
+SwiftCollections.FixedMathSharp.Lean. Each of the eight assembly/target/variant
+DLL and XML pairs matched final build outputs byte-for-byte, and the DLLs used
+by the coverage suites still matched those same outputs. All packaged XML
+parsed. Fresh DocFX metadata/site generation with
+`dotnet tool run docfx docs/api/docfx.json --warningsAsErrors` passed with zero
+warnings/errors. The rendered Numerics octree page shows widened subdivision,
+both child spans, constructor parameter names and the existing size exception.
+Emitted constructor XML was checked in all four core target/variant
+combinations; the guide also renders the corrected contract. All 1,624 local
+href targets across 104 generated HTML pages resolved.
 
 **Bounded performance checks:** A disposable optimized net10.0 caller used the
 same extreme positive world, two keys at opposite endpoint points, depth two,
 capacity one, merging disabled and a caller-owned List<int> of capacity two.
 After 2,000 alternating key-1 endpoint updates and lower-point queries, 10,000
 measured update/query cycles allocated zero thread bytes in Standard and Lean;
-all updates returned true, lower queries alternated exactly [1]/empty, and
-Count remained two. Blocking GC was used; loaded core SHA256 values were
-`FE0521DD85A743E46DE3437D545F8F7BA56533D04F0A08BF6053D76B09548F8E`
-(Standard) and
-`A9B7F7C5E4DB4ADAF7800AAE7E9EBA5B5BF1C0F82040A086BB9ABFA6E946A600`
-(Lean). This is allocation evidence for that warmed, retained-topology workload,
-not an allocation guarantee for subdivision/merging or arbitrary backends.
+all updates returned true, lower queries alternated exactly [1]/empty, and Count
+remained two. Blocking GC was used; loaded core SHA256 values were
+`FE0521DD85A743E46DE3437D545F8F7BA56533D04F0A08BF6053D76B09548F8E` (Standard)
+and `A9B7F7C5E4DB4ADAF7800AAE7E9EBA5B5BF1C0F82040A086BB9ABFA6E946A600` (Lean).
+This is allocation evidence for that warmed, retained-topology workload, not an
+allocation guarantee for subdivision/merging or arbitrary backends.
 
 The existing QueryCollectionComparisonBenchmarks.DynamicNeighbor_SwiftOctree
 workload completed both sizes (2,048 / 8,192 objects) under BenchmarkDotNet
 0.15.8: one launch, one warmup, three measured iterations, invocation count one.
 Both children exited zero with all six expected measured results. Means were
-3.087 / 5.657 ms; reported allocations were zero / 336 bytes. The short iterations
-raised MinIterationTime warnings and had wide confidence intervals. These are
-workload-execution results only, not a latency comparison, regression attribution
-or zero-overhead claim. Old ignored baseline project copies were temporarily
-hidden to avoid the known local BenchmarkDotNet project-name collision and
-restored afterward; no maintained benchmark infrastructure changed.
+3.087 / 5.657 ms; reported allocations were zero / 336 bytes. The short
+iterations raised MinIterationTime warnings and had wide confidence intervals.
+These are workload-execution results only, not a latency comparison, regression
+attribution or zero-overhead claim. Old ignored baseline project copies were
+temporarily hidden to avoid the known local BenchmarkDotNet project-name
+collision and restored afterward; no maintained benchmark infrastructure
+changed.
 
 Hosted CI, Unity/IL2CPP, other architectures/OSes and downstream suites were not
 run; no release or cross-platform floating-point determinism is claimed.
@@ -992,7 +1027,8 @@ point reproducibility or exact-real span admission becomes a supported contract.
 
 ### SC-Issue-022 - Object dictionary adapters misclassify callback invalid casts
 
-- **Status / priority:** Resolved 2026-11-21 / P2; verified fix, separate from SC-Issue-018.
+- **Status / priority:** Resolved 2026-11-21 / P2; verified fix, separate from
+  SC-Issue-018.
 - **Discovered / revision:** 2026-11-21 at
   `5d9e3c1932e59749694e5ec2f46c8d46f6db371c`; reproduced before and after the
   notification fix in Standard/Lean, including matching-dependency netstandard
@@ -1000,8 +1036,8 @@ point reproducibility or exact-real span admission becomes a supported contract.
   `b5e03e40130c95879b7936ceafec1baf0d57329a`.
 - **Affected members:** `SwiftDictionary<TKey, TValue>.Add(object, object)` and
   the non-generic IDictionary indexer setter. Their InvalidCastException catches
-  include virtual mutation, not just argument conversion, so derived notification
-  code can be misclassified as a bad key/value argument.
+  include virtual mutation, not just argument conversion, so derived
+  notification code can be misclassified as a bad key/value argument.
 - **Environment:** Windows x64, SDK 10.0.302, runtime 10.0.10, Release with
   published dependencies (`UseLocalLsfStack=false`).
 - **Caller impact:** A valid insertion/replacement commits, then the caller sees
@@ -1035,17 +1071,18 @@ foreach (bool replace in new[] { false, true })
 
 Expected: the original InvalidCastException propagates after the documented
 committed mutation. Observed: `False; ArgumentException; False; 1; 10` and
-`True; ArgumentException; False; 1; 20`. Messages say `Value 10 does not match
-expected System.Int32` and likewise for value 20. The original is not retained as
-InnerException. A direct typed Add control propagates the same original
-InvalidCastException instance and also leaves the mapping committed.
+`True; ArgumentException; False; 1; 20`. Messages say
+`Value 10 does not match expected System.Int32` and likewise for value 20. The
+original is not retained as InnerException. A direct typed Add control
+propagates the same original InvalidCastException instance and also leaves the
+mapping committed.
 
 After: `False; InvalidCastException; True; 1; 10` and
 `True; InvalidCastException; True; 1; 20`. Both retain the original `subscriber`
 exception and the same committed mapping. Typed controls behave the same way.
 
-**Root cause and resolution:** Both object adapters enclosed virtual mutation
-in the value-conversion catch, nested inside a key-conversion catch. The shared
+**Root cause and resolution:** Both object adapters enclosed virtual mutation in
+the value-conversion catch, nested inside a key-conversion catch. The shared
 private static ConvertObjectPair helper now performs only the existing input
 conversion sequence: null-value guard, key cast, then value cast. Each catch
 surrounds only its own cast. Add and the explicit IDictionary setter invoke
@@ -1064,93 +1101,102 @@ comparers, overrides and subscribers now propagate unchanged. Failure is not a
 rollback guarantee: notification failure follows committed mutation, and
 existing load-threshold checks may resize before a later typed failure.
 
-**Regression evidence:** The `FullyQualifiedName~ObjectAdapter_` filter ran
-28 cases against unfixed source: 18 failed for the intended exception type/identity
+**Regression evidence:** The `FullyQualifiedName~ObjectAdapter_` filter ran 28
+cases against unfixed source: 18 failed for the intended exception type/identity
 mismatch and 10 controls passed. Tests cover public object Add, non-generic
-IDictionary.Add and indexer insertion/replacement; collection/property subscriber
-failures and notification interruption; forward hash/equality comparers;
-bidictionary reverse comparers; value formatting; exact validation precedence,
-messages, nullable/reference nulls and non-nullable key unboxing. The assertions
-distinguish pre-mutation comparer failures with spare capacity from committed
-subscriber failures and retain typed controls. After the fix, the focused
-SwiftDictionaryTests/SwiftObservableDictionaryTests/SwiftBiDictionaryTests filter
-passed all 219 cases.
+IDictionary.Add and indexer insertion/replacement; collection/property
+subscriber failures and notification interruption; forward hash/equality
+comparers; bidictionary reverse comparers; value formatting; exact validation
+precedence, messages, nullable/reference nulls and non-nullable key unboxing.
+The assertions distinguish pre-mutation comparer failures with spare capacity
+from committed subscriber failures and retain typed controls. After the fix, the
+focused
+SwiftDictionaryTests/SwiftObservableDictionaryTests/SwiftBiDictionaryTests
+filter passed all 219 cases.
 
 **Full validation:** Windows x64, SDK 10.0.302/runtime 10.0.10, published
-package mode (`UseLocalLsfStack=false`, `DisableTransitiveProjectReferences=false`).
-From the repository root, run `dotnet build SwiftCollections.slnx -c CONFIG`
-with those properties. Run each test project with `dotnet test
-tests/PROJECT/PROJECT.csproj -c CONFIG --no-build --collect:"XPlat Code Coverage"
---settings tests/PROJECT/coverlet.runsettings --results-directory FRESH_RESULTS`
-and the same properties, then `.assets/scripts/assert-full-coverage.ps1
--CoverageDirectory FRESH_RESULTS` after both projects. Fresh configuration-specific
-results passed the unchanged strict raw-count gate:
+package mode (`UseLocalLsfStack=false`,
+`DisableTransitiveProjectReferences=false`). From the repository root, run
+`dotnet build SwiftCollections.slnx -c CONFIG` with those properties. Run each
+test project with
+`dotnet test tests/PROJECT/PROJECT.csproj -c CONFIG --no-build --collect:"XPlat Code Coverage" --settings tests/PROJECT/coverlet.runsettings --results-directory FRESH_RESULTS`
+and the same properties, then
+`.assets/scripts/assert-full-coverage.ps1 -CoverageDirectory FRESH_RESULTS`
+after both projects. Fresh configuration-specific results passed the unchanged
+strict raw-count gate:
 
 | Configuration | Core tests | Companion tests | Core lines | Core branches | Core executable methods | Companion lines / branches / methods |
-| --- | ---: | ---: | --- | --- | --- | --- |
-| Release | 2005 | 46 | 6031/6031 | 2858/2858 | 1262/1262 | 121/121; 62/62; 35/35 |
-| ReleaseLean | 1897 | 46 | 5837/5837 | 2782/2782 | 1221/1221 | 121/121; 62/62; 35/35 |
-| Debug | 2003 | 46 | 7964/7964 | 2866/2866 | 1262/1262 | 155/155; 62/62; 35/35 |
+| ------------- | ---------: | --------------: | ---------- | ------------- | ----------------------- | ------------------------------------ |
+| Release       |       2005 |              46 | 6031/6031  | 2858/2858     | 1262/1262               | 121/121; 62/62; 35/35                |
+| ReleaseLean   |       1897 |              46 | 5837/5837  | 2782/2782     | 1221/1221               | 121/121; 62/62; 35/35                |
+| Debug         |       2003 |              46 | 7964/7964  | 2866/2866     | 1262/1262               | 155/155; 62/62; 35/35                |
 
 No failed/skipped tests, exclusions or coverage/CI-policy changes. Existing
 analyzer warnings remain: xUnit2013 for the unchanged slot-map size assertion
 and Lean xUnit1026 for the pre-existing observable round-trip theory's unused
 `binary` parameter. The added tests do not alter that theory. No introduced
 warning or build error was observed. Full builds include both runtime assemblies
-for `netstandard2.1` and `net10.0`, with C# 11 compatibility retained for netstandard.
+for `netstandard2.1` and `net10.0`, with C# 11 compatibility retained for
+netstandard.
 
 Explicit `dotnet pack src/OWNER/OWNER.csproj -c CONFIG --no-build --no-restore`
-with the package-mode properties produced SwiftCollections, SwiftCollections.Lean,
-SwiftCollections.FixedMathSharp and SwiftCollections.FixedMathSharp.Lean. All
-eight assembly/target/variant DLL and XML pairs matched final source-build outputs
-byte-for-byte. DLL inputs from all six coverage suites still matched those same
-outputs. All packaged XML parsed. Fresh DocFX metadata/site generation with
+with the package-mode properties produced SwiftCollections,
+SwiftCollections.Lean, SwiftCollections.FixedMathSharp and
+SwiftCollections.FixedMathSharp.Lean. All eight assembly/target/variant DLL and
+XML pairs matched final source-build outputs byte-for-byte. DLL inputs from all
+six coverage suites still matched those same outputs. All packaged XML parsed.
+Fresh DocFX metadata/site generation with
 `dotnet tool run docfx docs/api/docfx.json --warningsAsErrors` passed with zero
 warnings/errors. The rendered object Add section shows key/value parameters,
 existing conversion exceptions and original-exception/no-rollback remarks. The
-explicit IDictionary indexer is hidden by the existing site metadata selection; its updated
-contract was checked in emitted XML. Both adapters were checked in all four
-core target/variant XML files. The observable guide renders the corrected
-contract. All 1,624 local href targets across 104 generated HTML pages resolved.
+explicit IDictionary indexer is hidden by the existing site metadata selection;
+its updated contract was checked in emitted XML. Both adapters were checked in
+all four core target/variant XML files. The observable guide renders the
+corrected contract. All 1,624 local href targets across 104 generated HTML pages
+resolved.
 
 **Warm allocation control:** A disposable optimized net10.0 caller preboxed an
-integer key and two values once and reused a capacity-eight SwiftDictionary<int,int>.
-Each cycle exercised public object Add/remove, IDictionary.Add/remove, and
-IDictionary indexer insert/replace/remove, checking exact typed values and counts.
-After 2,000 warmup cycles, 10,000 measured cycles allocated zero thread bytes in
-the frozen baseline, current Standard and current Lean, with every value correct
-and final Count zero. Blocking GC was used. Loaded core SHA256 values were
-`D85F26EACB85C8B26AA0E59E03DEFEAF3297913F75206DE74F02D2A6DB341747`
-(baseline), `28244B4BFD01E45D3E6379E49C229DC548D8D4B4F930A2BED938FD29FF6CB30D`
-(Standard), and `2E8AB11EA0D205568CA92FC05759545DC8FAA9536F2792CE56BAE796F547A5C9`
-(Lean). This excludes boxing performed by callers before entering the adapters,
-exception allocation, notifications and resizing; it is not a universal allocation
-or latency guarantee. Typed probe/mutation code is unchanged, and no new timing
-benchmark or before/after latency claim is introduced.
+integer key and two values once and reused a capacity-eight
+SwiftDictionary<int,int>. Each cycle exercised public object Add/remove,
+IDictionary.Add/remove, and IDictionary indexer insert/replace/remove, checking
+exact typed values and counts. After 2,000 warmup cycles, 10,000 measured cycles
+allocated zero thread bytes in the frozen baseline, current Standard and current
+Lean, with every value correct and final Count zero. Blocking GC was used.
+Loaded core SHA256 values were
+`D85F26EACB85C8B26AA0E59E03DEFEAF3297913F75206DE74F02D2A6DB341747` (baseline),
+`28244B4BFD01E45D3E6379E49C229DC548D8D4B4F930A2BED938FD29FF6CB30D` (Standard),
+and `2E8AB11EA0D205568CA92FC05759545DC8FAA9536F2792CE56BAE796F547A5C9` (Lean).
+This excludes boxing performed by callers before entering the adapters,
+exception allocation, notifications and resizing; it is not a universal
+allocation or latency guarantee. Typed probe/mutation code is unchanged, and no
+new timing benchmark or before/after latency claim is introduced.
 
-Hosted CI, Unity/IL2CPP, other platforms and downstream suites were not run;
-no release is claimed. The list reproducer remains unchanged after this fix.
+Hosted CI, Unity/IL2CPP, other platforms and downstream suites were not run; no
+release is claimed. The list reproducer remains unchanged after this fix.
 
 **Disposition / reopening:** Close the confirmed dictionary defect. Reopen for
 an object dictionary route that still relabels a correctly typed comparer,
 override or subscriber InvalidCastException, changes conversion/null precedence,
 or bypasses derived mutation rules. The analogous SwiftList owner is separately
-tracked as [SC-Issue-023](#sc-issue-023---list-object-adapters-misclassify-callback-invalid-casts);
+tracked as
+[SC-Issue-023](#sc-issue-023---list-object-adapters-misclassify-callback-invalid-casts);
 this fix does not expand list runtime behavior.
 
 ### SC-Issue-023 - List object adapters misclassify callback invalid casts
 
-- **Status / priority:** Resolved 2026-11-21 / P2; verified fix, separate owner from SC-Issue-022.
+- **Status / priority:** Resolved 2026-11-21 / P2; verified fix, separate owner
+  from SC-Issue-022.
 - **Discovered / revision:** 2026-11-21 at
   `b5e03e40130c95879b7936ceafec1baf0d57329a`; reproduced using its frozen core
   DLL while investigating SC-Issue-022. Reproduced before this fix at
   `094e2af216c6f7d137cd09e9e74d68f1e77844fa`.
 - **Affected members:** SwiftList<T>'s explicit IList.Add, IList.Insert and
   IList.Remove enclosed virtual mutation in conversion catches; IList.Contains
-  and IList.IndexOf also enclosed user equality. Correctly typed callback failures
-  were relabeled as NotSupportedException.
+  and IList.IndexOf also enclosed user equality. Correctly typed callback
+  failures were relabeled as NotSupportedException.
 - **Environment:** Windows x64, SDK 10.0.302/runtime 10.0.10, Release with
-  published dependencies. The dictionary fix in SC-Issue-022 did not change list runtime.
+  published dependencies. The dictionary fix in SC-Issue-022 did not change list
+  runtime.
 
 **Portable reproducer** (use the console setup above):
 
@@ -1185,8 +1231,8 @@ input or leaving the list unchanged.
 
 After: `Add; InvalidCastException; True; 1`,
 `Insert; InvalidCastException; True; 1`, and
-`Remove; InvalidCastException; True; 0`. Mutation timing and contents are unchanged;
-the original subscriber exception is preserved.
+`Remove; InvalidCastException; True; 0`. Mutation timing and contents are
+unchanged; the original subscriber exception is preserved.
 
 **Related lookup reproducer** (same console setup; run independently):
 
@@ -1218,9 +1264,9 @@ both print InvalidCastException/True/1; no library mutation occurs. These paths
 share the same owner/cause and are included here rather than split into another
 issue. Tests also cover an InvalidOperationException from equality.
 
-**Root cause and resolution:** Catch scopes included user mutation/equality,
-not just casts. Three mutation adapters now share private ConvertObjectValue,
-which catches only InvalidCastException from conversion and preserves their
+**Root cause and resolution:** Catch scopes included user mutation/equality, not
+just casts. Three mutation adapters now share private ConvertObjectValue, which
+catches only InvalidCastException from conversion and preserves their
 `Wrong value type for ...` message. Contains and IndexOf share private
 ConvertObjectLookupValue, whose cast-only catch-all preserves their separate
 `Unsupported value type for ...` policy. Virtual mutation and equality execute
@@ -1241,9 +1287,9 @@ its separately documented catch-all/invalid-index behavior and hidden observable
 indexer contract are preserved. Array.SetValue copy catches in other owners do
 not invoke these user callbacks and remain outside this fix.
 
-**Regression evidence:** 35 new ObjectAdapter_ cases ran on unfixed source:
-11 failed for the intended exception type/identity mismatch and 24 controls
-passed. The red filter is
+**Regression evidence:** 35 new ObjectAdapter_ cases ran on unfixed source: 11
+failed for the intended exception type/identity mismatch and 24 controls passed.
+The red filter is
 `FullyQualifiedName~SwiftListTests.ObjectAdapter_|FullyQualifiedName~SwiftObservableListTests.ObjectAdapter_`.
 Cases cover all five adapters, typed controls, both observable notification
 stages with sender/payload/order and committed contents, equality failure before
@@ -1255,20 +1301,20 @@ passed all 189 tests.
 
 **Full validation:** Windows x64, SDK 10.0.302/runtime 10.0.10, published
 package dependencies (`UseLocalLsfStack=false`,
-`DisableTransitiveProjectReferences=false`). Run `dotnet build
-SwiftCollections.slnx -c CONFIG` with those properties, then both test projects
-with `dotnet test tests/PROJECT/PROJECT.csproj -c CONFIG --no-build
---collect:"XPlat Code Coverage" --settings tests/PROJECT/coverlet.runsettings
---results-directory FRESH_RESULTS` and the same properties. Run
-`.assets/scripts/assert-full-coverage.ps1 -CoverageDirectory FRESH_RESULTS` after
-both projects, using fresh directories per configuration. The unchanged strict
-gate passed every reported line, branch and executable method:
+`DisableTransitiveProjectReferences=false`). Run
+`dotnet build SwiftCollections.slnx -c CONFIG` with those properties, then both
+test projects with
+`dotnet test tests/PROJECT/PROJECT.csproj -c CONFIG --no-build --collect:"XPlat Code Coverage" --settings tests/PROJECT/coverlet.runsettings --results-directory FRESH_RESULTS`
+and the same properties. Run
+`.assets/scripts/assert-full-coverage.ps1 -CoverageDirectory FRESH_RESULTS`
+after both projects, using fresh directories per configuration. The unchanged
+strict gate passed every reported line, branch and executable method:
 
 | Configuration | Core tests | Companion tests | Core lines | Core branches | Core executable methods | Companion lines / branches / methods |
-| --- | ---: | ---: | --- | --- | --- | --- |
-| Release | 2040 | 46 | 6022/6022 | 2858/2858 | 1264/1264 | 121/121; 62/62; 35/35 |
-| ReleaseLean | 1932 | 46 | 5828/5828 | 2782/2782 | 1223/1223 | 121/121; 62/62; 35/35 |
-| Debug | 2038 | 46 | 7951/7951 | 2866/2866 | 1264/1264 | 155/155; 62/62; 35/35 |
+| ------------- | ---------: | --------------: | ---------- | ------------- | ----------------------- | ------------------------------------ |
+| Release       |       2040 |              46 | 6022/6022  | 2858/2858     | 1264/1264               | 121/121; 62/62; 35/35                |
+| ReleaseLean   |       1932 |              46 | 5828/5828  | 2782/2782     | 1223/1223               | 121/121; 62/62; 35/35                |
+| Debug         |       2038 |              46 | 7951/7951  | 2866/2866     | 1264/1264               | 155/155; 62/62; 35/35                |
 
 No failed/skipped tests, coverage exclusions or gate/CI-policy changes. Release
 build reported zero warnings/errors. Lean reported the pre-existing xUnit2013
@@ -1277,44 +1323,45 @@ parameter warnings; Debug reported the slot-map warning. Those source assertions
 are unchanged here. No introduced warning or build error was observed.
 
 Both runtime assemblies built `netstandard2.1` and `net10.0` in all three
-configurations. Explicit package-mode `dotnet pack src/OWNER/OWNER.csproj
--c CONFIG --no-build --no-restore` produced SwiftCollections,
-SwiftCollections.Lean, SwiftCollections.FixedMathSharp and
+configurations. Explicit package-mode
+`dotnet pack src/OWNER/OWNER.csproj -c CONFIG --no-build --no-restore` produced
+SwiftCollections, SwiftCollections.Lean, SwiftCollections.FixedMathSharp and
 SwiftCollections.FixedMathSharp.Lean. All eight assembly/target/variant DLL/XML
 pairs matched final build outputs byte-for-byte, and the DLLs used by all six
-coverage suites still matched those outputs. All packaged XML parsed.
-Fresh DocFX metadata/site generation with
+coverage suites still matched those outputs. All packaged XML parsed. Fresh
+DocFX metadata/site generation with
 `dotnet tool run docfx docs/api/docfx.json --warningsAsErrors` passed with zero
 warnings/errors. The observable guide renders the corrected mutation/equality
-exception contract. All five explicit IList adapters remain hidden by the existing
-site metadata selection; their summaries, parameters, applicable returns,
-exceptions and remarks were checked in all four core target/variant XML files.
-The Add return text includes post-callback Count minus one. The public list page
-and guide links resolve; all 1,624 local href targets across 104 generated HTML
-pages passed file-target checks.
+exception contract. All five explicit IList adapters remain hidden by the
+existing site metadata selection; their summaries, parameters, applicable
+returns, exceptions and remarks were checked in all four core target/variant XML
+files. The Add return text includes post-callback Count minus one. The public
+list page and guide links resolve; all 1,624 local href targets across 104
+generated HTML pages passed file-target checks.
 
 **Warm allocation control:** An optimized disposable net10.0 caller preboxed
 integer values 10 and 20 and reused a capacity-eight SwiftList<int>. Each cycle
-called IList.Add, Insert, Contains, IndexOf and two Removes, checking Add's return,
-lookup results, typed contents and empty final Count. After 2,000 warmup cycles,
-10,000 measured cycles allocated zero thread bytes in the frozen baseline and
-current Standard/Lean, with every result correct. Blocking GC was used. Loaded
-core SHA256 values were
-`98B3F799EB1A95FE0816C44F56BA13531F9CB9E4D9B1B48EB0D65D8A8D5926A4`
-(baseline), `EBC4A304CAB5B5E7D735FF6059DB759611B5CD578015106A3A7A172D22452E5A`
-(Standard), and `E6D460F647D2177A3A4BF1A7540F1D91B87B65F0CAE8788AEA74FFAF3FF061F9`
-(Lean). Caller boxing, exceptions, observable notifications and capacity growth
-are excluded from that workload; no universal allocation or latency claim is
-made. Typed list operations are unchanged and no new timing benchmark was added.
+called IList.Add, Insert, Contains, IndexOf and two Removes, checking Add's
+return, lookup results, typed contents and empty final Count. After 2,000 warmup
+cycles, 10,000 measured cycles allocated zero thread bytes in the frozen
+baseline and current Standard/Lean, with every result correct. Blocking GC was
+used. Loaded core SHA256 values were
+`98B3F799EB1A95FE0816C44F56BA13531F9CB9E4D9B1B48EB0D65D8A8D5926A4` (baseline),
+`EBC4A304CAB5B5E7D735FF6059DB759611B5CD578015106A3A7A172D22452E5A` (Standard),
+and `E6D460F647D2177A3A4BF1A7540F1D91B87B65F0CAE8788AEA74FFAF3FF061F9` (Lean).
+Caller boxing, exceptions, observable notifications and capacity growth are
+excluded from that workload; no universal allocation or latency claim is made.
+Typed list operations are unchanged and no new timing benchmark was added.
 
 Hosted CI, Unity/IL2CPP, other platforms, downstream suites and a latency
 comparison were not run. No release is claimed.
 
 **Disposition / reopening:** Close the confirmed list defect. Reopen for a
-supported list mutation/lookup route that still relabels a user exception, changes
-the preserved conversion/null/index precedence, bypasses derived mutation or
-changes post-callback Add results. An indexer-policy redesign requires its own
-explicit scope; it is not a remaining callback gap in these five adapters.
+supported list mutation/lookup route that still relabels a user exception,
+changes the preserved conversion/null/index precedence, bypasses derived
+mutation or changes post-callback Add results. An indexer-policy redesign
+requires its own explicit scope; it is not a remaining callback gap in these
+five adapters.
 
 ## Historical Links
 

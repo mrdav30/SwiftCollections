@@ -50,8 +50,8 @@ bool staleHandleStillResolves = actors.TryGet(player, out _); // false
 
 `SwiftTicketMap<T>` uses finite generations that can wrap. For packed live-value
 iteration and retirement of exhausted slots instead of wrap, choose
-`SwiftDenseTicketMap<T>`. Both tickets remain scoped to their issuing owner;
-see [identity ownership](collections.md#who-issues-the-identity) before retaining
+`SwiftDenseTicketMap<T>`. Both tickets remain scoped to their issuing owner; see
+[identity ownership](collections.md#who-issues-the-identity) before retaining
 them across restores or mixing owners.
 
 For externally owned compact integer IDs, use `SwiftSparseSet` or

@@ -1,10 +1,11 @@
 # 100% Coverage Battle Plan
 
-> Archived completion record from 2026-06-02. The technology, source paths,
-> line coordinates and intermediate gaps below describe that checkpoint. The
-> original source revision and exact SDK patch were not recorded; these totals
-> are historical evidence, not current release validation. Use
-> [CONTRIBUTING](../../../CONTRIBUTING.md#local-validation) for current commands.
+> Archived completion record from 2026-06-02. The technology, source paths, line
+> coordinates and intermediate gaps below describe that checkpoint. The original
+> source revision and exact SDK patch were not recorded; these totals are
+> historical evidence, not current release validation. Use
+> [CONTRIBUTING](../../../CONTRIBUTING.md#local-validation) for current
+> commands.
 
 **Status:** Done
 
@@ -34,16 +35,16 @@ per-assembly runsettings.
 The recorded progression is retained directly here:
 
 | Checkpoint | Line coverage | Branch coverage | Uncovered lines | Missing branch outcomes |
-| --- | ---: | ---: | ---: | ---: |
-| Phase 0 | 98.4% | 94.7% | 109 | 130 |
-| Phase 1 | 98.7% | 95.4% | 88 | 111 |
-| Phase 2 | 99.2% | 95.9% | 56 | 99 |
-| Final | 100% | 100% | 0 | 0 |
+| ---------- | ------------: | --------------: | --------------: | ----------------------: |
+| Phase 0    |         98.4% |           94.7% |             109 |                     130 |
+| Phase 1    |         98.7% |           95.4% |              88 |                     111 |
+| Phase 2    |         99.2% |           95.9% |              56 |                      99 |
+| Final      |          100% |            100% |               0 |                       0 |
 
 To collect current evidence independently, build the selected checkout and run
 both test projects with their own settings. Coverlet prints each newly generated
-report location; use only those reports when composing the current summary.
-The historical figures above are not expected outputs for a different revision.
+report location; use only those reports when composing the current summary. The
+historical figures above are not expected outputs for a different revision.
 
 ```bash
 dotnet build SwiftCollections.slnx -c Debug
@@ -53,12 +54,12 @@ dotnet test tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMa
 
 Recorded final summary:
 
-| Metric               |           Current |                             Remaining |
-| -------------------- | ----------------: | ------------------------------------: |
-| Line coverage        |              100% |                     0 uncovered lines |
-| Branch coverage      |              100% |                  0 uncovered branches |
-| Method coverage      |              100% |                   0 uncovered methods |
-| Full method coverage |              100% |           0 not fully covered methods |
+| Metric               |           Current |                           Remaining |
+| -------------------- | ----------------: | ----------------------------------: |
+| Line coverage        |              100% |                   0 uncovered lines |
+| Branch coverage      |              100% |                0 uncovered branches |
+| Method coverage      |              100% |                 0 uncovered methods |
+| Full method coverage |              100% |         0 not fully covered methods |
 | CRAP risk            | 0 methods over 30 | Historical coverage/complexity scan |
 
 Top CRAP methods remain below the register threshold; with 100% line coverage
@@ -148,7 +149,8 @@ scan. There are a few test-quality items to clean up while hardening coverage:
       MemoryPack files should stay excluded.
 - [x] Add a repeatable local coverage command or script only if it avoids
       command drift without adding CI complexity.
-- [x] Record combined coverage outcomes and phase deltas in this completion record.
+- [x] Record combined coverage outcomes and phase deltas in this completion
+      record.
 - [x] After each phase, record line/branch deltas in this document.
 
 Exit criteria:

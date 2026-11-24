@@ -45,10 +45,10 @@ records are listed below.
 
 [Completed SwiftTicketStore plan](done/2026-11-23-swift-ticket-store-plan.md) -
 packed values attached to tickets issued by another owner, with local exact
-membership, independent optional components and explicit teardown/restore.
-Dense iteration and a contiguous Values span remain contracts. Sparse positions,
-dense tickets and packed values reuse the shared cold growth policy without
-merging issuer authority into the store.
+membership, independent optional components and explicit teardown/restore. Dense
+iteration and a contiguous Values span remain contracts. Sparse positions, dense
+tickets and packed values reuse the shared cold growth policy without merging
+issuer authority into the store.
 
 Standard/Lean and both target assets pass strict full coverage, closed JSON
 metadata and cross-target replay. Actual Unity Mono and High-stripping IL2CPP

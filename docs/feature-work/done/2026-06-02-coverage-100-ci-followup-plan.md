@@ -1,10 +1,11 @@
 # CI Coverage 100% Follow-Up Plan
 
-> Archived completion record from 2026-06-02. The technology, source paths,
-> line coordinates and intermediate gaps below describe that checkpoint. The
-> original source revision and exact SDK patch were not recorded; these totals
-> are historical evidence, not current release validation. Use
-> [CONTRIBUTING](../../../CONTRIBUTING.md#local-validation) for current commands.
+> Archived completion record from 2026-06-02. The technology, source paths, line
+> coordinates and intermediate gaps below describe that checkpoint. The original
+> source revision and exact SDK patch were not recorded; these totals are
+> historical evidence, not current release validation. Use
+> [CONTRIBUTING](../../../CONTRIBUTING.md#local-validation) for current
+> commands.
 
 **Status:** Done
 
@@ -24,8 +25,8 @@ dead defensive code only after proving the invariant.
 
 ## Baseline
 
-The baseline was a clean-worktree Release core run using the Coverlet
-collector and ReportGenerator. Its recorded result is:
+The baseline was a clean-worktree Release core run using the Coverlet collector
+and ReportGenerator. Its recorded result is:
 
 | Metric               |           Current |                    Remaining |
 | -------------------- | ----------------: | ---------------------------: |
@@ -66,8 +67,8 @@ so SourceLink-style generated filenames do not produce missing-file warnings.
 ## Rechecking the current checkout
 
 The repository now uses per-assembly settings. Recreate current reports with
-fresh results from each test project; do not combine unrelated earlier runs.
-The full Standard/Lean and strict coverage-gate commands live in
+fresh results from each test project; do not combine unrelated earlier runs. The
+full Standard/Lean and strict coverage-gate commands live in
 [CONTRIBUTING](../../../CONTRIBUTING.md#local-validation).
 
 ```bash
@@ -211,7 +212,8 @@ Exit criteria:
       coverage are both 100%.
 - [x] Re-run Debug build and core/FixedMathSharp tests.
 - [x] Run `git diff --check`.
-- [x] Update this plan and `docs/complexity-exceptions.md` with final coverage outcomes.
+- [x] Update this plan and `docs/complexity-exceptions.md` with final coverage
+      outcomes.
 
 Exit criteria:
 

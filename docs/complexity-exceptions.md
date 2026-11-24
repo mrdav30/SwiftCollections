@@ -19,11 +19,11 @@ cyclomatic complexity review threshold.
 
 Complexity exceptions are acceptable when the method is a hot hash-table probe
 path, an allocation-sensitive sparse collection routine, fixed-shape spatial
-partitioning code, or a bounded serialization boundary where decomposition
-would obscure validation and ownership without reducing real maintenance risk.
-These exceptions should be revisited when coverage drops,
-behavior changes, or a shared zero-allocation helper can reduce duplicated logic
-without slowing the hot path.
+partitioning code, or a bounded serialization boundary where decomposition would
+obscure validation and ownership without reducing real maintenance risk. These
+exceptions should be revisited when coverage drops, behavior changes, or a
+shared zero-allocation helper can reduce duplicated logic without slowing the
+hot path.
 
 ## Exception Register
 
@@ -48,20 +48,20 @@ without slowing the hot path.
 ### Comparer persistence boundaries
 
 The comparer-persistence methods below retain their trust-boundary decisions
-together. Complexity counts include short-circuit conditions, loops, catches
-and conditional expressions; all reported lines and branches remain covered
-in standard, Lean and Debug builds.
+together. Complexity counts include short-circuit conditions, loops, catches and
+conditional expressions; all reported lines and branches remain covered in
+standard, Lean and Debug builds.
 
-| Module | Method | Complexity | Coverage | Rationale | Revisit if |
-| --- | --- | ---: | --- | --- | --- |
-| `SwiftCollections.Serialization` | `SwiftComparerRegistry.RestoreCustom<TComparer>` | 15 | 100% line / 100% branch | Ordering and equality share typed resolution, isolated factory input, singleton/configuration checks and weak binding publication. Callbacks stay outside the association lock. | Weak-binding semantics change or a real consumer needs another comparer contract. |
-| `SwiftCollections.Serialization` | `SwiftComparerRegistry.TryCaptureBuiltInEquality<T>` | 11 | 100% line / 100% branch | Recognize canonical public instances and exact Swift algorithms, including contravariant object comparers, without private inspection or application Equals calls. | Built-in algorithms or declared-type eligibility change. |
-| `SwiftCollections.Serialization` | `SwiftComparerRegistry.RestoreBuiltInEquality<T>` | 18 | 100% line / 100% branch | Validate exact type, version and configuration length before reconstructing the fixed set of equality/hash policies without fresh entropy. | Another built-in policy is supported or the frozen configuration schema changes. |
-| `SwiftCollections.Serialization` | `SwiftComparerRegistry.ValidateReverseEquality<T>` | 19 | 100% line / 100% branch | Admit identical reverse descriptors or recognized equality-preserving Swift hash fallback pairs; reject contradictory custom/default policies before population. | Reverse-map fallback or equality semantics change. |
-| `SwiftCollections.Serialization` | `SwiftComparerRegistry.ValidateId` | 11 | 100% line / 100% branch | Validate the fixed ASCII identifier alphabet and length before registration; preserve argument-specific failures. | The wire alphabet or identifier bounds change. |
-| `SwiftCollections.Serialization` | `SwiftComparerRegistry.DefaultOrdering<T>.IsEligible` | 12 | 100% line / 100% branch | Classify a declared default once, including nullable enums and comparable interfaces, without reflective generic activation. | Default eligibility or supported AOT profiles change. |
-| `SwiftCollections.Serialization` | `SwiftComparerJsonMetadata.ReadId` | 11 | 100% line / 100% branch | Bound escaped/segmented text before allocation, then validate ASCII before materializing the identifier. | The alphabet/bounds change or a shared bounded decoder reduces work. |
-| `SwiftCollections.Serialization` | `SwiftComparerJsonMetadata.ReadNonEmptyConfiguration` | 11 | 100% line / 100% branch | Bound and decode nonempty configuration, enforcing exact base64 length and canonical unused bits before invoking an application factory. The separate empty path avoids reserving maximum scratch storage. | Configuration limits or encoding change. |
+| Module                           | Method                                                | Complexity | Coverage                | Rationale                                                                                                                                                                                                  | Revisit if                                                                        |
+| -------------------------------- | ----------------------------------------------------- | ---------: | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `SwiftCollections.Serialization` | `SwiftComparerRegistry.RestoreCustom<TComparer>`      |         15 | 100% line / 100% branch | Ordering and equality share typed resolution, isolated factory input, singleton/configuration checks and weak binding publication. Callbacks stay outside the association lock.                            | Weak-binding semantics change or a real consumer needs another comparer contract. |
+| `SwiftCollections.Serialization` | `SwiftComparerRegistry.TryCaptureBuiltInEquality<T>`  |         11 | 100% line / 100% branch | Recognize canonical public instances and exact Swift algorithms, including contravariant object comparers, without private inspection or application Equals calls.                                         | Built-in algorithms or declared-type eligibility change.                          |
+| `SwiftCollections.Serialization` | `SwiftComparerRegistry.RestoreBuiltInEquality<T>`     |         18 | 100% line / 100% branch | Validate exact type, version and configuration length before reconstructing the fixed set of equality/hash policies without fresh entropy.                                                                 | Another built-in policy is supported or the frozen configuration schema changes.  |
+| `SwiftCollections.Serialization` | `SwiftComparerRegistry.ValidateReverseEquality<T>`    |         19 | 100% line / 100% branch | Admit identical reverse descriptors or recognized equality-preserving Swift hash fallback pairs; reject contradictory custom/default policies before population.                                           | Reverse-map fallback or equality semantics change.                                |
+| `SwiftCollections.Serialization` | `SwiftComparerRegistry.ValidateId`                    |         11 | 100% line / 100% branch | Validate the fixed ASCII identifier alphabet and length before registration; preserve argument-specific failures.                                                                                          | The wire alphabet or identifier bounds change.                                    |
+| `SwiftCollections.Serialization` | `SwiftComparerRegistry.DefaultOrdering<T>.IsEligible` |         12 | 100% line / 100% branch | Classify a declared default once, including nullable enums and comparable interfaces, without reflective generic activation.                                                                               | Default eligibility or supported AOT profiles change.                             |
+| `SwiftCollections.Serialization` | `SwiftComparerJsonMetadata.ReadId`                    |         11 | 100% line / 100% branch | Bound escaped/segmented text before allocation, then validate ASCII before materializing the identifier.                                                                                                   | The alphabet/bounds change or a shared bounded decoder reduces work.              |
+| `SwiftCollections.Serialization` | `SwiftComparerJsonMetadata.ReadNonEmptyConfiguration` |         11 | 100% line / 100% branch | Bound and decode nonempty configuration, enforcing exact base64 length and canonical unused bits before invoking an application factory. The separate empty path avoids reserving maximum scratch storage. | Configuration limits or encoding change.                                          |
 
 ## Review Guidance
 

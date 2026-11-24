@@ -77,8 +77,8 @@ See
 [Clearing and retained references](collections.md#clearing-and-retained-references)
 for the differences between normal clearing, full reference cleanup, and
 `FastClear()`. `SwiftDenseTicketMap<T>` and `SwiftTicketStore<T>` always release
-discarded references through parameterless Clear; they have no retained-reference
-clearing overload.
+discarded references through parameterless Clear; they have no
+retained-reference clearing overload.
 
 ## Development And Verification
 

@@ -10,8 +10,8 @@ choosing a specialized container.
 
 When the collection should issue reusable identities, start with this choice.
 The [comparison table](#specialized-containers) also covers externally owned IDs
-and value-based membership. If another owner already issues tickets, start
-with [optional components under one issuer](#optional-components-under-one-issuer).
+and value-based membership. If another owner already issues tickets, start with
+[optional components under one issuer](#optional-components-under-one-issuer).
 On narrow screens, scroll the diagram horizontally.
 
 <div class="sc-collection-choice" role="region" aria-label="Choose a collection that issues identities" tabindex="0">
@@ -53,15 +53,15 @@ account for the key comparer's work separately.
 
 ## Specialized Containers
 
-| Container                                                                                                                                      | Identity and stale-reference policy                                         | Lookup and iteration                                                                 | Storage follows                                                            |
-| ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| [SwiftSlotMap&lt;T&gt;](xref:SwiftCollections.SwiftSlotMap`1)                                                                                  | Issues reusable integer slots; callers discard removed indices              | Direct slot lookup; increasing slot order, scanning holes                            | Allocated slot range, including holes and spare capacity                   |
-| [SwiftTicketMap&lt;T&gt;](xref:SwiftCollections.SwiftTicketMap`1)                                                                              | Issues index/generation tickets; finite generations wrap; default can match | Direct slot lookup plus generation check; increasing slot order, scanning holes      | Slot range, values in both live and unused entries, plus free stack        |
-| [SwiftDenseTicketMap&lt;T&gt;](xref:SwiftCollections.SwiftDenseTicketMap`1)                                                                    | Issues index/generation tickets; default is invalid; terminal slots retire  | Slot-to-dense lookup plus generation check; packed live iteration, swap-back removal | Dense value/ID capacity plus issued-slot metadata, including retired slots |
-| [SwiftTicketStore&lt;T&gt;](xref:SwiftCollections.SwiftTicketStore`1) | Accepts external tickets; exact local generation check; no issuer liveness check | Sparse-to-dense lookup; packed values and swap-back; one entry per index | Highest ticket index plus independent dense capacity |
-| [SwiftSparseSet](xref:SwiftCollections.SwiftSparseSet) / [SwiftSparseMap&lt;T&gt;](xref:SwiftCollections.SwiftSparseMap`1)                     | Accept your non-negative integer IDs; no generation checks                  | Sparse-to-dense lookup; packed iteration, swap-back removal                          | Highest ID plus dense capacity                                             |
-| [SwiftPackedSet&lt;T&gt;](xref:SwiftCollections.SwiftPackedSet`1)                                                                              | Uses value equality; equal duplicates rejected                              | Hash-backed membership; packed iteration, swap-back removal                          | Dense capacity plus hash table                                             |
-| [SwiftDictionary&lt;TKey, TValue&gt;](xref:SwiftCollections.SwiftDictionary`2) / [SwiftHashSet&lt;T&gt;](xref:SwiftCollections.SwiftHashSet`1) | Accept arbitrary keys/values under their comparer                           | Hash lookup; no canonical sorted iteration order                                     | Hash table capacity, rather than highest integer key                       |
+| Container                                                                                                                                      | Identity and stale-reference policy                                              | Lookup and iteration                                                                 | Storage follows                                                            |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| [SwiftSlotMap&lt;T&gt;](xref:SwiftCollections.SwiftSlotMap`1)                                                                                  | Issues reusable integer slots; callers discard removed indices                   | Direct slot lookup; increasing slot order, scanning holes                            | Allocated slot range, including holes and spare capacity                   |
+| [SwiftTicketMap&lt;T&gt;](xref:SwiftCollections.SwiftTicketMap`1)                                                                              | Issues index/generation tickets; finite generations wrap; default can match      | Direct slot lookup plus generation check; increasing slot order, scanning holes      | Slot range, values in both live and unused entries, plus free stack        |
+| [SwiftDenseTicketMap&lt;T&gt;](xref:SwiftCollections.SwiftDenseTicketMap`1)                                                                    | Issues index/generation tickets; default is invalid; terminal slots retire       | Slot-to-dense lookup plus generation check; packed live iteration, swap-back removal | Dense value/ID capacity plus issued-slot metadata, including retired slots |
+| [SwiftTicketStore&lt;T&gt;](xref:SwiftCollections.SwiftTicketStore`1)                                                                          | Accepts external tickets; exact local generation check; no issuer liveness check | Sparse-to-dense lookup; packed values and swap-back; one entry per index             | Highest ticket index plus independent dense capacity                       |
+| [SwiftSparseSet](xref:SwiftCollections.SwiftSparseSet) / [SwiftSparseMap&lt;T&gt;](xref:SwiftCollections.SwiftSparseMap`1)                     | Accept your non-negative integer IDs; no generation checks                       | Sparse-to-dense lookup; packed iteration, swap-back removal                          | Highest ID plus dense capacity                                             |
+| [SwiftPackedSet&lt;T&gt;](xref:SwiftCollections.SwiftPackedSet`1)                                                                              | Uses value equality; equal duplicates rejected                                   | Hash-backed membership; packed iteration, swap-back removal                          | Dense capacity plus hash table                                             |
+| [SwiftDictionary&lt;TKey, TValue&gt;](xref:SwiftCollections.SwiftDictionary`2) / [SwiftHashSet&lt;T&gt;](xref:SwiftCollections.SwiftHashSet`1) | Accept arbitrary keys/values under their comparer                                | Hash lookup; no canonical sorted iteration order                                     | Hash table capacity, rather than highest integer key                       |
 
 Slot and sparse lookup is O(1); dense iteration visits Count live entries.
 Hash-table lookup is expected O(1), with comparer and collision costs. In the
@@ -260,7 +260,6 @@ Use `SwiftTicketStore<T>` for these external-ticket values. For example,
 Values and use GetTicketAt to look up Velocity; separate dense stores can have
 different orders and must not be zipped by position.
 
-
 <div class="sc-collection-choice" role="region" aria-label="One issuer with independent component stores" tabindex="0">
 
 ```mermaid
@@ -326,37 +325,38 @@ A store accepts every generation, including a legacy issuer's `(0,0)`, and keeps
 one entry per index. TryAdd returns false for both exact duplicates and another
 generation at an occupied index; it never replaces an entry. ContainsKey means
 only that the exact ticket is stored locally. Validate against the issuer at
-attachment, remove components before issuer reuse, and restore issuer plus stores
-from one coherent snapshot boundary. Removing Health leaves the agent and other
-stores alive; reattaching Health uses the same agent ticket. Delayed work for a
-particular Health incarnation needs an application revision as well.
+attachment, remove components before issuer reuse, and restore issuer plus
+stores from one coherent snapshot boundary. Removing Health leaves the agent and
+other stores alive; reattaching Health uses the same agent ticket. Delayed work
+for a particular Health incarnation needs an application revision as well.
 
 State snapshots copy the three logical arrays in dense order, sharing referenced
 payload objects. Restoration validates and copies those arrays, rebuilding
 lookup without consulting an issuer. Sparse storage follows the highest ticket
 index, so use compact IDs and reserve sparse/dense capacity independently.
-Structural mutation invalidates borrows, enumeration and dense positions;
-failed key operations and no-op reservations preserve them. Store operations
-never advance issuer generations or automatically remove orphaned components.
-These collections provide storage primitives, not an ECS scheduler, global
-identity domain or aggregate transaction.
-
+Structural mutation invalidates borrows, enumeration and dense positions; failed
+key operations and no-op reservations preserve them. Store operations never
+advance issuer generations or automatically remove orphaned components. These
+collections provide storage primitives, not an ECS scheduler, global identity
+domain or aggregate transaction.
 
 With sparse capacity S and dense capacity D, the current three arrays carry
-`4*S + 8*D + managedWidth(T)*D` bytes, before object/array headers and referenced
-payload objects. Attaching 4,096 components across 16,384 possible indices can
-keep D at 4,096. Filling 16,384 entries and removing down to 4,096 retains D at
-16,384 instead. Remove and Clear retain both capacities; budget sparse storage
-for the highest index and dense storage for the peak live population.
+`4*S + 8*D + managedWidth(T)*D` bytes, before object/array headers and
+referenced payload objects. Attaching 4,096 components across 16,384 possible
+indices can keep D at 4,096. Filling 16,384 entries and removing down to 4,096
+retains D at 16,384 instead. Remove and Clear retain both capacities; budget
+sparse storage for the highest index and dense storage for the peak live
+population.
 
 ### Borrowed storage is temporary
 
 Keep tickets or IDs across operations, not dense positions or borrowed
-addresses. For the dense ticket map and external ticket store, reacquire `GetRef`, `Values` and
-`GetTicketAt` positions after structural mutation; a moved value can occupy
-another value's former address. Actual `EnsureCapacity` growth also invalidates
-borrows and enumeration; a no-op reservation preserves them. Writes through a
-ref/span change payloads without advancing the enumerator version.
+addresses. For the dense ticket map and external ticket store, reacquire
+`GetRef`, `Values` and `GetTicketAt` positions after structural mutation; a
+moved value can occupy another value's former address. Actual `EnsureCapacity`
+growth also invalidates borrows and enumeration; a no-op reservation preserves
+them. Writes through a ref/span change payloads without advancing the enumerator
+version.
 
 Slot-backed values are not moved by ordinary removal of another slot, but
 removal, reuse, Clear, resize and restore can invalidate the relevant storage or
@@ -369,7 +369,8 @@ enumerating.
 
 For snapshots, validation, ownership and closed AOT serializer registration, see
 [dense-ticket persistence](serialization-and-diagnostics.md#preserve-dense-ticket-identity-and-reuse)
-and [external ticket persistence](serialization-and-diagnostics.md#persist-externally-issued-ticket-entries).
+and
+[external ticket persistence](serialization-and-diagnostics.md#persist-externally-issued-ticket-entries).
 The dense owner validates a complete live/free/retired partition and
 reconstructs capacity from logical state. Existing slot/ticket owner state
 constructors have more permissive contracts; do not treat them as equivalent

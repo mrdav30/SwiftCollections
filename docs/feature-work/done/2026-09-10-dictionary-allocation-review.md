@@ -45,8 +45,8 @@ The maintained dictionary regressions cover small and wide value-type keys in
 `ValueKeyRemoval_ShouldAllocateZeroAfterWarmup`, and
 `ValueKeyIndexerHit_ShouldAllocateZeroAfterWarmup`. Their warm loops use
 `GC.GetAllocatedBytesForCurrentThread` and require zero bytes for lookup,
-remove/reinsert, and indexer hits. Run those cases with the existing test project
-in each configuration; current validation commands are in
-[CONTRIBUTING](../../../CONTRIBUTING.md#local-validation). The source revision and
-full original measurement environment were not recorded, so these historical
+remove/reinsert, and indexer hits. Run those cases with the existing test
+project in each configuration; current validation commands are in
+[CONTRIBUTING](../../../CONTRIBUTING.md#local-validation). The source revision
+and full original measurement environment were not recorded, so these historical
 totals cannot establish the state of a different checkout.

@@ -2,8 +2,8 @@
 
 Focused fixes and documentation improvements can go directly through a pull
 request. For substantial public API, architecture, serialization, or performance
-changes, propose a focused plan or discussion first so the intended contract
-and evidence bar are clear. Link feature plans from the
+changes, propose a focused plan or discussion first so the intended contract and
+evidence bar are clear. Link feature plans from the
 [feature work overview](docs/feature-work/feature-work-overview.md).
 
 Please follow the [Code of Conduct](CODE_OF_CONDUCT.md). See
@@ -32,8 +32,8 @@ Track significant active, deferred and completed feature work through the
 [feature work overview](docs/feature-work/feature-work-overview.md), with design
 and phase evidence in their owning plans. Feature work does not receive bug IDs.
 Record reproducible bugs and defect investigations outside the current change in
-the [issue tracker](docs/feature-work/issue-tracker.md). Preserve issue IDs, source
-revisions and verification evidence; track each concern in its owning
+the [issue tracker](docs/feature-work/issue-tracker.md). Preserve issue IDs,
+source revisions and verification evidence; track each concern in its owning
 repository.
 
 ## Finding source
@@ -64,10 +64,10 @@ and serialized contracts when moving files, and update current source links.
    serialization state when relevant.
 3. Benchmark performance-sensitive changes against the current implementation.
 4. Document authored public/protected APIs, including applicable parameters,
-   generic parameters, returns, property values, lifecycle and failure contracts.
-   Verify inherited comments in the rendered reference. Update conceptual guides
-   or authored landing-page overrides when behavior changes; do not edit generated
-   API pages.
+   generic parameters, returns, property values, lifecycle and failure
+   contracts. Verify inherited comments in the rendered reference. Update
+   conceptual guides or authored landing-page overrides when behavior changes;
+   do not edit generated API pages.
 5. Do not commit `bin/`, `obj/`, test results, coverage reports, NuGet packages,
    or BenchmarkDotNet artifacts.
 
@@ -214,8 +214,8 @@ dotnet build SwiftCollections.slnx --configuration ReleaseLean --no-restore
 ```
 
 After changing `UseLocalLsfStack`, restore again with the selected mode and
-configuration before using `--no-restore`; existing intermediate assets can still
-refer to the other dependency graph.
+configuration before using `--no-restore`; existing intermediate assets can
+still refer to the other dependency graph.
 
 Run both test configurations:
 
@@ -251,19 +251,19 @@ before insertion, duplicate rejection, configured/effective reverse roles,
 collision-heavy continuation, and failed ref-existing loads. Keep shared codec
 and wire validation in their existing helpers; keep owner-specific table
 invariants in the owner. Supply a registry through JSON options or MemoryPack's
-per-operation services; keep lookup and mutation free of persistence work.
-Use matching `netstandard2.1` plugin dependencies in the existing
-SwiftCollections-Unity smoke-test host. Check Standard/Lean JSON interchange
-and semantic wire interchange between supported target frameworks. Use
-independent old/new reader controls to verify the intended format break.
-Validate actual Unity Mono and IL2CPP separately; Mono success does not
-establish stripping or AOT support. On Windows, install Desktop development
-with C++ (Visual Studio or Build Tools), the MSVC x64/x86 compiler and a Windows
-SDK meeting the selected Unity version's requirements. Verify the actual player
-backend and stripping level, process exit and result, and disable/assert JSON
-reflection before serializer initialization when testing generated metadata.
-See the [serialization guide](docs/api/guides/serialization-and-diagnostics.md)
-for codecs, closed JSON metadata and explicit formatter bootstrap.
+per-operation services; keep lookup and mutation free of persistence work. Use
+matching `netstandard2.1` plugin dependencies in the existing
+SwiftCollections-Unity smoke-test host. Check Standard/Lean JSON interchange and
+semantic wire interchange between supported target frameworks. Use independent
+old/new reader controls to verify the intended format break. Validate actual
+Unity Mono and IL2CPP separately; Mono success does not establish stripping or
+AOT support. On Windows, install Desktop development with C++ (Visual Studio or
+Build Tools), the MSVC x64/x86 compiler and a Windows SDK meeting the selected
+Unity version's requirements. Verify the actual player backend and stripping
+level, process exit and result, and disable/assert JSON reflection before
+serializer initialization when testing generated metadata. See the
+[serialization guide](docs/api/guides/serialization-and-diagnostics.md) for
+codecs, closed JSON metadata and explicit formatter bootstrap.
 
 Build the API site after a Release build, using the pinned tool manifest at the
 repository root (`dotnet-tools.json`):
@@ -277,16 +277,17 @@ DocFX reads `SwiftCollections.dll` / `SwiftCollections.xml` and
 `SwiftCollections.FixedMathSharp.dll` / `SwiftCollections.FixedMathSharp.xml`
 from each project's `bin/Release/net10.0` directory. It does not select Lean or
 `netstandard2.1` metadata. Both projects emit identically named DLL/XML files in
-`bin/{Release,ReleaseLean}/{netstandard2.1,net10.0}`; check all eight assembly/XML
-pairs when changing shared API documentation. Standard-only generated
-MemoryPack APIs are not part of the Lean surface.
+`bin/{Release,ReleaseLean}/{netstandard2.1,net10.0}`; check all eight
+assembly/XML pairs when changing shared API documentation. Standard-only
+generated MemoryPack APIs are not part of the Lean surface.
 
 For an inventory or reference check, start with empty generated directories
-`docs/api/obj/api` and `docs/api/obj/_site`; move previous output aside if it must
-be retained. DocFX rebuilding alone can leave pages for removed APIs. Inspect
-representative generated HTML for each family and comment pattern, and run the
-local-link and reference smoke checks in `.github/workflows/coverage.yml`.
-That workflow's publication policy remains the source of truth.
+`docs/api/obj/api` and `docs/api/obj/_site`; move previous output aside if it
+must be retained. DocFX rebuilding alone can leave pages for removed APIs.
+Inspect representative generated HTML for each family and comment pattern, and
+run the local-link and reference smoke checks in
+`.github/workflows/coverage.yml`. That workflow's publication policy remains the
+source of truth.
 
 Reconcile authored symbols (including protected members, partial declarations,
 operators, indexers and nested types) with generated metadata and emitted XML.

@@ -15,7 +15,8 @@
 
 > Archived phase evidence: commands, counts and intermediate next actions apply
 > to the recorded checkpoints. The later owner-reader optimization is recorded
-> under [SC-Benchmark-008](../benchmark-signal-hardening-backlog.md#sc-benchmark-008---discarded-old-state-snapshots-during-ticket-owner-replacement).
+> under
+> [SC-Benchmark-008](../benchmark-signal-hardening-backlog.md#sc-benchmark-008---discarded-old-state-snapshots-during-ticket-owner-replacement).
 
 ## Outcome and boundaries
 
@@ -106,7 +107,7 @@ Phase 0 froze the following member signatures and exception parameters before
 production implementation. The sealed partial owner implements
 `IStateBacked<SwiftTicketStoreState<T>>` and `IEnumerable<T>`.
 
-| Member                                                | Frozen contract                                                                                                                                                                       |
+| Member                                                | Frozen contract                                                                                                                                                                         |
 | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Default constructor                                   | Empty store; reserve eight sparse and eight dense positions without accepting any key.                                                                                                  |
 | Constructor `(int sparseCapacity, int denseCapacity)` | Separate lookup-length and live-entry reservations; zero uses empty storage. Positive capacities round to powers of two with minimum eight.                                             |
@@ -114,7 +115,7 @@ production implementation. The sealed partial owner implements
 | Count                                                 | Number of locally stored components.                                                                                                                                                    |
 | SparseCapacity / DenseCapacity                        | Actual lookup length and allocated live-value capacity; neither is issuer population or liveness.                                                                                       |
 | Values                                                | Writable Span of Count live payloads in dense order; no writable key/metadata array.                                                                                                    |
-| GetTicketAt(int denseIndex)                           | Copied external ticket at a live dense position; allocation-free. Structural mutation invalidates the position association, not the copied ticket value.                                                                               |
+| GetTicketAt(int denseIndex)                           | Copied external ticket at a live dense position; allocation-free. Structural mutation invalidates the position association, not the copied ticket value.                                |
 | ContainsKey(SwiftTicket ticket)                       | Exact local membership; false for absent, negative, unsupported or mismatched keys.                                                                                                     |
 | TryAdd(SwiftTicket ticket, T value)                   | True only for insertion into an unoccupied index. False for either occupancy conflict, preserving contents, storage and enumeration. Invalid index and allocation failures still throw. |
 | Add(SwiftTicket ticket, T value)                      | Throwing insertion using the same rule; no implicit upsert.                                                                                                                             |
@@ -149,9 +150,9 @@ finite fail-fast checks, not lifetime identities. Never dereference an invalid
 borrow in a test. Dense order is deterministic for the same initial state and
 ordered mutations, not insertion-stable or canonical agent order.
 
-State reconstruction applies the same zero/positive rounding policy to Count
-and maximum stored index plus one; normalized empty state has zero capacities.
-The default reservation is internal policy, not additional public constants.
+State reconstruction applies the same zero/positive rounding policy to Count and
+maximum stored index plus one; normalized empty state has zero capacities. The
+default reservation is internal policy, not additional public constants.
 Capacity arguments are validated sparse-first, then dense, before allocation;
 invalid insertion reports `ticket` with its integer Index as the actual value.
 State-constructor structural errors use `ArgumentException(state)`; JSON and
@@ -160,13 +161,13 @@ does not promise malformed-state diagnosis before every possible allocation
 failure.
 
 The concrete `GetEnumerator()` returns public nested struct
-`SwiftTicketStoreEnumerator : IEnumerator<T>`; generic and non-generic enumerable
-implementations are explicit. Follow the dense issuer's established semantics:
-MoveNext/Reset check structural version, generic Current returns its last
-shallow cached value without a version check, and non-generic Current validates
-position. Enumerator copies advance independently. Interface use boxes; default
-construction is not an initialized enumerator. Production implementation and
-its maintained regressions remain Phase 1.
+`SwiftTicketStoreEnumerator : IEnumerator<T>`; generic and non-generic
+enumerable implementations are explicit. Follow the dense issuer's established
+semantics: MoveNext/Reset check structural version, generic Current returns its
+last shallow cached value without a version check, and non-generic Current
+validates position. Enumerator copies advance independently. Interface use
+boxes; default construction is not an initialized enumerator. Production
+implementation and its maintained regressions remain Phase 1.
 
 Omit an upserting indexer, by-index mutation/removal, automatic replacement,
 issuer binding, sorting/trimming, values-only CloneTo and a separate ticket span
@@ -175,14 +176,14 @@ mutable identities. Reopen extra APIs for an actual caller need.
 
 ## Existing owners, storage and reuse
 
-| Existing code                                                                                                                                                                             | Reuse/comparison and boundary                                                                                                                                                                                                  |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [SwiftSparseMap](../../../src/SwiftCollections/Collection/SparseMap/SwiftSparseMap.cs)                                                                                                                 | Main shared-mechanics candidate: sparse lookup, packed values, swap-back, reference cleanup and capacity. Its Add is an upsert, keys are integers, state differs and it exposes writable key arrays; preserve those contracts. |
-| [SwiftDenseTicketMap](../../../src/SwiftCollections/Collection/DenseTicketMap/SwiftDenseTicketMap.cs)                                                                                                       | Issuer for real scenarios; borrowing, reservation publication and value enumeration patterns. Keep issuance, free links, retirement and generation history here.                                                               |
-| [SwiftTicketMap](../../../src/SwiftCollections/Collection/TicketMap/SwiftTicketMap.cs)                                                                                                                 | Legacy zero-generation issuer and compatibility control; preserve its wrapping policy and slot-backed layout.                                                                                                                  |
-| [SwiftTicket](../../../src/SwiftCollections/Collection/Support/SwiftTicket.cs)                                                                                                               | Existing readonly token and exact equality. Do not change its CLR shape, hash or global serialization contract.                                                                                                                |
+| Existing code                                                                                                                                                                                   | Reuse/comparison and boundary                                                                                                                                                                                                  |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [SwiftSparseMap](../../../src/SwiftCollections/Collection/SparseMap/SwiftSparseMap.cs)                                                                                                          | Main shared-mechanics candidate: sparse lookup, packed values, swap-back, reference cleanup and capacity. Its Add is an upsert, keys are integers, state differs and it exposes writable key arrays; preserve those contracts. |
+| [SwiftDenseTicketMap](../../../src/SwiftCollections/Collection/DenseTicketMap/SwiftDenseTicketMap.cs)                                                                                           | Issuer for real scenarios; borrowing, reservation publication and value enumeration patterns. Keep issuance, free links, retirement and generation history here.                                                               |
+| [SwiftTicketMap](../../../src/SwiftCollections/Collection/TicketMap/SwiftTicketMap.cs)                                                                                                          | Legacy zero-generation issuer and compatibility control; preserve its wrapping policy and slot-backed layout.                                                                                                                  |
+| [SwiftTicket](../../../src/SwiftCollections/Collection/Support/SwiftTicket.cs)                                                                                                                  | Existing readonly token and exact equality. Do not change its CLR shape, hash or global serialization contract.                                                                                                                |
 | [Sparse state](../../../src/SwiftCollections/Serialization/State/SwiftSparseMapState.cs) and [dense owner state](../../../src/SwiftCollections/Serialization/State/SwiftDenseTicketMapState.cs) | Explicit logical snapshots, readonly DTOs and existing serializer patterns. Do not reuse an incompatible schema just to share a type.                                                                                          |
-| Guards, reference detection and hash/capacity utilities                                                                                                                                   | Reuse ChronicleGuard, RuntimeHelpers reference detection and suitable arithmetic helpers after checking their exact limit/sentinel behavior.                                                                                   |
+| Guards, reference detection and hash/capacity utilities                                                                                                                                         | Reuse ChronicleGuard, RuntimeHelpers reference detection and suitable arithmetic helpers after checking their exact limit/sentinel behavior.                                                                                   |
 
 Gravitas's `ColliderRegistry<TCollider>` demonstrates a separate dense list,
 stable ID lookup and swap-back repair, plus independently owned replay order.
@@ -219,12 +220,12 @@ equal Count; no key or removed reference is exposed outside that live range.
 Swap-back changes positions, never the surviving external ticket.
 
 Phase 0 compared both dense layouts and reviewed the narrow sharing boundary,
-then measured an existing-collection composition control: SwiftSparseMap<int> for index-to-dense
-position, SwiftList<T> for values, and SwiftList<SwiftTicket> for reverse keys.
-The latter checks full tickets, repairs moved indices and privately rebuilds
-all backing owners on growth. It is equivalent for the measured inputs; the
-existing owners' exact-2^30 sentinel prevents shipping it unchanged under the
-new capacity contract. A thin wrapper around
+then measured an existing-collection composition control: SwiftSparseMap<int>
+for index-to-dense position, SwiftList<T> for values, and SwiftList<SwiftTicket>
+for reverse keys. The latter checks full tickets, repairs moved indices and
+privately rebuilds all backing owners on growth. It is equivalent for the
+measured inputs; the existing owners' exact-2^30 sentinel prevents shipping it
+unchanged under the new capacity contract. A thin wrapper around
 SwiftSparseMap<{Generation,T}> is only a by-value control: current SparseMap
 offers neither public ref lookup nor dense-index lookup, and interleaving T with
 generations loses a contiguous Span<T>.
@@ -387,11 +388,11 @@ Measure live/stale lookup, failed conflicting insertion, reserved attach/detach,
 ref update, values-only and ticket/value iteration, Clear/refill, and the
 complete joined Position/Velocity tick with optional Health churn. Separate
 construction, growth, snapshot, restore and serializer costs. Successful and
-nonthrowing typed reserved operations should allocate zero exact batch bytes; budget interface boxing and
-cold work separately. Report owner/array counts, actual capacities, index
-high-water, retained references and bytes per live component versus issuer slot.
-Dense capacity need not equal sparse capacity; packed iteration does not imply
-arrays shrink.
+nonthrowing typed reserved operations should allocate zero exact batch bytes;
+budget interface boxing and cold work separately. Report owner/array counts,
+actual capacities, index high-water, retained references and bytes per live
+component versus issuer slot. Dense capacity need not equal sparse capacity;
+packed iteration does not imply arrays shrink.
 
 Freeze inputs, source graph, runtime, checksums and full operation counts. Use
 balanced run order, verified loaded binaries and complete child/sample results,
@@ -501,14 +502,14 @@ pinned build.
 
 ## Decision dispositions and planning evidence
 
-| Decision            | Disposition                                                                                                                                                 | Reopen when                                                                                                         |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Public names        | Accepted by the user: SwiftTicketStore<T> and SwiftTicketStoreState<T>. Dense live iteration, swap-back and contiguous Values remain contracts.             | Only through an explicit separate API decision; lookup tuning must retain the dense guarantees.                     |
-| Authority           | Local exact membership, explicit issuer validation at structural boundaries; no retained issuer/delegate.                                                   | A real consumer requires another authority model in separately scoped work.                                         |
-| Generation/conflict | Accept every UInt32 generation; one index per store; reject all occupied-index additions without implicit replacement.                                      | A concrete consumer needs simultaneous generations or replacement, with stale-command/rollback semantics specified. |
+| Decision            | Disposition                                                                                                                                                                        | Reopen when                                                                                                                                |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Public names        | Accepted by the user: SwiftTicketStore<T> and SwiftTicketStoreState<T>. Dense live iteration, swap-back and contiguous Values remain contracts.                                    | Only through an explicit separate API decision; lookup tuning must retain the dense guarantees.                                            |
+| Authority           | Local exact membership, explicit issuer validation at structural boundaries; no retained issuer/delegate.                                                                          | A real consumer requires another authority model in separately scoped work.                                                                |
+| Generation/conflict | Accept every UInt32 generation; one index per store; reject all occupied-index additions without implicit replacement.                                                             | A concrete consumer needs simultaneous generations or replacement, with stale-command/rollback semantics specified.                        |
 | Storage/reuse       | Selected sparse positions plus dense tickets/values. Uplift only the shared cold growth policy with SwiftDenseTicketMap in Phase 1; keep identity/storage mutation owner-specific. | A real complete-workload profile justifies another representation or a simpler shared boundary without changing contracts/storage budgets. |
-| State/wire          | Three parallel scalar/value arrays; no SwiftTicket codec or issuer/history fields.                                                                          | Actual codec/AOT probes establish a blocking defect or a concrete interoperability requirement.                     |
-| Extra APIs          | Defer upsert, ticket span, trimming, component-instance identity and ECS coordination.                                                                      | An actual caller demonstrates the need and ownership/performance contract.                                          |
+| State/wire          | Three parallel scalar/value arrays; no SwiftTicket codec or issuer/history fields.                                                                                                 | Actual codec/AOT probes establish a blocking defect or a concrete interoperability requirement.                                            |
+| Extra APIs          | Defer upsert, ticket span, trimming, component-instance identity and ECS coordination.                                                                                             | An actual caller demonstrates the need and ownership/performance contract.                                                                 |
 
 Planning inspected current source, state/serializer conventions, existing paired
 ownership guidance, focused scenarios/benchmarks and CI/project shape. Three
@@ -519,14 +520,12 @@ public SparseMap ref lookup, and nonportable ticket hashing for trace oracles;
 those are reflected above. This initial planning evidence preceded Phase 0; it
 was not an executed prototype, benchmark, implementation build, coverage result
 or Unity run. No runtime, test, dependency, CI or installed-skill changes
-belonged to that
-planning pass; executed Phase 0 evidence follows.
+belonged to that planning pass; executed Phase 0 evidence follows.
 
 - Phase 0: complete; executed evidence and limits below.
 - Phase 1: complete; implementation and verification evidence below.
 - Phase 2: complete; persistence and interoperability evidence below.
 - Phase 3: complete; final hardening and supported-host evidence below.
-
 
 ## Phase 0 results — contracts and first slice
 
@@ -542,10 +541,10 @@ The starting SwiftCollections revision was
 `41a2f770aed17f5af388ba3f4b3f769769ada7c6`, with clean worktree and index tree
 `0cb5302f5fe7f3d0e84d5f20e8ead4d9aea70e32`. Source builds used Chronicler
 `0281469ecc40e65a05867f473bc10f030e7f69f8` and FixedMathSharp
-`8fdf889322f1bb82501c2afec63d6bb2f304ace2` (v9.0.0). The latter matches build CI;
-Chronicler CI remains pinned to `7b90d5923d4bb6e0e42c033ec697b9678d6b8ece`.
-Local results do not establish a run of that older pinned graph or hosted CI.
-No new provider API was required and no provider or pin was changed.
+`8fdf889322f1bb82501c2afec63d6bb2f304ace2` (v9.0.0). The latter matches build
+CI; Chronicler CI remains pinned to `7b90d5923d4bb6e0e42c033ec697b9678d6b8ece`.
+Local results do not establish a run of that older pinned graph or hosted CI. No
+new provider API was required and no provider or pin was changed.
 
 Windows x64, Intel Core i7-9700K, SDK 10.0.302, runtime 10.0.10. All source
 restore/build/test commands carried `UseLocalLsfStack=true` and global
@@ -561,16 +560,16 @@ dotnet test tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMa
 Both solution builds passed for both runtime assemblies and both target
 frameworks. Existing owner tests passed 195 Standard / 174 Lean; unchanged
 companion tests passed 100 in each variant. Existing xUnit analyzer warnings
-remained. This phase collected no new coverage: the full implementation
-coverage matrix above remains required when production code is added.
+remained. This phase collected no new coverage: the full implementation coverage
+matrix above remains required when production code is added.
 
 ### First-slice behavior and persistence
 
-All three operational candidates executed the specified A/B/C-to-D scenario
-with the real SwiftDenseTicketMap issuer, including a raw snapshot/restore
-continuation of issuer plus all stores. Exact final Position tickets/values
-were `[A,C,D] / [6,109,3]`; Velocity and Health independently used `[C,A,D]`,
-with Health `[50,80,25]`. Per-index membership/value models checked 6000 seeded
+All three operational candidates executed the specified A/B/C-to-D scenario with
+the real SwiftDenseTicketMap issuer, including a raw snapshot/restore
+continuation of issuer plus all stores. Exact final Position tickets/values were
+`[A,C,D] / [6,109,3]`; Velocity and Health independently used `[C,A,D]`, with
+Health `[50,80,25]`. Per-index membership/value models checked 6000 seeded
 mutations per candidate, including unique dense indices and exact generations.
 The deterministic xorshift32 model seed was `0x0C013A55`.
 
@@ -596,18 +595,19 @@ JSON with reflection disabled before first use. The default JSON oracle was:
 This freezes the default field/order convention, not arbitrary caller JSON
 naming/options. Standard MemoryPack matched an independent writer: owner header
 1, state header 3, then the three arrays, totaling 50 bytes for that record.
-SwiftTicket alone emitted 8 unmanaged bytes and retained both fields; its default
-JSON was `{}` and lost both fields. This confirms scalar state without changing
-the existing token codec. Generated readonly-state readers allocate decoded
-arrays rather than reusing existing mutable payload arrays. Selected duplicate,
-negative-index, same-length mutable-payload and truncation failures preserved
-the prior by-ref owner/payload. A zero-member by-ref owner record constructed a
-new owner preserving the previous logical state; do not describe it as clearing.
+SwiftTicket alone emitted 8 unmanaged bytes and retained both fields; its
+default JSON was `{}` and lost both fields. This confirms scalar state without
+changing the existing token codec. Generated readonly-state readers allocate
+decoded arrays rather than reusing existing mutable payload arrays. Selected
+duplicate, negative-index, same-length mutable-payload and truncation failures
+preserved the prior by-ref owner/payload. A zero-member by-ref owner record
+constructed a new owner preserving the previous logical state; do not describe
+it as clearing.
 
-Eight exchange directions passed: net10.0 ↔ netstandard2.1 in each variant,
-and Standard ↔ Lean JSON at each target. Standard cross-target exchange also
-checked binary fields. These execute actual target DLLs under .NET 10; selected
-host BCL overlays were System.Text.Json, Encodings.Web, IO.Pipelines, Unsafe and
+Eight exchange directions passed: net10.0 ↔ netstandard2.1 in each variant, and
+Standard ↔ Lean JSON at each target. Standard cross-target exchange also checked
+binary fields. These execute actual target DLLs under .NET 10; selected host BCL
+overlays were System.Text.Json, Encodings.Web, IO.Pipelines, Unsafe and
 Collections.Immutable. DLL hashes and target-framework attributes were checked
 for the candidate and owning libraries. They are not Unity/AOT executions.
 
@@ -615,81 +615,82 @@ for the candidate and owning libraries. They are not Unity/AOT executions.
 
 Select **int[] sparse positions + SwiftTicket[] dense tickets + T[] values**.
 Keep exact local generation checks and a single validated-position lookup per
-operation. This preserves the dense span while avoiding per-issuer-slot
-metadata growth for optional components. No adaptive layout or cache is needed.
+operation. This preserves the dense span while avoiding per-issuer-slot metadata
+growth for optional components. No adaptive layout or cache is needed.
 
 Balanced forward/reverse/reverse/forward independent processes each completed
 812 rows, seven measured batches after 35 warm batches. Main comparison used
 fully optimized JIT code with tiering disabled; a separate warmed default-tiered
 control and selected paths were checked in Standard/Lean for both actual target
-assets. These are bounded local stopwatch measurements, not universal latency
-or statistical-equivalence claims.
+assets. These are bounded local stopwatch measurements, not universal latency or
+statistical-equivalence claims.
 
 Inputs: int payloads; N=128/4096 with issuer spreads 1/4/10, plus a 16384-entry,
 spread-four control. Insert key `i*spread`, generation one, value `index+1`;
-velocity `(i % 5)-2` in reverse attachment order; Health every fourth key at 100.
-Sequential and xorshift32-shuffled lookup/churn inputs used shuffle seed
+velocity `(i % 5)-2` in reverse attachment order; Health every fourth key
+at 100. Sequential and xorshift32-shuffled lookup/churn inputs used shuffle seed
 `0x00A55A13`. Each batch processed 65536 components/keys. Joined measurements
 used the resulting post-churn dense order, not a claimed sequential dense join.
 Spread-one absence was outside sparse capacity; other spreads used internal
 holes. Conflicts retained the occupied index with generation two. Joins used
-exact tickets and included position writes; optional joins also looked up
-Health and removed/reattached one Health entry per tick.
+exact tickets and included position writes; optional joins also looked up Health
+and removed/reattached one Health entry per tick.
 
 Representative N=4096, spread four, shuffled-input results below are ranges of
 four process medians after the same inlining hint on all dense candidates.
 Lookup is ns/call; joined rows are microseconds per complete 4096-entry tick.
 
-| Work | Dense tickets, selected | Fused sparse generation/position | Existing-collection composition |
-| --- | ---: | ---: | ---: |
-| TryGet | 1.69–1.73 ns | 1.54–1.99 ns | 2.88–2.95 ns |
-| GetRef | 1.65–1.93 ns | 1.64–1.75 ns | 2.85–2.98 ns |
-| Joined Position/Velocity tick | 11.31–11.59 µs | 13.78–14.23 µs | 17.90–20.62 µs |
-| Tick with optional Health/churn | 21.03–21.63 µs | 28.79–29.75 µs | 30.88–33.89 µs |
+| Work                            | Dense tickets, selected | Fused sparse generation/position | Existing-collection composition |
+| ------------------------------- | ----------------------: | -------------------------------: | ------------------------------: |
+| TryGet                          |            1.69–1.73 ns |                     1.54–1.99 ns |                    2.88–2.95 ns |
+| GetRef                          |            1.65–1.93 ns |                     1.64–1.75 ns |                    2.85–2.98 ns |
+| Joined Position/Velocity tick   |          11.31–11.59 µs |                   13.78–14.23 µs |                  17.90–20.62 µs |
+| Tick with optional Health/churn |          21.03–21.63 µs |                   28.79–29.75 µs |                  30.88–33.89 µs |
 
 The one-index Dictionary<int, generation/value> control included generation
-checks: TryGet 4.97–5.55 ns. Dictionary<SwiftTicket,int> was only a nonconflicting
-exact-key control, 13.63–14.95 ns; it is not equivalent for occupied-index
-conflicts and its process-scoped hashing is not the replay oracle. SparseMap and
-the dense issuer supplied layout/old-owner baselines, not equivalent lifecycles.
-No existing owner implementation changed in this phase.
+checks: TryGet 4.97–5.55 ns. Dictionary<SwiftTicket,int> was only a
+nonconflicting exact-key control, 13.63–14.95 ns; it is not equivalent for
+occupied-index conflicts and its process-scoped hashing is not the replay
+oracle. SparseMap and the dense issuer supplied layout/old-owner baselines, not
+equivalent lifecycles. No existing owner implementation changed in this phase.
 
 Focused JIT inspection found the fused GetTicketAt call was initially not
 inlined while the direct form was. Applying the same AggressiveInlining hint
 removed that call and reduced fused joined cost from about 6.02 to 3.41
 ns/component. The remaining reverse-index/generation loads are representation
 work. Do not attribute the original entire gap to storage alone. A prototype
-Lean project initially disabled optimization by SDK default; its roughly
-9 ns lookup results were invalid performance controls, retained and excluded.
-The corrected optimized Lean rechecks passed.
+Lean project initially disabled optimization by SDK default; its roughly 9 ns
+lookup results were invalid performance controls, retained and excluded. The
+corrected optimized Lean rechecks passed.
 
 Across final selected-path FullOpts checks, the direct representation's TryGet
 was 1.66–1.73 ns versus direct-index control 1.54–1.58 ns. Warmed default-tiered
 checks were 2.34–2.38 versus 1.55–1.58 ns: residual indirection remains and no
 parity is claimed. Direct joined ticks remained 10.8–11.8 µs. Optional-Health
-default results varied 20.71–28.46 µs; one net10.0 sample slightly favored fusion
-for that optional workload. That adverse result is retained, not described as
-an across-the-board timing win. Fusion requires more metadata at optional
-component density and does not justify it for the selected workload.
+default results varied 20.71–28.46 µs; one net10.0 sample slightly favored
+fusion for that optional workload. That adverse result is retained, not
+described as an across-the-board timing win. Fusion requires more metadata at
+optional component density and does not justify it for the selected workload.
 
 At N=4096 with reserved S=16384/D=4096, measured int construction allocated
 114808 bytes selected, 163960 fused and 147760 composition. Metadata alone was
 98304 / 147456 / 131072 bytes; fusion adds 49152 bytes (50%) over selected.
-Selected uses one owner/three arrays; composition four owners/five arrays.
-At spread ten, rounding gives S=65536 and selected/fused construction was
-311416 / 557176 bytes. Sparse reservations follow high-water indices, not Count.
-The direct-index control used 196696 bytes at spread four and cannot supply the
+Selected uses one owner/three arrays; composition four owners/five arrays. At
+spread ten, rounding gives S=65536 and selected/fused construction was 311416 /
+557176 bytes. Sparse reservations follow high-water indices, not Count. The
+direct-index control used 196696 bytes at spread four and cannot supply the
 packed Values contract after removal; it is not a selectable implementation.
 
 Phase 1's storage/allocation budgets are one owner, three arrays,
 `4*S + 8*D + sizeof(T)*D` array payload, and zero exact current-thread allocated
 bytes for successful/nonthrowing typed reserved operations. Every accepted
-measured batch reported zero bytes; interface, cold, snapshot/restore and generic-payload costs are
-separate. The timing envelopes above are the reference-host comparison budget:
-recheck the same full workload, retain old-owner baselines and investigate a
-repeatable regression rather than accepting a coarse faster-than-BCL threshold.
-The 128-entry spread-four selected joined tick was about 0.293 µs; the 16384
-control about 89.5 µs, illustrating why no single universal ns budget is promised.
+measured batch reported zero bytes; interface, cold, snapshot/restore and
+generic-payload costs are separate. The timing envelopes above are the
+reference-host comparison budget: recheck the same full workload, retain
+old-owner baselines and investigate a repeatable regression rather than
+accepting a coarse faster-than-BCL threshold. The 128-entry spread-four selected
+joined tick was about 0.293 µs; the 16384 control about 89.5 µs, illustrating
+why no single universal ns budget is promised.
 
 ### Reuse disposition and next phase
 
@@ -698,20 +699,20 @@ containment detection, IStateBacked, existing state converters/closed metadata
 and generated MemoryPack conventions. In Phase 1, lift the dense issuer's
 seven-line cold growth policy into a small internal helper used by both the
 existing issuer and new store. Preserve issuer retirement/free-list arithmetic
-and SparseMap's existing sentinel/upsert/state contracts. Do not create a
-helper until both production consumers arrive in that same change.
+and SparseMap's existing sentinel/upsert/state contracts. Do not create a helper
+until both production consumers arrive in that same change.
 
 The review ruled out a universal sparse core before implementing another copy:
 sharing the direct ticket metadata with SparseMap would split identities into
-more arrays or require generic projection/metadata machinery. Their writable-key,
-upsert and independent-growth contracts differ. The measured composition reuses
-actual public owners but costs two additional arrays and three additional owner
-objects; its private atomic growth also rebuilds the three owners. Its existing
-exact-2^30 sentinel prevents an unchanged implementation of the frozen maximum.
-Retain the small generation-aware lookup/swap-back/Clear loops where their
-metadata invariants differ. Reopen broader sharing only for a concrete smaller
-boundary with both real consumers, preserved public contracts and measured
-neutrality or improvement.
+more arrays or require generic projection/metadata machinery. Their
+writable-key, upsert and independent-growth contracts differ. The measured
+composition reuses actual public owners but costs two additional arrays and
+three additional owner objects; its private atomic growth also rebuilds the
+three owners. Its existing exact-2^30 sentinel prevents an unchanged
+implementation of the frozen maximum. Retain the small generation-aware
+lookup/swap-back/Clear loops where their metadata invariants differ. Reopen
+broader sharing only for a concrete smaller boundary with both real consumers,
+preserved public contracts and measured neutrality or improvement.
 
 Independent first-slice and measurement reviews found oracle gaps (Health ticket
 order, duplicate dense model indices and aggregate sums masking bad joins).
@@ -722,30 +723,29 @@ created or discovered, so no bug/signal entry was added.
 Phase 1 implements the selected owner, validated raw state, enumeration and
 maintained real-scenario regressions. Full coverage, every failure/codec path,
 large/generic payload performance, Debug, fresh API rendering and actual Unity
-Mono/High-stripping IL2CPP remain their listed later-phase gates. Physical
-2^30 allocations and forced OOM were not attempted; publication safety was
+Mono/High-stripping IL2CPP remain their listed later-phase gates. Physical 2^30
+allocations and forced OOM were not attempted; publication safety was
 source-audited, not established by OOM injection. This closes Phase 0 only.
-
 
 ## Phase 1 results - dense store
 
 ### Implementation and ownership
 
 Implemented SwiftTicketStore<T>, its concrete enumerator and
-SwiftTicketStoreState<T> with the frozen signatures and scalar state shape.
-The owner has one sparse-position array, one dense-ticket array and one packed
-value array. Exact local generation matching accepts every UInt32 value,
-including zero; any occupied index rejects attachment without replacement.
-Swap-back repairs the moved ticket's lookup. Clear touches live indices rather
-than scanning the sparse high-water mark. Reference payloads and structs
-containing references release discarded references. No issuer, callback, hash,
+SwiftTicketStoreState<T> with the frozen signatures and scalar state shape. The
+owner has one sparse-position array, one dense-ticket array and one packed value
+array. Exact local generation matching accepts every UInt32 value, including
+zero; any occupied index rejects attachment without replacement. Swap-back
+repairs the moved ticket's lookup. Clear touches live indices rather than
+scanning the sparse high-water mark. Reference payloads and structs containing
+references release discarded references. No issuer, callback, hash,
 value-equality lookup, implicit liveness check or component generation is added.
 
 Capacity construction and EnsureCapacity validate both requests before
 allocation and publish replacement arrays only after all allocations/copies
 succeed. Raw restore checks lengths/range first, detects duplicate indices while
-building private storage before publication, preserves dense order,
-and shallow-copies input arrays. Snapshots own three new shallow arrays. Actual
+building private storage before publication, preserves dense order, and
+shallow-copies input arrays. Snapshots own three new shallow arrays. Actual
 structural growth, including sparse-only growth, invalidates enumeration and
 borrows; failed/no-op operations preserve them. Typed enumeration is a struct;
 interface enumeration's boxing is a separate documented cost.
@@ -756,8 +756,9 @@ retirement, free-list arithmetic and existing warm owner operations are
 unchanged. Owner-specific lookup/removal loops remain direct because their
 identity invariants differ. Production growth is four new files / 498 lines
 including headers and XML, minus eight lines in the issuer (490 net lines).
-Three maintained behavior/state/scenario files add 1218 test lines; no maintained
-benchmark, generic sparse framework, serializer registry or legacy path is added.
+Three maintained behavior/state/scenario files add 1218 test lines; no
+maintained benchmark, generic sparse framework, serializer registry or legacy
+path is added.
 
 Independent reviews covered the first shared boundary, tests/oracles, final
 connected implementation and front-door documentation. No unresolved source
@@ -770,26 +771,26 @@ The maintained tests exercise the exact independently ordered
 Position/Velocity/Health scenario above, including raw aggregate restore into
 locals before validation/publication. They cover stale tickets, orphan cleanup,
 foreign/timeline aliases, delayed component-instance commands, legacy zero
-issuance, maximum generations, legacy wrap and dense-issuer retirement.
-A seeded independent model checks 3000 mutations. Tests also cover capacity
-rounding, no-op/failure preservation, span/ref writes, copied/interface
-enumeration, null/default/duplicate/hostile-equality payloads and live-owner
-weak-reference release. Typed reserved operations and the joined scenario
-require zero exact current-thread allocation; interface boxing is checked
-separately. Reachable arithmetic probes exercise the actual private shape
-validation and shared growth policy without allocating enormous arrays.
+issuance, maximum generations, legacy wrap and dense-issuer retirement. A seeded
+independent model checks 3000 mutations. Tests also cover capacity rounding,
+no-op/failure preservation, span/ref writes, copied/interface enumeration,
+null/default/duplicate/hostile-equality payloads and live-owner weak-reference
+release. Typed reserved operations and the joined scenario require zero exact
+current-thread allocation; interface boxing is checked separately. Reachable
+arithmetic probes exercise the actual private shape validation and shared growth
+policy without allocating enormous arrays.
 
 Final full solution builds and both test projects passed. Fresh per-assembly
 reports pass the unchanged repository gate for **100% lines, branches and
 executable methods**, without new exclusions or complexity exceptions:
 
-| Executed lane | Core tests | Companion tests | Core lines / branches / executable methods | Companion lines / branches / executable methods |
-| --- | ---: | ---: | --- | --- |
-| Debug net10.0, local source dependencies | 2348 | 100 | 8674 / 3112 / 1468 | 257 / 86 / 67 |
-| Release net10.0, package and local source dependencies separately | 2350 each | 100 each | 6607 / 3104 / 1468 | 205 / 86 / 67 |
-| ReleaseLean net10.0, package and local source dependencies separately | 2224 each | 100 each | 6409 / 3028 / 1425 | 205 / 86 / 67 |
-| Actual netstandard2.1 Release DLLs, package dependencies | 2349 | 100 | 6607 / 3104 / 1468 | 205 / 86 / 67 |
-| Actual netstandard2.1 ReleaseLean DLLs, package dependencies | 2223 | 100 | 6409 / 3028 / 1425 | 205 / 86 / 67 |
+| Executed lane                                                         | Core tests | Companion tests | Core lines / branches / executable methods | Companion lines / branches / executable methods |
+| --------------------------------------------------------------------- | ---------: | --------------: | ------------------------------------------ | ----------------------------------------------- |
+| Debug net10.0, local source dependencies                              |       2348 |             100 | 8674 / 3112 / 1468                         | 257 / 86 / 67                                   |
+| Release net10.0, package and local source dependencies separately     |  2350 each |        100 each | 6607 / 3104 / 1468                         | 205 / 86 / 67                                   |
+| ReleaseLean net10.0, package and local source dependencies separately |  2224 each |        100 each | 6409 / 3028 / 1425                         | 205 / 86 / 67                                   |
+| Actual netstandard2.1 Release DLLs, package dependencies              |       2349 |             100 | 6607 / 3104 / 1468                         | 205 / 86 / 67                                   |
+| Actual netstandard2.1 ReleaseLean DLLs, package dependencies          |       2223 |             100 | 6409 / 3028 / 1425                         | 205 / 86 / 67                                   |
 
 Every listed count is covered/total, not a rounded percentage. Both runtime
 assemblies also compile as netstandard2.1/C# 11 with local source dependencies
@@ -799,8 +800,8 @@ maintained tests with NETSTANDARD2_1 rather than NET10_0. Selected host BCL
 overlays are System.Text.Json, Encodings.Web, IO.Pipelines, Unsafe and
 Collections.Immutable. An existing static-abstract MemoryPack test-helper
 dispatch is adapted to the same generated public methods for that target;
-assertions are unchanged. One existing NET10-only test is excluded there;
-Debug excludes two existing release-only tests. These are not Mono/IL2CPP runs.
+assertions are unchanged. One existing NET10-only test is excluded there; Debug
+excludes two existing release-only tests. These are not Mono/IL2CPP runs.
 
 Canonical validation uses the solution and both test projects, each project's
 existing coverlet.runsettings and .assets/scripts/assert-full-coverage.ps1.
@@ -826,45 +827,45 @@ Their sparse-map/dense-issuer lookup, scan and reserved-churn ranges overlap at
 the representative 4096-entry spread-four shuffled workload. No repeatable
 existing-owner regression was established; no universal equivalence is claimed.
 
-One introduced hot-path cost was measured and corrected before closeout.
-Calling the cross-module void diagnostic guard left register preservation and
-cold argument construction in GetRef/GetTicketAt callers. JIT inspection and
-balanced controls isolated the cost: initial GetRef was about 2.14 ns versus
-1.76 ns for the prototype; joined work about 3.52 versus 2.84 ns/component.
-The final accessors retain their checks and throw terminally through two small
-NoInlining exception factories, moving construction off the successful path.
-Other guards still use ChronicleGuard. No unchecked API, redundant fallback or
+One introduced hot-path cost was measured and corrected before closeout. Calling
+the cross-module void diagnostic guard left register preservation and cold
+argument construction in GetRef/GetTicketAt callers. JIT inspection and balanced
+controls isolated the cost: initial GetRef was about 2.14 ns versus 1.76 ns for
+the prototype; joined work about 3.52 versus 2.84 ns/component. The final
+accessors retain their checks and throw terminally through two small NoInlining
+exception factories, moving construction off the successful path. Other guards
+still use ChronicleGuard. No unchecked API, redundant fallback or
 shared-diagnostics change was needed. Exception types, parameter name and the
 invalid dense index's ActualValue remain covered.
 
 At N=4096, spread four, shuffled inputs, ranges of four final process medians:
 
-| Work | Production store | Selected Phase 0 prototype |
-| --- | ---: | ---: |
-| TryGet | 1.68-1.74 ns/call | 1.70-1.80 ns/call |
-| GetRef | 1.66-1.70 ns/call | 1.64-1.69 ns/call |
-| Joined Position/Velocity | 11.31-11.56 microseconds/tick | 11.36-11.55 microseconds/tick |
+| Work                            |              Production store |    Selected Phase 0 prototype |
+| ------------------------------- | ----------------------------: | ----------------------------: |
+| TryGet                          |             1.68-1.74 ns/call |             1.70-1.80 ns/call |
+| GetRef                          |             1.66-1.70 ns/call |             1.64-1.69 ns/call |
+| Joined Position/Velocity        | 11.31-11.56 microseconds/tick | 11.36-11.55 microseconds/tick |
 | Tick with optional Health/churn | 20.73-21.44 microseconds/tick | 20.64-23.88 microseconds/tick |
 
-Selected FullOpts and warmed default-tiered checks completed 66 rows each in
-all four Standard/Lean target combinations, with actual framework attributes,
+Selected FullOpts and warmed default-tiered checks completed 66 rows each in all
+four Standard/Lean target combinations, with actual framework attributes,
 optimized flags and loaded DLL hashes checked. All measured batches allocated
 zero bytes. At the representative spread-four workload, FullOpts production
-joined work was 2.82-2.85 ns/component. Default
-tiering was less stable: four netstandard Standard processes gave production
-GetRef 1.80-2.28 ns versus prototype 1.71-1.96, and joined work 2.72-3.33 versus
-2.63-2.70 ns/component. Two processes favored each GetRef implementation;
-GetRef direction is mixed. Joined medians favor the prototype in all four
-processes, but the magnitude is unstable and measured sample ranges overlap;
-attribution remains unresolved. These controls establish neither parity nor a
-confirmed source regression. Retain this uncertainty for Phase 3's broader final
-hardening rather than accepting a new storage/timing tradeoff.
+joined work was 2.82-2.85 ns/component. Default tiering was less stable: four
+netstandard Standard processes gave production GetRef 1.80-2.28 ns versus
+prototype 1.71-1.96, and joined work 2.72-3.33 versus 2.63-2.70 ns/component.
+Two processes favored each GetRef implementation; GetRef direction is mixed.
+Joined medians favor the prototype in all four processes, but the magnitude is
+unstable and measured sample ranges overlap; attribution remains unresolved.
+These controls establish neither parity nor a confirmed source regression.
+Retain this uncertainty for Phase 3's broader final hardening rather than
+accepting a new storage/timing tradeoff.
 
 Actual int construction rechecked the Phase 0 budget: S=16384/D=4096 allocates
 114808 bytes, S=65536/D=4096 allocates 311416 bytes. There is one owner/three
-arrays; payload remains 4*S + 8*D + sizeof(T)*D bytes. Interface iteration,
-cold growth, snapshot/restore, codecs and larger/generic payload timings are
-outside these warm integer measurements. Phase 3 retains their broader review.
+arrays; payload remains 4*S + 8*D + sizeof(T)*D bytes. Interface iteration, cold
+growth, snapshot/restore, codecs and larger/generic payload timings are outside
+these warm integer measurements. Phase 3 retains their broader review.
 
 ### Reference, persistence smoke and remaining scope
 
@@ -872,26 +873,27 @@ Fresh DocFX 2.78.5 metadata/site generation from both Release/net10.0 runtime
 DLLs and adjacent XML passed with zero warnings/errors. The existing CI
 reference/branding smoke and all local file-link checks pass. New owner, state
 and nested-enumerator pages were checked for parameter names, return/value text,
-exceptions and links. Checked outputs cover SwiftCollections, SwiftCollections.Lean,
-SwiftCollections.FixedMathSharp and SwiftCollections.FixedMathSharp.Lean: the
-SwiftCollections.dll/XML and SwiftCollections.FixedMathSharp.dll/XML pairs under
-each Release/ReleaseLean and net10.0/netstandard2.1 output (eight assembly/XML
-pairs). All four core XML files contain the same 32 authored declarations:
-32 summaries, 18 parameter tags, two type-parameter tags, ten return tags,
-seven value tags and eleven exception tags. No applicable authored tag is
-missing and no inheritdoc is used. The three rendered pages expose 29 authored
-declarations (owner 19, enumerator five, state five); two explicit enumerable
-methods and explicit IEnumerator.Current are hidden by DocFX but documented
-in XML. All 27 relative API-page file/fragment link checks pass. Preview View
-Source URLs name the baseline HEAD until the new files are committed and the
-site rebuilt; they were not claimed as working published source links.
-Generated serializer members and synthesized default struct construction are
-separate from the authored inventory. Standard/net10.0 has six private explicit
-MemoryPack methods across owner/state. Standard/netstandard2.1 instead ships
-six public static generated methods (RegisterFormatter/Serialize/Deserialize
-for each) and two private formatter types; those six public APIs are absent
-from the site's selected net10.0 shape. Lean has none of those generated
-methods/types. None is an undocumented authored declaration.
+exceptions and links. Checked outputs cover SwiftCollections,
+SwiftCollections.Lean, SwiftCollections.FixedMathSharp and
+SwiftCollections.FixedMathSharp.Lean: the SwiftCollections.dll/XML and
+SwiftCollections.FixedMathSharp.dll/XML pairs under each Release/ReleaseLean and
+net10.0/netstandard2.1 output (eight assembly/XML pairs). All four core XML
+files contain the same 32 authored declarations: 32 summaries, 18 parameter
+tags, two type-parameter tags, ten return tags, seven value tags and eleven
+exception tags. No applicable authored tag is missing and no inheritdoc is used.
+The three rendered pages expose 29 authored declarations (owner 19, enumerator
+five, state five); two explicit enumerable methods and explicit
+IEnumerator.Current are hidden by DocFX but documented in XML. All 27 relative
+API-page file/fragment link checks pass. Preview View Source URLs name the
+baseline HEAD until the new files are committed and the site rebuilt; they were
+not claimed as working published source links. Generated serializer members and
+synthesized default struct construction are separate from the authored
+inventory. Standard/net10.0 has six private explicit MemoryPack methods across
+owner/state. Standard/netstandard2.1 instead ships six public static generated
+methods (RegisterFormatter/Serialize/Deserialize for each) and two private
+formatter types; those six public APIs are absent from the site's selected
+net10.0 shape. Lean has none of those generated methods/types. None is an
+undocumented authored declaration.
 
 A disposable actual-owner smoke passed ordinary-factory JSON in all four
 variant/target combinations and generated MemoryPack in both Standard targets,
@@ -906,21 +908,20 @@ allocations were not attempted; all-array publication safety is source-audited.
 The starting checkout was clean at 878d1f615cdad2956a11e3b1b04ef392a043b62a,
 index tree 0a3e96ea6501a6c6750af13429bddc0d65921621. Local source validation
 used unchanged Chronicler 0281469ecc40e65a05867f473bc10f030e7f69f8 and
-FixedMathSharp 8fdf889322f1bb82501c2afec63d6bb2f304ace2. CI's FixedMathSharp
-pin matches; its Chronicler pin remains
-7b90d5923d4bb6e0e42c033ec697b9678d6b8ece, so local source results do not claim
-hosted validation of that different pin. No provider, dependency pin or CI
-policy was changed. No new confirmed out-of-scope defect or benchmark signal
-required a tracker item. This checkpoint closed Phase 1; Phase 2 followed below.
-
+FixedMathSharp 8fdf889322f1bb82501c2afec63d6bb2f304ace2. CI's FixedMathSharp pin
+matches; its Chronicler pin remains 7b90d5923d4bb6e0e42c033ec697b9678d6b8ece, so
+local source results do not claim hosted validation of that different pin. No
+provider, dependency pin or CI policy was changed. No new confirmed out-of-scope
+defect or benchmark signal required a tracker item. This checkpoint closed Phase
+1; Phase 2 followed below.
 
 ## Phase 2 results - persistence
 
 ### Scope and implemented contracts
 
-The existing production state constructor, shared Chronicler JSON converter
-and generated MemoryPack paths satisfy the frozen contracts. No runtime source,
-API, wire shape, dependency, CI policy, custom formatter, registry or helper was
+The existing production state constructor, shared Chronicler JSON converter and
+generated MemoryPack paths satisfy the frozen contracts. No runtime source, API,
+wire shape, dependency, CI policy, custom formatter, registry or helper was
 changed. Six maintained serialization test/metadata/DTO files add 1079 lines;
 there is no new maintained benchmark or verification launcher. Existing
 DenseTicketPersistencePayload and DenseTicketPersistenceValue fixtures are
@@ -974,13 +975,13 @@ The initial Release source build and all 172 focused SwiftTicketStore cases
 passed. Final fresh full solution builds, both test projects and the unchanged
 repository coverage gate then passed in all seven lanes:
 
-| Executed lane | Core tests | Companion tests | Core covered/total lines, branches, executable methods | Companion covered/total lines, branches, executable methods |
-| --- | ---: | ---: | --- | --- |
-| Debug net10.0, local source dependencies | 2420 | 100 | 8674/8674, 3112/3112, 1468/1468 | 257/257, 86/86, 67/67 |
-| Release net10.0, package and source separately | 2422 each | 100 each | 6607/6607, 3104/3104, 1468/1468 | 205/205, 86/86, 67/67 |
-| ReleaseLean net10.0, package and source separately | 2270 each | 100 each | 6409/6409, 3028/3028, 1425/1425 | 205/205, 86/86, 67/67 |
-| Actual netstandard2.1 Release DLLs, package dependencies | 2421 | 100 | 6607/6607, 3104/3104, 1468/1468 | 205/205, 86/86, 67/67 |
-| Actual netstandard2.1 ReleaseLean DLLs, package dependencies | 2269 | 100 | 6409/6409, 3028/3028, 1425/1425 | 205/205, 86/86, 67/67 |
+| Executed lane                                                | Core tests | Companion tests | Core covered/total lines, branches, executable methods | Companion covered/total lines, branches, executable methods |
+| ------------------------------------------------------------ | ---------: | --------------: | ------------------------------------------------------ | ----------------------------------------------------------- |
+| Debug net10.0, local source dependencies                     |       2420 |             100 | 8674/8674, 3112/3112, 1468/1468                        | 257/257, 86/86, 67/67                                       |
+| Release net10.0, package and source separately               |  2422 each |        100 each | 6607/6607, 3104/3104, 1468/1468                        | 205/205, 86/86, 67/67                                       |
+| ReleaseLean net10.0, package and source separately           |  2270 each |        100 each | 6409/6409, 3028/3028, 1425/1425                        | 205/205, 86/86, 67/67                                       |
+| Actual netstandard2.1 Release DLLs, package dependencies     |       2421 |             100 | 6607/6607, 3104/3104, 1468/1468                        | 205/205, 86/86, 67/67                                       |
+| Actual netstandard2.1 ReleaseLean DLLs, package dependencies |       2269 |             100 | 6409/6409, 3028/3028, 1425/1425                        | 205/205, 86/86, 67/67                                       |
 
 Both runtime assemblies also build as C# 11/netstandard2.1 in Standard/Lean
 source mode. Actual netstandard tests use the same managed-host technique and
@@ -992,8 +993,8 @@ are those recorded in Phase 1; source restore/build/test consistently pass
 UseLocalLsfStack=true and global DisableTransitiveProjectReferences=true, with
 serial -m:1 builds and separate source/package caches. Package mode explicitly
 selects false for both properties. No coverage exclusions or gate changes were
-added. Existing xUnit2013/Lean xUnit1026 warnings remain; no baseline or introduced
-build/test/coverage failure remains.
+added. Existing xUnit2013/Lean xUnit1026 warnings remain; no baseline or
+introduced build/test/coverage failure remains.
 
 ### Closed metadata and cross-target exchange
 
@@ -1009,17 +1010,17 @@ process; no reflecting converter fallback is installed.
 All four writer processes and twelve reader processes passed: four self reads
 and eight directed exchanges covering net10.0 <-> netstandard2.1 within each
 variant, and Standard <-> Lean at each target. Both directions verify control
-record fields/order and the complete issuer/Position/Velocity/Health replay,
-not merely separate same-host round trips. Standard cross-target directions
-also exchange binary records; Lean directions exchange JSON only. Each selected
-DLL hash and framework binding is checked. Selected control/world JSON bytes
-agree across all four graphs, and Standard binary bytes agree across targets;
-this is evidence for these records, not a universal byte-identity promise. Host
-BCL overlays are the same five
-assemblies documented in Phase 1; LSF and MemoryPack target assets remain those
-of the selected graph. Explicit MemoryPack bootstrap exercises provider
-registration on net10.0 and the generated public RegisterFormatter methods on
-netstandard2.1, including nested payloads and the aggregate.
+record fields/order and the complete issuer/Position/Velocity/Health replay, not
+merely separate same-host round trips. Standard cross-target directions also
+exchange binary records; Lean directions exchange JSON only. Each selected DLL
+hash and framework binding is checked. Selected control/world JSON bytes agree
+across all four graphs, and Standard binary bytes agree across targets; this is
+evidence for these records, not a universal byte-identity promise. Host BCL
+overlays are the same five assemblies documented in Phase 1; LSF and MemoryPack
+target assets remain those of the selected graph. Explicit MemoryPack bootstrap
+exercises provider registration on net10.0 and the generated public
+RegisterFormatter methods on netstandard2.1, including nested payloads and the
+aggregate.
 
 These executions validate the managed metadata/formatter closures and actual
 netstandard assets, not native AOT, Mono or IL2CPP. Those actual Unity checks
@@ -1033,24 +1034,25 @@ deferred to Phase 3 below.
 
 Fresh DocFX 2.78.5 generation from both Standard Release/net10.0 DLL/XML pairs
 passed with zero warnings/errors. Both runtime assemblies' DLL/XML outputs were
-checked for Release/ReleaseLean and net10.0/netstandard2.1 (eight pairs, covering
-all four package identities). The store's authored API remains the same 32
-fully tagged XML declarations in every target/variant, with 29 rendered and
-three hidden explicit-interface declarations. The generated serializer API
-and synthesized-member exclusions remain exactly those recorded in Phase 1.
-The existing CI reference/branding and local file-link checks pass. The changed
+checked for Release/ReleaseLean and net10.0/netstandard2.1 (eight pairs,
+covering all four package identities). The store's authored API remains the same
+32 fully tagged XML declarations in every target/variant, with 29 rendered and
+three hidden explicit-interface declarations. The generated serializer API and
+synthesized-member exclusions remain exactly those recorded in Phase 1. The
+existing CI reference/branding and local file-link checks pass. The changed
 persistence guide was previewed in the published theme at desktop and 390-pixel
 widths: prose wraps, the literal JSON uses its own code-block scrollbar, and the
-format/omission/failure distinctions remain readable. The exact shared closed-converter Markdown recipe was additionally extracted,
-compiled and executed against all four graphs with JSON reflection disabled.
+format/omission/failure distinctions remain readable. The exact shared
+closed-converter Markdown recipe was additionally extracted, compiled and
+executed against all four graphs with JSON reflection disabled.
 
 This phase started clean at 2dabe4ec3f808feb1f222ae3352074194489a19d, index tree
-c3fc02e03e08111a9900c96ce6d96029ac951457. Providers remain unchanged:
-Chronicler 0281469ecc40e65a05867f473bc10f030e7f69f8 and FixedMathSharp
+c3fc02e03e08111a9900c96ce6d96029ac951457. Providers remain unchanged: Chronicler
+0281469ecc40e65a05867f473bc10f030e7f69f8 and FixedMathSharp
 8fdf889322f1bb82501c2afec63d6bb2f304ace2. The CI pin comparison is unchanged
 from Phase 1: FixedMathSharp matches and Chronicler uses the distinct recorded
-pin; local results do not claim hosted validation of that different revision.
-No upstream change or dependency-pin update was required by this phase. At this
+pin; local results do not claim hosted validation of that different revision. No
+upstream change or dependency-pin update was required by this phase. At this
 checkpoint Phase 2 was complete; final hardening, broader performance/guide
 review and actual Unity verification were deferred to Phase 3 below. Physical
 maximum arrays and forced OOM were untested as planned.
@@ -1065,16 +1067,16 @@ performance-evidence and Unity-fixture reviews supplemented coordinator-run
 verification. No additional API, runtime helper, registry, formatter, engine
 dependency or maintained benchmark infrastructure was necessary.
 
-Remove no longer zeros the discarded private numeric ticket, and Clear no
-longer clears the numeric ticket array. Only the live prefix owns tickets;
-every insertion overwrites its destination before publication. Sparse lookup,
-state copying, growth and enumeration cannot read an unused tail. Payload
-reference cleanup, sparse-entry clearing, structural versions and all public
-contracts remain unchanged. The runtime diff removes two clearing operations and adds
-one invariant comment, with no new storage. The existing reserved-operation
-test additionally checks every final ticket and value against its independent
-Clear/refill oracle, outside the allocation window. No new defect reproducer
-was required for this deletion-only optimization.
+Remove no longer zeros the discarded private numeric ticket, and Clear no longer
+clears the numeric ticket array. Only the live prefix owns tickets; every
+insertion overwrites its destination before publication. Sparse lookup, state
+copying, growth and enumeration cannot read an unused tail. Payload reference
+cleanup, sparse-entry clearing, structural versions and all public contracts
+remain unchanged. The runtime diff removes two clearing operations and adds one
+invariant comment, with no new storage. The existing reserved-operation test
+additionally checks every final ticket and value against its independent
+Clear/refill oracle, outside the allocation window. No new defect reproducer was
+required for this deletion-only optimization.
 
 SwiftTicket's XML now describes its supplied signed index and generation;
 construction itself does not validate an index. Typed Equals documents exact
@@ -1088,33 +1090,34 @@ All seven final lanes pass both test projects and the unchanged full-coverage
 gate. No tests failed or were skipped. The two removed executable lines account
 for the lower totals relative to Phase 2; no exclusion or threshold changed.
 
-| Executed lane | Core tests | Companion tests | Core covered/total lines, branches, executable methods | Companion covered/total lines, branches, executable methods |
-| --- | ---: | ---: | --- | --- |
-| Debug net10.0, local source | 2420 | 100 | 8672/8672, 3112/3112, 1468/1468 | 257/257, 86/86, 67/67 |
-| Release net10.0, package and source separately | 2422 each | 100 each | 6605/6605, 3104/3104, 1468/1468 | 205/205, 86/86, 67/67 |
-| ReleaseLean net10.0, package and source separately | 2270 each | 100 each | 6407/6407, 3028/3028, 1425/1425 | 205/205, 86/86, 67/67 |
-| Actual netstandard2.1 Release, package | 2421 | 100 | 6605/6605, 3104/3104, 1468/1468 | 205/205, 86/86, 67/67 |
-| Actual netstandard2.1 ReleaseLean, package | 2269 | 100 | 6407/6407, 3028/3028, 1425/1425 | 205/205, 86/86, 67/67 |
+| Executed lane                                      | Core tests | Companion tests | Core covered/total lines, branches, executable methods | Companion covered/total lines, branches, executable methods |
+| -------------------------------------------------- | ---------: | --------------: | ------------------------------------------------------ | ----------------------------------------------------------- |
+| Debug net10.0, local source                        |       2420 |             100 | 8672/8672, 3112/3112, 1468/1468                        | 257/257, 86/86, 67/67                                       |
+| Release net10.0, package and source separately     |  2422 each |        100 each | 6605/6605, 3104/3104, 1468/1468                        | 205/205, 86/86, 67/67                                       |
+| ReleaseLean net10.0, package and source separately |  2270 each |        100 each | 6407/6407, 3028/3028, 1425/1425                        | 205/205, 86/86, 67/67                                       |
+| Actual netstandard2.1 Release, package             |       2421 |             100 | 6605/6605, 3104/3104, 1468/1468                        | 205/205, 86/86, 67/67                                       |
+| Actual netstandard2.1 ReleaseLean, package         |       2269 |             100 | 6407/6407, 3028/3028, 1425/1425                        | 205/205, 86/86, 67/67                                       |
 
 Use the Phase 1 canonical build/test/coverage commands and each project's
-coverlet settings. Source-mode restore/build/test carries
-UseLocalLsfStack=true and global DisableTransitiveProjectReferences=true,
-serial -m:1 builds and separate source/package caches. Package mode explicitly
-sets both properties false. Both runtime projects also build C# 11/netstandard2.1
-in each source configuration. Actual netstandard managed tests use the same
-frozen DLL binding, target defines, five BCL overlays and existing narrow
-test-helper dispatch adaptation recorded in Phases 1-2. Existing NET10-only
-and release-only cases explain the count differences.
+coverlet settings. Source-mode restore/build/test carries UseLocalLsfStack=true
+and global DisableTransitiveProjectReferences=true, serial -m:1 builds and
+separate source/package caches. Package mode explicitly sets both properties
+false. Both runtime projects also build C# 11/netstandard2.1 in each source
+configuration. Actual netstandard managed tests use the same frozen DLL binding,
+target defines, five BCL overlays and existing narrow test-helper dispatch
+adaptation recorded in Phases 1-2. Existing NET10-only and release-only cases
+explain the count differences.
 
-Checked SwiftCollections.dll/XML and SwiftCollections.FixedMathSharp.dll/XML
-for Release/ReleaseLean and net10.0/netstandard2.1: eight assembly/XML pairs,
+Checked SwiftCollections.dll/XML and SwiftCollections.FixedMathSharp.dll/XML for
+Release/ReleaseLean and net10.0/netstandard2.1: eight assembly/XML pairs,
 covering SwiftCollections, SwiftCollections.Lean,
-SwiftCollections.FixedMathSharp and SwiftCollections.FixedMathSharp.Lean.
-All four generated validation packages contain both target pairs with bytes
-matching the selected final graph and the expected Standard/Lean dependencies.
-The local default version is 0.0.0; these are build-shape checks, not a release.
-Existing xUnit2013 and Lean xUnit1026 warnings remain. No baseline or introduced
-build/test/coverage failure remains; CI policy and complexity guidance are unchanged.
+SwiftCollections.FixedMathSharp and SwiftCollections.FixedMathSharp.Lean. All
+four generated validation packages contain both target pairs with bytes matching
+the selected final graph and the expected Standard/Lean dependencies. The local
+default version is 0.0.0; these are build-shape checks, not a release. Existing
+xUnit2013 and Lean xUnit1026 warnings remain. No baseline or introduced
+build/test/coverage failure remains; CI policy and complexity guidance are
+unchanged.
 
 ### Managed persistence and actual Unity
 
@@ -1122,20 +1125,21 @@ Refreshed all four closed-metadata managed writers and twelve readers against
 the final package graphs. JSON reflection is disabled and asserted before first
 use; five closed payload families, nested arrays/lists, integer issuer and the
 complete paired aggregate pass. Four self reads and eight directed exchanges
-cover both target directions within each variant and both variant directions
-at each target. Standard exchanges binary as well as JSON. Selected LSF and
-MemoryPack dependency hashes match their target graph. The selected control
-and world JSON bytes agree across all four graphs; Standard binary records
-agree across targets. This remains evidence for these records, not universal
-schema or byte-identity guarantees.
+cover both target directions within each variant and both variant directions at
+each target. Standard exchanges binary as well as JSON. Selected LSF and
+MemoryPack dependency hashes match their target graph. The selected control and
+world JSON bytes agree across all four graphs; Standard binary records agree
+across targets. This remains evidence for these records, not universal schema or
+byte-identity guarantees.
 
 Unity 6000.3.9f1 Windows x64 executes isolated Standard and Lean hosts using the
 actual optimized netstandard2.1 DLLs and a C# 11 precompiled helper. Mono passes
 229 Standard / 149 Lean checks. Native IL2CPP players pass 214 Standard / 137
-Lean checks, with ManagedStrippingLevel.High, compiler Release, BuildOptions.None,
-.NET Standard API compatibility and an asserted ENABLE_IL2CPP path. MSVC
-14.51.36231 (Visual Studio 18 Build Tools) and Windows SDK 10.0.26100.0 build
-both players. No tool installation or adapter/provider change was needed.
+Lean checks, with ManagedStrippingLevel.High, compiler Release,
+BuildOptions.None, .NET Standard API compatibility and an asserted ENABLE_IL2CPP
+path. MSVC 14.51.36231 (Visual Studio 18 Build Tools) and Windows SDK
+10.0.26100.0 build both players. No tool installation or adapter/provider change
+was needed.
 
 Both backends disable JSON reflection before first use and execute closed
 generated metadata for all five payload families, nested owners and the paired
@@ -1152,20 +1156,20 @@ health=2:1=50,0:1=80,1:2=25
 ```
 
 Final Standard core SHA-256 is
-856E309E33289C54EEFF4F34E0BAF34B56B586BEA76E75E390222D33060658E3;
-Lean is C2D905D4A0EEB00BFC11AB3A9966BAC41F1EFF2470A5CF863657183CE3CC21BD.
-Verified input-manifest hashes are respectively
-50E96CC4671238BC8212F9C6E28D9C2E3F83683EED938378506958D41F88D3C2
-and 2D9A8678BC1CCEDF1DF6152E7EEBC1E8115EB3E2DC6A160458CC1A67D2CA4FF9.
-Mono hashes actual loaded managed files. Editor validates every prepared plugin
-before building; native output reports that verified compiled-input manifest,
-not a raw loaded DLL hash. Check totals differ because native code has no
-equivalent managed-file hash checks. Other OS/CPU/Unity versions are not claimed.
+856E309E33289C54EEFF4F34E0BAF34B56B586BEA76E75E390222D33060658E3; Lean is
+C2D905D4A0EEB00BFC11AB3A9966BAC41F1EFF2470A5CF863657183CE3CC21BD. Verified
+input-manifest hashes are respectively
+50E96CC4671238BC8212F9C6E28D9C2E3F83683EED938378506958D41F88D3C2 and
+2D9A8678BC1CCEDF1DF6152E7EEBC1E8115EB3E2DC6A160458CC1A67D2CA4FF9. Mono hashes
+actual loaded managed files. Editor validates every prepared plugin before
+building; native output reports that verified compiled-input manifest, not a raw
+loaded DLL hash. Check totals differ because native code has no equivalent
+managed-file hash checks. Other OS/CPU/Unity versions are not claimed.
 
 ### Bounded timing, allocation and storage evidence
 
-Measurements ran without competing builds/tests/Unity on Windows x64,
-Core i7-9700K, SDK 10.0.302 and .NET 10.0.10. Independent processes use balanced
+Measurements ran without competing builds/tests/Unity on Windows x64, Core
+i7-9700K, SDK 10.0.302 and .NET 10.0.10. Independent processes use balanced
 before/after order and verified optimized bindings. Timings below are process
 median ranges; they are workload evidence, not universal throughput or latency
 promises. Instrumented/JIT captures are separate from unprofiled timing.
@@ -1185,12 +1189,12 @@ The exact Phase 1 integer host was rebound to the final source graph: four full
 Standard/net10.0 processes (462 rows each) and 66-row checks for the other three
 target/variant combinations all pass exact oracles with zero warm bytes. At
 N=4096, spread four, seeded shuffled keys, final joined work is 2.888-3.131
-ns/component versus the selected Phase 0 dense-ticket prototype's 2.823-3.288. TryGet is
-1.700-1.938 versus 1.743-1.930; GetRef is 1.704-1.907 versus 1.749-1.804.
-Reserved churn is 4.488-5.179 versus 5.547-6.295 ns/API operation; Clear/refill
-is mixed at 4.872-7.373 versus 5.806-6.247. Both candidates retain full ticket
-matching and the same three-array storage shape; this prototype is distinct
-from Phase 0's separate direct-index, non-dense storage control.
+ns/component versus the selected Phase 0 dense-ticket prototype's 2.823-3.288.
+TryGet is 1.700-1.938 versus 1.743-1.930; GetRef is 1.704-1.907 versus
+1.749-1.804. Reserved churn is 4.488-5.179 versus 5.547-6.295 ns/API operation;
+Clear/refill is mixed at 4.872-7.373 versus 5.806-6.247. Both candidates retain
+full ticket matching and the same three-array storage shape; this prototype is
+distinct from Phase 0's separate direct-index, non-dense storage control.
 
 The Phase 2 default-tiered netstandard concern was rechecked in four final
 Standard processes: joined Actual 2.736-2.925 versus Direct 2.664-2.954
@@ -1215,10 +1219,10 @@ add caches or trade away the selected storage contract to chase this noise.
 Broader probes cover int (4 bytes), 32/128-byte value types, an 8-byte stored
 reference and a 16-byte reference-containing struct. At N=4096/spread four,
 TryGet, GetRef, typed pair iteration, ref updates, reserved churn and span scans
-use 65536 components/batch (two API operations per churn), 35 warm/seven measured
-batches and shuffle seed 0x00A55A13. Candidates receive independently constructed
-payloads. Every large payload field is consumed; this does not claim a
-particular physical-copy instruction. Churn's exact final order comes from an
+use 65536 components/batch (two API operations per churn), 35 warm/seven
+measured batches and shuffle seed 0x00A55A13. Candidates receive independently
+constructed payloads. Every large payload field is consumed; this does not claim
+a particular physical-copy instruction. Churn's exact final order comes from an
 independent BCL list/full-ticket dictionary model, not owner/prototype metadata.
 Four balanced net10.0 processes per variant and one actual netstandard process
 per variant give 100 Standard / 90 Lean rows per process plus storage records;
@@ -1227,13 +1231,13 @@ all 600 warm-operation rows allocate zero bytes and pass the oracles.
 Retain adverse results: Standard 128-byte TryGet is 13.135-14.725 versus
 12.605-13.412 ns; GetRef is 11.530-14.226 versus 11.282-11.508. Standard
 reference pairs are 2.596-2.835 versus 2.477-2.687. Lean 32-byte GetRef is
-3.117-3.365 versus 2.995-3.079; reference-containing ref updates are
-6.244-9.622 versus 6.064-6.430. Standard 128-byte ref-update medians are
-12.302-19.534 versus 11.984-14.044, with individual maxima 32.126/18.610;
-reference TryGet has an outlying maximum 157.062/42.227 despite medians
-6.241-8.028/6.560-8.784. These synthetic variations remain unattributed;
-they establish no universal generic-payload parity or consumer timing guarantee.
-No generic timing budget was accepted in place of the original integer budget.
+3.117-3.365 versus 2.995-3.079; reference-containing ref updates are 6.244-9.622
+versus 6.064-6.430. Standard 128-byte ref-update medians are 12.302-19.534
+versus 11.984-14.044, with individual maxima 32.126/18.610; reference TryGet has
+an outlying maximum 157.062/42.227 despite medians 6.241-8.028/6.560-8.784.
+These synthetic variations remain unattributed; they establish no universal
+generic-payload parity or consumer timing guarantee. No generic timing budget
+was accepted in place of the original integer budget.
 
 Cold production-only reserve/growth, snapshot/restore and codecs use 32 warm /
 eight measured batches and validate ownership, exact wire data and every payload
@@ -1243,37 +1247,37 @@ decode 153304/263784; Standard MemoryPack 98416/164032. Short cold samples are
 not a tail-latency guarantee. Concrete warm operations exclude boxed interface
 iteration, cold allocation and external synchronization.
 
-Storage retains one owner/three arrays and payload bytes
-4*S + 8*D + managedWidth(T)*D, excluding object/array headers and separately
-allocated payload objects. At Count=4096, S=16384/D=4096 int payload is 114688
-bytes (114808 measured construction). Filling 16384 then removing down to 4096
-retains D=16384: 262144 payload bytes / 262264 construction bytes. Sparse factor
-ten (S=65536/D=4096) constructs in 311416 bytes; filling 40960 then removing
-retains S=D=65536 and 1048696 construction bytes. Optional membership and
-fill/remove high-water retention are different storage costs. No trim API or
-direct-slot fallback was added.
+Storage retains one owner/three arrays and payload bytes 4*S + 8*D +
+managedWidth(T)*D, excluding object/array headers and separately allocated
+payload objects. At Count=4096, S=16384/D=4096 int payload is 114688 bytes
+(114808 measured construction). Filling 16384 then removing down to 4096 retains
+D=16384: 262144 payload bytes / 262264 construction bytes. Sparse factor ten
+(S=65536/D=4096) constructs in 311416 bytes; filling 40960 then removing retains
+S=D=65536 and 1048696 construction bytes. Optional membership and fill/remove
+high-water retention are different storage costs. No trim API or direct-slot
+fallback was added.
 
-Existing-owner controls compare the frozen before graph and final graph in
-four balanced processes each: 784 complete rows, all zero-byte measured batches,
+Existing-owner controls compare the frozen before graph and final graph in four
+balanced processes each: 784 complete rows, all zero-byte measured batches,
 matching selected dependency hashes and identical corresponding checksums.
 Representative N=4096/spread-four/shuffled lookup medians before/final are
-SparseMap 0.984-1.022/1.013-1.025 ns, dense issuer
-2.179-2.281/2.174-2.245 and BCL exact-key control
-14.264-14.668/14.340-14.938. SparseMap lookup is higher in all four paired
-comparisons by 0.003-0.029 ns with overlapping process envelopes. Sparse/dense
-scans remain approximately 0.261-0.264 ns/entry; reserved churn ranges are
-4.426-4.485/4.419-4.571 and 4.841-5.262/4.843-4.918 respectively. Other
-representative directions are mixed or tied. Unchanged existing owners and
-the BCL shift do not establish an attributed source regression or zero overhead.
+SparseMap 0.984-1.022/1.013-1.025 ns, dense issuer 2.179-2.281/2.174-2.245 and
+BCL exact-key control 14.264-14.668/14.340-14.938. SparseMap lookup is higher in
+all four paired comparisons by 0.003-0.029 ns with overlapping process
+envelopes. Sparse/dense scans remain approximately 0.261-0.264 ns/entry;
+reserved churn ranges are 4.426-4.485/4.419-4.571 and 4.841-5.262/4.843-4.918
+respectively. Other representative directions are mixed or tied. Unchanged
+existing owners and the BCL shift do not establish an attributed source
+regression or zero overhead.
 
 ### Guides, reference inventory and completion
 
 The collection guide adds the issuer/independent-store diagram, optional
 component example, exact joined update/teardown/reuse, borrowing boundary and
 storage formula/high-water example. README and guide overview route to the
-ownership comparison/example; persistence remains in its existing guide.
-The exact Markdown paired-store example compiles as C# 11 and executes against
-all four final graphs, producing tickets [A,C,D] and positions [6,109,3].
+ownership comparison/example; persistence remains in its existing guide. The
+exact Markdown paired-store example compiles as C# 11 and executes against all
+four final graphs, producing tickets [A,C,D] and positions [6,109,3].
 
 Fresh DocFX 2.78.5 generation from both Standard Release/net10.0 DLLs and
 adjacent XML succeeds with zero warnings/errors (117 managed-reference files,
@@ -1288,30 +1292,30 @@ SwiftCollections theme. Those preview-only changes were removed afterwards.
 
 A source-symbol audit reconciles every authored member, including partials,
 operators, fields, nested enumerators and explicit interface implementations,
-against actual metadata and emitted XML in all four core graphs: 32 store +
-34 dense issuer + 10 ticket = 76 authored APIs, all applicable tags present.
-The one shared internal helper type has a summary. Seventy authored declarations
+against actual metadata and emitted XML in all four core graphs: 32 store + 34
+dense issuer + 10 ticket = 76 authored APIs, all applicable tags present. The
+one shared internal helper type has a summary. Seventy authored declarations
 render across seven pages; four explicit GetEnumerator methods and two explicit
 IEnumerator.Current properties are hidden by DocFX but documented in XML.
-Parameters, return/ref/out text, property values, exceptions, links and corrected
-typed equality text were checked. No authored inheritdoc requires resolution.
-Five synthesized default struct constructors and inherited framework members
-are accounted separately. Across the four owner/state types, Standard/net10.0
-has twelve private explicit generated MemoryPack methods. Standard/netstandard2.1
-instead ships twelve public static generated methods and four private formatter
-types; those public APIs are absent from the site's selected target. Lean has
-no generated MemoryPack APIs. None is an undocumented authored API. Standard
-and Lean benchmark discovery also passes; no full BenchmarkDotNet run is claimed.
+Parameters, return/ref/out text, property values, exceptions, links and
+corrected typed equality text were checked. No authored inheritdoc requires
+resolution. Five synthesized default struct constructors and inherited framework
+members are accounted separately. Across the four owner/state types,
+Standard/net10.0 has twelve private explicit generated MemoryPack methods.
+Standard/netstandard2.1 instead ships twelve public static generated methods and
+four private formatter types; those public APIs are absent from the site's
+selected target. Lean has no generated MemoryPack APIs. None is an undocumented
+authored API. Standard and Lean benchmark discovery also passes; no full
+BenchmarkDotNet run is claimed.
 
-The starting checkout was clean at
-f87a1014d2cb548c743b085578b9249b9a90501b, index tree
-e9e8ee8434912f767cdb9189b89857a64b2ea34a. Providers remain unchanged at
-Chronicler 0281469ecc40e65a05867f473bc10f030e7f69f8 and FixedMathSharp
-8fdf889322f1bb82501c2afec63d6bb2f304ace2. CI's FixedMathSharp pin matches;
-its Chronicler pin remains 7b90d5923d4bb6e0e42c033ec697b9678d6b8ece. Local
-source results do not claim hosted validation of that different revision.
-No provider, adapter, dependency pin, CI policy, release or consumer migration
-was changed. Physical maximum arrays, forced OOM, other host platforms and
-universal timing/serializer guarantees remain concrete verification limits.
-No confirmed out-of-scope defect requires a tracker entry. Phase 3 and the
-feature are complete.
+The starting checkout was clean at f87a1014d2cb548c743b085578b9249b9a90501b,
+index tree e9e8ee8434912f767cdb9189b89857a64b2ea34a. Providers remain unchanged
+at Chronicler 0281469ecc40e65a05867f473bc10f030e7f69f8 and FixedMathSharp
+8fdf889322f1bb82501c2afec63d6bb2f304ace2. CI's FixedMathSharp pin matches; its
+Chronicler pin remains 7b90d5923d4bb6e0e42c033ec697b9678d6b8ece. Local source
+results do not claim hosted validation of that different revision. No provider,
+adapter, dependency pin, CI policy, release or consumer migration was changed.
+Physical maximum arrays, forced OOM, other host platforms and universal
+timing/serializer guarantees remain concrete verification limits. No confirmed
+out-of-scope defect requires a tracker entry. Phase 3 and the feature are
+complete.

@@ -99,11 +99,10 @@ identical signatures across different families:
 
 ## Current owners and concrete reuse work
 
-The
-[generic BVH](../../../src/SwiftCollections/Query/BVH/SwiftBVH.cs)
-already depends only on
-[IBoundVolume](../../../src/SwiftCollections/Query/Bounds/IBoundVolume.cs).
-The 2D area-growth backend supplies the dimensional heuristic; no second binary
+The [generic BVH](../../../src/SwiftCollections/Query/BVH/SwiftBVH.cs) already
+depends only on
+[IBoundVolume](../../../src/SwiftCollections/Query/Bounds/IBoundVolume.cs). The
+2D area-growth backend supplies the dimensional heuristic; no second binary
 tree, node implementation or scratch subsystem is needed.
 
 The

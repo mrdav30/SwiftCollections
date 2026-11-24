@@ -81,22 +81,22 @@ expectations change:
 
 ## Repository Map
 
-| Path                                          | Purpose                                                       | Notes                                                                                                            |
-| --------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `src/SwiftCollections/Collection`             | Core collection types grouped by owner                        | Each family keeps its main implementation, nested types, enumerators and persistence partials together; shared contracts and capacity policy live in `Support`. |
-| `src/SwiftCollections/Dimension`              | Flat 2D/3D arrays and typed array helpers                     | Preserve index math and bounds behavior.                                                                         |
-| `src/SwiftCollections/Comparer`               | Equality and ordering comparer implementations                | Includes deterministic string comparers and the integer ordering comparer; persistence registration belongs in `Serialization/Comparers`. |
-| `src/SwiftCollections/Observable`             | Observable collection variants                                | Prefer for tooling/host-facing notifications, not simulation hot paths without evidence.                         |
-| `src/SwiftCollections/Pool`                   | Object, array, and collection pools                           | Collection pools and their lifecycle helper live in `Collection`; independent array/object pools stay at the root. |
-| `src/SwiftCollections/Query`                  | Spatial indexes, bounds, and shared query machinery             | `BVH`, `SpatialHash`, `Quadtree` and `Octree` group index families; `Bounds` holds public volume contracts/backends, and `Shared` holds internal index machinery. |
-| `src/SwiftCollections/Serialization`          | State structs and JSON/state converter support                | Build after changing state shape or serialization constructors.                                                  |
-| `src/SwiftCollections/Utility`                | Shared hashing and array-sorting algorithms                    | Preserve helper exception contracts.                                                                             |
-| `src/SwiftCollections.FixedMathSharp`         | Fixed-point spatial query companion                           | Mirrors the core query family and `Bounds` folders; depends on FixedMathSharp or FixedMathSharp.Lean. |
-| `tests/SwiftCollections.Tests`                | Core xUnit v3 tests                                           | References only the core runtime assembly and mirrors its source areas.                                          |
-| `tests/SwiftCollections.FixedMathSharp.Tests` | Companion xUnit v3 tests                                      | References the FixedMathSharp companion and can validate it against a published core package.                    |
-| `tests/SwiftCollections.Benchmarks`           | BenchmarkDotNet benchmarks                                    | Alias-based runner supports `list`, `dictionary`, `query`, `all`, and other selections.                          |
-| `docs/api`                                    | Branded DocFX landing page, conceptual guides, and API        | Publishes both runtime assemblies; generated `obj` output is ignored.                                            |
-| `.assets/scripts`                             | PowerShell release/version helpers                            | Requires PowerShell and GitVersion.Tool.                                                                         |
+| Path                                          | Purpose                                                | Notes                                                                                                                                                             |
+| --------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/SwiftCollections/Collection`             | Core collection types grouped by owner                 | Each family keeps its main implementation, nested types, enumerators and persistence partials together; shared contracts and capacity policy live in `Support`.   |
+| `src/SwiftCollections/Dimension`              | Flat 2D/3D arrays and typed array helpers              | Preserve index math and bounds behavior.                                                                                                                          |
+| `src/SwiftCollections/Comparer`               | Equality and ordering comparer implementations         | Includes deterministic string comparers and the integer ordering comparer; persistence registration belongs in `Serialization/Comparers`.                         |
+| `src/SwiftCollections/Observable`             | Observable collection variants                         | Prefer for tooling/host-facing notifications, not simulation hot paths without evidence.                                                                          |
+| `src/SwiftCollections/Pool`                   | Object, array, and collection pools                    | Collection pools and their lifecycle helper live in `Collection`; independent array/object pools stay at the root.                                                |
+| `src/SwiftCollections/Query`                  | Spatial indexes, bounds, and shared query machinery    | `BVH`, `SpatialHash`, `Quadtree` and `Octree` group index families; `Bounds` holds public volume contracts/backends, and `Shared` holds internal index machinery. |
+| `src/SwiftCollections/Serialization`          | State structs and JSON/state converter support         | Build after changing state shape or serialization constructors.                                                                                                   |
+| `src/SwiftCollections/Utility`                | Shared hashing and array-sorting algorithms            | Preserve helper exception contracts.                                                                                                                              |
+| `src/SwiftCollections.FixedMathSharp`         | Fixed-point spatial query companion                    | Mirrors the core query family and `Bounds` folders; depends on FixedMathSharp or FixedMathSharp.Lean.                                                             |
+| `tests/SwiftCollections.Tests`                | Core xUnit v3 tests                                    | References only the core runtime assembly and mirrors its source areas.                                                                                           |
+| `tests/SwiftCollections.FixedMathSharp.Tests` | Companion xUnit v3 tests                               | References the FixedMathSharp companion and can validate it against a published core package.                                                                     |
+| `tests/SwiftCollections.Benchmarks`           | BenchmarkDotNet benchmarks                             | Alias-based runner supports `list`, `dictionary`, `query`, `all`, and other selections.                                                                           |
+| `docs/api`                                    | Branded DocFX landing page, conceptual guides, and API | Publishes both runtime assemblies; generated `obj` output is ignored.                                                                                             |
+| `.assets/scripts`                             | PowerShell release/version helpers                     | Requires PowerShell and GitVersion.Tool.                                                                                                                          |
 
 Ignore generated output when reviewing structure:
 
@@ -132,11 +132,11 @@ Serialization guidance:
   serializer contract. Follow the serialization guide for codecs and the
   version-one-only breaking format; do not add legacy readers or fallback.
 - State-backed collections should preserve state constructors and state structs.
-- SwiftDenseTicketMap and SwiftTicketStore keep their one-State MemoryPack Object envelope
-  with authored owner readers and generated readonly state codecs. Reuse
-  `SwiftStateMemoryPack` for header/omitted-state handling; only a zero-member
-  owner reads prior State. Preserve null/failure behavior, owner-array registration
-  and the existing target-specific formatter API shape.
+- SwiftDenseTicketMap and SwiftTicketStore keep their one-State MemoryPack
+  Object envelope with authored owner readers and generated readonly state
+  codecs. Reuse `SwiftStateMemoryPack` for header/omitted-state handling; only a
+  zero-member owner reads prior State. Preserve null/failure behavior,
+  owner-array registration and the existing target-specific formatter API shape.
 - Comparer-aware JSON converters compile for `netstandard2.1` and `net10.0` in
   standard and Lean builds.
 - Shared MemoryPack and interpolated-handler compatibility attributes come from
@@ -180,8 +180,8 @@ validation. Stable identity never promises stable borrowed storage.
 SwiftTicketStore owns local entries, not issuer lifetime. It accepts generation
 zero, rejects any occupied-index attachment and never advances generations.
 Validate tickets with the issuer and coordinate attachment/teardown externally.
-SwiftDenseTicketMap and SwiftTicketStore share the bounded cold growth policy
-in `SwiftDenseCapacity`; keep issuer history and store membership separate.
+SwiftDenseTicketMap and SwiftTicketStore share the bounded cold growth policy in
+`SwiftDenseCapacity`; keep issuer history and store membership separate.
 
 Sparse containers allocate lookup storage based on the highest stored ID. Do not
 use them for arbitrary large IDs unless a benchmark and memory budget justify

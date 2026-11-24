@@ -15,7 +15,8 @@
 
 > Archived phase evidence: commands, counts and intermediate next actions apply
 > to the recorded checkpoints. The later owner-reader optimization is recorded
-> under [SC-Benchmark-008](../benchmark-signal-hardening-backlog.md#sc-benchmark-008---discarded-old-state-snapshots-during-ticket-owner-replacement).
+> under
+> [SC-Benchmark-008](../benchmark-signal-hardening-backlog.md#sc-benchmark-008---discarded-old-state-snapshots-during-ticket-owner-replacement).
 
 ## Outcome and boundaries
 
@@ -52,9 +53,9 @@ and retires local tickets and owns their associated records. An externally keyed
 dense store accepts tickets issued by another owner and owns only its entries.
 Its name and API were deferred at this planning checkpoint and subsequently
 defined by the [SwiftTicketStore plan](2026-11-23-swift-ticket-store-plan.md).
-It must not issue tickets, advance the
-agent's generation when a component is removed, or use value equality for
-membership. Both support mutable, duplicate values.
+It must not issue tickets, advance the agent's generation when a component is
+removed, or use value equality for membership. Both support mutable, duplicate
+values.
 
 A concrete design scenario is one agent owner with optional attached data:
 
@@ -107,14 +108,14 @@ paths exist and can be verified together.
 
 ## Existing owners and reuse
 
-| Owner                                                                              | Reuse or comparison                                                       | Boundary to preserve                                                                                           |
-| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| [SwiftTicket](../../../src/SwiftCollections/Collection/Support/SwiftTicket.cs)     | Existing Index/Generation token shape.                                    | No owner or timeline identity; existing users and CLR identity stay intact.                                    |
-| [SwiftTicketMap](../../../src/SwiftCollections/Collection/TicketMap/SwiftTicketMap.cs)       | Ticket checks, explicit state and borrowing conventions; direct baseline. | Slot-order iteration, existing default-token/wrap behavior and lenient state restore are not silently changed. |
-| [SwiftSparseMap](../../../src/SwiftCollections/Collection/SparseMap/SwiftSparseMap.cs)       | Dense values, reverse slot IDs and swap-back repair.                      | Its integer IDs are externally owned and it has no generation allocator.                                       |
-| [SwiftPackedSet](../../../src/SwiftCollections/Collection/PackedSet/SwiftPackedSet.cs)       | Dense iteration and removal mechanics.                                    | Value uniqueness and a hash lookup are unnecessary for this new owner.                                         |
-| [SwiftIntStack](../../../src/SwiftCollections/Collection/Stack/SwiftIntStack.cs) | Existing LIFO storage candidate.                                          | Reserve enough storage before mutations; Push must not unexpectedly allocate during removal.                   |
-| Existing guards, capacity helpers and serializer patterns                          | Reuse applicable behavior and Standard/Lean conventions.                  | Check capacity sentinels and arithmetic; do not copy a helper call without checking its contract.              |
+| Owner                                                                                  | Reuse or comparison                                                       | Boundary to preserve                                                                                           |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| [SwiftTicket](../../../src/SwiftCollections/Collection/Support/SwiftTicket.cs)         | Existing Index/Generation token shape.                                    | No owner or timeline identity; existing users and CLR identity stay intact.                                    |
+| [SwiftTicketMap](../../../src/SwiftCollections/Collection/TicketMap/SwiftTicketMap.cs) | Ticket checks, explicit state and borrowing conventions; direct baseline. | Slot-order iteration, existing default-token/wrap behavior and lenient state restore are not silently changed. |
+| [SwiftSparseMap](../../../src/SwiftCollections/Collection/SparseMap/SwiftSparseMap.cs) | Dense values, reverse slot IDs and swap-back repair.                      | Its integer IDs are externally owned and it has no generation allocator.                                       |
+| [SwiftPackedSet](../../../src/SwiftCollections/Collection/PackedSet/SwiftPackedSet.cs) | Dense iteration and removal mechanics.                                    | Value uniqueness and a hash lookup are unnecessary for this new owner.                                         |
+| [SwiftIntStack](../../../src/SwiftCollections/Collection/Stack/SwiftIntStack.cs)       | Existing LIFO storage candidate.                                          | Reserve enough storage before mutations; Push must not unexpectedly allocate during removal.                   |
+| Existing guards, capacity helpers and serializer patterns                              | Reuse applicable behavior and Standard/Lean conventions.                  | Check capacity sentinels and arithmetic; do not copy a helper call without checking its contract.              |
 
 Gravitas's `ColliderRegistry<TCollider>` is a concrete analogue: a slot map for
 ID lookup, a dense list and manual service-index repair. It also owns separate
@@ -1464,8 +1465,9 @@ were exercised. Process-wide OOM/allocator fault injection, arbitrary payload
 callbacks, all possible AOT closures and other OS/architecture timing remain
 explicit verification limits; source inspection covers allocation publication.
 
-**Disposition:** Phases 0–3 completed the owning map. The external-store boundary
-was deferred to the [subsequently completed store plan](2026-11-23-swift-ticket-store-plan.md),
+**Disposition:** Phases 0–3 completed the owning map. The external-store
+boundary was deferred to the
+[subsequently completed store plan](2026-11-23-swift-ticket-store-plan.md),
 which named its API/issuer authority and exercised the real paired-store
 scenarios. Reopen this feature only for a concrete caller contract or verified
 correctness/performance issue. No ECS coordination, consumer migration, release
