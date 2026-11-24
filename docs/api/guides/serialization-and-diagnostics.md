@@ -176,6 +176,16 @@ Failures may advance the reader or leave partial writer output. Custom payload
 serializer side effects are not rolled back. Use matching Standard/Lean
 dependency graphs and verify closed types on the target AOT host.
 
+For known complete snapshots, decode into a fresh local with the ordinary
+value-returning `MemoryPackSerializer.Deserialize<T>` overload, validate the
+candidate, then publish it. Passing an existing owner by reference does not
+reuse its private storage: the generated reader first snapshots the old State,
+then discards that snapshot while reading fresh state arrays. That extra copy
+scales with old live entries and, for the issuer, generation history. This also
+applies to SwiftTicketStore below. Keep the old owner published until decoding
+succeeds. Do not substitute fresh-destination decoding when intentionally using
+zero-member owner records to inherit prior state; those semantics differ.
+
 ### Persist externally issued ticket entries
 
 `SwiftTicketStore<T>` saves entries attached to another owner's tickets. Its

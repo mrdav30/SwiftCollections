@@ -14,7 +14,7 @@ feature-work plan and link it from the signal.
 ## Intake Rules
 
 - Signal IDs use `SC-Benchmark-NNN`. The next available ID is
-  `SC-Benchmark-008`.
+  `SC-Benchmark-009`.
 - Assign an ID at intake and never reuse it, including after closure or
   promotion. Check this file's history before changing the counter.
 - Open a signal from an actual benchmark, allocation guard, profiler capture, or
@@ -80,7 +80,124 @@ making a new performance claim.
 
 ## Active Signals
 
-None.
+### SC-Benchmark-008 - Discarded old-state snapshots during ticket-owner replacement
+
+- **Discovered:** 2026-11-23, final SwiftDenseTicketMap/SwiftTicketStore review.
+- **Status:** Open cold-path optimization. Confirmed allocation and generated-code
+  cause; no correctness defect, warm-operation regression or new completion gate.
+- **Owners:** Standard generated MemoryPack readers for SwiftDenseTicketMap<T>
+  and SwiftTicketStore<T>, together with their State getters. Lean is unaffected.
+- **Revision/environment:** SwiftCollections
+  989a4272754c02f42f86719625db68cd92af8569, clean before review; released-package
+  dependencies, MemoryPack 1.21.4 / Chronicler.Core 1.0.0. Windows x64,
+  Core i7-9700K, SDK 10.0.302 / .NET 10.0.10, optimized Release. The same results
+  occur with actual net10.0 and netstandard2.1 runtime assemblies in a .NET 10
+  host, with selected DLL hashes and target-framework attributes checked.
+- **Cause:** For a complete one-member owner record and a non-null destination,
+  the generated reader evaluates `__State = value.State`, then reads into that
+  local. The readonly state reader allocates fresh arrays and replaces the DTO,
+  discarding the old snapshot. The owner constructor creates a replacement.
+  State snapshots cost three arrays for a store and four for the issuer; issuer
+  generation history is copied even when all historical slots are retired.
+  Current generated output confirms this path for both owners, not only an
+  inferred generator pattern.
+
+The following measured bytes per complete decode replace the destination with
+an **empty** snapshot. The old owner remains unchanged. Construction, wire
+encoding, formatter warmup and old-owner validation are outside measurement.
+Each case warms 32 calls and measures 128 calls using
+GC.GetAllocatedBytesForCurrentThread with background GC disabled. No timing or
+universal throughput claim is made.
+
+| Old live int entries | Issuer: null destination | Issuer: existing destination | Store: null destination | Store: existing destination |
+| ---: | ---: | ---: | ---: | ---: |
+| 0 | 136 B | 232 B | 48 B | 120 B |
+| 128 | 136 B | 1768 B | 48 B | 1656 B |
+| 4096 | 136 B | 49384 B | 48 B | 49272 B |
+| 16384 | 136 B | 196840 B | 48 B | 196728 B |
+
+At 4096 entries, the discarded snapshot alone adds 49248 B for the issuer or
+49224 B for the store. An issuer with Count=0 and 4096 retired generations still
+uses 16616 B/decode versus 136 B into null (16480 B extra). This tracks logical
+state/history, not retained physical capacity. Both target assets give the same
+values. Complete incoming empty records are respectively hex
+`010400000000000000000000000000000000` and
+`0103000000000000000000000000`.
+
+**Portable reproducer:** create an external net10.0 console project and reference
+the core project, using the commands below from the repository root. Set
+`<ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>` in the console
+project. Replace Program.cs with this program; no maintained fixture is required.
+
+```powershell
+dotnet new console --framework net10.0 --output ../SwiftTicketDecodeRepro
+dotnet add ../SwiftTicketDecodeRepro/SwiftTicketDecodeRepro.csproj reference src/SwiftCollections/SwiftCollections.csproj
+dotnet run --project ../SwiftTicketDecodeRepro/SwiftTicketDecodeRepro.csproj -c Release -p:UseLocalLsfStack=false -p:DisableTransitiveProjectReferences=false
+```
+
+```csharp
+using System;
+using MemoryPack;
+using SwiftCollections;
+
+var issuer = new SwiftDenseTicketMap<int>(4096);
+var store = new SwiftTicketStore<int>(4096, 4096);
+for (int i = 0; i < 4096; i++)
+{
+    store.Add(issuer.Add(i), i);
+}
+byte[] issuerBytes = MemoryPackSerializer.Serialize(new SwiftDenseTicketMap<int>(0));
+byte[] storeBytes = MemoryPackSerializer.Serialize(new SwiftTicketStore<int>(0, 0));
+Console.WriteLine($"issuer null/existing: {Bytes<SwiftDenseTicketMap<int>>(null, issuerBytes)}/{Bytes(issuer, issuerBytes)} B");
+Console.WriteLine($"store null/existing: {Bytes<SwiftTicketStore<int>>(null, storeBytes)}/{Bytes(store, storeBytes)} B");
+if (issuer.Count != 4096 || store.Count != 4096)
+    throw new Exception("Previous owners changed.");
+
+static long Bytes<T>(T? previous, byte[] bytes) where T : class
+{
+    for (int i = 0; i < 32; i++)
+    {
+        T? target = previous;
+        MemoryPackSerializer.Deserialize(bytes, ref target);
+    }
+    long start = GC.GetAllocatedBytesForCurrentThread();
+    for (int i = 0; i < 128; i++)
+    {
+        T? target = previous;
+        MemoryPackSerializer.Deserialize(bytes, ref target);
+        if (target is SwiftDenseTicketMap<int> map ? map.Count != 0
+            : target is not SwiftTicketStore<int> components || components.Count != 0)
+            throw new Exception("Incoming empty state was not restored.");
+        if (ReferenceEquals(previous, target))
+            throw new Exception("Expected a replacement owner.");
+    }
+    return (GC.GetAllocatedBytesForCurrentThread() - start) / 128;
+}
+```
+
+To check actual netstandard2.1 assets, build the core with `-c Release -f
+netstandard2.1` and the same package-mode properties. Bind a separate .NET 10
+host directly to that core DLL and its target dependency assets, not a
+multi-target ProjectReference that selects net10.0. Register the four closed
+owner/state types with their generated RegisterFormatter methods before use.
+The input records and expected allocations above remain the oracle.
+
+**Disposition and next action:** retain the generated Object schema and its
+current semantics during this review. For known complete snapshots, decode into
+a fresh local with the ordinary value-returning Deserialize<T> overload, validate,
+then publish; this avoids the old snapshot and preserves the published owner if
+decoding fails. Do not null the caller's published destination before decoding.
+This is a caller pattern, not a library fix or an accepted universal cost budget.
+
+Before changing codecs, identify a real caller requiring non-null by-ref
+replacement and measure its restore workload. A correction must preserve null
+records, zero-member owner records (which intentionally inherit prior logical
+state), failure preservation, both target formatter bootstraps and native
+stripping/AOT closure. Do not replace the generated codecs with duplicated
+handwritten formatters solely to eliminate a synthetic allocation. Close after
+that bounded source/caller decision or a verified optimization; reopen a closed
+no-change decision when a consuming restore budget or suitable shared generator
+capability changes the tradeoff. No issue-tracker bug ID is assigned.
 
 ## Closed Signals
 
