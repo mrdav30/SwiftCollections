@@ -153,15 +153,15 @@ compatibility.
 
 #### Dense-ticket MemoryPack behavior
 
-Standard builds use the generated Object format: one owner State field and the
-four state fields above. Explicit bootstrap for closed types uses
+Standard builds use the Object format: one owner State field and the four
+state fields above. Explicit bootstrap for closed types uses
 `MemoryPackFormatterProvider.Register<SwiftDenseTicketMap<int>>()` and the
-corresponding state type on net10.0. The generated netstandard2.1 APIs instead
+corresponding state type on net10.0. The netstandard2.1 APIs instead
 expose `SwiftDenseTicketMap<int>.RegisterFormatter()` and
 `SwiftDenseTicketMapState<int>.RegisterFormatter()`. Root payload formatters as
 required; Lean has no MemoryPack runtime or generated entry points.
 
-The generated decoder accepts omitted fields; this is not a strict versioned
+The decoder accepts omitted fields; this is not a strict versioned
 envelope. In particular, a zero-member owner header creates an empty owner when
 the destination is null, but reconstructs the prior logical state when reading
 into an existing destination. A null owner header sets the destination to null.
@@ -175,16 +175,6 @@ DTO is still passive: decode it first, then construct an owner to validate it.
 Failures may advance the reader or leave partial writer output. Custom payload
 serializer side effects are not rolled back. Use matching Standard/Lean
 dependency graphs and verify closed types on the target AOT host.
-
-For known complete snapshots, decode into a fresh local with the ordinary
-value-returning `MemoryPackSerializer.Deserialize<T>` overload, validate the
-candidate, then publish it. Passing an existing owner by reference does not
-reuse its private storage: the generated reader first snapshots the old State,
-then discards that snapshot while reading fresh state arrays. That extra copy
-scales with old live entries and, for the issuer, generation history. This also
-applies to SwiftTicketStore below. Keep the old owner published until decoding
-succeeds. Do not substitute fresh-destination decoding when intentionally using
-zero-member owner records to inherit prior state; those semantics differ.
 
 ### Persist externally issued ticket entries
 
@@ -216,9 +206,9 @@ serializer's responsibility.
 
 Standard MemoryPack writes one owner member containing the three-member state,
 followed by the arrays. Bootstrap each closed store and state with the same
-net10.0 provider registration or netstandard2.1 generated RegisterFormatter
+net10.0 provider registration or netstandard2.1 public RegisterFormatter
 pattern described above. Lean retains JSON/raw state and has no MemoryPack
-runtime. The generated binary reader's replacement and failure rules above
+runtime. The binary reader's replacement and failure rules above
 apply to the store too. An explicit empty or null *nested binary state* creates
 an empty store, whereas JSON `"State": null` rejects. A zero-member binary
 *owner* read into an existing destination instead reconstructs its prior logical

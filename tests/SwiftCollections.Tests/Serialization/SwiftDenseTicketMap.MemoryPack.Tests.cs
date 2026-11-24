@@ -205,6 +205,34 @@ public class SwiftDenseTicketMapMemoryPackTests
         ContinueAndAssert(overwritten);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CompleteRefReplacement_DoesNotAllocateForPreviousEntriesOrRetiredHistory(bool retiredHistory)
+    {
+        const int population = 4096;
+        var original = retiredHistory
+            ? new SwiftDenseTicketMap<int>(new SwiftDenseTicketMapState<int>([], [], new uint[population], []))
+            : new SwiftDenseTicketMap<int>(population);
+        if (!retiredHistory)
+            for (int i = 0; i < population; i++) original.Add(i + 1);
+        var originalState = original.State;
+        byte[] bytes = MemoryPackSerializer.Serialize(new SwiftDenseTicketMap<int>(0));
+
+        long freshBytes = MeasureEmptyReplacement(null, bytes, out var fresh);
+        long replacementBytes = MeasureEmptyReplacement(original, bytes, out var replacement);
+
+        Assert.Equal(freshBytes, replacementBytes);
+        Assert.NotSame(original, replacement);
+        Assert.Empty(fresh);
+        Assert.Empty(replacement);
+        Assert.Empty(replacement.State.SlotGenerations);
+        AssertLogicalState(originalState, original.State);
+        Assert.Equal(new SwiftTicket(0, 1), replacement.Add(-1));
+        Assert.Equal(-1, replacement.GetRef(new SwiftTicket(0, 1)));
+        AssertLogicalState(originalState, original.State);
+    }
+
     [Fact]
     public void RawStateRefDecode_UsesFreshArraysAndPreservesPreviousArraysOnTruncation()
     {
@@ -316,6 +344,25 @@ public class SwiftDenseTicketMapMemoryPackTests
 
     private static SwiftDenseTicketMap<int> RoundTrip(SwiftDenseTicketMap<int> map)
         => MemoryPackSerializer.Deserialize<SwiftDenseTicketMap<int>>(MemoryPackSerializer.Serialize(map));
+
+    private static long MeasureEmptyReplacement(SwiftDenseTicketMap<int> previous, byte[] bytes,
+        out SwiftDenseTicketMap<int> replacement)
+    {
+        const int iterations = 64;
+        replacement = previous;
+        for (int i = 0; i < 32; i++)
+        {
+            replacement = previous;
+            MemoryPackSerializer.Deserialize(bytes, ref replacement);
+        }
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int i = 0; i < iterations; i++)
+        {
+            replacement = previous;
+            MemoryPackSerializer.Deserialize(bytes, ref replacement);
+        }
+        return GC.GetAllocatedBytesForCurrentThread() - before;
+    }
 
     private static SwiftDenseTicketMapState<int> PartitionedState()
         => new([101, 303], [0, 2], [1, 2, uint.MaxValue, 0, 3], [1, 4]);

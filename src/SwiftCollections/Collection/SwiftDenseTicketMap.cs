@@ -31,7 +31,7 @@ namespace SwiftCollections;
 /// </remarks>
 [Serializable]
 [JsonConverter(typeof(StateJsonConverterFactory))]
-[MemoryPackable]
+[MemoryPackable(GenerateType.NoGenerate)]
 public sealed partial class SwiftDenseTicketMap<T> : IStateBacked<SwiftDenseTicketMapState<T>>, ISwiftCloneable<T>, IEnumerable<T>
 {
     // Live positions are nonnegative; free positions encode -2-next, with end/head -1.

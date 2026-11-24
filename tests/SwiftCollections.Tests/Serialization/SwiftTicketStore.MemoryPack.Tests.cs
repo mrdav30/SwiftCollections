@@ -273,6 +273,29 @@ public class SwiftTicketStoreMemoryPackTests
         Assert.Same(payload, enumerator.Current);
     }
 
+    [Fact]
+    public void CompleteRefReplacement_DoesNotAllocateForPreviousEntries()
+    {
+        const int population = 4096;
+        var original = new SwiftTicketStore<int>(population, population);
+        for (int i = 0; i < population; i++) original.Add(new SwiftTicket(i, (uint)i), i + 1);
+        var originalState = original.State;
+        byte[] bytes = MemoryPackSerializer.Serialize(new SwiftTicketStore<int>(0, 0));
+
+        long freshBytes = MeasureEmptyReplacement(null, bytes, out var fresh);
+        long replacementBytes = MeasureEmptyReplacement(original, bytes, out var replacement);
+
+        Assert.Equal(freshBytes, replacementBytes);
+        Assert.NotSame(original, replacement);
+        Assert.Empty(fresh);
+        Assert.Empty(replacement);
+        Assert.Empty(replacement.State.DenseSlots);
+        AssertLogicalState(originalState, original.State);
+        replacement.Add(default, -1);
+        Assert.Equal(-1, replacement.GetRef(default));
+        AssertLogicalState(originalState, original.State);
+    }
+
     [Theory]
     [InlineData("slot-length")]
     [InlineData("generation-length")]
@@ -399,6 +422,25 @@ public class SwiftTicketStoreMemoryPackTests
 
     private static SwiftTicketStoreState<int> ControlState() =>
         new([101, 202, 303], [0, 7, 3], [0, uint.MaxValue, 9]);
+
+    private static long MeasureEmptyReplacement(SwiftTicketStore<int> previous, byte[] bytes,
+        out SwiftTicketStore<int> replacement)
+    {
+        const int iterations = 64;
+        replacement = previous;
+        for (int i = 0; i < 32; i++)
+        {
+            replacement = previous;
+            MemoryPackSerializer.Deserialize(bytes, ref replacement);
+        }
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int i = 0; i < iterations; i++)
+        {
+            replacement = previous;
+            MemoryPackSerializer.Deserialize(bytes, ref replacement);
+        }
+        return GC.GetAllocatedBytesForCurrentThread() - before;
+    }
 
     private static void AssertLogicalState(SwiftTicketStoreState<int> expected, SwiftTicketStoreState<int> actual)
     {

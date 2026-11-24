@@ -132,6 +132,11 @@ Serialization guidance:
   serializer contract. Follow the serialization guide for codecs and the
   version-one-only breaking format; do not add legacy readers or fallback.
 - State-backed collections should preserve state constructors and state structs.
+- SwiftDenseTicketMap and SwiftTicketStore keep their one-State MemoryPack Object envelope
+  with authored owner readers and generated readonly state codecs. Reuse
+  `SwiftStateMemoryPack` for header/omitted-state handling; only a zero-member
+  owner reads prior State. Preserve null/failure behavior, owner-array registration
+  and the existing target-specific formatter API shape.
 - Comparer-aware JSON converters compile for `netstandard2.1` and `net10.0` in
   standard and Lean builds.
 - Shared MemoryPack and interpolated-handler compatibility attributes come from

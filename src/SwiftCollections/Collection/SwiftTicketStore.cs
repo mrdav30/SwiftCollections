@@ -34,7 +34,7 @@ namespace SwiftCollections;
 /// </remarks>
 [Serializable]
 [JsonConverter(typeof(StateJsonConverterFactory))]
-[MemoryPackable]
+[MemoryPackable(GenerateType.NoGenerate)]
 public sealed partial class SwiftTicketStore<T> : IStateBacked<SwiftTicketStoreState<T>>, IEnumerable<T>
 {
     private int[] _sparse;

@@ -80,12 +80,17 @@ making a new performance claim.
 
 ## Active Signals
 
+None.
+
+## Closed Signals
+
 ### SC-Benchmark-008 - Discarded old-state snapshots during ticket-owner replacement
 
 - **Discovered:** 2026-11-23, final SwiftDenseTicketMap/SwiftTicketStore review.
-- **Status:** Open cold-path optimization. Confirmed allocation and generated-code
-  cause; no correctness defect, warm-operation regression or new completion gate.
-- **Owners:** Standard generated MemoryPack readers for SwiftDenseTicketMap<T>
+- **Closed:** 2026-11-23; removed the old-owner-dependent allocation from complete
+  MemoryPack replacement. Null, omitted-state and failed-replacement contracts
+  remain unchanged. No release claim or new completion gate.
+- **Owners:** Standard MemoryPack readers for SwiftDenseTicketMap<T>
   and SwiftTicketStore<T>, together with their State getters. Lean is unaffected.
 - **Revision/environment:** SwiftCollections
   989a4272754c02f42f86719625db68cd92af8569, clean before review; released-package
@@ -93,13 +98,13 @@ making a new performance claim.
   Core i7-9700K, SDK 10.0.302 / .NET 10.0.10, optimized Release. The same results
   occur with actual net10.0 and netstandard2.1 runtime assemblies in a .NET 10
   host, with selected DLL hashes and target-framework attributes checked.
-- **Cause:** For a complete one-member owner record and a non-null destination,
+- **Baseline cause:** For a complete one-member owner record and a non-null destination,
   the generated reader evaluates `__State = value.State`, then reads into that
   local. The readonly state reader allocates fresh arrays and replaces the DTO,
   discarding the old snapshot. The owner constructor creates a replacement.
   State snapshots cost three arrays for a store and four for the issuer; issuer
   generation history is copied even when all historical slots are retired.
-  Current generated output confirms this path for both owners, not only an
+  Baseline generated output confirmed this path for both owners, not only an
   inferred generator pattern.
 
 The following measured bytes per complete decode replace the destination with
@@ -124,7 +129,8 @@ values. Complete incoming empty records are respectively hex
 `010400000000000000000000000000000000` and
 `0103000000000000000000000000`.
 
-**Portable reproducer:** create an external net10.0 console project and reference
+**Portable baseline reproducer:** from the recorded baseline checkout, create an
+external net10.0 console project and reference
 the core project, using the commands below from the repository root. Set
 `<ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>` in the console
 project. Replace Program.cs with this program; no maintained fixture is required.
@@ -182,24 +188,168 @@ multi-target ProjectReference that selects net10.0. Register the four closed
 owner/state types with their generated RegisterFormatter methods before use.
 The input records and expected allocations above remain the oracle.
 
-**Disposition and next action:** retain the generated Object schema and its
-current semantics during this review. For known complete snapshots, decode into
-a fresh local with the ordinary value-returning Deserialize<T> overload, validate,
-then publish; this avoids the old snapshot and preserves the published owner if
-decoding fails. Do not null the caller's published destination before decoding.
-This is a caller pattern, not a library fix or an accepted universal cost budget.
+**Resolution:** use authored one-State owner readers through the existing
+GenerateType.NoGenerate pattern. Both reuse the internal SwiftStateMemoryPack
+envelope reader; readonly state DTOs and their generated codecs are unchanged.
+The shared reader captures previous.State only for a zero-member owner. Complete
+records read fresh state, then each owner validates and constructs its replacement
+before assigning the caller's reference. Null and invalid headers retain their
+existing behavior. This removes the cause inside the library; callers can keep
+using by-reference decoding. The public guide's workaround paragraph was removed.
 
-Before changing codecs, identify a real caller requiring non-null by-ref
-replacement and measure its restore workload. A correction must preserve null
-records, zero-member owner records (which intentionally inherit prior logical
-state), failure preservation, both target formatter bootstraps and native
-stripping/AOT closure. Do not replace the generated codecs with duplicated
-handwritten formatters solely to eliminate a synthetic allocation. Close after
-that bounded source/caller decision or a verified optimization; reopen a closed
-no-change decision when a consuming restore budget or suitable shared generator
-capability changes the tradeoff. No issue-tracker bug ID is assigned.
+MemoryPack 1.21.4's
+[tagged emitter](https://github.com/Cysharp/MemoryPack/blob/1.21.4/src/MemoryPack.Generator/MemoryPackGenerator.Emitter.cs)
+does not offer an overwrite-suppression switch for this generated class path.
+The authored boundary preserves the Object bytes, target-specific interfaces,
+netstandard public methods, private net10 explicit methods, owner-array
+registration and preservation attributes. No factories, delegates, owner fields,
+reflection, registry or ordinary collection-operation work were added. Three
+Standard-only files add 225 authored lines including headers, XML, conditional
+compatibility wrappers and the 32-line shared helper; they replace generated
+owner plumbing. Lean excludes those files through its existing build policy.
 
-## Closed Signals
+Three maintained regressions compare 64 warmed replacements into null versus a
+4096-entry prior owner (or 4096 retired issuer generations), resetting the old
+destination before every call. They check exact old state, empty replacement
+and independent future insertion without hardcoded object sizes. All three
+failed on the unfixed implementation for the expected allocation difference,
+then passed. Existing literal-wire, null/omitted/partial-state, mutable-payload,
+truncation and replacement-failure tests remain intact.
+
+### Allocation and bounded timing verification
+
+The baseline reproducer now prints issuer **136/136 B** and store **48/48 B**.
+Before/final captures bind frozen optimized Standard graphs for both actual
+targets, with identical selected dependencies and verified core hashes. Incoming
+counts 0/128 and old counts 0/4096/16384 have exact ticket/value oracles; old
+owners remain unchanged. The complete replacement results are:
+
+| Prior int state | Issuer before / final | Store before / final |
+| --- | ---: | ---: |
+| Empty owner | 232 / 136 B | 120 / 48 B |
+| 4096 live entries, incoming empty | 49384 / 136 B | 49272 / 48 B |
+| 16384 live entries, incoming empty | 196840 / 136 B | 196728 / 48 B |
+| 4096 live entries, incoming 128 | 53040 / 3792 B | 54536 / 5312 B |
+| 4096 retired generations, incoming empty | 16616 / 136 B | Not applicable |
+
+Null-destination allocations are unchanged. Zero-member-owner controls also
+retain their intentional snapshot/reconstruction cost: 114920 B for the issuer
+and 164032 B for the store at 4096 entries (store indices are 3*i). For live int
+entries the removed allocation is exactly 12*N+96 B / 12*N+72 B respectively;
+retired issuer history removes 4*N+96 B. No universal zero-allocation decode is
+claimed; incoming state and the replacement still own storage.
+
+Timing uses independent ABBA-ordered processes, 32 initial warm calls, seven
+128-call batches and exact validation outside the clock. Four before/final
+processes per target cover 19 rows each. Default-tiered 4096-entry-to-empty
+medians improve from issuer 12.99-14.24 to 0.356-0.370 microseconds and store
+11.74-14.48 to 0.206-0.308 on net10.0. Corresponding netstandard ranges are
+13.09-15.17 to 0.355-0.391 and 13.71-14.55 to 0.219-0.227. All allocation
+counts agree across processes and targets. Construction, encoding, registration
+warmup and validation are outside measurement; decoding allocations/GC are inside.
+
+Retain the adverse controls: short fresh-destination issuer/128-entry captures
+were slower after the change on both targets: default tiering about
+3.95-4.39 to 5.75-14.45 microseconds on net10.0 and 4.12-4.65 to 5.49-5.89 on
+netstandard. Short tiering-disabled captures also showed the same direction
+(0.895-1.287 to 2.263-2.883 and 0.787-0.964 to 2.002-2.697). These are not
+discarded as outliers or attributed to tiering alone.
+
+A bounded isolated control removes preceding large-state cases, warms each
+fresh-destination 128-entry case for 200 ms, and measures seven 2048-call batches.
+Four balanced before/final processes per target with DOTNET_TieredCompilation=0
+give issuer 1.043-1.132 / 1.027-1.081 microseconds (net10.0) and
+1.043-1.128 / 1.008-1.052 (netstandard); store 0.957-1.127 / 0.962-1.035 and
+0.905-0.985 / 0.935-1.050. Default tiering/PGO-on controls with the same isolated
+warmup remain variable: issuer 1.09-3.70 / 0.78-3.46 and 3.34-3.80 / 3.49-3.71;
+store 2.44-3.00 / 2.37-2.75 and 2.97-3.01 / 2.71-3.11. Allocations remain equal.
+The short-case direction is not a consistent fully warmed issuer regression;
+its timing attribution remains unresolved. These checks establish neither
+universal timing parity nor an accepted new cost budget. No additional source
+tuning was justified by these warmup/order-sensitive controls.
+
+The complete measurements contain 672 verified rows: 304 initial default-tiered,
+304 short tiering-disabled, 32 isolated default-tiered and 32 isolated
+tiering-disabled. No build, test, profiler or Unity run overlapped timings.
+The allocation fix, rather than an unqualified timing claim, closes this signal.
+
+### Compatibility, coverage and host verification
+
+All seven final lanes pass the unchanged full line/branch/executable-method gate
+for both runtime assemblies, with no failures or skips:
+
+| Executed lane | Core / companion tests | Core lines, branches, methods | Companion lines, branches, methods |
+| --- | ---: | --- | --- |
+| Debug net10.0, source | 2423 / 100 | 8710/8710, 3136/3136, 1475/1475 | 257/257, 86/86, 67/67 |
+| Release net10.0, package and source separately | 2425 / 100 each | 6634/6634, 3128/3128, 1475/1475 | 205/205, 86/86, 67/67 |
+| ReleaseLean net10.0, package and source separately | 2270 / 100 each | 6407/6407, 3028/3028, 1425/1425 | 205/205, 86/86, 67/67 |
+| Actual netstandard2.1 Release, package | 2424 / 100 | 6638/6638, 3128/3128, 1479/1479 | 205/205, 86/86, 67/67 |
+| Actual netstandard2.1 ReleaseLean, package | 2269 / 100 | 6407/6407, 3028/3028, 1425/1425 | 205/205, 86/86, 67/67 |
+
+Commands are the existing CONTRIBUTING build/test/coverlet commands and
+assert-full-coverage.ps1. Source restore/build/test passes UseLocalLsfStack=true
+and global DisableTransitiveProjectReferences=true with serial -m:1 builds;
+package mode sets both false and uses a separate cache. Actual netstandard tests
+bind frozen target DLLs in a .NET 10 host, with the existing five BCL overlays
+and narrow hash-comparer test dispatch adaptation. Existing release-only/NET10-only
+cases explain count differences. New authored serializers are covered, including
+registration and compatibility paths; no exclusion, threshold or complexity
+exception changed. Existing xUnit2013 / Lean xUnit1026 warnings remain. The only
+expected failing tests were the three new regressions before correction.
+
+Four closed-JSON writer hosts and twelve readers pass target/variant exchanges,
+five payload families, nested arrays/lists and the issuer/component replay with
+JSON reflection disabled before first use. Standard exchanges binary too. Both
+target assets also pass old-reader/new-writer and new-reader/old-writer checks
+using frozen unfixed owners. Literal control bytes and selected aggregate bytes
+are unchanged. This is evidence for the selected records, not universal schema
+evolution. All four NuGet identities contain both target DLL/XML pairs matching
+the final package graph: SwiftCollections, SwiftCollections.Lean,
+SwiftCollections.FixedMathSharp and SwiftCollections.FixedMathSharp.Lean.
+
+Unity 6000.3.9f1 Windows x64 passes Mono (236 Standard / 149 Lean checks) and
+nondevelopment High-stripping, Release-compiler IL2CPP players (221 / 137).
+Actual netstandard2.1/C# 11 helpers cover closed payload codecs, by-ref complete,
+omitted, null and truncated records, unchanged old owners, exact tickets/orders
+and continuation. No authored link.xml or blanket preservation is used. Mono
+verifies loaded managed-file hashes; Editor validates every input before build;
+native results report the verified compiled-input manifest and assert IL2CPP.
+Standard core SHA-256 is
+A040679B7EE3A8B1D4F0841366EC994120F911E50A07ABA1BF91F22BAE314481;
+Lean is F4B19888735BEF7A0B4E089CB06F25D4FD2123206259490B7FEE7AC566EDB572.
+Both backends produce the same explicit continuation:
+
+```text
+agents=0:1=101,2:1=303,1:2=404
+positions=0:1=6,2:1=109,1:2=3
+velocities=2:1=3,0:1=2,1:2=4
+health=2:1=50,0:1=80,1:2=25
+```
+
+Fresh DocFX 2.78.5 generation and local file links pass with zero warnings/errors.
+Source/metadata/XML audit accounts for 82 authored APIs in Standard, including
+six owner serializer methods replacing generated methods, six remaining
+generated state serializer methods and five synthesized struct constructors.
+Lean remains 76 authored APIs, no generated serializers and five synthesized
+constructors. Both internal helpers have summaries. Before/final metadata
+comparisons preserve public/protected signatures, generic constraints and explicit-interface contracts in
+both targets; no net10 public serializer API was added. The site's selected
+net10 target continues to hide explicit methods; netstandard public bootstrap/
+serializer methods remain documented in emitted XML.
+
+Implementation started clean at e4835b0c66d082c7921f85ddb2decf26fdd97dd6,
+index af940027315836005b4126fb9d55b03248859f9a. Source providers remain unchanged:
+Chronicler 0281469ecc40e65a05867f473bc10f030e7f69f8 and FixedMathSharp
+8fdf889322f1bb82501c2afec63d6bb2f304ace2. Local source results do not claim a
+hosted CI run against a different Chronicler pin. No provider, adapter, dependency
+pin, CI policy or package version changed. Physical maximum arrays, forced OOM,
+other host platforms and universal timing/codec guarantees remain untested.
+Independent source/test and evidence reviews found no remaining correctness
+issue. New changes remain unstaged/uncommitted for review.
+
+**Reopen when:** previous-owner-dependent allocation returns, a consuming restore
+budget shows a repeatable attributable regression, or wire/zero-member/failure/
+AOT compatibility changes. No issue-tracker bug ID is assigned.
 
 ### SC-Benchmark-007 - Value-key spatial hash insertion boxing
 
