@@ -1,9 +1,10 @@
 # 100% Coverage Battle Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: use coverage-analysis before
-> updating this plan from fresh report data. Use test-driven-development before
-> adding or changing behavior tests, and verification-before-completion before
-> claiming a phase is complete.
+> Archived completion record from 2026-06-02. The technology, source paths,
+> line coordinates and intermediate gaps below describe that checkpoint. The
+> original source revision and exact SDK patch were not recorded; these totals
+> are historical evidence, not current release validation. Use
+> [CONTRIBUTING](../../../CONTRIBUTING.md#local-validation) for current commands.
 
 **Status:** Done
 
@@ -21,88 +22,36 @@ ReportGenerator, SwiftCollections standard and FixedMathSharp assemblies.
 
 ---
 
-## Current Baseline
+## Historical baseline and progression
 
-Fresh coverage was generated from `Debug` builds with the shared Coverlet
-runsettings.
+Coverage was collected from Debug builds of both test projects with Coverlet,
+then combined with ReportGenerator. The original run used the core runsettings
+for both projects and filtered companion output to
+`+SwiftCollections.FixedMathSharp;-SwiftCollections` before merging, avoiding
+uncovered duplicate core rows. Current projects instead use their own
+per-assembly runsettings.
 
-Commands run:
+The recorded progression is retained directly here:
+
+| Checkpoint | Line coverage | Branch coverage | Uncovered lines | Missing branch outcomes |
+| --- | ---: | ---: | ---: | ---: |
+| Phase 0 | 98.4% | 94.7% | 109 | 130 |
+| Phase 1 | 98.7% | 95.4% | 88 | 111 |
+| Phase 2 | 99.2% | 95.9% | 56 | 99 |
+| Final | 100% | 100% | 0 | 0 |
+
+To collect current evidence independently, build the selected checkout and run
+both test projects with their own settings. Coverlet prints each newly generated
+report location; use only those reports when composing the current summary.
+The historical figures above are not expected outputs for a different revision.
 
 ```bash
 dotnet build SwiftCollections.slnx -c Debug
 dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c Debug --no-build --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.Tests/coverlet.runsettings
-dotnet test tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMathSharp.Tests.csproj -c Debug --no-build --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.Tests/coverlet.runsettings
-/tmp/codex-reportgenerator/reportgenerator -reports:"tests/SwiftCollections.Tests/TestResults/9ffd4658-dfcc-46cc-b645-4b97fa01ffd5/coverage.cobertura.xml;tests/SwiftCollections.FixedMathSharp.Tests/TestResults/63691ba8-1223-44cf-b2e7-59bdde4ed71a/coverage.cobertura.xml" -targetdir:"tests/TestResults/coverage-analysis/2026-06-02-full/reports" -reporttypes:"Html;TextSummary;JsonSummary;Cobertura" -assemblyfilters:"+SwiftCollections;+SwiftCollections.FixedMathSharp"
+dotnet test tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMathSharp.Tests.csproj -c Debug --no-build --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.FixedMathSharp.Tests/coverlet.runsettings
 ```
 
-Artifacts:
-
-- Core coverage input:
-  `tests/SwiftCollections.Tests/TestResults/9ffd4658-dfcc-46cc-b645-4b97fa01ffd5/coverage.cobertura.xml`
-- FixedMathSharp coverage input:
-  `tests/SwiftCollections.FixedMathSharp.Tests/TestResults/63691ba8-1223-44cf-b2e7-59bdde4ed71a/coverage.cobertura.xml`
-- Combined summary:
-  `tests/TestResults/coverage-analysis/2026-06-02-full/reports/Summary.txt`
-- Combined Cobertura:
-  `tests/TestResults/coverage-analysis/2026-06-02-full/reports/Cobertura.xml`
-
-Phase 0 reproduction artifacts:
-
-- Core coverage input:
-  `tests/SwiftCollections.Tests/TestResults/75f9021f-873a-43f2-998c-1a552073e80f/coverage.cobertura.xml`
-- FixedMathSharp coverage input:
-  `tests/SwiftCollections.FixedMathSharp.Tests/TestResults/76454ebe-6969-471f-a1c5-c0099d6e6fd8/coverage.cobertura.xml`
-- Combined summary:
-  `tests/TestResults/coverage-analysis/2026-06-02-phase0/reports/Summary.txt`
-- Combined Cobertura:
-  `tests/TestResults/coverage-analysis/2026-06-02-phase0/reports/Cobertura.xml`
-
-Phase 1 artifacts:
-
-- Core coverage input:
-  `tests/SwiftCollections.Tests/TestResults/514b3082-a08d-4ad7-a832-5d87a1dd20b6/coverage.cobertura.xml`
-- FixedMathSharp coverage input:
-  `tests/SwiftCollections.FixedMathSharp.Tests/TestResults/2abd09c3-d8bb-458b-ba3d-338e3b790f63/coverage.cobertura.xml`
-- Combined summary:
-  `tests/TestResults/coverage-analysis/2026-06-02-phase1b/reports/Summary.txt`
-- Combined Cobertura:
-  `tests/TestResults/coverage-analysis/2026-06-02-phase1b/reports/Cobertura.xml`
-- Delta from Phase 0: line coverage 98.4% -> 98.7%, branch coverage 94.7% ->
-  95.4%, uncovered lines 109 -> 88, missing branches 130 -> 111.
-
-Phase 2 artifacts:
-
-- Core coverage input:
-  `tests/SwiftCollections.Tests/TestResults/15b0c896-b6b4-4b8b-99af-9918cd0dc3b4/coverage.cobertura.xml`
-- FixedMathSharp coverage input:
-  `tests/SwiftCollections.FixedMathSharp.Tests/TestResults/98b8c15c-188a-4a9b-b432-ac49a1a9d784/coverage.cobertura.xml`
-- Combined summary:
-  `tests/TestResults/coverage-analysis/2026-06-02-phase2/reports/Summary.txt`
-- Combined Cobertura:
-  `tests/TestResults/coverage-analysis/2026-06-02-phase2/reports/Cobertura.xml`
-- Delta from Phase 1: line coverage 98.7% -> 99.2%, branch coverage 95.4% ->
-  95.9%, uncovered lines 88 -> 56, missing branches 111 -> 99.
-
-Final artifacts:
-
-- Core coverage input:
-  `tests/SwiftCollections.Tests/TestResults/921ee8f4-2771-4968-86fb-71326398dfeb/coverage.cobertura.xml`
-- FixedMathSharp coverage input:
-  `tests/SwiftCollections.FixedMathSharp.Tests/TestResults/fb559497-ec18-455c-be57-38f73b5a2a7b/coverage.cobertura.xml`
-- FixedMathSharp filtered coverage:
-  `tests/TestResults/coverage-analysis/2026-06-02-phase3f/fixed-filtered/Cobertura.xml`
-- Combined summary:
-  `tests/TestResults/coverage-analysis/2026-06-02-phase3f/reports/Summary.txt`
-- Combined Cobertura:
-  `tests/TestResults/coverage-analysis/2026-06-02-phase3f/reports/Cobertura.xml`
-- Delta from Phase 2: line coverage 99.2% -> 100%, branch coverage 95.9% ->
-  100%, uncovered lines 56 -> 0, missing branches 99 -> 0.
-- Note: the FixedMathSharp report was filtered to
-  `+SwiftCollections.FixedMathSharp;-SwiftCollections` before merging so
-  duplicate uncovered core assembly rows from the companion test project did not
-  dilute the combined report.
-
-Summary:
+Recorded final summary:
 
 | Metric               |           Current |                             Remaining |
 | -------------------- | ----------------: | ------------------------------------: |
@@ -110,7 +59,7 @@ Summary:
 | Branch coverage      |              100% |                  0 uncovered branches |
 | Method coverage      |              100% |                   0 uncovered methods |
 | Full method coverage |              100% |           0 not fully covered methods |
-| CRAP risk            | 0 methods over 30 | Confirmed by `Compute-CrapScores.ps1` |
+| CRAP risk            | 0 methods over 30 | Historical coverage/complexity scan |
 
 Top CRAP methods remain below the register threshold; with 100% line coverage
 their CRAP score equals their complexity:
@@ -199,8 +148,7 @@ scan. There are a few test-quality items to clean up while hardening coverage:
       MemoryPack files should stay excluded.
 - [x] Add a repeatable local coverage command or script only if it avoids
       command drift without adding CI complexity.
-- [x] Preserve the combined report output under
-      `tests/TestResults/coverage-analysis/<run>/reports` for each major phase.
+- [x] Record combined coverage outcomes and phase deltas in this completion record.
 - [x] After each phase, record line/branch deltas in this document.
 
 Exit criteria:

@@ -1,9 +1,10 @@
 # CI Coverage 100% Follow-Up Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use `coverage-analysis` before
-> updating baseline data, `test-driven-development` before adding or changing
-> behavior tests, and `verification-before-completion` before claiming 100%
-> coverage.
+> Archived completion record from 2026-06-02. The technology, source paths,
+> line coordinates and intermediate gaps below describe that checkpoint. The
+> original source revision and exact SDK patch were not recorded; these totals
+> are historical evidence, not current release validation. Use
+> [CONTRIBUTING](../../../CONTRIBUTING.md#local-validation) for current commands.
 
 **Status:** Done
 
@@ -23,20 +24,8 @@ dead defensive code only after proving the invariant.
 
 ## Baseline
 
-Fresh workflow-shaped reproduction from a clean worktree:
-
-```bash
-dotnet restore
-dotnet build tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj --configuration Release --no-restore
-dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory artifacts/coverage
-/tmp/codex-reportgenerator/reportgenerator "-reports:artifacts/coverage/**/coverage.cobertura.xml" "-targetdir:artifacts/coverage-report" "-reporttypes:Html;MarkdownSummaryGithub;Badges;JsonSummary;TextSummary"
-```
-
-Artifacts:
-
-- Coverage input:
-  `artifacts/coverage/c52d88ba-afb6-48eb-b665-546a2f4bd600/coverage.cobertura.xml`
-- Summary: `artifacts/coverage-report/Summary.txt`
+The baseline was a clean-worktree Release core run using the Coverlet
+collector and ReportGenerator. Its recorded result is:
 
 | Metric               |           Current |                    Remaining |
 | -------------------- | ----------------: | ---------------------------: |
@@ -47,26 +36,10 @@ Artifacts:
 
 ## Final Result
 
-Workflow-shaped Release core coverage after Phase 3:
-
-```bash
-dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory artifacts/coverage
-/tmp/codex-reportgenerator/reportgenerator "-reports:artifacts/coverage/**/coverage.cobertura.xml" "-targetdir:artifacts/coverage-report" "-reporttypes:Html;MarkdownSummaryGithub;Badges;JsonSummary;TextSummary;Cobertura"
-pwsh -NoProfile -File /mnt/c/Users/david/.codex/skills/coverage-analysis/scripts/Compute-CrapScores.ps1 -CoberturaPath artifacts/coverage-report/Cobertura.xml -CrapThreshold 30 -TopN 12
-```
-
-Artifacts:
-
-- Coverage input:
-  `artifacts/coverage/1df7ff13-3b0b-4009-a3d3-bf3e15cca097/coverage.cobertura.xml`
-- Summary: `artifacts/coverage-report/Summary.txt`
-- Core Cobertura: `artifacts/coverage-report/Cobertura.xml`
-- Filtered FixedMathSharp coverage:
-  `artifacts/coverage-fixed-filtered/Cobertura.xml`
-- Combined core plus FixedMathSharp summary:
-  `artifacts/coverage-combined-report/Summary.txt`
-- Combined core plus FixedMathSharp Cobertura:
-  `artifacts/coverage-combined-report/Cobertura.xml`
+The final Release core result after Phase 3 is recorded below. ReportGenerator
+produced summary/Cobertura output; a coverage/complexity scan found no methods
+over the recorded CRAP threshold of 30. No private tool installation or saved
+report directory is required to interpret these results.
 
 | Metric               |             Final |                   Remaining |
 | -------------------- | ----------------: | --------------------------: |
@@ -90,7 +63,20 @@ standard generated-code attributes makes explicit settings work in the
 `coverage.yml` shape. ReportGenerator also needs generated-file `-filefilters`
 so SourceLink-style generated filenames do not produce missing-file warnings.
 
-## Gap Worklist
+## Rechecking the current checkout
+
+The repository now uses per-assembly settings. Recreate current reports with
+fresh results from each test project; do not combine unrelated earlier runs.
+The full Standard/Lean and strict coverage-gate commands live in
+[CONTRIBUTING](../../../CONTRIBUTING.md#local-validation).
+
+```bash
+dotnet build SwiftCollections.slnx -c Release
+dotnet test tests/SwiftCollections.Tests/SwiftCollections.Tests.csproj -c Release --no-build --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.Tests/coverlet.runsettings
+dotnet test tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMathSharp.Tests.csproj -c Release --no-build --collect:"XPlat Code Coverage" --settings tests/SwiftCollections.FixedMathSharp.Tests/coverlet.runsettings
+```
+
+## Historical gap worklist
 
 Line gaps:
 
@@ -225,8 +211,7 @@ Exit criteria:
       coverage are both 100%.
 - [x] Re-run Debug build and core/FixedMathSharp tests.
 - [x] Run `git diff --check`.
-- [x] Update this plan and `docs/complexity-exceptions.md` with final report
-      paths and coverage numbers.
+- [x] Update this plan and `docs/complexity-exceptions.md` with final coverage outcomes.
 
 Exit criteria:
 

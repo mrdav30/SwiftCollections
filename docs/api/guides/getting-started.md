@@ -24,12 +24,15 @@ dotnet add package SwiftCollections
 All runtime packages target `netstandard2.1` and `net10.0`. Pair standard
 companions with standard dependencies, and Lean companions with Lean
 dependencies. The companion brings the matching core collection and
-FixedMathSharp dependencies.
+FixedMathSharp dependencies. The current companion requires core `9.0.0` or
+newer and FixedMathSharp `9.0.0`; see the
+[migration guide](https://github.com/mrdav30/SwiftCollections/blob/main/docs/MIGRATION.md#fixedmathsharp-v9-dependency-alignment-unreleased)
+when updating an existing dependency graph.
 
 ## 2. Use generation-checked handles
 
-The bucket owns slot allocation. A handle stops resolving when its entry is
-removed; reusing that slot does not make the old handle valid again:
+The map owns slot allocation. Removal invalidates the current ticket; ordinary
+slot reuse advances its generation:
 
 ```csharp
 using System;
@@ -44,6 +47,12 @@ if (actors.TryGet(player, out string actor))
 actors.Remove(player);
 bool staleHandleStillResolves = actors.TryGet(player, out _); // false
 ```
+
+`SwiftTicketMap<T>` uses finite generations that can wrap. For packed live-value
+iteration and retirement of exhausted slots instead of wrap, choose
+`SwiftDenseTicketMap<T>`. Both tickets remain scoped to their issuing owner;
+see [identity ownership](collections.md#who-issues-the-identity) before retaining
+them across restores or mixing owners.
 
 For externally owned compact integer IDs, use `SwiftSparseSet` or
 `SwiftSparseMap<T>` instead. Their lookup storage scales with the highest ID;

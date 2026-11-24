@@ -22,12 +22,6 @@ spatial indexing, deterministic runtimes, and allocation-sensitive tooling.
   packed sets, sparse sets, and sparse maps.
 - Dense iteration and stable or generation-checked handles for entity-style
   workloads.
-- `SwiftDenseTicketMap<T>` combines owner-issued tickets with packed live
-  values. `SwiftTicketStore<T>` attaches packed values to externally issued
-  tickets while the caller coordinates issuer lifetime; see the
-  [collection selection guide](https://mrdav30.github.io/SwiftCollections/guides/collections.html#who-issues-the-identity)
-  for identity ownership, delayed work, dense agent updates and layout
-  tradeoffs.
 - 2D/3D BVH and spatial hash, plus quadtree/octree queries over
   `System.Numerics` bounds.
 - Fixed-point query companions powered by
@@ -70,8 +64,9 @@ serialization stack or wants the smaller dependency surface.
 
 ## A quick taste
 
-`SwiftTicketMap<T>` gives you stable slots with generation-checked handles that
-stop resolving after removal and slot reuse:
+`SwiftTicketMap<T>` gives you stable slots with generation-checked tickets.
+Removal invalidates the current ticket, and ordinary slot reuse advances its
+generation:
 
 ```csharp
 using System;
@@ -91,7 +86,8 @@ actors.Remove(player);
 For externally owned compact integer IDs, start with `SwiftSparseSet` or
 `SwiftSparseMap<T>`. Choose `SwiftDenseTicketMap<T>` for owned tickets with
 frequent packed live-value updates, or keep `SwiftTicketMap<T>` for direct
-slot-backed lookup. See
+slot-backed lookup. Use `SwiftTicketStore<T>` to attach packed values to
+externally issued tickets while coordinating their issuer's lifetime. See
 [which collection fits your identity model](https://mrdav30.github.io/SwiftCollections/guides/collections.html#specialized-containers)
 for stale-ticket, storage and borrowing differences. For broad-phase queries,
 start with `SwiftBVH<TKey>`, `SwiftSpatialHash<TKey>`, or `SwiftOctree<TKey>`.

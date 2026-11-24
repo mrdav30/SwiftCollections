@@ -84,6 +84,13 @@ None.
 
 ## Closed Signals
 
+Closed records describe their named source revisions and recorded environments.
+Baseline, candidate and selected-current refer to those historical payloads;
+their test counts and measurements are not fresh verification of a later
+checkout. Reproduce them from the recorded inputs and procedure rather than
+depending on retained local captures. Closure establishes the stated fix or
+decision, not a package release or a broader performance guarantee.
+
 ### SC-Benchmark-008 - Discarded old-state snapshots during ticket-owner replacement
 
 - **Discovered:** 2026-11-23, final SwiftDenseTicketMap/SwiftTicketStore review.
@@ -345,7 +352,7 @@ hosted CI run against a different Chronicler pin. No provider, adapter, dependen
 pin, CI policy or package version changed. Physical maximum arrays, forced OOM,
 other host platforms and universal timing/codec guarantees remain untested.
 Independent source/test and evidence reviews found no remaining correctness
-issue. New changes remain unstaged/uncommitted for review.
+issue.
 
 **Reopen when:** previous-owner-dependent allocation returns, a consuming restore
 budget shows a repeatable attributable regression, or wire/zero-member/failure/
@@ -595,7 +602,8 @@ AOT compatibility changes. No issue-tracker bug ID is assigned.
   [SC-Issue-021 Phase 1](done/2026-11-20-comparer-persistence-plan.md#phase-1-execution-record--2026-11-19)
   performance acceptance after the bounded investigation below. This is a
   documented no-change decision, not a collection algorithm fix or a claim of
-  universal timing equivalence. Phase 2 implementation is separate work.
+  universal timing equivalence. Subsequent implementation and verification are
+  recorded in the completed comparer-persistence plan linked above.
 - **Source / environment:** Clean baseline
   `bf69e2152dff02f5f9f3ad335afcddf7560b4e81` versus its uncommitted Phase 1
   sorted-list persistence implementation; published dependencies,

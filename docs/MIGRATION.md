@@ -2,6 +2,11 @@
 
 ## FixedMathSharp v9 dependency alignment (unreleased)
 
+The companion also requires the matching Standard or Lean SwiftCollections core
+package at `9.0.0` or newer. Publish the required core packages before releasing
+the companion; an older core does not provide all query support used by the
+current companion.
+
 The FixedMathSharp companion now requires `FixedMathSharp` 9.0.0, or
 `FixedMathSharp.Lean` 9.0.0 for Lean. Its 2D bounds adapter uses the exact
 `FixedBoundArea.Area` and `GetAreaExpansionCost` APIs introduced in v9. The core

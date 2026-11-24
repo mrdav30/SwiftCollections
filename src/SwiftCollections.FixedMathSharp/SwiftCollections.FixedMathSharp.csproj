@@ -8,7 +8,7 @@
 		<Configurations>Debug;Release;ReleaseLean</Configurations>
 		<DisableMemoryPack Condition="'$(DisableMemoryPack)' == ''">false</DisableMemoryPack>
 		<UsePublishedSwiftCollections Condition="'$(UsePublishedSwiftCollections)' == ''">false</UsePublishedSwiftCollections>
-		<SwiftCollectionsPackageVersion Condition="'$(SwiftCollectionsPackageVersion)' == ''">8.0.0</SwiftCollectionsPackageVersion>
+		<SwiftCollectionsPackageVersion Condition="'$(SwiftCollectionsPackageVersion)' == ''">9.0.0</SwiftCollectionsPackageVersion>
 		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
 		<Deterministic>true</Deterministic>
 	</PropertyGroup>

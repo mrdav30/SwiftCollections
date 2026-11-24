@@ -14,6 +14,10 @@
   implementation phase; this planning baseline is not a release or benchmark
   result.
 
+> Archived completion record: intermediate gaps, next actions and measurements
+> describe their recorded checkpoints. The final phase results supersede earlier
+> pending verification; they do not claim a package release.
+
 ## Outcome and scope
 
 Provide native 2D BVH, spatial-hash and quadtree collections with both
@@ -682,8 +686,9 @@ regression has been accepted or moved into a backlog.
 Started 2026-11-22 from clean SwiftCollections
 `34ebf95d05af72985d84f10bef7f1de1efbaa774`, FixedMathSharp
 `b501340558c6132484be2f40957233c1b3d29cab` and Chronicler
-`0281469ecc40e65a05867f473bc10f030e7f69f8`. Results include the uncommitted
-patches in the two owning repositories; Chronicler is unchanged.
+`0281469ecc40e65a05867f473bc10f030e7f69f8`. Results include the then-uncommitted
+Phase 1 patches described below in the two owning repositories; Chronicler was
+unchanged.
 
 #### Implementation and first-slice review
 
@@ -769,8 +774,8 @@ proven valid-closed-hull contact defect. Its benchmark backlog owns the
 unattributed Debug allocation signal. Both retain inputs, portable commands,
 revision and next action. The full pristine Debug coverage matrix was not
 replayed; gap classification relies on unchanged affected source and separate
-baseline test controls. Keep that lane open for scoped follow-up. Release/Lean
-gates and new-feature Debug checks pass.
+baseline test controls. That lane was left open for scoped follow-up at the
+Phase 1 checkpoint. Release/Lean gates and new-feature Debug checks passed.
 
 #### Behavior, storage and performance
 

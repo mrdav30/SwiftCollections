@@ -13,6 +13,10 @@
 - **Predecessor:**
   [Completed dense ticket map plan](2026-11-23-swift-dense-ticket-map-plan.md#paired-ownership-direction).
 
+> Archived phase evidence: commands, counts and intermediate next actions apply
+> to the recorded checkpoints. The later owner-reader optimization is recorded
+> under [SC-Benchmark-008](../benchmark-signal-hardening-backlog.md#sc-benchmark-008---discarded-old-state-snapshots-during-ticket-owner-replacement).
+
 ## Outcome and boundaries
 
 Add `SwiftTicketStore<T>`, a dense value store keyed by tickets issued
@@ -907,7 +911,7 @@ pin matches; its Chronicler pin remains
 7b90d5923d4bb6e0e42c033ec697b9678d6b8ece, so local source results do not claim
 hosted validation of that different pin. No provider, dependency pin or CI
 policy was changed. No new confirmed out-of-scope defect or benchmark signal
-requires a tracker item. This closes Phase 1 only; Phase 2 is next.
+required a tracker item. This checkpoint closed Phase 1; Phase 2 followed below.
 
 
 ## Phase 2 results - persistence
@@ -1019,10 +1023,11 @@ netstandard2.1, including nested payloads and the aggregate.
 
 These executions validate the managed metadata/formatter closures and actual
 netstandard assets, not native AOT, Mono or IL2CPP. Those actual Unity checks
-remain Phase 3. There is no new hot-path runtime work to time in this phase;
-Phase 1's performance/storage evidence remains the baseline, and its maintained
-zero-allocation behavior tests pass in every full lane. Broader timings and the
-inconclusive default-tiered netstandard signal remain Phase 3 work.
+were deferred to Phase 3. There was no new hot-path runtime work to time in this
+phase; Phase 1's performance/storage evidence served as the baseline, and its
+maintained zero-allocation behavior tests passed in every full lane. Broader
+timings and the inconclusive default-tiered netstandard signal were also
+deferred to Phase 3 below.
 
 ### Reference checks and handoff
 
@@ -1045,10 +1050,10 @@ Chronicler 0281469ecc40e65a05867f473bc10f030e7f69f8 and FixedMathSharp
 8fdf889322f1bb82501c2afec63d6bb2f304ace2. The CI pin comparison is unchanged
 from Phase 1: FixedMathSharp matches and Chronicler uses the distinct recorded
 pin; local results do not claim hosted validation of that different revision.
-No upstream change or dependency-pin update is required by this phase. All
-changes remain unstaged/uncommitted. Phase 2 is complete; Phase 3 final
-hardening, broader performance/guide review and actual Unity verification are
-next. Physical maximum arrays and forced OOM remain untested as planned.
+No upstream change or dependency-pin update was required by this phase. At this
+checkpoint Phase 2 was complete; final hardening, broader performance/guide
+review and actual Unity verification were deferred to Phase 3 below. Physical
+maximum arrays and forced OOM were untested as planned.
 
 ## Phase 3 results - final hardening and verification
 
@@ -1309,4 +1314,4 @@ No provider, adapter, dependency pin, CI policy, release or consumer migration
 was changed. Physical maximum arrays, forced OOM, other host platforms and
 universal timing/serializer guarantees remain concrete verification limits.
 No confirmed out-of-scope defect requires a tracker entry. Phase 3 and the
-feature are complete; new edits remain unstaged/uncommitted for review.
+feature are complete.

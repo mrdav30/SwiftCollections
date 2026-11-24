@@ -104,7 +104,8 @@ and test so sibling projects also preserve those explicit identities.
 
 Package mode remains the default release-validation path. Clear the environment
 variable before validating published dependencies; source-mode packages are not
-release artifacts.
+release artifacts. The release helper rejects `UseLocalLsfStack=true` before
+building so local source identities cannot enter release packages.
 
 ## Releases
 
@@ -135,7 +136,9 @@ GitHub release tags select the packages published to NuGet:
 Scoped companion releases compile and pack against the published minimum core
 version in `SwiftCollectionsPackageVersion` in
 `src/SwiftCollections.FixedMathSharp/SwiftCollections.FixedMathSharp.csproj`.
-Bump that property only when the companion requires a newer core package.
+The current minimum is `9.0.0`. Publish the matching core Standard and Lean
+packages before publishing a companion that requires them. Bump that property
+only when the companion requires a newer core package.
 
 NuGet publication is not transactional across Standard and Lean. If a network
 failure publishes only part of a validated family, rerun the same GitHub release

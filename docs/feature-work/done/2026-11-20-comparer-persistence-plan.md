@@ -11,6 +11,10 @@
   serialization boundary needs an extension.
 - **Tracking:** [Feature work overview](../feature-work-overview.md#comparer-persistence).
 
+> Archived completion record: intermediate phase gates, next actions and
+> measurements describe their recorded checkpoints. The final closeout and
+> linked tracker dispositions supersede earlier open or blocked statuses.
+
 ## Outcome
 
 Persist a collection's comparison rules with its contents so JSON and standard
@@ -1104,15 +1108,15 @@ Updated actual Unity 6000.3.9f1 Editor Mono smoke runs pass 26/26 standard and
 now requires legacy owner rejection; standard verifies that failed binary reads
 preserve the original owner. Existing tracked Unity packages remain clean.
 
-The user's staged Phase 1 snapshot is preserved byte-for-byte; this review's
-edits remain unstaged and uncommitted. No CI/dependency change, new coverage
-exclusion or final introduced build/test failure remains. At this review
+The review introduced no CI/dependency change, new coverage
+exclusion or final build/test failure. At this review
 checkpoint SC-Benchmark-005 remained open; the later user disposition is
 recorded in the closeout below.
 
 Phase 2, full cross-runtime/reader interoperability, hosted CI, other OS/CPU
-architectures, trimming and actual IL2CPP remain unclaimed. SC-Issue-021 stays
-open until all owners and later gates are complete.
+architectures, trimming and actual IL2CPP were unclaimed at this checkpoint.
+SC-Issue-021 was still open pending all owners and later gates; the final
+disposition appears in the Phase 3 closeout below.
 
 ### Hot-path isolation follow-up — 2026-11-19
 
@@ -1167,15 +1171,16 @@ Unity Mono smoke 26/25. The 798 corrected hot/control intervals passed their
 behavior, zero-allocation and no-GC checks. These are dated prior results, not
 new test runs for this closeout.
 
-All Phase 1 tasks are complete. SC-Issue-021 remains open; Phase 2 hash/inherited
+All Phase 1 tasks were complete at this checkpoint. SC-Issue-021 was still open; Phase 2 hash/inherited
 families and Phase 3 full interoperability, supported IL2CPP, broader runtime
-and release gates remain unchecked. No Phase 2 implementation or release is
-included in this closeout. Reopening criteria are recorded with SC-Benchmark-005.
+and release gates were not yet checked. This Phase 1 closeout did not include
+Phase 2 implementation or a release. Reopening criteria are recorded with SC-Benchmark-005.
 
 ## Phase 2 execution record — 2026-11-20
 
-Starting revision is clean `4fedfa1c3f3a1dc61e730dbda4ed1507046a7381`;
-implementation and tests remain unstaged/uncommitted. Published dependency mode,
+Starting revision was clean `4fedfa1c3f3a1dc61e730dbda4ed1507046a7381`;
+results include the Phase 2 implementation and test patch described below.
+Published dependency mode,
 SDK 10.0.302/runtime 10.0.10, Windows x64 build 26300. No dependency, CI policy,
 raw DTO schema or ordinary lookup/insertion algorithm changes are included.
 
@@ -1331,19 +1336,21 @@ partials, four required binary partials, one shared JSON adapter and the generic
 registration replacing its ordering-only predecessor. Every helper has current
 production callers; no maintained probe framework or speculative later-family
 abstraction is added.
-SC-Issue-021 stays open for Phase 3; SC-Benchmark-005 remains closed under its
-existing user disposition. No release or full-feature completion is claimed.
+At the Phase 2 checkpoint, SC-Issue-021 was still open for Phase 3 and
+SC-Benchmark-005 was closed under its existing user disposition. That checkpoint
+did not claim a release or full-feature completion.
 
 
 ## Phase 3 execution record — 2026-11-20
 
 Initial checkpoint, superseded by the [Phase 3 closeout](#phase-3-closeout--2026-11-20).
 
-**Disposition:** Local verification and the Phase 1–2 hardening review are
-complete. Keep the overall feature open: actual IL2CPP players did not build
-because native prerequisites are absent, SC-Benchmark-006 remains unattributed,
-and hosted CI/release promotion has not been executed. No release, universal
-AOT support or universal timing equivalence is claimed.
+**Checkpoint disposition:** Local verification and the Phase 1–2 hardening review
+were complete. The feature was kept open because actual IL2CPP players did not
+build without native prerequisites, SC-Benchmark-006 was unattributed, and hosted
+CI/release promotion had not been executed. This initial checkpoint claimed no
+release, universal AOT support or universal timing equivalence. The Phase 3
+closeout below supersedes this disposition.
 
 ### Optimization and independent review
 
@@ -1521,14 +1528,15 @@ An interrupted disposable host copy was rebuilt and verified before acceptance;
 its incomplete launch and diagnostic runs are excluded. No speculative runtime
 workaround or maintained regression for an unconfirmed cause is added.
 
-No confirmed defect or test failure is attributable to the selected optimization;
-the baseline reader failures remain unattributed. Actual IL2CPP/stripping, native reliability disposition, hosted CI and authorized
-release promotion remain pending. Keep SC-Issue-021 and the required completion
-checkboxes open until these gates have evidence or explicit disposition. Keep
-SC-Benchmark-005's accepted Phase 1 timing decision unchanged. Do not reopen the
-trusted-state SC-Issue-010 contract or add a compatibility reader. Further timing
-investigation needs a representative attributable regression, not another small
-context-sensitive microbenchmark alone.
+No confirmed defect or test failure was attributable to the selected optimization;
+the baseline reader failures were unattributed. Actual IL2CPP/stripping, native
+reliability disposition, hosted CI and authorized release promotion were pending
+at this checkpoint. SC-Issue-021 and the required completion checkboxes were kept
+open for evidence or explicit disposition, subsequently recorded in the Phase 3
+closeout below. The accepted SC-Benchmark-005 timing decision and trusted-state
+SC-Issue-010 contract were retained without a compatibility reader. Further
+timing investigation required a representative attributable regression rather
+than another small context-sensitive microbenchmark alone.
 
 
 ## Phase 3 closeout — 2026-11-20
@@ -1605,8 +1613,7 @@ after a dependency-mode change. No runtime or maintained test source changed in
 this closeout; the prior coverage, XML/member inventory, package and reference
 results remain valid for the same implementation.
 
-The authorized push advanced develop through `cab616d`; new closeout edits
-remain unstaged/uncommitted. Hosted
+The authorized push advanced develop through `cab616d`. Hosted
 [build-and-test run 44807840605](https://github.com/mrdav30/SwiftCollections/actions/runs/44807840605)
 passes all four jobs on that exact commit: Ubuntu/Windows × Release/ReleaseLean.
 Each standard job executes 1791 core plus 43 companion tests; each Lean job
@@ -1738,8 +1745,8 @@ two-assembly report and reject line-only, branch-only and method-only gaps,
 missing counts, zero counts, missing methods/assemblies, unrelated assembly
 reports, empty results, malformed XML and a missing results directory. These
 are script/CI checks, not maintained tests of test infrastructure. No hosted
-workflow or branch-protection change is claimed. Prior staged SC-Issue-012
-changes remain in the index; this correction is left unstaged for review.
+workflow or branch-protection change was included. The correction preserved the
+separate SC-Issue-012 work present at that checkpoint.
 
 ## Historical Feature Tracking Closeout
 
@@ -1838,7 +1845,7 @@ supersedes the earlier reachable-coverage wording and guard gaps.
   [2026-11-20 closeout](#phase-1-closeout--2026-11-20).
   This documentation-only decision reuses the recorded validation of
   `cbd9a734082d7a002699766937b79dc547a8cebb`; it adds no runtime changes or new
-  validation runs. Previous uncommitted benchmark work is preserved.
+  validation runs. It preserved the benchmark implementation at that checkpoint.
 - **Phase 2 evidence:** Dictionary, HashSet, BiDictionary and ObservableDictionary
   preserve typed equality through shared registry and transport helpers. Fresh
   table construction uses no new entropy; all three bidirectional roles survive

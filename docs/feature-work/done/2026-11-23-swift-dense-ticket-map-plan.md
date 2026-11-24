@@ -2,8 +2,8 @@
 
 - **Status:** Complete. Phases 0–3 implemented and verified the owning dense
   map, persistence, allocation/performance controls, collection-selection guide
-  and supported target/Unity paths. External-store implementation remains a
-  separate follow-on scope.
+  and supported target/Unity paths. External-store implementation is a
+  [separate completed feature](2026-11-23-swift-ticket-store-plan.md).
 - **Completed:** 2026-11-23.
 - **Created:** 2026-11-22.
 - **Owner:** SwiftCollections core.
@@ -12,6 +12,10 @@
 - **Planning baseline:** SwiftCollections
   `adfb709a92f3840853b6f38e3940e0c43557dac9`, initially clean. Record the actual
   revisions, dependencies and local changes at each implementation phase.
+
+> Archived phase evidence: commands, counts and intermediate next actions apply
+> to the recorded checkpoints. The later owner-reader optimization is recorded
+> under [SC-Benchmark-008](../benchmark-signal-hardening-backlog.md#sc-benchmark-008---discarded-old-state-snapshots-during-ticket-owner-replacement).
 
 ## Outcome and boundaries
 
@@ -46,7 +50,9 @@ published packages are not completion gates.
 The two containers support distinct lifetimes. `SwiftDenseTicketMap<T>` issues
 and retires local tickets and owns their associated records. An externally keyed
 dense store accepts tickets issued by another owner and owns only its entries.
-Its name and API remain undecided. It must not issue tickets, advance the
+Its name and API were deferred at this planning checkpoint and subsequently
+defined by the [SwiftTicketStore plan](2026-11-23-swift-ticket-store-plan.md).
+It must not issue tickets, advance the
 agent's generation when a component is removed, or use value equality for
 membership. Both support mutable, duplicate values.
 
@@ -65,7 +71,7 @@ physics, navigation and grid owners. The owning map can serve internal
 registries or an agent authority.
 
 The Phase 0 checkpoint confirmed the following boundaries. External-store API
-choices remain for its follow-on plan:
+choices were deferred to its follow-on plan:
 
 - Membership is not authoritative liveness. A leftover component still matches
   its old ticket after the issuer destroys that agent. Local generation checks
@@ -810,8 +816,8 @@ Started clean at SwiftCollections `5124138c7986b42c45ec17e39635d14457c8c2fe`
 (index tree `d2fb2bea9ceac021f8a17ecc4ea2415bb7f720d5`). Chronicler
 `0281469ecc40e65a05867f473bc10f030e7f69f8` and FixedMathSharp
 `8fdf889322f1bb82501c2afec63d6bb2f304ace2` remain unchanged. Host/tool versions
-match Phase 0. All changes remain unstaged/uncommitted; existing CI and coverage
-policy are unchanged. No downstream migration or dependency change was needed.
+matched Phase 0. Existing CI and coverage policy were unchanged. No downstream
+migration or dependency change was needed.
 
 Implemented SwiftDenseTicketMap<T>, its companion nested enumerator and readonly
 four-array State DTO. One direct owner holds values, reverse slot IDs and 8-byte
@@ -1211,8 +1217,8 @@ separate work. No release, publishing or distribution gate is added.
 ### Review, optimization and scope
 
 Started at SwiftCollections `5da338b1c74d0692707cbbd95ef8c78f61de4918` with the
-Phase 2 documentation and six persistence test/support files still unstaged.
-Preserved those changes and the index tree
+Phase 2 documentation and six persistence test/support files as an additional
+patch. Results include that patch and preserve the recorded index tree
 `139acfb2c01b29b0582747638e3ac2c47f77237c`. Chronicler
 `0281469ecc40e65a05867f473bc10f030e7f69f8` and FixedMathSharp
 `8fdf889322f1bb82501c2afec63d6bb2f304ace2` remain unchanged. Host, SDK,
@@ -1458,10 +1464,9 @@ were exercised. Process-wide OOM/allocator fault injection, arbitrary payload
 callbacks, all possible AOT closures and other OS/architecture timing remain
 explicit verification limits; source inspection covers allocation publication.
 
-**Disposition:** Phases 0–3 complete for the owning map; archive this plan and
-retain the external-store boundary as deferred design. Reopen this feature only
-for a concrete caller contract or verified correctness/performance issue. A
-follow-on external-store plan must name its API/issuer authority and run the
-real paired-store scenarios before implementation. No ECS coordination, consumer
-migration, release or distribution gate is implied. Leave these edits
-unstaged/uncommitted; staging and HEAD remain unchanged.
+**Disposition:** Phases 0–3 completed the owning map. The external-store boundary
+was deferred to the [subsequently completed store plan](2026-11-23-swift-ticket-store-plan.md),
+which named its API/issuer authority and exercised the real paired-store
+scenarios. Reopen this feature only for a concrete caller contract or verified
+correctness/performance issue. No ECS coordination, consumer migration, release
+or distribution gate is implied.

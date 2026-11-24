@@ -12,7 +12,7 @@ performance signals belong in the
 
 ## Tracker Rules
 
-- Issue IDs use `SC-Issue-NNN`. The next available ID is `SC-Issue-025`.
+- Issue IDs use `SC-Issue-NNN`. The next available ID is `SC-Issue-027`.
 - Assign bug IDs at intake and preserve them through closure; never reuse
   previously assigned IDs, including IDs retired from feature tracking. Check
   Git history before advancing or repairing the counter. Unknown historical IDs
@@ -86,6 +86,8 @@ they do not claim a fresh rerun or package release.
 
 | Issue                                                                                          | Resolved/closed | Outcome                                                                                                                                                                                                                                                              | Evidence                                                                                                                                                                                                       |
 | ---------------------------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SC-Issue-026 | 2026-11-24 | **Verified fix:** the release helper rejects inherited source mode before version/build/output work, preserving published release identities. Baseline identity evaluation and actual uppercase-value guard rejection verified. | [Root cause and verification](#sc-issue-026---release-helper-accepts-inherited-source-mode-identities) |
+| SC-Issue-025 | 2026-11-24 | **Verified fix:** companion core minimum is 9.0.0 for both variants. Scoped Standard/Lean tests pass against packed candidate packages with full coverage; both target dependency groups and selected core assets agree. | [Baseline failure, decision and verification](#sc-issue-025---companion-package-minimum-omits-required-2d-core-apis) |
 | SC-Issue-023 | 2026-11-21 | **Verified fix:** five list object adapters isolate conversion from virtual mutation/equality, preserving original user exceptions and existing type/null/index/reentrant-return contracts. | [Resolution, regressions and verification](#sc-issue-023---list-object-adapters-misclassify-callback-invalid-casts) |
 | SC-Issue-022 | 2026-11-21 | **Verified fix:** dictionary object adapters share conversion-only catches and invoke virtual mutation afterward, preserving original comparer/override/subscriber exceptions and existing conversion contracts. | [Resolution and verification](#sc-issue-022---object-dictionary-adapters-misclassify-callback-invalid-casts) |
 | SC-Issue-020 | 2026-11-21 | **Verified fix:** the Numerics octree shares widened midpoint arithmetic for child creation/selection and checks both rounded child spans before subdivision, preventing overflowing and nonshrinking children. | [Root cause, regressions and verification](#sc-issue-020---numerics-octree-subdivision-overflows-finite-midpoints) |
@@ -108,6 +110,144 @@ they do not claim a fresh rerun or package release.
 | <a id="sc-issue-003---hash-set-lookup-boxes-value-keys-in-unoptimized-builds"></a>SC-Issue-003 | 2026-10-26      | Removed value-key boxing from all three hash-set lookup APIs, including Debug; retained null/error contracts and added warmed allocation regressions.                                                                                                                | [Closeout](https://github.com/mrdav30/SwiftCollections/blob/2b4894f87980147934b1eb74603029e04fb84ec8/docs/feature-work/issue-tracker.md#sc-issue-003---hash-set-lookup-boxes-value-keys-in-unoptimized-builds) |
 | <a id="sc-issue-002---collision-probes-stop-before-reaching-stored-entries"></a>SC-Issue-002   | 2026-10-07      | Completed dictionary/set collision-probe periods for insertion, lookup and removal; deterministic wrapped-chain and trimmed-table regressions passed.                                                                                                                | [Closeout](https://github.com/mrdav30/SwiftCollections/blob/5e0c4e0830342508c3fb87c2fe43cf7c30167522/docs/feature-work/issue-tracker.md#sc-issue-002---collision-probes-stop-before-reaching-stored-entries)   |
 | <a id="sc-issue-001---pool-finalizer-coverage-depends-on-incidental-gc"></a>SC-Issue-001       | 2026-10-07      | Replaced incidental-GC coverage with isolated real-GC, mutation-checked pool-finalizer regressions; closed a test reliability gap without a production cleanup change.                                                                                               | [Closeout](https://github.com/mrdav30/SwiftCollections/blob/5e0c4e0830342508c3fb87c2fe43cf7c30167522/docs/feature-work/issue-tracker.md#sc-issue-001---pool-finalizer-coverage-depends-on-incidental-gc)       |
+
+### SC-Issue-026 - Release helper accepts inherited source-mode identities
+
+- **Status / priority:** Resolved 2026-11-24 / P1; verified early rejection
+  of inherited source-mode configuration.
+- **Discovered:** 2026-11-23 at
+  `f1400cbed114d05485cb39d098715345db4c5d1c`.
+- **Affected owners:**
+  [set-version-and-build.ps1](../../.assets/scripts/set-version-and-build.ps1)
+  and its interaction with the source-mode identity settings in
+  [Directory.Build.props](../../Directory.Build.props). This is distinct from
+  [SC-Issue-025](#sc-issue-025---companion-package-minimum-omits-required-2d-core-apis).
+- **Evidence environment:** Windows x64, SDK 10.0.302, runtime 10.0.10.
+
+**Portable identity check:** At the recorded revision, compare the following
+evaluations from the repository root; neither builds nor emits packages:
+
+```bash
+dotnet msbuild src/SwiftCollections/SwiftCollections.csproj -p:Configuration=Release -p:GitVersion_FullSemVer=9.0.0 -p:UseLocalLsfStack=false -getProperty:Version
+dotnet msbuild src/SwiftCollections/SwiftCollections.csproj -p:Configuration=Release -p:GitVersion_FullSemVer=9.0.0 -p:UseLocalLsfStack=true -getProperty:Version
+```
+
+**Expected:** Release packaging uses published dependencies and the requested
+version, or rejects source-mode configuration before any release work.
+**Observed:** Package mode evaluates to `9.0.0`; source mode evaluates to
+`0.0.0-sc-local-lsf`. Before correction, the release helper inherited
+`UseLocalLsfStack=true` from its process environment while setting
+`GitVersion_FullSemVer=9.0.0`. The script's archive naming reads that requested
+version even though the build's source mode overrides its package identity.
+This identity conflict is confirmed by property evaluation and source review;
+no incorrectly labeled release archive was produced for the reproduction.
+
+**Root cause / correction:** Local source identities are intentional build
+fixtures. The release entry point did not reject an inherited source-mode
+selection before selecting versions and building. It now rejects an environment
+variable named `UseLocalLsfStack` whose value is `true`, comparing name and value
+case-insensitively, before loading release utilities or changing build/output
+state. Clearing that variable restores the existing published-package path.
+Local development behavior and CI policy remain unchanged.
+
+**Verification:** The baseline property check was also performed in a fresh
+PowerShell child process after dot-sourcing release utilities and calling
+`Set-ReleaseVersionEnvironment -Version 9.0.0`, with
+`dotnet msbuild src/SwiftCollections/SwiftCollections.csproj -nologo -p:Configuration=Release -p:TargetFramework=net10.0 -getProperty:Version,AssemblyVersion,PackageId`.
+With process `UseLocalLsfStack=false`, results are `9.0.0`, `9.0.0.0`,
+`SwiftCollections`; with `TRUE`, they are `0.0.0-sc-local-lsf`, `0.0.0.0`,
+`SwiftCollections`. The corrected helper was then invoked in a fresh child
+process with uppercase `TRUE`:
+
+```powershell
+$env:UseLocalLsfStack = 'TRUE'
+& ./.assets/scripts/set-version-and-build.ps1 -PackageFamily SwiftCollections -Version 9.0.0
+```
+
+It throws `Release packaging requires published dependencies. Clear UseLocalLsfStack before running this script.` before version selection, builds or
+output work. Ordinary package-mode candidate Release builds pass. The complete
+release helper was not run end to end; no publication, tag or archive is claimed
+by this check. Existing source-mode development is unchanged.
+
+**Disposition / reopening:** Close the confirmed entry-point configuration
+leak. Reopen for a supported release invocation that accepts source fixture
+identities, mislabels its selected package version or rejects a valid
+published-package selection.
+
+### SC-Issue-025 - Companion package minimum omits required 2D core APIs
+
+- **Status / priority:** Resolved 2026-11-24 / P1; verified dependency minimum
+  and scoped candidate-package compatibility.
+- **Discovered:** 2026-11-23 at
+  `f1400cbed114d05485cb39d098715345db4c5d1c`.
+- **Affected owners:** The `SwiftCollectionsPackageVersion` default in
+  [the companion project](../../src/SwiftCollections.FixedMathSharp/SwiftCollections.FixedMathSharp.csproj),
+  consumed by the scoped companion release lane, and its Standard/Lean core
+  dependencies. The fixed 2D wrappers require APIs absent from core 8.0.0.
+- **Evidence environment:** Windows x64, SDK 10.0.302, runtime 10.0.10;
+  published dependencies, without local sibling sources.
+
+**Portable reproducer** (run at the recorded revision, from the repository
+root; no console project is needed):
+
+```bash
+dotnet build tests/SwiftCollections.FixedMathSharp.Tests/SwiftCollections.FixedMathSharp.Tests.csproj -c Release -p:UsePublishedSwiftCollections=true -p:SwiftCollectionsPackageVersion=8.0.0 -p:UseLocalLsfStack=false -p:DisableTransitiveProjectReferences=false -p:GeneratePackageOnBuild=false -m:1
+```
+
+**Expected:** The companion and its tests compile against the stated minimum
+core package, including its 2D wrappers. **Observed:** Build fails with eight
+CS0246 errors: `SwiftQuadtree<,>`, `SwiftQuadtreeOptions`,
+`IQuadtreeBoundsPartitioner<>`, `SwiftSpatialHash2D<,>`,
+`SwiftSpatialHashCellIndex2D` (three sites) and
+`ISpatialHashCellMapper2D<>` are unavailable. The failing owners are
+[SwiftFixedQuadtree](../../src/SwiftCollections.FixedMathSharp/Query/Quadtree/SwiftFixedQuadtree.cs)
+and
+[SwiftFixedSpatialHash2D](../../src/SwiftCollections.FixedMathSharp/Query/SpatialHash/SwiftFixedSpatialHash2D.cs).
+
+**Root cause / caller impact:** At baseline, the companion still declared core
+minimum 8.0.0 after its new 2D wrappers began consuming newer core contracts. Ordinary
+solution/project-reference builds compile against the current core, masking the
+unsupported published-package combination. A scoped companion release cannot
+pass its configured package-mode build, and an insufficient dependency minimum
+would allow consumers to restore an incompatible core.
+
+**Version decision:** Use core minimum 9.0.0 for both companion variants;
+approved 2026-11-23. The project default is corrected. This is a dependency
+metadata correction; core 8.0.0 compatibility is not retained.
+
+**Candidate verification — 2026-11-24:** Pack the current core's Standard
+and Lean variants as 9.0.0 into a temporary local NuGet feed, isolate the NuGet
+cache and retain released external dependencies as fallback. Repeat the scoped
+build above with `SwiftCollectionsPackageVersion=9.0.0` in `Release` and
+`ReleaseLean`; keep `UsePublishedSwiftCollections=true`,
+`UseLocalLsfStack=false`, `DisableTransitiveProjectReferences=false` and
+`GeneratePackageOnBuild=false`. Run the companion test project in each
+configuration with `--no-build`, the same package-selection properties,
+`--collect:"XPlat Code Coverage"` and its existing `coverlet.runsettings`.
+These checks were executed against packages packed from the corrected working
+tree based on the discovery revision; they do not use a current-core project
+reference in place of the stated package dependency.
+
+Both scoped configurations pass all 100 companion tests with no failures or
+skips. Each reports 205/205 lines, 86/86 branches and 67/67 executable methods.
+The core DLL hashes selected for `net10.0` and `netstandard2.1` match the packed
+9.0.0 candidate in both configurations. Both scoped companion packages' emitted
+NuGet dependency groups for `.NETStandard2.1` and `net10.0` require minimum
+`SwiftCollections` 9.0.0 or `SwiftCollections.Lean` 9.0.0 respectively.
+
+The broader corrected 9.0.0 cohort also passes Standard/Lean core tests
+(2425/2270) and companion tests (100 each), plus tests loading the actual
+`netstandard2.1` runtime assets (core 2424/2269; companion 100 each). All four
+lanes retain 100% reported line, branch and executable-method coverage for both
+runtime assemblies under the unchanged coverage gate.
+
+**Disposition / reopening:** Close the dependency metadata defect. No runtime
+or API change was required. Reopen if a companion's declared minimum lacks a
+required core contract, its scoped package-mode verification fails or emitted
+dependency metadata diverges from the tested core minimum. Candidate testing
+does not establish public availability of core 9.0.0; publish the core
+Standard/Lean pair before an independently scoped companion release that
+requires it. Existing CI selection and coverage policy remain unchanged.
 
 ### SC-Issue-015 - Slot reinsertion leaves an allocated slot on the free stack
 
@@ -543,7 +683,7 @@ or latency claim is made. No maintained benchmark harness was added.
   supported Add route that emits on rejection, loses successful notification
   order/payload or bypasses the observable override. Preserve base resize and
   subscriber-failure semantics. The separately reproduced object-adapter
-  exception misclassification remains open as
+  exception misclassification was subsequently corrected under
   [SC-Issue-022](#sc-issue-022---object-dictionary-adapters-misclassify-callback-invalid-casts).
 
 **Related API decision — notification coverage:** Dictionary indexer assignments

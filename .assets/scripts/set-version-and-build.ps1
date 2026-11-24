@@ -49,6 +49,10 @@ $startingLocation = Get-Location
 $stagingDir = $null
 
 try {
+    if (Get-ChildItem Env: | Where-Object { $_.Name -ieq 'UseLocalLsfStack' -and $_.Value -ieq 'true' }) {
+        throw "Release packaging requires published dependencies. Clear UseLocalLsfStack before running this script."
+    }
+
     . (Join-Path $PSScriptRoot "utilities.ps1")
 
     $releasePlan = Resolve-ReleasePlan -PackageFamily $PackageFamily -Version $Version
