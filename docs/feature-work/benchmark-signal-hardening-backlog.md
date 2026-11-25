@@ -30,9 +30,10 @@ feature-work plan and link it from the signal.
   clearing, warmup, and teardown are timed. Separate cold and warm allocation
   evidence, live count and retained capacity, and integer/string/object keys.
 - Inspect every expected BenchmarkDotNet child, launch, and report before using
-  its results. Exclude incomplete or failed work from comparisons. The current
-  launcher returns zero after `BenchmarkSwitcher.Run`; parent success alone does
-  not establish a successful measurement.
+  its results. Exclude incomplete or failed work from comparisons. The launcher
+  propagates rejected arguments, validation/report failures and failed child
+  executions; successful information commands intentionally have no measurements.
+  A zero exit does not establish that every intended case or launch was selected.
 - Use the smallest representative experiment first. A short smoke or listing
   checks the harness; it does not establish a performance improvement.
 - Close a signal after a verified fix or a documented no-change decision. Keep
