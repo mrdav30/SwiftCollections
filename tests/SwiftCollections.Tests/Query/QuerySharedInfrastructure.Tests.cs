@@ -126,22 +126,6 @@ public class QuerySharedInfrastructureTests
     }
 
     [Fact]
-    public void QueryTraversalScratch_RentIntStack_ReusesAndClearsThePerThreadStack()
-    {
-        var scratch = new QueryTraversalScratch();
-
-        SwiftIntStack first = scratch.RentIntStack(2);
-        first.Push(10);
-        first.Push(20);
-
-        SwiftIntStack second = scratch.RentIntStack(16);
-
-        Assert.Same(first, second);
-        Assert.Equal(0, second.Count);
-        Assert.True(second.Array.Length >= 16);
-    }
-
-    [Fact]
     public void QueryCollectionDiagnostics_WriteInfo_EmitsThroughSharedChannel()
     {
         DiagnosticLevel originalLevel = SwiftCollectionDiagnostics.Shared.MinimumLevel;

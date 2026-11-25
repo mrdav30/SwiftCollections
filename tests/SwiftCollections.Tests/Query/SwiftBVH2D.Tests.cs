@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Numerics;
+using System.Threading;
 using SwiftCollections.Observable;
 using Xunit;
 
@@ -8,6 +10,155 @@ namespace SwiftCollections.Query.Tests;
 
 public class SwiftBVH2DTests
 {
+    [Fact]
+    public void Query_AfterResultCallbackThrows_DiscardsPendingTraversalAcrossReuse()
+    {
+        var bvh = new SwiftBVH2D<int>(8);
+        for (int i = 1; i <= 4; i++) bvh.Insert(i, default);
+        var throwing = new ThrowOnSecondAdd();
+
+        Assert.Throws<InvalidOperationException>(() => bvh.Query(default, throwing));
+        Assert.Single(throwing);
+        Assert.InRange(throwing[0], 1, 4);
+
+        var results = new SwiftList<int>(4);
+        bvh.Query(default, results);
+        results.SortInPlace();
+        Assert.Equal(new[] { 1, 2, 3, 4 }, results);
+
+        bvh.Clear();
+        var distant = new BoundVolume2D(new Vector2(10), new Vector2(11));
+        bvh.Insert(99, distant);
+        results.FastClear();
+        bvh.Query(default, results);
+        Assert.Empty(results);
+        bvh.Query(distant, results);
+        Assert.Equal(new[] { 99 }, results);
+
+        Assert.True(bvh.Remove(99));
+        bvh.Insert(100, default);
+        results.FastClear();
+        bvh.Query(default, results);
+        Assert.Equal(new[] { 100 }, results);
+    }
+
+    private sealed class ThrowOnSecondAdd : Collection<int>
+    {
+        protected override void InsertItem(int index, int item)
+        {
+            if (Count == 1) throw new InvalidOperationException("Stop with pending BVH nodes.");
+            base.InsertItem(index, item);
+        }
+    }
+
+    [Theory]
+    [InlineData(1, false)]
+    [InlineData(1, true)]
+    [InlineData(129, false)]
+    [InlineData(129, true)]
+    public void Query_FreshInstanceUsesReservedScratch(int count, bool allHits)
+    {
+        WarmQueryOnAnotherInstance();
+        var bvh = new SwiftBVH2D<int>(2 * count);
+        for (int i = 0; i < count; i++)
+            bvh.Insert(i, new BoundVolume2D(new Vector2(2 * i), new Vector2(2 * i + 1)));
+        var results = new SwiftList<int>(allHits ? count : 1);
+        var query = allHits
+            ? new BoundVolume2D(Vector2.Zero, new Vector2(2 * count))
+            : new BoundVolume2D(Vector2.Zero, Vector2.One);
+
+        long allocated = MeasureQueryAllocation(bvh, query, results);
+
+        Assert.Equal(0, allocated);
+        Assert.Equal(allHits ? count : 1, results.Count);
+        if (allHits)
+            for (int i = 0; i < count; i++) Assert.Contains(i, results);
+        else
+            Assert.Equal(0, results[0]);
+    }
+
+    [Fact]
+    public void Query_GrowthRemovalAndClearReuseKeepScratchReserved()
+    {
+        WarmQueryOnAnotherInstance();
+        var bvh = new SwiftBVH2D<int>(1);
+        var results = new SwiftList<int>(257);
+        for (int i = 0; i < 129; i++) bvh.Insert(i, default);
+
+        long afterInsertionGrowth = MeasureQueryAllocation(bvh, default, results);
+        Assert.Equal(0, afterInsertionGrowth);
+        Assert.Equal(129, results.Count);
+
+        bvh.EnsureCapacity(2048);
+        for (int i = 129; i < 257; i++) bvh.Insert(i, default);
+        results.FastClear();
+        long afterReservationGrowth = MeasureQueryAllocation(bvh, default, results);
+        Assert.Equal(0, afterReservationGrowth);
+        Assert.Equal(257, results.Count);
+
+        for (int i = 1; i < 257; i++) Assert.True(bvh.Remove(i));
+        results.FastClear();
+        long afterRemoval = MeasureQueryAllocation(bvh, default, results);
+        Assert.Equal(0, afterRemoval);
+        Assert.Equal(new[] { 0 }, results);
+
+        bvh.Clear();
+        bvh.Insert(999, default);
+        results.FastClear();
+        long afterClear = MeasureQueryAllocation(bvh, default, results);
+        Assert.Equal(0, afterClear);
+        Assert.Equal(new[] { 999 }, results);
+    }
+
+    [Fact]
+    public void Query_SerialThreadHandoffUsesTheOwnersReservedScratch()
+    {
+        var bvh = new SwiftBVH2D<int>(512);
+        for (int i = 0; i < 129; i++) bvh.Insert(i, default);
+        var results = new SwiftList<int>(129);
+        long allocated = -1;
+        Exception failure = null;
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                WarmQueryOnAnotherInstance();
+                allocated = MeasureQueryAllocation(bvh, default, results);
+            }
+            catch (Exception exception)
+            {
+                failure = exception;
+            }
+        });
+        thread.Start();
+        thread.Join();
+
+        Assert.Null(failure);
+        Assert.Equal(0, allocated);
+        Assert.Equal(129, results.Count);
+        for (int i = 0; i < 129; i++) Assert.Contains(i, results);
+    }
+
+    private static void WarmQueryOnAnotherInstance()
+    {
+        var warm = new SwiftBVH2D<int>(8);
+        warm.Insert(0, default);
+        warm.Insert(1, default);
+        var results = new SwiftList<int>(2);
+        for (int i = 0; i < 1000; i++)
+        {
+            results.FastClear();
+            MeasureQueryAllocation(warm, default, results);
+        }
+    }
+
+    private static long MeasureQueryAllocation(SwiftBVH2D<int> bvh, BoundVolume2D query, SwiftList<int> results)
+    {
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        bvh.Query(query, results);
+        return GC.GetAllocatedBytesForCurrentThread() - before;
+    }
+
     [Fact]
     public void Lifecycle_UpsertsCanonicalKeysMovesRemovesAndReusesStorage()
     {

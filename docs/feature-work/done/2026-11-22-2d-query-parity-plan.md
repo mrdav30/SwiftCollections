@@ -129,9 +129,10 @@ to reuse code. Phase 0 selected an embedded owner layout below; production
 extraction remains a measured gate for indirection, storage and warm costs.
 
 Reuse
-[QueryKeyIndexMap](../../../src/SwiftCollections/Query/Shared/QueryKeyIndexMap.cs)
-and applicable
-[QueryTraversalScratch](../../../src/SwiftCollections/Query/Shared/QueryTraversalScratch.cs).
+[QueryKeyIndexMap](../../../src/SwiftCollections/Query/Shared/QueryKeyIndexMap.cs).
+The original `QueryTraversalScratch` was retired by the 2026-11-25 BVH follow-up;
+[SwiftBVH](../../../src/SwiftCollections/Query/BVH/SwiftBVH.cs) now reserves
+owner-held traversal storage with its node capacity.
 New shared ownership/extraction helpers must serve the existing 3D and new 2D
 owners in the same phase. Dimension-specific numeric helpers need an actual
 production consumer in their owning family. Do not rely on static-abstract

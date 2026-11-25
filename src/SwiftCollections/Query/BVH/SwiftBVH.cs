@@ -23,7 +23,7 @@ namespace SwiftCollections.Query;
 /// cost operations.</typeparam>
 /// <remarks>
 /// Mutable runtime index: synchronize all access externally, including queries that use shared scratch/stamps.
-/// Key and volume callbacks must not reenter or mutate the index. Bounds are copied and keys are retained;
+/// Key, volume and result callbacks must not reenter or mutate the index. Bounds are copied and keys are retained;
 /// changing a key's equality/hash breaks lookup. Query ordering depends on current topology and mutation history;
 /// it is not sorted or a serialized order guarantee. Determinism requires deterministic keys, input order and
 /// volume/mapping arithmetic. Each non-null key owns one leaf; inserting an equal key updates its bounds.
@@ -45,7 +45,8 @@ public class SwiftBVH<TKey, TVolume>
     private int _leafCount;
 
     private readonly QueryKeyIndexMap<TKey> _keyToNodeIndex;
-    private readonly QueryTraversalScratch _queryScratch = new();
+    // A full binary tree has 2N-1 live nodes; traversal needs at most N pending subtrees.
+    private int[] _queryTraversal;
 
     private readonly SwiftIntStack _freeIndices = new();
 
@@ -67,6 +68,7 @@ public class SwiftBVH<TKey, TVolume>
         capacity = SwiftHashTools.NextPowerOfTwo(capacity);
         _nodePool = new SwiftBVHNode<TKey, TVolume>[capacity].Populate(() =>
             new SwiftBVHNode<TKey, TVolume>() { ParentIndex = -1, LeftChildIndex = -1, RightChildIndex = -1 });
+        _queryTraversal = new int[(capacity + 1) / 2];
         _keyToNodeIndex = new QueryKeyIndexMap<TKey>(capacity, MatchesEntryKey, IsLeafNode, GetNodeValue);
 
         _rootNodeIndex = -1;
@@ -464,7 +466,8 @@ public class SwiftBVH<TKey, TVolume>
     /// array memory.</param>
     /// <remarks>
     /// Grows only when the normalized requested length exceeds existing storage. No entries are removed; borrowed
-    /// arrays can be detached. Capacity is node storage, not a no-allocation guarantee for later mutations.
+    /// arrays can be detached. Also reserves owner-held query traversal storage for the supported leaf count.
+    /// Capacity is node storage, not a no-allocation guarantee for later mutations.
     /// </remarks>
     public void EnsureCapacity(int capacity)
     {
@@ -487,6 +490,7 @@ public class SwiftBVH<TKey, TVolume>
             newArray[i].Reset(); // set default index lookup values
 
         _nodePool = newArray;
+        _queryTraversal = new int[(newSize + 1) / 2];
 
         ResizeBuckets(newSize);
         SwiftCollectionDiagnostics.Shared.Info($"Resized BVH storage to {newSize} nodes.", _diagnosticSource);
@@ -529,9 +533,11 @@ public class SwiftBVH<TKey, TVolume>
     /// invalid tree state.</exception>
     /// <remarks>
     /// Appends without clearing results. Empty/no-hit queries preserve existing entries. Destination Add or
-    /// volume/backend exceptions can leave partially appended output; no rollback is provided. Do not mutate the
-    /// index from result callbacks. Visits right subtrees before left because traversal uses a stack. Appends
-    /// each matching key once. Internal traversal scratch can grow and allocate.
+    /// volume/backend exceptions can leave partially appended output; no rollback is provided. Do not reenter or
+    /// mutate the index from result callbacks. Visits right subtrees before left because traversal uses a stack.
+    /// Appends each matching key once. Traversal storage is reserved with node capacity, so traversal does not
+    /// allocate; growing caller-owned results can allocate. Queries share owner-held scratch and require
+    /// external synchronization.
     /// </remarks>
     public void Query(TVolume queryBounds, ICollection<TKey> results)
     {
@@ -539,8 +545,7 @@ public class SwiftBVH<TKey, TVolume>
 
         if (RootNodeIndex == -1) return;
 
-        SwiftIntStack nodeStack = _queryScratch.RentIntStack(_peakIndex + 1);
-        Query(queryBounds, results, nodeStack.Array);
+        Query(queryBounds, results, _queryTraversal);
     }
 
     /// <summary>
@@ -581,6 +586,8 @@ public class SwiftBVH<TKey, TVolume>
 
     private void Query(TVolume queryBounds, ICollection<TKey> results, Span<int> traversal)
     {
+        // Only [0, count) is live, and every slot is written before this query reads it.
+        // Old integer indices outside that prefix retain no objects and need no clearing, even after a throw.
         int count = 0;
         traversal[count++] = RootNodeIndex;
         while (count != 0)
