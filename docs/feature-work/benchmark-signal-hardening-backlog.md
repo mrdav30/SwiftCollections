@@ -14,7 +14,7 @@ feature-work plan and link it from the signal.
 ## Intake Rules
 
 - Signal IDs use `SC-Benchmark-NNN`. The next available ID is
-  `SC-Benchmark-009`.
+  `SC-Benchmark-010`.
 - Assign an ID at intake and never reuse it, including after closure or
   promotion. Check this file's history before changing the counter.
 - Open a signal from an actual benchmark, allocation guard, profiler capture, or
@@ -91,6 +91,242 @@ their test counts and measurements are not fresh verification of a later
 checkout. Reproduce them from the recorded inputs and procedure rather than
 depending on retained local captures. Closure establishes the stated fix or
 decision, not a package release or a broader performance guarantee.
+
+### SC-Benchmark-009 - Repeated dense slot-position load during ticket lookup
+
+- **Discovered / closed:** 2026-11-25; bounded optimization investigation closed
+  with **no runtime change**. Both candidate implementations were removed.
+- **Decision:** retain the existing `SwiftDenseTicketMap<T>.TryGet` behavior and
+  implementation. A single position read improved successful lookups, but the
+  tested candidates introduced miss-path costs. No functional defect was found,
+  no tradeoff was accepted, and no GridForge adoption or speedup is claimed.
+- **Retained guardrails:** the existing generic dense-ticket benchmark now has
+  miss-only and shuffled 50%-miss methods with setup-time false/default and
+  checksum checks. Existing state tests explicitly reject a free slot's exact
+  current terminal generation before issuance and a retired slot's generation
+  zero. Matching generation metadata alone never establishes live membership.
+- **Reopen when:** a real consumer establishes a profitable hit/miss mix and an
+  explicit budget, or a revised implementation improves representative reads
+  without the observed miss regressions. Include ordinary tiered/PGO codegen,
+  value-consuming mixtures, misses and compatibility checks. Do not extrapolate
+  an all-hit result into a general container improvement.
+
+#### Source, attribution and comparable inputs
+
+The baseline runtime is SwiftCollections
+`99ee3e042e976e394bf45d6376fd0e0bccc400b6`. Local-source dependencies are
+Chronicler `0281469ecc40e65a05867f473bc10f030e7f69f8` and FixedMathSharp
+`8fdf889322f1bb82501c2afec63d6bb2f304ace2`. Builds selected
+`UseLocalLsfStack=true`, `DisableTransitiveProjectReferences=true`, Release and
+net10.0, serially. The common benchmark source includes the newly retained miss
+controls in both arms; the existing all-hit method itself is unchanged.
+
+Environment: Windows x64 11 / 10.0.26300.10075, Intel i7-9700K, SDK 10.0.302,
+.NET 10.0.10 and BenchmarkDotNet 0.15.8. Source review confirmed no callback or
+mutation between slot validation and payload access. The baseline reloads
+Position after `IsValid`. The first candidate instead used:
+
+```csharp
+if ((uint)ticket.Index < (uint)_issued)
+{
+    ref Slot slot = ref _slots[ticket.Index];
+    int position = slot.Position;
+    if (position >= 0 && slot.Generation == ticket.Generation)
+    {
+        value = _values[position];
+        return true;
+    }
+}
+value = default!;
+return false;
+```
+
+A second bounded candidate compared generation before loading Position, then
+still required Position >= 0 before payload access. This preserves rejection of
+free/retired slots whose metadata generation matches a constructed ticket.
+Neither candidate changed `IsValid`, `GetRef`, API, storage, ordering, allocation
+policy or serialization. No helper extraction or related-container changes were
+justified.
+
+Fresh fixed-codegen real-API probes passed **8,228 checks per arm**, checksum
+7,929,856. Int and exact 16-byte reference-plus-long cases covered live values,
+swap-back, reuse, negative/extreme/unissued/stale/wrong-generation tickets,
+false/default output, and Store/GetRef controls. NoInlining wrappers calling the
+real TryGet emitted **125 to 108 bytes** for reference-plus-long and **105 to 88
+bytes** for int with the first candidate; Position was read once. This is
+Windows x64 FullOpts attribution, not normal-PGO/AOT code-size evidence.
+All 125 focused Dense tests passed for each tested runtime candidate; the new
+membership assertions also pass against the retained baseline.
+
+Freeze the entire baseline benchmark output, rebuild the candidate with the same
+source flags, then copy the baseline host and replace **only SwiftCollections.dll**.
+Benchmark DLL, dependency manifest, runtime configuration and other payload files
+must remain identical. The measured SHA-256 identities were:
+
+| Runtime payload | SHA-256 |
+| --- | --- |
+| Baseline | `3E30E23DE91959463FB2DA3F964E7A1477E15D85FFC848E2E21590760A12F083` |
+| Position-first candidate | `C61964809A446F44EC32BD93287F693B766C9BCD584058428AE65BDD575CD6BE` |
+| Generation-first candidate | `EEB73A1C8CA668B74ABA1F5C3E943E43C64E23ED1A8F66E94AF542F01720083A` |
+
+#### Position-first balanced BenchmarkDotNet results
+
+Use the maintained Int32 and Referencing `Dense_Lookup*` selections. Int32 cases
+are live count x peak multiplier: 128x1, 4096x4 and 16384x10. Referencing is a
+16-byte int-plus-reference value whose Read consumes both fields; it is not the
+reference-plus-long attribution payload. All-hit and miss-only batches perform
+N calls; shuffled half-miss batches perform **2N calls, N successful**. Miss-only
+counts bool results with discarded out values. Half-miss consumes payloads after
+success. Four equal miss groups cover negative indices, exactly unissued index
+peak, removed/stale original tickets, and mismatched generations. Existing setup
+churn ensures the original tickets remain invalid; permutation seed is 42.
+
+```powershell
+dotnet <frozen-host>/SwiftCollections.Benchmarks.dll all --filter '*DenseTicketMapInt32Benchmarks.Dense_Lookup*' '*DenseTicketMapReferencingBenchmarks.Dense_Lookup*' --inProcess --launchCount 1 --warmupCount 3 --iterationCount 8 --iterationTime 150 --exporters json --artifacts <distinct-output>
+```
+
+Run independent processes P1 baseline / Q1 candidate / Q2 candidate / P2 baseline.
+Fixed mode sets TieredCompilation/TieredPGO/ReadyToRun to 0; tiered mode sets all
+three DOTNET variables to 1. These historical BDN runs used CPU affinity mask 4
+and High priority; the protocol was discontinued after the later host incident
+below. Do not automatically apply those interactive-workstation settings when
+reopening. No builds, tests or profiling competed with timings. Native host
+traces verified each frozen provider path. All eight accepted processes exited 0
+with **12 reports and 96 actual measurements each: 96 reports / 768 actuals**.
+There are no external benchmark children with this toolchain.
+
+Values below are **microseconds per complete batch**, reporting each independent
+process mean in paired order. Delta compares the two-arm balanced means;
+positive means the candidate was slower. An asterisk marks overlapping process
+ranges, which establish neither regression nor equivalence.
+
+| Mode | Payload / case / operation | P1 / P2 us | Q1 / Q2 us | Delta |
+| --- | --- | --- | --- | --- |
+| fixed | Int32 / hits / 128x1 | 0.306 / 0.306 | 0.252 / 0.251 | -17.6% |
+| fixed | Int32 / hits / 16384x10 | 38.912 / 38.707 | 32.318 / 31.864 | -17.3% |
+| fixed | Int32 / hits / 4096x4 | 9.661 / 9.655 | 7.927 / 7.917 | -18.0% |
+| fixed | Int32 / half misses / 128x1 | 0.344 / 0.344 | 0.370 / 0.370 | +7.4% |
+| fixed | Int32 / half misses / 16384x10 | 211.030 / 211.183 | 208.159 / 208.907 | -1.2% |
+| fixed | Int32 / half misses / 4096x4 | 29.904 / 29.539 | 31.215 / 31.233 | +5.1% |
+| fixed | Int32 / misses / 128x1 | 0.131 / 0.130 | 0.170 / 0.170 | +30.5% |
+| fixed | Int32 / misses / 16384x10 | 16.086 / 16.080 | 20.927 / 20.889 | +30.0% |
+| fixed | Int32 / misses / 4096x4 | 3.855 / 3.864 | 5.230 / 5.205 | +35.2% |
+| fixed | Referencing / hits / 4096x4 | 10.157 / 10.125 | 9.792 / 9.983 | -2.5% |
+| fixed | Referencing / half misses / 4096x4 | 36.853 / 37.181 | 36.143 / 36.159 | -2.3% |
+| fixed | Referencing / misses / 4096x4 | 3.906 / 3.870 | 5.285 / 5.302 | +36.1% |
+| tiered | Int32 / hits / 128x1 | 1.365 / 1.373 | 1.262 / 1.261 | -7.8% |
+| tiered | Int32 / hits / 16384x10 | 38.691 / 39.134 | 40.569 / 40.474 | +4.1% |
+| tiered | Int32 / hits / 4096x4 | 16.418 / 16.551 | 16.101 / 16.156 | -2.2% |
+| tiered | Int32 / half misses / 128x1 | 2.995 / 2.969 | 2.524 / 2.330 | -18.6% |
+| tiered | Int32 / half misses / 16384x10 | 218.038 / 247.631 | 206.319 / 205.288 | -11.6% |
+| tiered | Int32 / half misses / 4096x4 | 38.232 / 41.487 | 34.860 / 34.256 | -13.3% |
+| tiered | Int32 / misses / 128x1 | 1.453 / 1.533 | 1.202 / 1.189 | -19.9% |
+| tiered | Int32 / misses / 16384x10 | 26.041 / 34.765 | 24.597 / 25.254 | -18.0% |
+| tiered | Int32 / misses / 4096x4 | 9.244 / 17.357 | 12.380 / 12.574 | -6.2%* |
+| tiered | Referencing / hits / 4096x4 | 23.456 / 23.522 | 21.801 / 21.566 | -7.7% |
+| tiered | Referencing / half misses / 4096x4 | 45.304 / 48.104 | 41.944 / 44.725 | -7.2% |
+| tiered | Referencing / misses / 4096x4 | 11.198 / 11.201 | 9.863 / 10.491 | -9.1% |
+Fixed-codegen integer hits improved 17-18%, but miss-only batches regressed
+30-36%, and two value-consuming half-miss cases regressed 5-7%. The tiered
+16384x10 all-hit case was +4.1% in this protocol. A separate balanced ten-warmup
+all-hit control completed 16 reports / 128 actuals and did not reproduce that
+adverse case (balanced changes -7.0%, -8.1%, -5.7% for the three integer sizes,
+and -6.9% for Referencing). The earlier result remains recorded; longer warming
+does not explain or remove the fixed miss penalty. BDN's largest-case allocation
+rounding did not establish any allocation saving. No universal speedup is claimed.
+
+#### Generation-first control and workstation interruption
+
+The generation-first variant attempted to avoid reading Position for stale
+mismatches. Its source and added membership assertions passed independent review
+and the 125 focused tests. Two full pre-restart tiered BDN processes completed;
+a later process was incomplete across a **user-reported system freeze and forced
+shutdown**. A subsequent full candidate process was completed before that report
+arrived. These do not form a balanced series, and are **not accepted timing
+comparisons**. The partial process was excluded entirely. Windows recorded the
+abrupt shutdown; the bounded event-log check found no explanatory WHEA or
+memory-exhaustion event. The cause is unattributed: neither a provider defect
+nor a fixed host issue is established. No further high-priority BDN runs followed.
+
+A separate disposable driver then invoked the **same maintained workload methods**
+in fresh P/Q/Q/P processes for each codegen mode. It did not start BDN's engine,
+change the power plan or rebuild measured assemblies. It used Below Normal
+priority, CPU affinity mask 4, and a 60-second / 512-MiB external stop budget.
+Observed processes lasted 14.3-18.5 seconds, peaked at 46-51 MiB and, where CPU
+counters were captured, consumed 0.39-1.36 CPU seconds. All eight completed:
+**96 case records / 768 unfiltered samples**. The driver printed actual provider
+path/hash and runtime. Its two hosts again differed only in the provider DLL.
+
+To reproduce this lower-load diagnostic, construct each maintained Int32 case
+and the Referencing 4096x4 case, call Setup, then measure Hits, Misses and
+HalfMisses in that order on the unchanged owner. Wrap the existing methods in
+Func<long> (cast the miss count), consume their result, and reject any change
+from the verified setup checksum. For each method, calibrate 8 rounds starting
+at one call, multiplying calls by 4 when elapsed is below 2 ms. After every burst,
+sleep max(40 ms, 19 times burst duration). Measure 8 bursts at the selected count,
+record unfiltered elapsed nanoseconds/calls, and enforce a 50-second internal
+budget. This intentionally low-duty diagnostic has different warmup/caller
+behavior from BDN; its measurements are kept separate. Do not combine them with
+the pre-restart processes or interpret scheduler-affected samples as speedups.
+
+The generation-first candidate did **not** remove the miss signal:
+
+| Mode / miss-only case | P1 / P2 us | Q1 / Q2 us | Balanced change |
+| --- | --- | --- | --- |
+| Tiered Int32 4096x4 | 3.794 / 3.855 | 5.062 / 4.452 | +24.4% |
+| Tiered Referencing 4096x4 | 3.804 / 3.861 | 5.177 / 4.638 | +28.0% |
+| Fixed Int32 4096x4 | 4.255 / 4.037 | 5.400 / 5.505 | +31.5% |
+| Fixed Int32 16384x10 | 16.773 / 16.374 | 21.782 / 22.320 | +33.1% |
+| Fixed Referencing 4096x4 | 3.935 / 3.926 | 6.128 / 5.403 | +46.7% |
+
+Other hit/mixed controls were not uniformly separated. In particular, tiered
+16384x10 half-miss Q1 contained samples from 212.194 us to 2,524.800 us, while Q2's
+mean was 213.670 us; this is inconclusive variability, not a proven 92.5% runtime
+regression. No samples were silently dropped. With no clear general win and an
+unresolved workstation incident, no further tuning was attempted. Both runtime
+patches were removed; there is no claim that candidate runtime coverage or
+cross-platform performance acceptance passed.
+
+#### Retained change and verification
+
+The remaining changes are the two miss benchmark methods, their shared setup,
+five membership assertions in existing state tests and this record. No runtime,
+API, dependency, CI, package or source-selection policy change remains.
+All five payload specializations / seven parameter cases passed setup and all
+lookup result checks in both Standard and Lean through a disposable low-priority
+caller; no maintained verification harness or benchmark-infrastructure tests
+were added.
+
+Final source-mode solution builds passed Release and ReleaseLean for both
+runtime assemblies at **netstandard2.1 and net10.0**, covering the compiled
+Standard/Lean core and FixedMathSharp package variants. Final tests run at
+net10.0. Each project's existing coverlet settings and fresh profile directories
+were used; assert-full-coverage.ps1 passed without exclusions or threshold edits.
+
+| Assembly / configuration | Tests passed | Lines covered / reported | Branches covered / reported | Executable methods covered / reported |
+| --- | --- | --- | --- | --- |
+| SwiftCollections / Release | 2,432 | 6,627 / 6,627 | 3,128 / 3,128 | 1,473 / 1,473 |
+| SwiftCollections / ReleaseLean | 2,277 | 6,400 / 6,400 | 3,028 / 3,028 | 1,423 / 1,423 |
+| SwiftCollections.FixedMathSharp / Release | 100 | 205 / 205 | 86 / 86 | 67 / 67 |
+| SwiftCollections.FixedMathSharp / ReleaseLean | 100 | 205 / 205 | 86 / 86 | 67 / 67 |
+
+Builds used serial local-source flags. After the workstation incident, validation
+used Below Normal priority, one CPU, DOTNET_PROCESSOR_COUNT=1 and one test worker.
+The test command retained --collect 'XPlat Code Coverage', the owning
+coverlet.runsettings, and --results-directory, with runsettings overrides
+RunConfiguration.MaxCpuCount=1, xUnit.MaxParallelThreads=1 and
+xUnit.ParallelizeTestCollections=false. Lean additionally disabled shared
+compilation and parallel project builds. These are local verification controls,
+not CI policy changes.
+
+No final tests failed or skipped. Standard's final incremental build had no
+warnings; Lean retained the pre-existing xUnit2013 at SwiftSlotMap.Tests.cs:138
+and xUnit1026 at SwiftObservableDictionary.Tests.cs:279. Formatting, whitespace
+and independent final review passed. The final Release core DLL also matches
+the recorded baseline hash exactly. No package publication,
+Unity/native matrix, allocation improvement or consumer performance gain is
+claimed. Refresh downstream CI pins only if a separately accepted provider
+change later requires it; this investigation introduces no runtime migration.
 
 ### SC-Benchmark-008 - Discarded old-state snapshots during ticket-owner replacement
 

@@ -173,6 +173,9 @@ public class SwiftDenseTicketMapStateTests
     {
         var map = new SwiftDenseTicketMap<int>(new SwiftDenseTicketMapState<int>([], [], [uint.MaxValue], [0]));
 
+        Assert.False(map.IsValid(new SwiftTicket(0, uint.MaxValue)));
+        Assert.False(map.TryGet(new SwiftTicket(0, uint.MaxValue), out int unissuedValue));
+        Assert.Equal(0, unissuedValue);
         var final = map.Add(101);
         Assert.Equal(new SwiftTicket(0, uint.MaxValue), final);
         Assert.True(map.Remove(final));
@@ -208,6 +211,8 @@ public class SwiftDenseTicketMapStateTests
 
         Assert.False(map.IsValid(new SwiftTicket(0, 0)));
         Assert.False(map.IsValid(new SwiftTicket(0, uint.MaxValue)));
+        Assert.False(map.TryGet(new SwiftTicket(0, 0), out int retiredValue));
+        Assert.Equal(0, retiredValue);
         Assert.Throws<InvalidOperationException>(() => map.EnsureCapacity(1 << 30));
         Assert.Equal(denseCapacity, map.DenseCapacity);
         Assert.Equal(slotCapacity, map.SlotCapacity);

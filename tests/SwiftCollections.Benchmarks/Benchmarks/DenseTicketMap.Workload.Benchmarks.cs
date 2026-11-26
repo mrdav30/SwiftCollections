@@ -21,6 +21,8 @@ public abstract class DenseTicketMapWorkloadBenchmarks<T> where T : IDenseTicket
     private SwiftTicket[] _denseTickets;
     private SwiftTicket[] _slotTickets;
     private SwiftTicket[] _dictionaryKeys;
+    private SwiftTicket[] _missTickets;
+    private SwiftTicket[] _halfMissTickets;
     private long _initialSum;
 
     [GlobalSetup]
@@ -69,6 +71,29 @@ public abstract class DenseTicketMapWorkloadBenchmarks<T> where T : IDenseTicket
         long expectedMixed = _initialSum + 16;
         if (Dense_Mixed() != expectedMixed || Ticket_Mixed() != expectedMixed || Dictionary_Mixed() != expectedMixed)
             throw new InvalidOperationException("Mixed workloads disagree.");
+        _missTickets = new SwiftTicket[_n];
+        for (int i = 0; i < _n; i++)
+        {
+            _missTickets[i] = (i & 3) switch
+            {
+                0 => new SwiftTicket(-1, 1),
+                1 => new SwiftTicket(peak, 1),
+                2 => denseAll[i], // Removed at high-water occupancy, stale at full occupancy.
+                _ => new SwiftTicket(_denseTickets[i].Index, _denseTickets[i].Generation ^ 0x80000000u)
+            };
+            if (_dense.TryGet(_missTickets[i], out T missing) ||
+                !EqualityComparer<T>.Default.Equals(missing, default))
+                throw new InvalidOperationException("Invalid lookup did not return false/default.");
+        }
+        int[] lookupOrder = TestHelper.GenerateShuffledRange(2 * _n, 42);
+        _halfMissTickets = new SwiftTicket[lookupOrder.Length];
+        for (int i = 0; i < lookupOrder.Length; i++)
+        {
+            int at = lookupOrder[i];
+            _halfMissTickets[i] = (at & 1) == 0 ? _denseTickets[at / 2] : _missTickets[at / 2];
+        }
+        if (Dense_LookupMisses() != 0 || Dense_LookupHalfMisses() != expectedMixed)
+            throw new InvalidOperationException("Miss lookup workloads disagree.");
         // Mutable reference payloads are independently constructed for each owner, so one control cannot
         // change another. The single verified mixed tick is the common start state for measured operations.
         Console.WriteLine($"DenseTicket workload {typeof(T).Name}: N={_n}; peak={peak}; dense={_dense.DenseCapacity}; slots={_dense.SlotCapacity}; checksum={expectedMixed}");
@@ -111,6 +136,24 @@ public abstract class DenseTicketMapWorkloadBenchmarks<T> where T : IDenseTicket
     {
         long sum = 0;
         for (int i = 0; i < _n; i++) { _dense.TryGet(_denseTickets[i], out T value); sum += T.Read(value); }
+        return sum;
+    }
+
+    [Benchmark, BenchmarkCategory("LookupMisses")]
+    public int Dense_LookupMisses()
+    {
+        int found = 0;
+        for (int i = 0; i < _missTickets.Length; i++)
+            if (_dense.TryGet(_missTickets[i], out _)) found++;
+        return found;
+    }
+
+    [Benchmark, BenchmarkCategory("LookupHalfMisses")]
+    public long Dense_LookupHalfMisses()
+    {
+        long sum = 0;
+        for (int i = 0; i < _halfMissTickets.Length; i++)
+            if (_dense.TryGet(_halfMissTickets[i], out T value)) sum += T.Read(value);
         return sum;
     }
 
