@@ -15,6 +15,152 @@ namespace SwiftCollections.Tests;
 public class SwiftSlotMapTests
 {
     [Fact]
+    public void SparseEnumeration_LowerReusedAndInsertedSlotsRemainInSlotOrder()
+    {
+        var map = new SwiftSlotMap<string>();
+        map.InsertAt(96, "last");
+        map.InsertAt(65, "middle");
+        map.InsertAt(63, "first");
+        Assert.Equal(new[] { "first", "middle", "last" }, map);
+
+        map.RemoveAt(63);
+        Assert.Equal(new[] { "middle", "last" }, map);
+        Assert.Equal(63, map.Add("reused"));
+        Assert.Equal(new[] { "reused", "middle", "last" }, map);
+
+        map.InsertAt(31, null);
+        Assert.Equal(new[] { null, "reused", "middle", "last" }, map);
+        map.InsertAt(31, "replacement");
+        Assert.Equal(new[] { "replacement", "reused", "middle", "last" }, map);
+
+        map.RemoveAt(31);
+        map.RemoveAt(63);
+        Assert.Equal(new[] { "middle", "last" }, map);
+        Assert.Equal(new[] { 31, 63 }, map.State.FreeIndices);
+        map.InsertAt(31, "restored");
+        Assert.Equal(new[] { "restored", "middle", "last" }, map);
+        map.InsertAt(0, "front");
+        Assert.Equal(new[] { "front", "restored", "middle", "last" }, map);
+        Assert.Equal(new[] { 63 }, map.State.FreeIndices);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SparseEnumeration_AllRemovedClearAndTrimRemainReusable(bool clearRetainedReferences)
+    {
+        var map = new SwiftSlotMap<string>();
+        map.InsertAt(96, "high");
+        Assert.Equal(new[] { "high" }, map);
+        map.RemoveAt(96);
+        Assert.Empty(map);
+
+        map.Clear(clearRetainedReferences);
+        Assert.Equal(97, map.PeakCount);
+        Assert.Equal(96, map.Add("reused"));
+        Assert.Equal(new[] { "reused" }, map);
+
+        map.Clear(clearRetainedReferences);
+        Assert.Empty(map);
+        Assert.Equal(0, map.PeakCount);
+        map.InsertAt(127, "new high");
+        Assert.Equal(new[] { "new high" }, map);
+        map.RemoveAt(127);
+        Assert.Empty(map);
+        map.TrimExcessCapacity();
+        Assert.Empty(map);
+        Assert.Equal(0, map.PeakCount);
+        Assert.Equal(0, map.Add("after trim"));
+        Assert.Equal(new[] { "after trim" }, map);
+    }
+
+    [Fact]
+    public void SparseEnumeration_CopiesAdvanceIndependentlyAndFailedRemovalDoesNotInvalidate()
+    {
+        var map = new SwiftSlotMap<string>();
+        map.InsertAt(63, "first");
+        map.InsertAt(96, "last");
+        var enumerator = map.GetEnumerator();
+        var copy = enumerator;
+
+        Assert.False(map.TryRemoveAt(-1));
+        Assert.False(map.TryRemoveAt(64));
+        Assert.False(map.TryRemoveAt(128));
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal("first", enumerator.Current);
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal("last", enumerator.Current);
+        Assert.False(enumerator.MoveNext());
+        Assert.False(enumerator.MoveNext());
+
+        Assert.True(copy.MoveNext());
+        Assert.Equal("first", copy.Current);
+        Assert.True(copy.MoveNext());
+        Assert.Equal("last", copy.Current);
+        copy.Reset();
+        Assert.Null(copy.Current);
+        Assert.True(copy.MoveNext());
+        Assert.Equal("first", copy.Current);
+    }
+
+    [Fact]
+    public void SparseEnumeration_NonGenericCurrentRejectsEveryInvalidPosition()
+    {
+        var map = new SwiftSlotMap<string>();
+        map.InsertAt(63, "first");
+        map.InsertAt(96, "last");
+        Assert.Equal(new[] { "first", "last" }, map);
+        IEnumerator enumerator = ((IEnumerable)map).GetEnumerator();
+
+        Assert.Throws<InvalidOperationException>(() => enumerator.Current);
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal("first", enumerator.Current);
+        enumerator.Reset();
+        Assert.Throws<InvalidOperationException>(() => enumerator.Current);
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal("first", enumerator.Current);
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal("last", enumerator.Current);
+        Assert.False(enumerator.MoveNext());
+        Assert.False(enumerator.MoveNext());
+        Assert.Throws<InvalidOperationException>(() => enumerator.Current);
+        ((IDisposable)enumerator).Dispose();
+        Assert.Throws<InvalidOperationException>(() => enumerator.Current);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    [InlineData(6)]
+    public void SparseEnumeration_MutationsRejectAdvanceAndReset(int mutation)
+    {
+        var map = new SwiftSlotMap<int>();
+        map.InsertAt(63, 1);
+        map.InsertAt(96, 2);
+        Assert.Equal(new[] { 1, 2 }, map);
+        var enumerator = map.GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+
+        switch (mutation)
+        {
+            case 0: map.Add(3); break;
+            case 1: map.RemoveAt(63); break;
+            case 2: map.InsertAt(31, 3); break;
+            case 3: map[63] = 3; break;
+            case 4: map.EnsureCapacity(256); break;
+            case 5: map.TrimExcessCapacity(); break;
+            default: map.Clear(); break;
+        }
+
+        Assert.Throws<InvalidOperationException>(() => enumerator.MoveNext());
+        Assert.Throws<InvalidOperationException>(() => enumerator.Reset());
+    }
+
+    [Fact]
     public void Reinsertion_NextAddPreservesReinsertedSlotAndCount()
     {
         var map = new SwiftSlotMap<int>();
@@ -196,6 +342,7 @@ public class SwiftSlotMapTests
         original.RemoveAt(2);
         original.RemoveAt(4);
         original.InsertAt(2, 200);
+        Assert.Equal(new[] { 1, 200, 3, 5 }, original);
 
         SwiftSlotMap<int> restored = format switch
         {
@@ -211,6 +358,7 @@ public class SwiftSlotMapTests
         Assert.Equal(new[] { 0, 4 }, restored.State.FreeIndices);
         Assert.Equal(4, restored.Count);
         Assert.Equal(6, restored.PeakCount);
+        Assert.Equal(new[] { 1, 200, 3, 5 }, restored);
         restored.InsertAt(0, 100);
         Assert.Equal(new[] { 4 }, restored.State.FreeIndices);
         Assert.Equal(4, restored.Add(400));
